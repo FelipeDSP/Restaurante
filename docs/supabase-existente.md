@@ -1,0 +1,69 @@
+# Supabase existente (projeto temporário)
+
+Inspeção feita em 2026-10-01, somente leitura, antes da primeira migração deste sistema.
+
+- Projeto: `formacao-salmistas` — ref `uzhpxwgkchccckaoshfh`
+- Região: `sa-east-1` (São Paulo) · Postgres 17.6
+- Outro projeto na mesma organização (não usado): `Boteco ACIA` — ref `fsuomzzniervtkibtjbn`
+
+## O que já existe (NÃO ALTERAR)
+
+### Tabelas (`public`)
+
+| Tabela | Linhas | RLS | Observação |
+|---|---|---|---|
+| `inscricoes_salmistas` | 0 | ativada, **sem policies** | Inscrições — Formação para Salmistas 26-27/09/2026 |
+
+Colunas de `inscricoes_salmistas`: `id bigint generated always as identity`, `created_at timestamptz default now()`, `nome_completo text`, `data_nascimento date`, `telefone text`, `comunidades text`, `tempo_ministerio text` (todas `not null`).
+
+Grants: `anon` e `authenticated` têm todos os privilégios padrão do Supabase, mas, como a RLS está ativa sem policies, nenhum dos dois consegue ler ou gravar (só `service_role`).
+
+### Migrações registradas
+
+| Versão | Nome |
+|---|---|
+| `20260916150254` | `create_inscricoes_salmistas` |
+
+Atenção: essa migração existe no histórico remoto (`supabase_migrations.schema_migrations`), mas não em `supabase/migrations/` deste repositório. Antes do `supabase db push`, marcar como já aplicada no histórico local ou usar `supabase migration repair` só para ela, sem recriar nada.
+
+### Funções, views, tipos e sequências em `public`
+
+Nenhuma (além do tipo de linha da própria tabela).
+
+### Triggers
+
+- `auth.users`: **nenhum trigger**. Criar usuários deste sistema não dispara nada do outro sistema.
+- `public`: nenhum.
+- `storage`: apenas os triggers internos do Supabase (`update_objects_updated_at`, `protect_*`, `enforce_bucket_name_length_trigger`).
+
+### Policies
+
+Nenhuma em `public` nem em `storage`.
+
+### Storage
+
+Nenhum bucket. Os buckets deste sistema serão `rest-logos` e `rest-produtos`.
+
+### Auth
+
+0 usuários em `auth.users`.
+
+### Realtime
+
+Publicação `supabase_realtime` vazia.
+
+### Extensões instaladas
+
+`pgcrypto`, `uuid-ossp`, `pg_stat_statements` (schema `extensions`), `supabase_vault`, `plpgsql`. `gen_random_uuid()` é nativo do Postgres 17.
+
+### Event triggers
+
+Apenas os padrões do Supabase (`pgrst_ddl_watch`, `pgrst_drop_watch`, `issue_*`).
+
+## Conclusões para o nosso sistema
+
+- **Sem colisão de nomes**: nenhuma tabela planejada (`restaurantes`, `membros`, `categorias`, `produtos`, `mesas`, `bairros_entrega`, `caixa_sessoes`, `comandas`, `pedidos`, `itens_pedido`, `pagamentos`) nem função (`eh_membro`, `tem_papel`, `criar_pedido_delivery`, `consultar_pedido_publico`) nem view (`restaurantes_publicos`) existe hoje.
+- **Sem trigger em `auth.users`**: podemos criar usuários do seed sem efeito colateral.
+- **Sem buckets**: os prefixos `rest-` ficam livres.
+- **Cuidado com o histórico de migrações** (ver acima).
+- Os advisors de segurança podem mostrar alertas sobre `inscricoes_salmistas`. Esses alertas pertencem ao outro sistema e não serão corrigidos por nós.
