@@ -67,3 +67,24 @@ Apenas os padrões do Supabase (`pgrst_ddl_watch`, `pgrst_drop_watch`, `issue_*`
 - **Sem buckets**: os prefixos `rest-` ficam livres.
 - **Cuidado com o histórico de migrações** (ver acima).
 - Os advisors de segurança podem mostrar alertas sobre `inscricoes_salmistas`. Esses alertas pertencem ao outro sistema e não serão corrigidos por nós.
+
+## Aplicado deste sistema (2026-10-01)
+
+Migrações aplicadas via MCP; os arquivos em `supabase/migrations/` têm as mesmas versões do histórico remoto:
+
+| Versão | Nome |
+|---|---|
+| `20261001210303` | `estrutura` |
+| `20261001210410` | `regras` |
+| `20261001210442` | `rls` |
+| `20261001210544` | `rpc_delivery` |
+| `20261001210546` | `storage_realtime` |
+| `20261001210808` | `ajustes_advisors` |
+
+Seed de desenvolvimento aplicado (3 restaurantes, 13 usuários `@exemplo.com`, senha `senha123`).
+
+### Advisors após as migrações
+
+- Segurança, aceitos: RPCs públicas `security definer` do delivery (intencionais); `inscricoes_salmistas` sem policy (outro sistema).
+- Segurança, pendente de configuração no painel: "Leaked password protection" (Auth > Providers > Email). Recurso de plano pago; avaliar ao migrar para o projeto definitivo.
+- Performance: só "unused index" (banco novo, sem tráfego).
