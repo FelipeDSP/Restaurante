@@ -274,6 +274,36 @@ begin
     perform pg_temp.ok(true, 'dono não muda o slug pelo app');
   end;
 
+  begin
+    perform public.lancar_itens_comanda(v_comanda_b, jsonb_build_array(jsonb_build_object('produto_id', v_produto_b, 'quantidade', 1)));
+    perform pg_temp.ok(false, 'A não lança itens (RPC) em comanda de B');
+  exception when others then
+    perform pg_temp.ok(sqlerrm = 'Comanda não encontrada.', 'A não lança itens (RPC) em comanda de B');
+  end;
+
+  -- RPC do garçom é tudo ou nada: item inválido não deixa pedido vazio.
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  insert into public.comandas (restaurante_id, mesa_id)
+  select a, id from public.mesas where restaurante_id = a and numero = '2'
+  returning id into v_comanda_a;
+  select count(*) into n from public.pedidos where comanda_id = v_comanda_a;
+  begin
+    perform public.lancar_itens_comanda(v_comanda_a, jsonb_build_array(
+      jsonb_build_object('produto_id', v_produto_a2, 'quantidade', 1),
+      jsonb_build_object('produto_id', v_produto_b, 'quantidade', 1)));
+  exception when others then null;
+  end;
+  perform pg_temp.ok(n = (select count(*) from public.pedidos where comanda_id = v_comanda_a),
+                     'lançamento com item inválido não cria pedido');
+  v_json := public.lancar_itens_comanda(v_comanda_a, jsonb_build_array(
+    jsonb_build_object('produto_id', v_produto_a2, 'quantidade', 2, 'observacao', 'sem cebola')));
+  perform pg_temp.ok((select total from public.comandas where id = v_comanda_a) = 2 * 3200,
+                     'RPC do garçom lança itens com preço do cadastro');
+  -- Comanda precisa estar fechada para o caixa fechar no fim do teste.
+  insert into public.pagamentos (restaurante_id, comanda_id, valor, forma) values (a, v_comanda_a, 6400, 'pix');
+  update public.comandas set status = 'fechada' where id = v_comanda_a;
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+
   -- Usuário de dois restaurantes vê os dois, e só eles.
   perform pg_temp.entrar('multi@exemplo.com');
   select count(distinct restaurante_id) into n from public.membros where user_id = md5('multi@exemplo.com')::uuid;
@@ -284,6 +314,7 @@ begin
   -- ======================================================================
   -- Público (anon)
   -- ======================================================================
+  select max(numero) into v_num1 from public.pedidos where caixa_sessao_id = v_caixa_a;
   perform pg_temp.anonimo();
   select count(*) into n from public.restaurantes_publicos;
   perform pg_temp.ok(n = 3, 'anon lê restaurantes públicos');

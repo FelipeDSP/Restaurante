@@ -11,13 +11,14 @@ import type { ResultadoAcao } from "@/lib/acoes";
 export function useAcao() {
   const [pendente, iniciar] = useTransition();
 
-  function executar(acao: () => Promise<ResultadoAcao>) {
+  function executar(acao: () => Promise<ResultadoAcao>, aoSucesso?: () => void) {
     iniciar(async () => {
       const resultado = await acao();
       if (resultado?.mensagem) {
         if (resultado.ok) toast.success(resultado.mensagem);
         else toast.error(resultado.mensagem);
       }
+      if (resultado?.ok) aoSucesso?.();
     });
   }
 

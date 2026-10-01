@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 
 import { MarcaRestaurante } from "@/components/staff/marca-restaurante";
 import { MenuUsuario } from "@/components/staff/menu-usuario";
@@ -6,9 +6,25 @@ import { exigirAcesso } from "@/lib/auth/dal";
 import { NOME_PAPEL, podeAcessar } from "@/lib/auth/papeis";
 import { estiloMarca } from "@/lib/cores";
 
+// PWA com a marca do restaurante: manifest e ícones em rotas públicas por restaurante.
 export async function generateMetadata(): Promise<Metadata> {
   const { restaurante } = await exigirAcesso("garcom");
-  return { title: { template: `%s · ${restaurante.nome}`, default: restaurante.nome } };
+  const base = `/pwa/${restaurante.id}`;
+  return {
+    title: { template: `%s · ${restaurante.nome}`, default: restaurante.nome },
+    applicationName: restaurante.nome,
+    manifest: `${base}/manifest`,
+    icons: {
+      icon: [{ url: `${base}/icone/192`, sizes: "192x192", type: "image/png" }],
+      apple: [{ url: `${base}/icone/180`, sizes: "180x180", type: "image/png" }],
+    },
+    appleWebApp: { capable: true, title: restaurante.nome, statusBarStyle: "default" },
+  };
+}
+
+export async function generateViewport(): Promise<Viewport> {
+  const { restaurante } = await exigirAcesso("garcom");
+  return { themeColor: restaurante.corPrimaria, width: "device-width", initialScale: 1, viewportFit: "cover" };
 }
 
 // Layout mobile-first do PWA do garçom.

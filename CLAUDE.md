@@ -109,7 +109,7 @@ Na fase 2 entram `estacoes`, `produto_componentes`, `tarefas_producao`, `impress
 ## Tempo real
 
 - Painel escuta `pedidos` (novos deliveries com alerta sonoro) e `comandas` do restaurante ativo.
-- PWA do garçom escuta `comandas` e `itens_pedido` do restaurante.
+- PWA do garçom escuta `comandas`, `itens_pedido` e `pagamentos` do restaurante.
 - Ativar Realtime só nas tabelas necessárias e sempre filtrar por `restaurante_id`.
 
 ## White label
@@ -137,6 +137,8 @@ Durante o desenvolvimento usamos um projeto Supabase que já contém outro siste
 - Consultas de staff sempre com `.eq("restaurante_id", acesso.restaurante.id)`: a RLS também libera o cardápio público (categorias, produtos, bairros, restaurantes) de outros restaurantes.
 - Formulários: Server Action retorna `ResultadoAcao` (`src/lib/acoes.ts`); o `<form>` usa `key={estado?.chave}` e `valorCampo()` para manter o que foi digitado após erro (React 19 reseta o form).
 - Escrita com a chave secreta (`createAdminClient`) só para o que a sessão do usuário não consegue (criar contas, trocar senha), sempre após `exigirDono()`.
+- Inserts em tabelas com colunas preenchidas por trigger (`caixa_sessao_id`, `numero`, `registrado_por`, `aberta_por`) usam `novoRegistro()` de `src/lib/supabase/insercao.ts`.
+- Tempo real: usar `<AtualizarEmTempoReal>` (passa o token da sessão ao Realtime antes de inscrever; sem isso o canal entra como anônimo e a RLS não entrega eventos).
 - Componentes de UI acessíveis e mobile-first; o PWA do garçom deve ser usável com uma mão e botões grandes.
 - Após cada migração: regenerar tipos, rodar os advisors de segurança do Supabase e corrigir alertas de RLS.
 - Commits pequenos, um por funcionalidade.

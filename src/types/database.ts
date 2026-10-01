@@ -421,6 +421,9 @@ isOneToOne: false
                            },
 "criar_pedido_delivery":
 { Args: { "p_bairro_id": string,"p_cliente_nome": string,"p_cliente_telefone": string,"p_endereco": Json,"p_forma_pagamento": string,"p_itens": Json,"p_observacao"?: string,"p_restaurante_id": string,"p_troco_para"?: number }; Returns: Json
+                           },
+"lancar_itens_comanda":
+{ Args: { "p_comanda_id": string,"p_itens": Json }; Returns: Json
                            }
           }
           Enums: {
