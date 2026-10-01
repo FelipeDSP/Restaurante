@@ -31,7 +31,7 @@ Não entra agora (mas o desenho não pode impedir):
 - `@supabase/ssr` para sessão no servidor
 - Migrações versionadas com Supabase CLI em `supabase/migrations/`
 - Tipos gerados do banco em `src/types/database.ts` (regenerar após cada migração)
-- Deploy na Vercel
+- Deploy em servidor próprio na Hostinger (Node.js), não na Vercel. Não usar recursos exclusivos da Vercel (Edge Config, Vercel KV, Cron da Vercel, etc.).
 
 Um único app Next.js com grupos de rotas:
 

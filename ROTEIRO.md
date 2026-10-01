@@ -38,7 +38,7 @@ Use um prompt por vez. Só passe para o próximo quando o atual estiver funciona
 
 ## Etapa 8 — Revisão e deploy
 
-> Revise o projeto: rode os advisors de segurança e performance do Supabase, confira que nenhuma tela mostra a marca da plataforma, teste o fluxo completo com dois restaurantes do seed em navegadores diferentes e faça o deploy na Vercel.
+> Revise o projeto: rode os advisors de segurança e performance do Supabase, confira que nenhuma tela mostra a marca da plataforma, teste o fluxo completo com dois restaurantes do seed em navegadores diferentes e faça o deploy no servidor da Hostinger (build `standalone` do Next.js com PM2 ou Docker, proxy reverso com HTTPS, já que o PWA exige HTTPS).
 
 ## Antes da noite de teste
 
