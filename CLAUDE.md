@@ -132,7 +132,8 @@ Durante o desenvolvimento usamos um projeto Supabase que já contém outro siste
 
 - Nomes de tabelas e colunas em português, snake_case, sem acento.
 - Código (variáveis, componentes) em inglês ou português, mas consistente por arquivo; textos da interface em português do Brasil.
-- Server Actions ou Route Handlers para escrita; validação com Zod em toda entrada.
+- Server Actions ou Route Handlers para escrita; validação com Zod em toda entrada. IDs com `z.guid()` (não `z.uuid()`, que rejeita os uuids do seed).
+- Toda página e Server Action de staff chama `exigirAcesso(area)` de `src/lib/auth/dal.ts` (layouts não reexecutam a cada navegação).
 - Componentes de UI acessíveis e mobile-first; o PWA do garçom deve ser usável com uma mão e botões grandes.
 - Após cada migração: regenerar tipos, rodar os advisors de segurança do Supabase e corrigir alertas de RLS.
 - Commits pequenos, um por funcionalidade.
