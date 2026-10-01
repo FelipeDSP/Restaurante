@@ -134,6 +134,9 @@ Durante o desenvolvimento usamos um projeto Supabase que já contém outro siste
 - Código (variáveis, componentes) em inglês ou português, mas consistente por arquivo; textos da interface em português do Brasil.
 - Server Actions ou Route Handlers para escrita; validação com Zod em toda entrada. IDs com `z.guid()` (não `z.uuid()`, que rejeita os uuids do seed).
 - Toda página e Server Action de staff chama `exigirAcesso(area)` de `src/lib/auth/dal.ts` (layouts não reexecutam a cada navegação).
+- Consultas de staff sempre com `.eq("restaurante_id", acesso.restaurante.id)`: a RLS também libera o cardápio público (categorias, produtos, bairros, restaurantes) de outros restaurantes.
+- Formulários: Server Action retorna `ResultadoAcao` (`src/lib/acoes.ts`); o `<form>` usa `key={estado?.chave}` e `valorCampo()` para manter o que foi digitado após erro (React 19 reseta o form).
+- Escrita com a chave secreta (`createAdminClient`) só para o que a sessão do usuário não consegue (criar contas, trocar senha), sempre após `exigirDono()`.
 - Componentes de UI acessíveis e mobile-first; o PWA do garçom deve ser usável com uma mão e botões grandes.
 - Após cada migração: regenerar tipos, rodar os advisors de segurança do Supabase e corrigir alertas de RLS.
 - Commits pequenos, um por funcionalidade.

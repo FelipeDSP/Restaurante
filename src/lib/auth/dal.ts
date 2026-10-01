@@ -117,3 +117,10 @@ export const exigirAcesso = cache(async (area: Area): Promise<Acesso> => {
   if (!podeAcessar(ativo.papel, area)) redirect(rotaInicial(ativo.papel));
   return { ...ativo, usuario, vinculos };
 });
+
+// Cadastros e configurações do restaurante: só o dono.
+export const exigirDono = cache(async (): Promise<Acesso> => {
+  const acesso = await exigirAcesso("painel");
+  if (acesso.papel !== "dono") redirect("/painel");
+  return acesso;
+});

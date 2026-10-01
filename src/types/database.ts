@@ -407,11 +407,17 @@ isOneToOne: false
                 }
           }
           Functions: {
-            "consultar_disponibilidade_delivery":
+            "buscar_usuario_por_email":
+{ Args: { "p_email": string }; Returns: string
+                           },
+"consultar_disponibilidade_delivery":
 { Args: { "p_restaurante_id": string }; Returns: Json
                            },
 "consultar_pedido_publico":
 { Args: { "p_pedido_id": string }; Returns: Json
+                           },
+"contar_restaurantes_do_usuario":
+{ Args: { "p_user_id": string }; Returns: number
                            },
 "criar_pedido_delivery":
 { Args: { "p_bairro_id": string,"p_cliente_nome": string,"p_cliente_telefone": string,"p_endereco": Json,"p_forma_pagamento": string,"p_itens": Json,"p_observacao"?: string,"p_restaurante_id": string,"p_troco_para"?: number }; Returns: Json

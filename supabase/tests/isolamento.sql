@@ -381,6 +381,23 @@ begin
   select count(*) into n from public.caixa_sessoes where id = v_caixa_a and fechada_por is not null;
   perform pg_temp.ok(n = 1, 'caixa fecha com valor contado');
 
+  -- ======================================================================
+  -- Equipe
+  -- ======================================================================
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  begin
+    update public.membros set papel = 'caixa' where user_id = md5('dono.brasa@exemplo.com')::uuid;
+    perform pg_temp.ok(false, 'restaurante mantém pelo menos um dono ativo');
+  exception when others then
+    perform pg_temp.ok(sqlerrm like 'O restaurante precisa de pelo menos um dono%', 'restaurante mantém pelo menos um dono ativo');
+  end;
+  begin
+    perform public.buscar_usuario_por_email('caixa.burger@exemplo.com');
+    perform pg_temp.ok(false, 'usuário logado não busca usuários por e-mail');
+  exception when insufficient_privilege then
+    perform pg_temp.ok(true, 'usuário logado não busca usuários por e-mail');
+  end;
+
   perform pg_temp.admin();
 end;
 $$;

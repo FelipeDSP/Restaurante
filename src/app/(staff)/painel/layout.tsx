@@ -4,18 +4,15 @@ import Link from "next/link";
 import { MarcaRestaurante } from "@/components/staff/marca-restaurante";
 import { MenuUsuario } from "@/components/staff/menu-usuario";
 import { exigirAcesso } from "@/lib/auth/dal";
-import { NOME_PAPEL, type Papel } from "@/lib/auth/papeis";
+import { NOME_PAPEL } from "@/lib/auth/papeis";
 import { estiloMarca } from "@/lib/cores";
+
+import { NAVEGACAO } from "./navegacao";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { restaurante } = await exigirAcesso("painel");
   return { title: { template: `%s · ${restaurante.nome}`, default: restaurante.nome } };
 }
-
-// Itens do menu do painel; cada etapa acrescenta os seus.
-const NAVEGACAO: { href: string; rotulo: string; papeis: Papel[] }[] = [
-  { href: "/painel", rotulo: "Início", papeis: ["dono", "caixa"] },
-];
 
 export default async function PainelLayout({ children }: LayoutProps<"/painel">) {
   const acesso = await exigirAcesso("painel");
