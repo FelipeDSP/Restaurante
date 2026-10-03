@@ -3,6 +3,7 @@ import type { Papel } from "@/lib/auth/papeis";
 // Itens do menu do painel; cada etapa acrescenta os seus. "descricao" vira atalho na página inicial.
 export const NAVEGACAO: { href: string; rotulo: string; papeis: Papel[]; descricao?: string }[] = [
   { href: "/painel", rotulo: "Início", papeis: ["dono", "caixa"] },
+  { href: "/painel/delivery", rotulo: "Delivery", papeis: ["dono", "caixa"] },
   { href: "/painel/comandas", rotulo: "Comandas", papeis: ["dono", "caixa"] },
   { href: "/painel/caixa", rotulo: "Caixa", papeis: ["dono", "caixa"] },
   { href: "/painel/produtos", rotulo: "Produtos", papeis: ["dono"], descricao: "Cardápio, preços, fotos e disponibilidade" },

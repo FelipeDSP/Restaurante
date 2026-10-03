@@ -407,7 +407,22 @@ begin
   exception when others then
     perform pg_temp.ok(sqlerrm like 'Existem pedidos de delivery%', 'não fecha caixa com delivery em andamento');
   end;
-  update public.pedidos set status = 'entregue' where restaurante_id = a and origem = 'delivery';
+  -- Entrega com pagamento (RPC): outro restaurante não consegue; o próprio sim.
+  perform pg_temp.entrar('caixa.burger@exemplo.com');
+  begin
+    perform public.entregar_pedido_delivery(
+      (select id from public.pedidos where restaurante_id = a and origem = 'delivery' limit 1), 'pix');
+    perform pg_temp.ok(false, 'B não entrega pedido de delivery de A');
+  exception when others then
+    perform pg_temp.ok(true, 'B não entrega pedido de delivery de A');
+  end;
+  perform pg_temp.entrar('caixa.brasa@exemplo.com');
+  perform public.entregar_pedido_delivery(p.id, 'dinheiro')
+  from public.pedidos p where p.restaurante_id = a and p.origem = 'delivery' and p.status <> 'entregue';
+  select count(*) into n from public.pedidos p
+  where p.restaurante_id = a and p.origem = 'delivery' and p.status = 'entregue'
+    and p.total = (select sum(valor) from public.pagamentos where pedido_id = p.id and estornado_em is null);
+  perform pg_temp.ok(n = 1, 'entrega registra o pagamento do total e marca entregue');
   update public.caixa_sessoes set fechada_em = now(), valor_contado = 13200 where id = v_caixa_a;
   select count(*) into n from public.caixa_sessoes where id = v_caixa_a and fechada_por is not null;
   perform pg_temp.ok(n = 1, 'caixa fecha com valor contado');

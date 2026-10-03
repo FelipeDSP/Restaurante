@@ -138,7 +138,8 @@ Durante o desenvolvimento usamos um projeto Supabase que já contém outro siste
 - Formulários: Server Action retorna `ResultadoAcao` (`src/lib/acoes.ts`); o `<form>` usa `key={estado?.chave}` e `valorCampo()` para manter o que foi digitado após erro (React 19 reseta o form).
 - Escrita com a chave secreta (`createAdminClient`) só para o que a sessão do usuário não consegue (criar contas, trocar senha), sempre após `exigirDono()`.
 - Inserts em tabelas com colunas preenchidas por trigger (`caixa_sessao_id`, `numero`, `registrado_por`, `aberta_por`) usam `novoRegistro()` de `src/lib/supabase/insercao.ts`.
-- Tempo real: usar `<AtualizarEmTempoReal>` (passa o token da sessão ao Realtime antes de inscrever; sem isso o canal entra como anônimo e a RLS não entrega eventos).
+- Tempo real: usar `<AtualizarEmTempoReal>` ou o hook `useMudancasRealtime` (`src/lib/realtime.ts`), que passam o token da sessão ao Realtime antes de inscrever; sem isso o canal entra como anônimo e a RLS não entrega eventos.
+- Site público: dados via `createPublicClient()` (anon, sem cookies), sempre filtrando pelo restaurante resolvido do slug; o restaurante nunca vem de id enviado pelo navegador.
 - Componentes de UI acessíveis e mobile-first; o PWA do garçom deve ser usável com uma mão e botões grandes.
 - Após cada migração: regenerar tipos, rodar os advisors de segurança do Supabase e corrigir alertas de RLS.
 - Commits pequenos, um por funcionalidade.
