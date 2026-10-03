@@ -424,6 +424,9 @@ isOneToOne: false
                            },
 "lancar_itens_comanda":
 { Args: { "p_comanda_id": string,"p_itens": Json }; Returns: Json
+                           },
+"resumo_caixa_sessao":
+{ Args: { "p_sessao_id": string }; Returns: Json
                            }
           }
           Enums: {

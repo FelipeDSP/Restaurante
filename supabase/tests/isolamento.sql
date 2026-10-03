@@ -412,6 +412,14 @@ begin
   select count(*) into n from public.caixa_sessoes where id = v_caixa_a and fechada_por is not null;
   perform pg_temp.ok(n = 1, 'caixa fecha com valor contado');
 
+  -- Resumo da sessão: só para o próprio restaurante.
+  v_json := public.resumo_caixa_sessao(v_caixa_a);
+  perform pg_temp.ok((v_json ->> 'total_recebido')::integer
+                     = (select sum(valor) from public.pagamentos where caixa_sessao_id = v_caixa_a and estornado_em is null),
+                     'resumo da sessão soma os pagamentos não estornados');
+  perform pg_temp.entrar('dono.burger@exemplo.com');
+  perform pg_temp.ok(public.resumo_caixa_sessao(v_caixa_a) is null, 'B não vê o resumo do caixa de A');
+
   -- ======================================================================
   -- Equipe
   -- ======================================================================

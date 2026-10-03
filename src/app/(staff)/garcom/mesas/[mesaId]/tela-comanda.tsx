@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { centavosDeTexto, formatarBRL, textoDeCentavos } from "@/lib/dinheiro";
+import { FORMAS_PAGAMENTO, nomeForma } from "@/lib/rotulos";
 import { horaLocal } from "@/lib/tempo";
 import { cn } from "@/lib/utils";
 
@@ -23,16 +24,6 @@ import {
   registrarPagamento,
 } from "../../actions";
 import type { DetalheComanda, ItemComanda } from "../../dados";
-
-export const FORMAS_PAGAMENTO = [
-  { valor: "dinheiro", rotulo: "Dinheiro" },
-  { valor: "pix", rotulo: "Pix" },
-  { valor: "credito", rotulo: "Crédito" },
-  { valor: "debito", rotulo: "Débito" },
-  { valor: "outro", rotulo: "Outro" },
-] as const;
-
-const NOME_FORMA: Record<string, string> = Object.fromEntries(FORMAS_PAGAMENTO.map((f) => [f.valor, f.rotulo]));
 
 const MOTIVOS = ["Lançado errado", "Cliente desistiu", "Produto em falta", "Demorou demais"];
 
@@ -300,12 +291,14 @@ function PainelPagamento({
 
 type Props = {
   mesaId: string;
+  // De onde a tela foi aberta: define para onde voltar depois de fechar/lançar.
+  origem?: "garcom" | "painel";
   comanda: DetalheComanda;
   podeGerenciar: boolean;
   fusoHorario: string;
 };
 
-export function TelaComanda({ mesaId, comanda, podeGerenciar, fusoHorario }: Props) {
+export function TelaComanda({ mesaId, comanda, podeGerenciar, fusoHorario, origem = "garcom" }: Props) {
   const router = useRouter();
   const [pagando, setPagando] = useState(false);
   const { pendente, executar } = useAcao();
@@ -315,7 +308,7 @@ export function TelaComanda({ mesaId, comanda, podeGerenciar, fusoHorario }: Pro
   // Fecha quando está paga; se todos os itens foram cancelados (total zero), fecha sem pagamento.
   const podeFechar = comanda.itens.length > 0 && comanda.pago >= comanda.total;
   const itensAtivos = comanda.itens.filter((i) => !i.cancelado);
-  const voltarAoMapa = () => router.push("/garcom");
+  const voltarAoMapa = () => router.push(origem === "painel" ? "/painel/comandas" : "/garcom");
 
   return (
     <div className="flex flex-1 flex-col gap-5 pb-28">
@@ -370,7 +363,7 @@ export function TelaComanda({ mesaId, comanda, podeGerenciar, fusoHorario }: Pro
               <li key={p.id} className={cn("flex items-center justify-between gap-2 py-2", p.estornado && "text-muted-foreground")}>
                 <span className="flex flex-col">
                   <span className={cn("font-medium", p.estornado && "line-through")}>
-                    {NOME_FORMA[p.forma] ?? p.forma} · {formatarBRL(p.valor)}
+                    {nomeForma(p.forma)} · {formatarBRL(p.valor)}
                   </span>
                   <span className="text-xs text-muted-foreground">
                     {horaLocal(p.criadoEm, fusoHorario)} · {p.registradoPor ?? "—"}
@@ -418,7 +411,7 @@ export function TelaComanda({ mesaId, comanda, podeGerenciar, fusoHorario }: Pro
 
       <div className="fixed inset-x-0 bottom-0 z-10 border-t bg-background/95 p-3 backdrop-blur">
         <div className="mx-auto grid max-w-md grid-cols-2 gap-2">
-          <Button className="h-14 text-base" nativeButton={false} render={<Link href={`/garcom/mesas/${mesaId}/lancar`} />}>
+          <Button className="h-14 text-base" nativeButton={false} render={<Link href={`/garcom/mesas/${mesaId}/lancar${origem === "painel" ? "?voltar=painel" : ""}`} />}>
             <UtensilsCrossed />
             Lançar itens
           </Button>

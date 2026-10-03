@@ -106,11 +106,12 @@ function LinhaProduto({
 
 export function LancarItens({
   comandaId,
-  mesaId,
+  destino,
   cardapio,
 }: {
   comandaId: string;
-  mesaId: string;
+  // Para onde ir depois de enviar (comanda no app do garçom ou no painel).
+  destino: string;
   cardapio: CategoriaCardapio[];
 }) {
   const router = useRouter();
@@ -154,7 +155,7 @@ export function LancarItens({
       quantidade: l.quantidade,
       observacao: l.observacao.trim() || null,
     }));
-    executar(() => lancarItens(comandaId, itens), () => router.push(`/garcom/mesas/${mesaId}`));
+    executar(() => lancarItens(comandaId, itens), () => router.push(destino));
   }
 
   return (

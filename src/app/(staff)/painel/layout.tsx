@@ -20,7 +20,7 @@ export default async function PainelLayout({ children }: LayoutProps<"/painel">)
 
   return (
     <div className="flex min-h-full flex-1 flex-col" style={estiloMarca(acesso.restaurante)}>
-      <header className="sticky top-0 z-10 bg-[var(--cor-primaria)] text-[var(--cor-primaria-contraste)] shadow-sm">
+      <header className="sticky top-0 z-10 bg-[var(--cor-primaria)] text-[var(--cor-primaria-contraste)] shadow-sm print:hidden">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-4">
           <Link href="/painel" className="min-w-0">
             <MarcaRestaurante restaurante={acesso.restaurante} />

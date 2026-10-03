@@ -14,3 +14,14 @@ export function horaLocal(iso: string, fusoHorario: string): string {
     new Date(iso),
   );
 }
+
+// Data e hora no fuso do restaurante ("03/10 21:47").
+export function dataHoraLocal(iso: string, fusoHorario: string): string {
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: fusoHorario,
+  }).format(new Date(iso));
+}

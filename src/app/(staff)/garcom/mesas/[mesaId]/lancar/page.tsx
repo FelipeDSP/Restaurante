@@ -14,6 +14,8 @@ export const metadata: Metadata = { title: "Lançar itens" };
 export default async function LancarPage(props: PageProps<"/garcom/mesas/[mesaId]/lancar">) {
   const acesso = await exigirAcesso("garcom");
   const { mesaId } = await props.params;
+  const { voltar } = await props.searchParams;
+  const destino = voltar === "painel" ? `/painel/comandas/${mesaId}` : `/garcom/mesas/${mesaId}`;
   if (!idSchema.safeParse(mesaId).success) notFound();
 
   const [mesa, comanda, cardapio] = await Promise.all([
@@ -27,7 +29,7 @@ export default async function LancarPage(props: PageProps<"/garcom/mesas/[mesaId
   return (
     <main className="flex flex-1 flex-col gap-3 p-4">
       <Link
-        href={`/garcom/mesas/${mesaId}`}
+        href={destino}
         className="-ml-2 flex h-11 w-fit items-center gap-1 rounded-md px-2 text-sm font-medium hover:bg-muted"
       >
         <ChevronLeft className="size-5" />
@@ -37,7 +39,7 @@ export default async function LancarPage(props: PageProps<"/garcom/mesas/[mesaId
       {cardapio.length === 0 ? (
         <p className="text-muted-foreground">Nenhum produto disponível no cardápio.</p>
       ) : (
-        <LancarItens comandaId={comanda.id} mesaId={mesaId} cardapio={cardapio} />
+        <LancarItens comandaId={comanda.id} destino={destino} cardapio={cardapio} />
       )}
     </main>
   );
