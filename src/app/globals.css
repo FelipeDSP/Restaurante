@@ -133,3 +133,10 @@
     @apply font-sans;
   }
 }
+/* Faixas roláveis na horizontal (menus, categorias) sem barra de rolagem aparente. */
+@utility sem-barra-rolagem {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}

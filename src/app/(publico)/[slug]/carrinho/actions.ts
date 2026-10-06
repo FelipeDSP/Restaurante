@@ -3,6 +3,7 @@
 import { z } from "zod";
 
 import { centavosDeTexto } from "@/lib/dinheiro";
+import { consumirLimite, ipDoCliente } from "@/lib/limite-taxa";
 import { createPublicClient } from "@/lib/supabase/publico";
 import { id } from "@/lib/validacao";
 
@@ -59,6 +60,11 @@ export async function enviarPedido(slug: string, entrada: DadosPedido): Promise<
   if (d.forma === "dinheiro" && d.trocoPara) {
     trocoPara = centavosDeTexto(d.trocoPara);
     if (trocoPara === null) return { ok: false, mensagem: "Confira o troco.", erros: { trocoPara: "Use o formato 50,00." } };
+  }
+
+  // Contra pedidos falsos em série: 5 pedidos a cada 10 minutos por IP e restaurante.
+  if (!consumirLimite(`pedido:${restaurante.id}:${await ipDoCliente()}`, 5, 10 * 60_000)) {
+    return { ok: false, mensagem: "Muitos pedidos seguidos. Aguarde alguns minutos ou fale com o restaurante." };
   }
 
   const supabase = createPublicClient();

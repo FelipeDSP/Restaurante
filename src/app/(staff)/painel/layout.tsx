@@ -32,7 +32,7 @@ function ItemMenu({ href, rotulo, contador }: { href: string; rotulo: string; co
   return (
     <Link
       href={href}
-      className="flex shrink-0 items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium hover:bg-black/10"
+      className="flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-2 text-sm font-medium hover:bg-black/10"
     >
       {rotulo}
       {contador ? (
@@ -56,11 +56,11 @@ export default async function PainelLayout({ children }: LayoutProps<"/painel">)
   return (
     <div className="flex min-h-full flex-1 flex-col" style={estiloMarca(acesso.restaurante)}>
       <header className="sticky top-0 z-10 bg-[var(--cor-primaria)] text-[var(--cor-primaria-contraste)] shadow-sm print:hidden">
-        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-4">
+        <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-3 px-4">
           <Link href="/painel" className="min-w-0 shrink-0">
             <MarcaRestaurante restaurante={acesso.restaurante} />
           </Link>
-          <nav aria-label="Painel" className="hidden min-w-0 flex-1 gap-1 overflow-x-auto lg:flex">
+          <nav aria-label="Painel" className="hidden min-w-0 flex-1 gap-0.5 overflow-x-auto sem-barra-rolagem xl:flex">
             {itens.map((item) => (
               <ItemMenu key={item.href} href={item.href} rotulo={item.rotulo} contador={contador(item.href)} />
             ))}
@@ -75,7 +75,7 @@ export default async function PainelLayout({ children }: LayoutProps<"/painel">)
             />
           </div>
         </div>
-        <nav aria-label="Painel" className="flex gap-1 overflow-x-auto px-2 pb-2 lg:hidden">
+        <nav aria-label="Painel" className="flex gap-1 overflow-x-auto sem-barra-rolagem px-2 pb-2 xl:hidden">
           {itens.map((item) => (
             <ItemMenu key={item.href} href={item.href} rotulo={item.rotulo} contador={contador(item.href)} />
           ))}

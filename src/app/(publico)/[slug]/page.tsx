@@ -80,7 +80,7 @@ export default async function CardapioPage(props: PageProps<"/[slug]">) {
       {cardapio.length > 1 ? (
         <nav
           aria-label="Categorias"
-          className="sticky top-16 z-10 -mt-4 flex gap-2 overflow-x-auto bg-background/95 px-4 py-2 shadow-sm backdrop-blur"
+          className="sticky top-16 z-10 -mt-4 flex gap-2 overflow-x-auto sem-barra-rolagem bg-background/95 px-4 py-2 shadow-sm backdrop-blur"
         >
           {cardapio.map((c) => (
             <a

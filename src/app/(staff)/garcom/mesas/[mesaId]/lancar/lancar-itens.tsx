@@ -173,7 +173,7 @@ export function LancarItens({
       </div>
 
       {!busca ? (
-        <div role="tablist" aria-label="Categorias" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+        <div role="tablist" aria-label="Categorias" className="-mx-4 flex gap-2 overflow-x-auto sem-barra-rolagem px-4 pb-1">
           {cardapio.map((c) => {
             const naCategoria = c.produtos.reduce((soma, p) => soma + (linhas[p.id]?.quantidade ?? 0), 0);
             return (
