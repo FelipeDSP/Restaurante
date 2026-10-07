@@ -1,4 +1,6 @@
+import { ChevronLeft } from "lucide-react";
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { FaixaConexao } from "@/components/staff/faixa-conexao";
 import { MarcaRestaurante } from "@/components/staff/marca-restaurante";
@@ -19,17 +21,30 @@ export async function generateMetadata(): Promise<Metadata> {
 // Tela da cozinha: feita para ficar aberta num tablet ou TV perto das praças.
 export default async function CozinhaLayout({ children }: LayoutProps<"/cozinha">) {
   const acesso = await exigirAcesso("cozinha");
+  const painel = podeAcessar(acesso.papel, "painel");
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-muted/40" style={estiloMarca(acesso.restaurante)}>
       <header className="sticky top-0 z-10 bg-[var(--cor-primaria)] text-[var(--cor-primaria-contraste)] shadow-sm print:hidden">
         <div className="flex h-14 w-full items-center justify-between gap-3 px-4">
-          <MarcaRestaurante restaurante={acesso.restaurante} />
+          <div className="flex min-w-0 items-center gap-2">
+            {/* A cozinha é tela cheia (tablet/TV), sem o menu do painel: dono e caixa voltam por aqui. */}
+            {painel ? (
+              <Link
+                href="/painel"
+                className="flex h-11 shrink-0 items-center gap-1 rounded-full bg-black/15 pr-4 pl-3 text-sm font-semibold hover:bg-black/25"
+              >
+                <ChevronLeft className="size-5" aria-hidden />
+                Painel
+              </Link>
+            ) : null}
+            <MarcaRestaurante restaurante={acesso.restaurante} />
+          </div>
           <MenuUsuario
             nome={acesso.nome}
             papel={NOME_PAPEL[acesso.papel]}
             podeTrocarRestaurante={acesso.vinculos.length > 1}
-            outraArea={podeAcessar(acesso.papel, "painel") ? { href: "/painel", rotulo: "Abrir painel" } : undefined}
+            outraArea={painel ? { href: "/painel", rotulo: "Abrir painel" } : undefined}
           />
         </div>
         <FaixaConexao />
