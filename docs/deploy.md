@@ -48,7 +48,10 @@ O instalador não tem assinatura de código (certificado custa caro): o Windows 
 ## 4. Supabase (uma vez)
 
 - *Authentication → URL Configuration → Site URL*: `https://seu-dominio.com.br`.
-- *Authentication → URL Configuration → Redirect URLs*: adicionar `https://seu-dominio.com.br/auth/confirmar`.
+- *Authentication → URL Configuration → Redirect URLs*: adicionar `https://seu-dominio.com.br/auth/confirmar**` (cadastro e "Esqueci minha senha" voltam por ali, com `?next=`).
+- *Authentication → Emails → Reset Password*: trocar o link do modelo por
+  `{{ .SiteURL }}/auth/confirmar?token_hash={{ .TokenHash }}&type=recovery&next=/nova-senha`
+  (o link padrão só funciona no mesmo navegador em que a pessoa pediu; com o `token_hash` funciona em qualquer aparelho). Traduzir o texto do e-mail para português.
 - *Authentication → Sign In / Providers → Email*: decidir se o cadastro exige confirmação de e-mail ("Confirm email").
   O app funciona dos dois jeitos: sem confirmação, o dono entra direto em `/comecar`; com confirmação, o link do e-mail leva a `/auth/confirmar` e depois a `/comecar`.
   Com confirmação ligada, configurar um SMTP próprio (*Authentication → Emails → SMTP*): o e-mail padrão do Supabase tem limite baixo de envios por hora e sai com remetente genérico.

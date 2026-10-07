@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -51,6 +52,9 @@ export function FormLogin({ next }: { next?: string }) {
       <Button type="submit" size="lg" className="h-12 text-base" disabled={enviando}>
         {enviando ? "Entrando..." : "Entrar"}
       </Button>
+      <Link href="/recuperar-senha" className="text-center text-sm text-muted-foreground underline underline-offset-4">
+        Esqueci minha senha
+      </Link>
     </form>
   );
 }

@@ -6,7 +6,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/painel", "/garcom", "/login", "/inicio", "/selecionar", "/sem-acesso", "/api", "/pwa", "/*/pedido/", "/*/carrinho"],
+      disallow: ["/painel", "/garcom", "/login", "/inicio", "/selecionar", "/sem-acesso", "/recuperar-senha", "/nova-senha", "/api", "/pwa", "/*/pedido/", "/*/carrinho"],
     },
   };
 }

@@ -5,9 +5,11 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { gravarRestauranteAtivo } from "@/lib/auth/cookie-restaurante";
-import { COOKIE_RESTAURANTE, obterVinculos } from "@/lib/auth/dal";
+import { COOKIE_RESTAURANTE, destinoInicial, obterVinculos } from "@/lib/auth/dal";
 import { rotaInicial } from "@/lib/auth/papeis";
+import { consumirLimite, ipDoCliente } from "@/lib/limite-taxa";
 import { createClient } from "@/lib/supabase/server";
+import { origemDoSite } from "@/lib/url";
 
 export type EstadoLogin = { erro?: string; email?: string } | undefined;
 
@@ -68,4 +70,51 @@ export async function escolherRestaurante(formData: FormData): Promise<void> {
 
   await gravarRestauranteAtivo(vinculo.restaurante.id);
   redirect(rotaInicial(vinculo.papel));
+}
+
+// ---------------------------------------------------------------------------
+// Esqueci minha senha: e-mail com link -> /auth/confirmar (sessão de recuperação) -> /nova-senha
+// ---------------------------------------------------------------------------
+
+export type EstadoRecuperacao = { enviado?: boolean; erro?: string; email?: string } | undefined;
+
+export async function pedirRecuperacao(_estado: EstadoRecuperacao, formData: FormData): Promise<EstadoRecuperacao> {
+  const email = String(formData.get("email") ?? "");
+  const dados = z.object({ email: z.email("Informe um e-mail válido.").trim().toLowerCase() }).safeParse({ email });
+  if (!dados.success) return { erro: dados.error.issues[0]?.message, email };
+
+  if (!consumirLimite(`recuperar:${(await ipDoCliente()) ?? "desconhecido"}`, 5, 60 * 60_000)) {
+    return { erro: "Muitas tentativas. Aguarde alguns minutos e tente de novo.", email };
+  }
+
+  const supabase = await createClient();
+  // A resposta é a mesma exista ou não a conta (não revela quais e-mails estão cadastrados).
+  await supabase.auth.resetPasswordForEmail(dados.data.email, {
+    redirectTo: `${await origemDoSite()}/auth/confirmar?next=/nova-senha`,
+  });
+  return { enviado: true, email: dados.data.email };
+}
+
+export type EstadoNovaSenha = { erro?: string } | undefined;
+
+export async function definirNovaSenha(_estado: EstadoNovaSenha, formData: FormData): Promise<EstadoNovaSenha> {
+  const dados = z
+    .object({
+      senha: z.string().min(8, "A senha precisa ter pelo menos 8 caracteres.").max(72),
+      confirmacao: z.string(),
+    })
+    .refine((d) => d.senha === d.confirmacao, { message: "As senhas não são iguais.", path: ["confirmacao"] })
+    .safeParse({ senha: formData.get("senha"), confirmacao: formData.get("confirmacao") });
+  if (!dados.success) return { erro: dados.error.issues[0]?.message };
+
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getUser();
+  if (!data.user) return { erro: "O link expirou. Peça um novo em “Esqueci minha senha”." };
+  const { error } = await supabase.auth.updateUser({ password: dados.data.senha });
+  if (error) {
+    return {
+      erro: error.code === "same_password" ? "Use uma senha diferente da anterior." : "Não foi possível trocar a senha. Tente de novo.",
+    };
+  }
+  redirect(await destinoInicial());
 }

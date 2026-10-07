@@ -4,6 +4,7 @@ import { exigirDono } from "@/lib/auth/dal";
 import { ehPapel } from "@/lib/auth/papeis";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { origemDoSite } from "@/lib/url";
 
 import { ListaEquipe, type Membro, NovoMembro } from "./lista-equipe";
 
@@ -53,16 +54,16 @@ export default async function EquipePage() {
       <div>
         <h1 className="text-2xl font-semibold">Equipe</h1>
         <p className="text-muted-foreground">
-          Dono: tudo. Caixa: painel, pagamentos e delivery. Garçom: app de mesas.
+          Dono: tudo. Caixa: painel, pagamentos e delivery. Garçom: app de mesas. Cozinha: só a tela da cozinha.
         </p>
       </div>
       {!admin ? (
         <p role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-          Para cadastrar pessoas e trocar senhas, configure a variável <code>SUPABASE_SECRET_KEY</code> no
-          servidor. Editar nome, papel e acesso funciona normalmente.
+          Cadastrar pessoas e trocar senhas ainda não está disponível neste servidor. Fale com o suporte. Editar
+          nome, papel e acesso funciona normalmente.
         </p>
       ) : null}
-      <NovoMembro habilitado={Boolean(admin)} />
+      <NovoMembro habilitado={Boolean(admin)} enderecoLogin={`${await origemDoSite()}/login`} restaurante={acesso.restaurante.nome} />
       <ListaEquipe membros={membros} contasHabilitadas={Boolean(admin)} />
     </main>
   );
