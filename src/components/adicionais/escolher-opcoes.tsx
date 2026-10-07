@@ -135,13 +135,13 @@ function Conteudo({
         </div>
         <Dialog.Close
           aria-label="Fechar"
-          className="flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+          className="flex size-11 shrink-0 items-center justify-center rounded-full hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
         >
           <X className="size-5" />
         </Dialog.Close>
       </div>
 
-      <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-4">
+      <div className="flex min-w-0 flex-1 flex-col gap-5 overflow-x-hidden overflow-y-auto p-4">
         {produto.grupos.map((grupo) => {
           const noGrupo = grupo.opcoes.filter((o) => escolhidos.includes(o.id)).length;
           const unica = grupo.maximo === 1 && grupo.minimo === 1;
@@ -196,9 +196,9 @@ function Conteudo({
                         onChange={() => alternar(grupo, opcao.id)}
                         className="size-5 shrink-0 accent-[var(--primary)]"
                       />
-                      <span className="flex-1 font-medium">{opcao.nome}</span>
+                      <span className="min-w-0 flex-1 font-medium break-words">{opcao.nome}</span>
                       {opcao.preco > 0 ? (
-                        <span className="text-sm text-muted-foreground tabular-nums">+ {formatarBRL(opcao.preco)}</span>
+                        <span className="shrink-0 text-sm text-muted-foreground tabular-nums">+ {formatarBRL(opcao.preco)}</span>
                       ) : null}
                     </label>
                   );
@@ -237,13 +237,18 @@ function Conteudo({
             {erro}
           </p>
         ) : null}
-        <div className="flex items-center gap-3">
+        {/* Total numa linha própria: dentro do botão ele empurrava o botão para fora da tela em 360–390 px. */}
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="text-sm text-muted-foreground">Total</span>
+          <span className="text-lg font-bold tabular-nums">{formatarBRL(total)}</span>
+        </div>
+        <div className="flex min-w-0 items-center gap-3">
           <div className="flex items-center gap-1 rounded-full border p-0.5">
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              className="size-10 rounded-full"
+              className="size-11 rounded-full"
               aria-label="Diminuir quantidade"
               disabled={quantidade <= 1}
               onClick={() => setQuantidade((q) => Math.max(1, q - 1))}
@@ -257,7 +262,7 @@ function Conteudo({
               type="button"
               variant="ghost"
               size="icon"
-              className="size-10 rounded-full"
+              className="size-11 rounded-full"
               aria-label="Aumentar quantidade"
               disabled={quantidade >= 99}
               onClick={() => setQuantidade((q) => Math.min(99, q + 1))}
@@ -265,9 +270,8 @@ function Conteudo({
               <Plus />
             </Button>
           </div>
-          <Button type="button" className="h-12 flex-1 justify-between px-5 text-base" onClick={confirmar}>
-            <span>{rotuloConfirmar}</span>
-            <span className="tabular-nums">{formatarBRL(total)}</span>
+          <Button type="button" className="h-12 min-w-0 flex-1 px-4 text-base" onClick={confirmar}>
+            <span className="whitespace-normal leading-tight">{rotuloConfirmar}</span>
           </Button>
         </div>
       </div>

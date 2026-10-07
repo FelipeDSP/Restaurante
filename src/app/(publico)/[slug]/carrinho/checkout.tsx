@@ -3,7 +3,7 @@
 import { Minus, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -87,7 +87,11 @@ function normalizarForm(valor: unknown): FormCheckout | null {
 }
 
 function Erro({ texto }: { texto?: string }) {
-  return texto ? <p className="text-sm text-destructive">{texto}</p> : null;
+  return texto ? (
+    <p role="alert" className="text-sm font-medium text-destructive">
+      {texto}
+    </p>
+  ) : null;
 }
 
 export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produtosDisponiveis }: Props) {
@@ -95,6 +99,15 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
   const { itens, alterarQuantidade, alterarObservacao, atualizarDados, limpar } = useCarrinho(restaurante.id);
   const [enviando, iniciar] = useTransition();
   const [erros, setErros] = useState<Record<string, string>>({});
+  const formulario = useRef<HTMLFormElement>(null);
+
+  // Erro de validação: leva o cliente até o primeiro campo errado (o aviso ficava fora da tela).
+  useEffect(() => {
+    if (Object.keys(erros).length === 0) return;
+    const campo = formulario.current?.querySelector<HTMLElement>('[aria-invalid="true"]');
+    campo?.scrollIntoView({ behavior: "smooth", block: "center" });
+    campo?.focus({ preventScroll: true });
+  }, [erros]);
   // Rascunho no aparelho: queda de rede ou recarga não apagam o que o cliente digitou,
   // e nome, telefone e endereço ficam para o próximo pedido.
   const [form, setForm] = useRascunho(`checkout:${restaurante.id}`, FORM_VAZIO, normalizarForm);
@@ -174,7 +187,7 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
   }
 
   return (
-    <form onSubmit={enviar} className="flex flex-col gap-4 p-4 pb-28" noValidate>
+    <form ref={formulario} onSubmit={enviar} className="flex flex-col gap-4 p-4 pb-28" noValidate>
       <section aria-labelledby="titulo-itens" className="flex flex-col gap-2 rounded-xl bg-background p-4 shadow-sm">
         <h2 id="titulo-itens" className="font-semibold">
           Seu pedido
