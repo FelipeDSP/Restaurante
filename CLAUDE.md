@@ -88,6 +88,13 @@ Já existe (impressão, fase 2):
 - O app fala só com `/api/agente/*` (parear, trabalhos, trabalhos/[id], estado). O servidor monta o papel na hora (`src/lib/impressao/tickets.ts`) e converte em ESC/POS (`escpos.ts`); o app só entrega os bytes. Essas rotas usam a chave secreta, sempre filtrando pelo agente autenticado (`autenticarAgente`).
 - Testar sem impressora: `node scripts/impressora-falsa.mjs` (porta 9100) + `node scripts/agente-teste.mjs --servidor http://localhost:3000 --codigo <código do painel>`.
 
+Já existe (app de impressão, fase 3):
+- `agente/`: app Electron para Windows, fora do build do Next (ignorado no tsconfig, eslint e Docker). Fica na bandeja, abre com o Windows, guarda a chave cifrada (`safeStorage`) e busca a fila a cada 2 s. Sem marca da plataforma; depois de pareado mostra o nome do restaurante.
+- Independente de modelo: `impressoras.modo` = `escpos` (térmica de qualquer marca, pela rede 9100 ou USB via fila RAW do Windows) ou `driver` (só `conexao = windows`: o app desenha o ticket em HTML e imprime pelo driver do Windows, serve para qualquer impressora instalada). No modo driver `/api/agente/trabalhos` manda o `documento` em vez dos bytes.
+- `src/nucleo.js` não depende do Electron (`npm run teste` em `agente/` usa servidor e impressora falsos). `npm start` abre em desenvolvimento; `--servidor=URL --parear=CODIGO` pareia pela linha de comando (use `--nome=valor`).
+- `npm run dist` gera `agente/dist/Impressao-Setup-<versão>.exe`, `.blockmap` e `latest.yml`. Esses arquivos são servidos por `src/app/downloads/impressao/[arquivo]/route.ts` a partir de `PASTA_DOWNLOADS/impressao` (padrão `./downloads/impressao`, fora do git). `/downloads/impressao/instalador` redireciona para a versão do `latest.yml` (link do painel). O app se atualiza sozinho lendo `<servidor>/downloads/impressao/latest.yml`; para publicar, suba a versão em `agente/package.json`, rode `npm run dist` e copie os 3 arquivos.
+- Instalador sem assinatura de código: o Windows mostra "O Windows protegeu o computador" (Mais informações → Executar assim mesmo). O painel explica isso.
+
 ## Produto (marca da plataforma)
 
 - Grupo `src/app/(site)/`: landing (`/`), `/cadastro` (conta do dono) e `/comecar` (cria o restaurante). Só aqui aparece a marca **uau foods** (cores e fontes `uau-*` do `globals.css`).

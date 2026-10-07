@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // App de impressão (Electron) tem projeto próprio.
+    "agente/**",
   ]),
 ]);
 

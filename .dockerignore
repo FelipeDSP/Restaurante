@@ -11,3 +11,5 @@ docs
 npm-debug.log*
 Dockerfile
 .dockerignore
+agente
+downloads

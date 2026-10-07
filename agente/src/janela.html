@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:" />
+    <title>Impressão</title>
+    <style>
+      :root {
+        --fundo: #f4f4f5;
+        --cartao: #ffffff;
+        --texto: #18181b;
+        --suave: #71717a;
+        --borda: #e4e4e7;
+        --verde: #16a34a;
+        --amarelo: #ca8a04;
+        --vermelho: #dc2626;
+        --escuro: #1f2937;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; font: 14px/1.45 "Segoe UI", system-ui, sans-serif; background: var(--fundo); color: var(--texto); }
+      header { background: var(--escuro); color: #fff; padding: 16px 20px; display: flex; align-items: center; gap: 12px; }
+      header img { width: 36px; height: 36px; border-radius: 8px; }
+      header h1 { margin: 0; font-size: 16px; font-weight: 600; }
+      header p { margin: 0; font-size: 12px; opacity: 0.75; }
+      main { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+      .cartao { background: var(--cartao); border: 1px solid var(--borda); border-radius: 12px; padding: 16px; }
+      h2 { margin: 0 0 8px; font-size: 14px; }
+      label { display: block; font-weight: 600; margin: 12px 0 4px; }
+      input[type="text"], input[type="url"] {
+        width: 100%; height: 40px; border: 1px solid var(--borda); border-radius: 8px; padding: 0 12px; font: inherit;
+      }
+      input.codigo { font: 600 28px/1 Consolas, monospace; letter-spacing: 0.3em; text-align: center; height: 56px; }
+      button {
+        height: 40px; border: 0; border-radius: 8px; padding: 0 16px; font: 600 14px "Segoe UI", sans-serif; cursor: pointer;
+        background: var(--escuro); color: #fff;
+      }
+      button.secundario { background: transparent; color: var(--suave); border: 1px solid var(--borda); }
+      button:disabled { opacity: 0.6; cursor: default; }
+      .largo { width: 100%; margin-top: 16px; height: 44px; }
+      .erro { color: var(--vermelho); font-weight: 600; margin: 8px 0 0; }
+      .dica { color: var(--suave); font-size: 12px; margin: 4px 0 0; }
+      .situacao { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+      .bolinha { width: 14px; height: 14px; border-radius: 50%; flex: none; }
+      .conectado .bolinha { background: var(--verde); }
+      .sem_conexao .bolinha { background: var(--amarelo); }
+      .problema .bolinha { background: var(--vermelho); }
+      .desconectado .bolinha { background: var(--suave); }
+      ul { list-style: none; margin: 0; padding: 0; }
+      li { padding: 8px 0; border-top: 1px solid var(--borda); display: flex; gap: 8px; align-items: baseline; }
+      li:first-child { border-top: 0; }
+      .hora { color: var(--suave); font-variant-numeric: tabular-nums; width: 42px; flex: none; }
+      .ok { color: var(--verde); font-weight: 600; }
+      .falha { color: var(--vermelho); font-weight: 600; }
+      .rodape { display: flex; justify-content: space-between; align-items: center; gap: 8px; color: var(--suave); font-size: 12px; }
+      .oculto { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <img src="../build/icone.png" alt="" />
+      <div>
+        <h1 id="titulo">Impressão de pedidos</h1>
+        <p id="subtitulo">Imprime os pedidos nas impressoras da cozinha e do caixa</p>
+      </div>
+    </header>
+
+    <main>
+      <!-- Pareamento -->
+      <section id="tela-parear" class="cartao oculto">
+        <h2>Conectar ao restaurante</h2>
+        <p class="dica">No painel do sistema, entre em Impressoras e clique em "Conectar computador". Digite aqui o código que aparecer.</p>
+        <form id="form-parear">
+          <label for="servidor">Endereço do sistema</label>
+          <input id="servidor" type="url" placeholder="https://seusistema.com.br" required />
+          <label for="codigo">Código de 6 números</label>
+          <input id="codigo" class="codigo" type="text" inputmode="numeric" maxlength="7" placeholder="000000" autocomplete="off" required />
+          <p id="erro-parear" class="erro oculto"></p>
+          <button id="botao-parear" class="largo" type="submit">Conectar</button>
+        </form>
+      </section>
+
+      <!-- Em serviço -->
+      <section id="tela-servico" class="oculto">
+        <div class="cartao">
+          <div id="situacao" class="situacao"><span class="bolinha"></span><span id="situacao-texto"></span></div>
+          <p id="situacao-mensagem" class="dica"></p>
+        </div>
+        <div class="cartao" style="margin-top: 12px">
+          <h2>Impressoras deste restaurante</h2>
+          <ul id="impressoras"></ul>
+          <p class="dica">Cadastre e teste as impressoras no painel do sistema (Impressoras).</p>
+        </div>
+        <div class="cartao" style="margin-top: 12px">
+          <h2>Últimas impressões</h2>
+          <ul id="registro"></ul>
+        </div>
+        <div class="cartao rodape" style="margin-top: 12px">
+          <label style="margin: 0; font-weight: 400; display: flex; gap: 6px; align-items: center">
+            <input id="inicio" type="checkbox" /> Abrir junto com o Windows
+          </label>
+          <button id="botao-desconectar" class="secundario" type="button">Desconectar</button>
+        </div>
+      </section>
+
+      <p id="versao" class="dica" style="text-align: center"></p>
+    </main>
+    <script src="janela.js"></script>
+  </body>
+</html>

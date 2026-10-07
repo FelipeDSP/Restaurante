@@ -1,12 +1,12 @@
 "use client";
 
-import { Laptop } from "lucide-react";
+import { Download, Laptop } from "lucide-react";
 import { useActionState, useState } from "react";
 
 import { useAcao } from "@/components/staff/acoes-cliente";
 import { BotaoEnviar, ErroCampo, useAvisoResultado, valorCampo } from "@/components/staff/formulario";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { VALIDADE_CODIGO_MIN } from "@/lib/impressao/constantes";
@@ -53,7 +53,8 @@ function LinhaComputador({ computador, fuso, dono }: { computador: Computador; f
         <Laptop className="size-5 text-muted-foreground" aria-hidden />
         <span className="font-medium">{computador.nome}</span>
         <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-semibold", situacao.classe)}>{situacao.rotulo}</span>
-        <span className="text-sm text-muted-foreground">
+        {/* "há X min" pode virar o minuto entre o servidor e o navegador. */}
+        <span className="text-sm text-muted-foreground" suppressHydrationWarning>
           {computador.ultimoContatoEm ? `último sinal ${tempoDesde(computador.ultimoContatoEm)}` : ""}
           {computador.versao ? ` · app ${computador.versao}` : ""}
         </span>
@@ -92,7 +93,43 @@ function LinhaComputador({ computador, fuso, dono }: { computador: Computador; f
   );
 }
 
-export function Computadores({ computadores, fuso, dono }: { computadores: Computador[]; fuso: string; dono: boolean }) {
+function ComoInstalar({ endereco }: { endereco: string }) {
+  return (
+    <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-4 text-sm">
+      <ol className="flex list-decimal flex-col gap-1.5 pl-5">
+        <li>
+          No computador do caixa, baixe e abra o instalador. Se o Windows avisar &quot;O Windows protegeu o computador&quot;, clique em{" "}
+          <strong>Mais informações</strong> e depois em <strong>Executar assim mesmo</strong>.
+        </li>
+        <li>
+          Clique em <strong>Conectar computador</strong> aqui embaixo e digite o código no app, com o endereço{" "}
+          <code className="rounded bg-background px-1.5 py-0.5 font-mono">{endereco}</code>.
+        </li>
+        <li>Cadastre as impressoras e use &quot;Imprimir teste&quot; em cada uma.</li>
+      </ol>
+      <p className="text-muted-foreground">
+        O app fica perto do relógio, abre junto com o Windows e se atualiza sozinho. Funciona com qualquer impressora térmica (rede ou USB) e com
+        impressoras comuns pelo driver do Windows.
+      </p>
+      <a href="/downloads/impressao/instalador" download className={cn(buttonVariants({ variant: "outline" }), "h-11 self-start")}>
+        <Download aria-hidden />
+        Baixar o app de impressão (Windows)
+      </a>
+    </div>
+  );
+}
+
+export function Computadores({
+  computadores,
+  fuso,
+  dono,
+  endereco,
+}: {
+  computadores: Computador[];
+  fuso: string;
+  dono: boolean;
+  endereco: string;
+}) {
   const [estado, acao] = useActionState(conectarComputador, undefined);
   useAvisoResultado(estado?.ok ? undefined : estado);
   const ativos = computadores.filter((c) => c.situacao !== "desconectado");
@@ -106,6 +143,7 @@ export function Computadores({ computadores, fuso, dono }: { computadores: Compu
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
+        {dono && ativos.length === 0 ? <ComoInstalar endereco={endereco} /> : null}
         {computadores.length > 0 ? (
           <ul className="flex flex-col gap-2">
             {computadores.map((c) => (
@@ -129,6 +167,11 @@ export function Computadores({ computadores, fuso, dono }: { computadores: Compu
           <CodigoPareamento codigo={estado.codigo} expiraEm={estado.expiraEm} fuso={fuso} />
         ) : null}
         {ativos.length === 0 && !dono ? <Badge variant="outline">Nenhum computador conectado</Badge> : null}
+        {ativos.length > 0 ? (
+          <a href="/downloads/impressao/instalador" download className="self-start text-sm text-muted-foreground underline underline-offset-4">
+            Baixar o app de impressão de novo
+          </a>
+        ) : null}
       </CardContent>
     </Card>
   );

@@ -50,3 +50,6 @@ supabase/.branches
 # Testes locais de impressão
 .agente-teste.json
 tmp/
+
+# Instalador do app de impressão (servido por /downloads; no servidor é um volume)
+/downloads/

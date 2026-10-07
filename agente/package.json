@@ -1,0 +1,52 @@
+{
+  "name": "impressao-restaurante",
+  "productName": "Impressao",
+  "version": "1.0.0",
+  "description": "Imprime os pedidos do restaurante nas impressoras da cozinha e do caixa.",
+  "main": "src/main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "icones": "node scripts/gerar-icones.js",
+    "teste": "node scripts/teste-nucleo.js",
+    "dist": "npm run icones && electron-builder --win nsis --x64"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
+  },
+  "devDependencies": {
+    "electron": "^44.6.0",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "app.impressao.restaurante",
+    "productName": "Impressao",
+    "artifactName": "Impressao-Setup-${version}.${ext}",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "build/*.png",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icone.png"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "runAfterFinish": true,
+      "shortcutName": "Impressão",
+      "uninstallDisplayName": "Impressão de pedidos"
+    },
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "http://localhost:3000/downloads/impressao"
+      }
+    ]
+  }
+}
