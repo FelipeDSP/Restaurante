@@ -1,6 +1,7 @@
 "use client";
 
-import { ListPlus, MessageSquarePlus, Minus, Plus, Search, Send, ShoppingBag, Trash2 } from "lucide-react";
+import { Dialog } from "@base-ui/react/dialog";
+import { ListPlus, MessageSquarePlus, Minus, Plus, Search, Send, ShoppingBag, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useRef, useState } from "react";
 
@@ -214,6 +215,9 @@ export function LancarItens({
   const [categoriaAtiva, setCategoriaAtiva] = useState(cardapio[0]?.id ?? "");
   const [busca, setBusca] = useState("");
   const [escolhendo, setEscolhendo] = useState<ProdutoCardapio | null>(null);
+  const [revisando, setRevisando] = useState(false);
+  // O portal da revisão fica dentro da tela do restaurante para herdar as cores da marca.
+  const [ancora, setAncora] = useState<HTMLSpanElement | null>(null);
   const { pendente, executar } = useAcao();
 
   const produtosPorId = useMemo(
@@ -400,11 +404,73 @@ export function LancarItens({
         }}
       />
 
+      {/* Revisão: tudo o que vai ser enviado num lugar só (antes os itens ficavam espalhados por categoria). */}
+      <Dialog.Root open={revisando} onOpenChange={setRevisando}>
+        <span ref={setAncora} hidden />
+        <Dialog.Portal container={ancora?.parentElement ?? undefined}>
+          <Dialog.Backdrop className="fixed inset-0 z-40 bg-black/50 transition-opacity data-[ending-style]:opacity-0 data-[starting-style]:opacity-0" />
+          <Dialog.Popup className="fixed inset-x-0 bottom-0 z-50 flex max-h-[85dvh] flex-col rounded-t-2xl bg-background shadow-xl outline-none transition-transform duration-200 data-[ending-style]:translate-y-full data-[starting-style]:translate-y-full sm:mx-auto sm:max-w-md">
+            <div className="flex items-center justify-between border-b p-4">
+              <Dialog.Title className="text-lg font-bold">Revisar pedido</Dialog.Title>
+              <Dialog.Close aria-label="Fechar" className="flex size-11 items-center justify-center rounded-full hover:bg-muted">
+                <X className="size-5" />
+              </Dialog.Close>
+            </div>
+            <ul className="flex flex-1 flex-col divide-y overflow-y-auto px-4">
+              {selecionadas.map(([chave, linha]) => {
+                const produto = produtosPorId.get(linha.produtoId);
+                return (
+                  <li key={chave} className="flex items-center gap-3 py-3">
+                    <span className="flex min-w-0 flex-1 flex-col text-sm">
+                      <span className="font-medium">{produto?.nome}</span>
+                      {linha.adicionais.length > 0 ? <span className="text-muted-foreground">{resumoAdicionais(linha.adicionais)}</span> : null}
+                      {linha.observacao ? <span className="text-muted-foreground">Obs.: {linha.observacao}</span> : null}
+                      {linha.paraViagem ? <span className="text-xs font-bold text-violet-700 uppercase">Pra viagem</span> : null}
+                      <span className="tabular-nums text-muted-foreground">
+                        {formatarBRL(((produto?.preco ?? 0) + precoDasOpcoes(linha.adicionais)) * linha.quantidade)}
+                      </span>
+                    </span>
+                    <Contador rotulo={produto?.nome ?? ""} quantidade={linha.quantidade} aoMudar={(q) => mudarQuantidade(chave, q)} />
+                  </li>
+                );
+              })}
+              {selecionadas.length === 0 ? <li className="py-6 text-center text-muted-foreground">Nenhum item escolhido.</li> : null}
+            </ul>
+            <div className="border-t p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+              <Button
+                type="button"
+                className="h-14 w-full justify-between text-base"
+                disabled={totalItens === 0 || pendente}
+                onClick={() => {
+                  setRevisando(false);
+                  enviar();
+                }}
+              >
+                <span className="flex items-center gap-2">
+                  <Send />
+                  Enviar {totalItens} {totalItens === 1 ? "item" : "itens"}
+                </span>
+                <span className="tabular-nums">{formatarBRL(totalValor)}</span>
+              </Button>
+            </div>
+          </Dialog.Popup>
+        </Dialog.Portal>
+      </Dialog.Root>
+
       <div className="fixed inset-x-0 bottom-0 z-10 border-t bg-background/95 p-3 backdrop-blur">
-        <div className="mx-auto max-w-md">
+        <div className="mx-auto flex max-w-md gap-2">
           <Button
             type="button"
-            className="h-14 w-full justify-between text-base"
+            variant="outline"
+            className="h-14 shrink-0 px-4 text-base"
+            disabled={totalItens === 0}
+            onClick={() => setRevisando(true)}
+          >
+            Revisar
+          </Button>
+          <Button
+            type="button"
+            className="h-14 min-w-0 flex-1 justify-between text-base"
             disabled={totalItens === 0 || pendente}
             onClick={enviar}
           >
