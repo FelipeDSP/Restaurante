@@ -20,6 +20,7 @@ export type Impressora = {
   porta: number;
   largura: 58 | 80;
   codificacao: "cp850" | "cp1252" | "sem_acentos";
+  modo: "escpos" | "driver";
   agenteId: string | null;
   imprimeConta: boolean;
   imprimeViaDelivery: boolean;
@@ -56,7 +57,7 @@ export async function carregarImpressao(restauranteId: string) {
     supabase
       .from("impressoras")
       .select(
-        "id, nome, conexao, endereco, porta, largura, codificacao, agente_id, imprime_conta, imprime_via_delivery, ativa, ultimo_sucesso_em, ultimo_erro, ultimo_erro_em, estacoes!estacoes_restaurante_id_impressora_id_fkey(id)",
+        "id, nome, conexao, endereco, porta, largura, codificacao, modo, agente_id, imprime_conta, imprime_via_delivery, ativa, ultimo_sucesso_em, ultimo_erro, ultimo_erro_em, estacoes!estacoes_restaurante_id_impressora_id_fkey(id)",
       )
       .eq("restaurante_id", restauranteId)
       .order("nome"),
@@ -97,6 +98,7 @@ export async function carregarImpressao(restauranteId: string) {
         porta: i.porta,
         largura: i.largura === 58 ? 58 : 80,
         codificacao: i.codificacao as Impressora["codificacao"],
+        modo: i.modo as Impressora["modo"],
         agenteId: i.agente_id,
         imprimeConta: i.imprime_conta,
         imprimeViaDelivery: i.imprime_via_delivery,

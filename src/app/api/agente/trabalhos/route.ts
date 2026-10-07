@@ -12,7 +12,7 @@ export async function GET(request: Request) {
     admin.rpc("agente_pegar_trabalhos", { p_agente_id: agente.id, p_limite: 5 }),
     admin
       .from("impressoras")
-      .select("id, nome, conexao, endereco, porta, largura, codificacao, ativa, agente_id")
+      .select("id, nome, conexao, endereco, porta, largura, codificacao, modo, ativa, agente_id")
       .eq("restaurante_id", agente.restauranteId)
       .order("nome"),
   ]);
@@ -31,13 +31,19 @@ export async function GET(request: Request) {
         await admin.rpc("agente_concluir", { p_agente_id: agente.id, p_fila_id: t.id, p_ok: true });
         continue;
       }
-      const bytes = paraEscPos(doc, { largura: imp.largura === 58 ? 58 : 80, codificacao: imp.codificacao as Codificacao });
-      saida.push({
-        id: t.id,
-        tipo: t.tipo,
-        impressora: { id: imp.id, nome: imp.nome, conexao: imp.conexao, endereco: imp.endereco, porta: imp.porta },
-        dados: Buffer.from(bytes).toString("base64"),
-      });
+      const largura = imp.largura === 58 ? 58 : 80;
+      const impressora = { id: imp.id, nome: imp.nome, conexao: imp.conexao, endereco: imp.endereco, porta: imp.porta, modo: imp.modo, largura };
+      // Modo driver: o app desenha o documento e imprime pelo Windows; senão, bytes ESC/POS prontos.
+      saida.push(
+        imp.modo === "driver"
+          ? { id: t.id, tipo: t.tipo, impressora, documento: doc }
+          : {
+              id: t.id,
+              tipo: t.tipo,
+              impressora,
+              dados: Buffer.from(paraEscPos(doc, { largura, codificacao: imp.codificacao as Codificacao })).toString("base64"),
+            },
+      );
     } catch (e) {
       await admin.rpc("agente_concluir", {
         p_agente_id: agente.id,
@@ -52,7 +58,7 @@ export async function GET(request: Request) {
     {
       restaurante: { nome: restaurante.nome },
       agente: { id: agente.id, nome: agente.nome },
-      impressoras: minhas.map((i) => ({ id: i.id, nome: i.nome, conexao: i.conexao, endereco: i.endereco, porta: i.porta })),
+      impressoras: minhas.map((i) => ({ id: i.id, nome: i.nome, conexao: i.conexao, endereco: i.endereco, porta: i.porta, modo: i.modo })),
       trabalhos: saida,
     },
     { headers: { "Cache-Control": "no-store" } },

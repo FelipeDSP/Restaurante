@@ -103,6 +103,19 @@ function FormImpressora({
           <ErroCampo estado={estado} campo="endereco" />
         </Campo>
       )}
+      {conexao === "windows" ? (
+        <Campo
+          rotulo="Como imprimir"
+          htmlFor={`${prefixo}-modo`}
+          className="sm:col-span-2"
+          dica="Térmica: mais rápido, corta o papel. Driver: serve para qualquer impressora instalada no Windows."
+        >
+          <Selecao id={`${prefixo}-modo`} name="modo" defaultValue={valorCampo(estado, "modo", impressora?.modo ?? "escpos")} className="h-11">
+            <option value="escpos">Comandos de impressora térmica (recomendado)</option>
+            <option value="driver">Pelo driver do Windows (qualquer impressora)</option>
+          </Selecao>
+        </Campo>
+      ) : null}
       <Campo rotulo="Papel" htmlFor={`${prefixo}-largura`}>
         <Selecao id={`${prefixo}-largura`} name="largura" defaultValue={valorCampo(estado, "largura", impressora?.largura ?? 80)} className="h-11">
           <option value="80">80 mm (padrão)</option>
@@ -221,6 +234,7 @@ function LinhaImpressora({
         {!impressora.ativa ? <Badge variant="secondary">Inativa</Badge> : null}
         <span className="text-sm text-muted-foreground">
           {impressora.conexao === "rede" ? `Rede · ${impressora.endereco}:${impressora.porta}` : `USB · ${impressora.endereco}`} · {impressora.largura} mm
+          {impressora.modo === "driver" ? " · pelo driver" : ""}
         </span>
         <div className="ml-auto flex gap-1">
           <Button type="button" variant="outline" size="sm" disabled={pendente} onClick={() => executar(() => imprimirTeste(impressora.id))}>
@@ -250,11 +264,11 @@ function LinhaImpressora({
         )}
       </div>
       {comErro ? (
-        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-900">
+        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-900" suppressHydrationWarning>
           Último erro {tempoDesde(impressora.ultimoErroEm!)}: {impressora.ultimoErro}
         </p>
       ) : impressora.ultimoSucessoEm ? (
-        <p className="text-sm text-green-800">Imprimiu {tempoDesde(impressora.ultimoSucessoEm)}.</p>
+        <p className="text-sm text-green-800" suppressHydrationWarning>Imprimiu {tempoDesde(impressora.ultimoSucessoEm)}.</p>
       ) : null}
       {editando ? <FormImpressora impressora={impressora} pracas={pracas} computadores={computadores} aoTerminar={() => setEditando(false)} /> : null}
     </li>

@@ -335,13 +335,13 @@ isOneToOne: false
                   ]
                 },"impressoras": {
                   Row: {
-                    "agente_id": string | null,"ativa": boolean,"codificacao": string,"conexao": string,"criado_em": string,"endereco": string,"id": string,"imprime_conta": boolean,"imprime_via_delivery": boolean,"largura": number,"nome": string,"porta": number,"restaurante_id": string,"ultimo_erro": string | null,"ultimo_erro_em": string | null,"ultimo_sucesso_em": string | null
+                    "agente_id": string | null,"ativa": boolean,"codificacao": string,"conexao": string,"criado_em": string,"endereco": string,"id": string,"imprime_conta": boolean,"imprime_via_delivery": boolean,"largura": number,"modo": string,"nome": string,"porta": number,"restaurante_id": string,"ultimo_erro": string | null,"ultimo_erro_em": string | null,"ultimo_sucesso_em": string | null
                   }
                   Insert: {
-                    "agente_id"?: string | null,"ativa"?: boolean,"codificacao"?: string,"conexao"?: string,"criado_em"?: string,"endereco": string,"id"?: string,"imprime_conta"?: boolean,"imprime_via_delivery"?: boolean,"largura"?: number,"nome": string,"porta"?: number,"restaurante_id": string,"ultimo_erro"?: string | null,"ultimo_erro_em"?: string | null,"ultimo_sucesso_em"?: string | null
+                    "agente_id"?: string | null,"ativa"?: boolean,"codificacao"?: string,"conexao"?: string,"criado_em"?: string,"endereco": string,"id"?: string,"imprime_conta"?: boolean,"imprime_via_delivery"?: boolean,"largura"?: number,"modo"?: string,"nome": string,"porta"?: number,"restaurante_id": string,"ultimo_erro"?: string | null,"ultimo_erro_em"?: string | null,"ultimo_sucesso_em"?: string | null
                   }
                   Update: {
-                    "agente_id"?: string | null,"ativa"?: boolean,"codificacao"?: string,"conexao"?: string,"criado_em"?: string,"endereco"?: string,"id"?: string,"imprime_conta"?: boolean,"imprime_via_delivery"?: boolean,"largura"?: number,"nome"?: string,"porta"?: number,"restaurante_id"?: string,"ultimo_erro"?: string | null,"ultimo_erro_em"?: string | null,"ultimo_sucesso_em"?: string | null
+                    "agente_id"?: string | null,"ativa"?: boolean,"codificacao"?: string,"conexao"?: string,"criado_em"?: string,"endereco"?: string,"id"?: string,"imprime_conta"?: boolean,"imprime_via_delivery"?: boolean,"largura"?: number,"modo"?: string,"nome"?: string,"porta"?: number,"restaurante_id"?: string,"ultimo_erro"?: string | null,"ultimo_erro_em"?: string | null,"ultimo_sucesso_em"?: string | null
                   }
                   Relationships: [
                     {
