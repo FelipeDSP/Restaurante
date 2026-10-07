@@ -71,6 +71,9 @@ Na área de staff, o restaurante vem da tabela `membros` do usuário logado. Se 
 - Só pode existir **uma comanda aberta por mesa** (índice único parcial).
 - **Comanda só fecha quitada**: soma dos pagamentos >= total. Exceção futura: fechar com pendência, com permissão.
 - Pagamento registra **quem recebeu** (`registrado_por`) e **forma**. Garçom e caixa podem registrar.
+- **Pagamento nunca passa do que falta**: o trigger trava a comanda (ou o pedido) com `for update` e recusa valor acima do saldo (dois aparelhos cobrando a mesma mesa). O troco do dinheiro não é pagamento. Estorno exige `motivo_estorno`.
+- **Status do delivery só anda para frente** (`recebido` → `em_preparo` → `pronto` → `saiu_entrega` → `entregue`, pulos para frente permitidos depois do aceite; cancelar a qualquer momento). Ao ficar `pronto`/`saiu_entrega`/`entregue`, os tickets pendentes da cozinha são encerrados.
+- Restaurante novo nasce aberto das 18h às 23h todos os dias (padrão da coluna `horarios`); o primeiro bairro cadastrado liga o delivery.
 - **Resumo é por sessão de caixa**, não por dia do calendário (o restaurante pode fechar depois da meia-noite). Datas exibidas no fuso do restaurante (`restaurantes.fuso_horario`, padrão `America/Porto_Velho` para o cliente zero).
 - Número amigável do pedido (`numero`) sequencial por restaurante por sessão de caixa, só para exibição. O ID real é uuid.
 
@@ -143,7 +146,7 @@ Já existe (adicionais e opções):
 
 - Leitura de `restaurantes` (apenas colunas públicas, via view `restaurantes_publicos`), `categorias` ativas, `produtos` disponíveis para delivery e `bairros_entrega` ativos, somente de restaurantes ativos.
 - Criação de pedido apenas pela RPC `criar_pedido_delivery`.
-- Acompanhamento do pedido por RPC `consultar_pedido_publico(pedido_id)` retornando só status, itens e totais.
+- Acompanhamento do pedido por RPC `consultar_pedido_publico(pedido_id)` retornando só status, itens e totais (mais troco e motivo do cancelamento; nunca nome, telefone, endereço ou observação: o link é repassado). A tela consulta `/api/pedidos/[id]` de tempos em tempos e sobrevive a queda de rede; o último pedido fica no aparelho (`ultimo-pedido:<restaurante>`) e aparece no cardápio.
 
 ## Tempo real
 
@@ -177,7 +180,11 @@ Durante o desenvolvimento usamos um projeto Supabase que já contém outro siste
 - Formulários: Server Action retorna `ResultadoAcao` (`src/lib/acoes.ts`); o `<form>` usa `key={estado?.chave}` e `valorCampo()` para manter o que foi digitado após erro (React 19 reseta o form).
 - Escrita com a chave secreta (`createAdminClient`) só para o que a sessão do usuário não consegue (criar contas, trocar senha), sempre após `exigirDono()`.
 - Inserts em tabelas com colunas preenchidas por trigger (`caixa_sessao_id`, `numero`, `registrado_por`, `aberta_por`) usam `novoRegistro()` de `src/lib/supabase/insercao.ts`.
-- Tempo real: usar `<AtualizarEmTempoReal>` ou o hook `useMudancasRealtime` (`src/lib/realtime.ts`), que passam o token da sessão ao Realtime antes de inscrever; sem isso o canal entra como anônimo e a RLS não entrega eventos.
+- Tempo real: usar `<AtualizarEmTempoReal>` ou o hook `useMudancasRealtime` (`src/lib/realtime.ts`), que passam o token da sessão ao Realtime antes de inscrever; sem isso o canal entra como anônimo e a RLS não entrega eventos. O hook informa a queda (faixa `<FaixaConexao>` no layout de cada área) e chama `aoReconectar` quando volta: os eventos da queda se perderam, então recarregue. O `<AlertaPedidos>` também confere os deliveries novos a cada 30 s.
+- Rede ruim não pode apagar o que foi digitado: ações fora de formulário usam `useAcao` (`src/components/staff/acoes-cliente.tsx`), que trata a falha de rede com aviso e ignora toque repetido; formulários longos do lado do cliente guardam rascunho com `useRascunho` (`src/lib/rascunho.ts`). Cada área tem `error.tsx` com `<TelaErro>` (mantém o cabeçalho e tenta de novo quando a internet volta).
+- Ação destrutiva ou sem volta (excluir, desativar, fechar caixa/comanda, estornar) pede confirmação: `<BotaoConfirmar>` (`src/components/staff/botao-confirmar.tsx`) ou confirmação no lugar com motivo.
+- Cor de texto sobre a cor da marca: `corDeContraste()` (`src/lib/cores.ts`) escolhe preto ou branco pela razão de contraste WCAG. Avisos (toasts) ficam embaixo, acima das barras fixas.
+- Menu do painel: itens em `painel/navegacao.ts` com `grupo` (Operação, Cardápio, Configurações, Conta); barra lateral no computador e "Menu" no celular.
 - Site público: dados via `createPublicClient()` (anon, sem cookies), sempre filtrando pelo restaurante resolvido do slug; o restaurante nunca vem de id enviado pelo navegador.
 - Componentes de UI acessíveis e mobile-first; o PWA do garçom deve ser usável com uma mão e botões grandes.
 - Após cada migração: regenerar tipos, rodar os advisors de segurança do Supabase e corrigir alertas de RLS.
