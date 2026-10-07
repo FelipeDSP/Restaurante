@@ -79,6 +79,7 @@ O projeto Supabase atual tem o **seed de desenvolvimento**: 3 restaurantes de ex
 
 ## Observações
 
-- Um único container. O limite de pedidos por IP do site (5 a cada 10 min) fica em memória: com várias réplicas, precisaria de armazenamento compartilhado (Redis).
+- Um único container. O limite de pedidos do site fica em memória (5 pedidos criados a cada 10 min por telefone e 20 por IP, por restaurante): com várias réplicas, precisaria de armazenamento compartilhado (Redis).
+- O limite por IP depende do proxy repassar o IP do cliente (`X-Forwarded-For`/`X-Real-IP`; o Traefik do Coolify faz isso por padrão). Sem o cabeçalho, o site só limita por telefone. No cadastro e no pareamento do app, IP desconhecido conta como um só.
 - Logs: aba *Logs* do app no Coolify.
 - Atualizar: push no `main` + *Redeploy* (ou ativar *Auto Deploy* no Coolify).

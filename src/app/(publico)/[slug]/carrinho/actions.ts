@@ -3,7 +3,7 @@
 import { z } from "zod";
 
 import { centavosDeTexto } from "@/lib/dinheiro";
-import { consumirLimite, ipDoCliente } from "@/lib/limite-taxa";
+import { ipDoCliente, limiteAtingido, registrarUso } from "@/lib/limite-taxa";
 import { createPublicClient } from "@/lib/supabase/publico";
 import { id } from "@/lib/validacao";
 
@@ -42,6 +42,10 @@ const pedidoSchema = z.object({
 
 export type DadosPedido = z.input<typeof pedidoSchema>;
 
+const JANELA_LIMITE_MS = 10 * 60_000;
+const LIMITE_POR_TELEFONE = 5;
+const LIMITE_POR_IP = 20;
+
 const MOTIVOS = Object.keys(MENSAGEM_FECHADO) as (keyof typeof MENSAGEM_FECHADO)[];
 
 export async function enviarPedido(slug: string, entrada: DadosPedido): Promise<ResultadoPedido> {
@@ -63,9 +67,19 @@ export async function enviarPedido(slug: string, entrada: DadosPedido): Promise<
     if (trocoPara === null) return { ok: false, mensagem: "Confira o troco.", erros: { trocoPara: "Use o formato 50,00." } };
   }
 
-  // Contra pedidos falsos em série: 5 pedidos a cada 10 minutos por IP e restaurante.
-  if (!consumirLimite(`pedido:${restaurante.id}:${await ipDoCliente()}`, 5, 10 * 60_000)) {
-    return { ok: false, mensagem: "Muitos pedidos seguidos. Aguarde alguns minutos ou fale com o restaurante." };
+  // Contra pedidos falsos em série, contando só pedidos criados (erro de digitação não conta):
+  // por telefone e, mais folgado, por IP (no 4G vários clientes saem pelo mesmo IP da operadora).
+  const ip = await ipDoCliente();
+  const chaveTelefone = `pedido:${restaurante.id}:tel:${d.telefone}`;
+  const chaveIp = ip ? `pedido:${restaurante.id}:ip:${ip}` : null;
+  if (
+    limiteAtingido(chaveTelefone, LIMITE_POR_TELEFONE, JANELA_LIMITE_MS) ||
+    (chaveIp && limiteAtingido(chaveIp, LIMITE_POR_IP, JANELA_LIMITE_MS))
+  ) {
+    return {
+      ok: false,
+      mensagem: "Recebemos vários pedidos seguidos deste aparelho. Aguarde alguns minutos ou fale com o restaurante pelo WhatsApp.",
+    };
   }
 
   const supabase = createPublicClient();
@@ -100,5 +114,7 @@ export async function enviarPedido(slug: string, entrada: DadosPedido): Promise<
 
   const pedidoId = (data as { id?: string } | null)?.id;
   if (!pedidoId) return { ok: false, mensagem: "Não foi possível enviar o pedido. Tente novamente." };
+  registrarUso(chaveTelefone);
+  if (chaveIp) registrarUso(chaveIp);
   return { ok: true, pedidoId };
 }

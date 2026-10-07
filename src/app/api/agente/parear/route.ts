@@ -12,7 +12,7 @@ const corpoSchema = z.object({
 // Troca o código de 6 dígitos (gerado pelo dono no painel) pela chave do agente.
 export async function POST(request: Request) {
   // Contra tentativa e erro: 10 tentativas a cada 10 minutos por IP.
-  if (!consumirLimite(`parear:${await ipDoCliente()}`, 10, 10 * 60_000)) {
+  if (!consumirLimite(`parear:${(await ipDoCliente()) ?? "desconhecido"}`, 10, 10 * 60_000)) {
     return respostaErro("Muitas tentativas. Aguarde alguns minutos.", 429);
   }
   const corpo = corpoSchema.safeParse(await request.json().catch(() => null));

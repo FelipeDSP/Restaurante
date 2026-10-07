@@ -24,7 +24,7 @@ export async function criarConta(_estado: EstadoCadastro, formData: FormData): P
   const dados = schema.safeParse(dadosDoFormulario(formData));
   if (!dados.success) return falhaValidacao(dados.error, formData);
 
-  if (!consumirLimite(`cadastro:${await ipDoCliente()}`, 5, 60 * 60 * 1000)) {
+  if (!consumirLimite(`cadastro:${(await ipDoCliente()) ?? "desconhecido"}`, 5, 60 * 60 * 1000)) {
     return falha("Muitas contas criadas daqui em pouco tempo. Tente de novo mais tarde.", undefined, formData);
   }
 
