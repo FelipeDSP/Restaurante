@@ -2,7 +2,7 @@
 
 import { ListPlus, MessageSquarePlus, Minus, Plus, Search, Send, ShoppingBag, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { EscolherOpcoes } from "@/components/adicionais/escolher-opcoes";
 import { useAcao } from "@/components/staff/acoes-cliente";
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { type AdicionalEscolhido, chaveDaEscolha, precoDasOpcoes, regraDoGrupo, resumoAdicionais } from "@/lib/adicionais";
 import { formatarBRL } from "@/lib/dinheiro";
+import { useRascunho } from "@/lib/rascunho";
 import { cn } from "@/lib/utils";
 
 import { lancarItens } from "../../../actions";
@@ -17,6 +18,8 @@ import type { CategoriaCardapio, ProdutoCardapio } from "../../../dados";
 
 // Uma linha do lançamento: produto + opções escolhidas. Produto sem opções tem uma linha só.
 type Linha = { produtoId: string; adicionais: AdicionalEscolhido[]; quantidade: number; observacao: string; paraViagem: boolean };
+
+const SEM_LINHAS: Record<string, Linha> = {};
 
 function BotaoViagem({ ativo, aoMudar, rotulo }: { ativo: boolean; aoMudar: () => void; rotulo: string }) {
   return (
@@ -203,7 +206,6 @@ export function LancarItens({
   const router = useRouter();
   const [categoriaAtiva, setCategoriaAtiva] = useState(cardapio[0]?.id ?? "");
   const [busca, setBusca] = useState("");
-  const [linhas, setLinhas] = useState<Record<string, Linha>>({});
   const [escolhendo, setEscolhendo] = useState<ProdutoCardapio | null>(null);
   const { pendente, executar } = useAcao();
 
@@ -211,6 +213,21 @@ export function LancarItens({
     () => new Map(cardapio.flatMap((c) => c.produtos.map((p) => [p.id, p] as const))),
     [cardapio],
   );
+
+  // O pedido montado fica na aba (por comanda): queda de rede ou "Tentar de novo" não apagam.
+  // Só voltam linhas de produtos que ainda estão no cardápio.
+  const normalizarLinhas = useCallback(
+    (valor: unknown): Record<string, Linha> | null => {
+      if (!valor || typeof valor !== "object") return null;
+      return Object.fromEntries(
+        Object.entries(valor as Record<string, Linha>).filter(
+          ([, l]) => l && produtosPorId.has(l.produtoId) && Number.isInteger(l.quantidade) && l.quantidade > 0 && Array.isArray(l.adicionais),
+        ),
+      );
+    },
+    [produtosPorId],
+  );
+  const [linhas, setLinhas, limparLinhas] = useRascunho(`lancamento:${comandaId}`, SEM_LINHAS, normalizarLinhas, "sessao");
 
   const visiveis = useMemo(() => {
     const termo = normalizar(busca.trim());
@@ -253,7 +270,13 @@ export function LancarItens({
       adicionais: l.adicionais.map((a) => a.id),
       paraViagem: l.paraViagem,
     }));
-    executar(() => lancarItens(comandaId, itens), () => router.push(destino));
+    executar(
+      () => lancarItens(comandaId, itens),
+      () => {
+        limparLinhas();
+        router.push(destino);
+      },
+    );
   }
 
   return (

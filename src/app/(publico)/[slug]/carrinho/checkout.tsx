@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { type AdicionalEscolhido, type GrupoAdicionais, resumoAdicionais, validarEscolha } from "@/lib/adicionais";
 import { centavosDeTexto, formatarBRL } from "@/lib/dinheiro";
+import { useRascunho } from "@/lib/rascunho";
 import { cn } from "@/lib/utils";
 
 import { type ItemCarrinho, precoUnitario, useCarrinho } from "../carrinho-store";
@@ -48,6 +49,43 @@ const FORMAS = [
   { valor: "debito", rotulo: "Débito" },
 ] as const;
 
+type FormCheckout = {
+  nome: string;
+  telefone: string;
+  bairroId: string;
+  rua: string;
+  numero: string;
+  complemento: string;
+  referencia: string;
+  forma: DadosPedido["forma"];
+  trocoPara: string;
+  observacao: string;
+};
+
+const FORM_VAZIO: FormCheckout = {
+  nome: "",
+  telefone: "",
+  bairroId: "",
+  rua: "",
+  numero: "",
+  complemento: "",
+  referencia: "",
+  forma: "pix",
+  trocoPara: "",
+  observacao: "",
+};
+
+// O rascunho vem do aparelho: só aceita os campos conhecidos, em texto.
+function normalizarForm(valor: unknown): FormCheckout | null {
+  if (!valor || typeof valor !== "object") return null;
+  const salvo = valor as Record<string, unknown>;
+  const form = Object.fromEntries(
+    Object.entries(FORM_VAZIO).map(([campo, padrao]) => [campo, typeof salvo[campo] === "string" ? salvo[campo] : padrao]),
+  ) as FormCheckout;
+  if (!FORMAS.some((f) => f.valor === form.forma)) form.forma = "pix";
+  return form;
+}
+
 function Erro({ texto }: { texto?: string }) {
   return texto ? <p className="text-sm text-destructive">{texto}</p> : null;
 }
@@ -57,18 +95,9 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
   const { itens, alterarQuantidade, alterarObservacao, atualizarDados, limpar } = useCarrinho(restaurante.id);
   const [enviando, iniciar] = useTransition();
   const [erros, setErros] = useState<Record<string, string>>({});
-  const [form, setForm] = useState({
-    nome: "",
-    telefone: "",
-    bairroId: "",
-    rua: "",
-    numero: "",
-    complemento: "",
-    referencia: "",
-    forma: "pix" as DadosPedido["forma"],
-    trocoPara: "",
-    observacao: "",
-  });
+  // Rascunho no aparelho: queda de rede ou recarga não apagam o que o cliente digitou,
+  // e nome, telefone e endereço ficam para o próximo pedido.
+  const [form, setForm] = useRascunho(`checkout:${restaurante.id}`, FORM_VAZIO, normalizarForm);
 
   // Itens que saíram do cardápio (ou mudaram de preço/opções) desde que foram para o carrinho.
   const situacoes = useMemo(
@@ -102,18 +131,29 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
     e.preventDefault();
     setErros({});
     iniciar(async () => {
-      const resultado = await enviarPedido(restaurante.slug, {
-        ...form,
-        itens: validos.map((i) => ({
-          produtoId: i.produtoId,
-          quantidade: i.quantidade,
-          observacao: i.observacao,
-          adicionais: i.adicionais.map((a) => a.id),
-        })),
-      });
+      let resultado: Awaited<ReturnType<typeof enviarPedido>>;
+      try {
+        resultado = await enviarPedido(restaurante.slug, {
+          ...form,
+          itens: validos.map((i) => ({
+            produtoId: i.produtoId,
+            quantidade: i.quantidade,
+            observacao: i.observacao,
+            adicionais: i.adicionais.map((a) => a.id),
+          })),
+        });
+      } catch {
+        toast.error(
+          navigator.onLine
+            ? "Não conseguimos enviar. Seus dados continuam aqui: toque em Enviar de novo."
+            : "Sem internet. Seus dados continuam aqui: envie quando a conexão voltar.",
+        );
+        return;
+      }
       if (resultado.ok) {
         toast.dismiss();
         limpar();
+        setForm((f) => ({ ...f, trocoPara: "", observacao: "" }));
         router.push(`/${restaurante.slug}/pedido/${resultado.pedidoId}`);
       } else {
         setErros(resultado.erros ?? {});

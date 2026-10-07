@@ -2,7 +2,6 @@
 
 import { TelaErro } from "@/components/tela-erro";
 
-// Erro inesperado em qualquer página; cada área tem o seu error.tsx para manter o cabeçalho.
 export default function Erro(props: { error: Error & { digest?: string }; retry: () => void }) {
   return <TelaErro {...props} />;
 }
