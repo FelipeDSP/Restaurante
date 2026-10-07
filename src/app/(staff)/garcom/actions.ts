@@ -124,8 +124,26 @@ export async function alterarStatusConta(comandaId: string, contaPedida: boolean
     .in("status", ["aberta", "conta_pedida"]);
   if (error) return falha(mensagemErroBanco(error));
 
+  // Pediu a conta: sai sozinha na impressora de conta, se houver.
+  let impressa = 0;
+  if (contaPedida) {
+    const { data } = await supabase.rpc("imprimir_conta", { p_comanda_id: comandaId });
+    impressa = data ?? 0;
+  }
+
   refresh();
-  return sucesso(contaPedida ? "Conta pedida." : "Comanda reaberta.");
+  return sucesso(contaPedida ? (impressa > 0 ? "Conta pedida e enviada para a impressora." : "Conta pedida.") : "Comanda reaberta.");
+}
+
+export async function imprimirConta(comandaId: string): Promise<ResultadoAcao> {
+  await exigirAcesso("garcom");
+  if (!id.safeParse(comandaId).success) return falha("Comanda inválida.");
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("imprimir_conta", { p_comanda_id: comandaId });
+  if (error) return falha(mensagemErroBanco(error));
+  if (!data) return falha("Nenhuma impressora está marcada para imprimir a conta (Painel > Impressoras).");
+  return sucesso("Conta enviada para a impressora.");
 }
 
 const FORMAS = ["dinheiro", "pix", "credito", "debito", "outro"] as const;

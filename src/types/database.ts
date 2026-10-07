@@ -36,6 +36,31 @@ isOneToOne: false
       referencedColumns: ["restaurante_id","id"]
     }
                   ]
+                },"agentes_impressao": {
+                  Row: {
+                    "ativo": boolean,"codigo_expira_em": string | null,"codigo_hash": string | null,"criado_em": string,"id": string,"impressoras_windows": NonNullable<Json>,"nome": string,"pareado_em": string | null,"restaurante_id": string,"token_hash": string | null,"ultimo_contato_em": string | null,"versao": string | null
+                  }
+                  Insert: {
+                    "ativo"?: boolean,"codigo_expira_em"?: string | null,"codigo_hash"?: string | null,"criado_em"?: string,"id"?: string,"impressoras_windows"?: NonNullable<Json>,"nome": string,"pareado_em"?: string | null,"restaurante_id": string,"token_hash"?: string | null,"ultimo_contato_em"?: string | null,"versao"?: string | null
+                  }
+                  Update: {
+                    "ativo"?: boolean,"codigo_expira_em"?: string | null,"codigo_hash"?: string | null,"criado_em"?: string,"id"?: string,"impressoras_windows"?: NonNullable<Json>,"nome"?: string,"pareado_em"?: string | null,"restaurante_id"?: string,"token_hash"?: string | null,"ultimo_contato_em"?: string | null,"versao"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "agentes_impressao_restaurante_id_fkey"
+      columns: ["restaurante_id"]
+isOneToOne: false
+      referencedRelation: "restaurantes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "agentes_impressao_restaurante_id_fkey"
+      columns: ["restaurante_id"]
+isOneToOne: false
+      referencedRelation: "restaurantes_publicos"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"assinaturas": {
                   Row: {
                     "atualizado_em": string,"criado_em": string,"id": string,"periodo_termina_em": string | null,"plano": string,"provedor": string | null,"provedor_assinatura_id": string | null,"restaurante_id": string,"status": string,"teste_termina_em": string | null
@@ -199,13 +224,13 @@ isOneToOne: false
                   ]
                 },"estacoes": {
                   Row: {
-                    "ativa": boolean,"criado_em": string,"id": string,"nome": string,"ordem": number,"restaurante_id": string
+                    "ativa": boolean,"criado_em": string,"id": string,"impressora_id": string | null,"nome": string,"ordem": number,"restaurante_id": string
                   }
                   Insert: {
-                    "ativa"?: boolean,"criado_em"?: string,"id"?: string,"nome": string,"ordem"?: number,"restaurante_id": string
+                    "ativa"?: boolean,"criado_em"?: string,"id"?: string,"impressora_id"?: string | null,"nome": string,"ordem"?: number,"restaurante_id": string
                   }
                   Update: {
-                    "ativa"?: boolean,"criado_em"?: string,"id"?: string,"nome"?: string,"ordem"?: number,"restaurante_id"?: string
+                    "ativa"?: boolean,"criado_em"?: string,"id"?: string,"impressora_id"?: string | null,"nome"?: string,"ordem"?: number,"restaurante_id"?: string
                   }
                   Relationships: [
                     {
@@ -220,6 +245,67 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "restaurantes_publicos"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "estacoes_restaurante_id_impressora_id_fkey"
+      columns: ["restaurante_id","impressora_id"]
+isOneToOne: false
+      referencedRelation: "impressoras"
+      referencedColumns: ["restaurante_id","id"]
+    }
+                  ]
+                },"fila_impressao": {
+                  Row: {
+                    "agente_id": string | null,"comanda_id": string | null,"criado_em": string,"erro": string | null,"id": string,"impresso_em": string | null,"impressora_id": string,"item_id": string | null,"pedido_id": string | null,"pego_em": string | null,"restaurante_id": string,"status": string,"tarefa_id": string | null,"tentar_depois_em": string | null,"tentativas": number,"tipo": string
+                  }
+                  Insert: {
+                    "agente_id"?: string | null,"comanda_id"?: string | null,"criado_em"?: string,"erro"?: string | null,"id"?: string,"impresso_em"?: string | null,"impressora_id": string,"item_id"?: string | null,"pedido_id"?: string | null,"pego_em"?: string | null,"restaurante_id": string,"status"?: string,"tarefa_id"?: string | null,"tentar_depois_em"?: string | null,"tentativas"?: number,"tipo": string
+                  }
+                  Update: {
+                    "agente_id"?: string | null,"comanda_id"?: string | null,"criado_em"?: string,"erro"?: string | null,"id"?: string,"impresso_em"?: string | null,"impressora_id"?: string,"item_id"?: string | null,"pedido_id"?: string | null,"pego_em"?: string | null,"restaurante_id"?: string,"status"?: string,"tarefa_id"?: string | null,"tentar_depois_em"?: string | null,"tentativas"?: number,"tipo"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "fila_impressao_restaurante_id_agente_id_fkey"
+      columns: ["restaurante_id","agente_id"]
+isOneToOne: false
+      referencedRelation: "agentes_impressao"
+      referencedColumns: ["restaurante_id","id"]
+    },{
+      foreignKeyName: "fila_impressao_restaurante_id_comanda_id_fkey"
+      columns: ["restaurante_id","comanda_id"]
+isOneToOne: false
+      referencedRelation: "comandas"
+      referencedColumns: ["restaurante_id","id"]
+    },{
+      foreignKeyName: "fila_impressao_restaurante_id_fkey"
+      columns: ["restaurante_id"]
+isOneToOne: false
+      referencedRelation: "restaurantes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "fila_impressao_restaurante_id_fkey"
+      columns: ["restaurante_id"]
+isOneToOne: false
+      referencedRelation: "restaurantes_publicos"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "fila_impressao_restaurante_id_impressora_id_fkey"
+      columns: ["restaurante_id","impressora_id"]
+isOneToOne: false
+      referencedRelation: "impressoras"
+      referencedColumns: ["restaurante_id","id"]
+    },{
+      foreignKeyName: "fila_impressao_restaurante_id_pedido_id_fkey"
+      columns: ["restaurante_id","pedido_id"]
+isOneToOne: false
+      referencedRelation: "pedidos"
+      referencedColumns: ["restaurante_id","id"]
+    },{
+      foreignKeyName: "fila_impressao_restaurante_id_tarefa_id_fkey"
+      columns: ["restaurante_id","tarefa_id"]
+isOneToOne: false
+      referencedRelation: "tarefas_producao"
+      referencedColumns: ["restaurante_id","id"]
     }
                   ]
                 },"grupos_adicionais": {
@@ -241,6 +327,37 @@ isOneToOne: false
       referencedColumns: ["id"]
     },{
       foreignKeyName: "grupos_adicionais_restaurante_id_fkey"
+      columns: ["restaurante_id"]
+isOneToOne: false
+      referencedRelation: "restaurantes_publicos"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"impressoras": {
+                  Row: {
+                    "agente_id": string | null,"ativa": boolean,"codificacao": string,"conexao": string,"criado_em": string,"endereco": string,"id": string,"imprime_conta": boolean,"imprime_via_delivery": boolean,"largura": number,"nome": string,"porta": number,"restaurante_id": string,"ultimo_erro": string | null,"ultimo_erro_em": string | null,"ultimo_sucesso_em": string | null
+                  }
+                  Insert: {
+                    "agente_id"?: string | null,"ativa"?: boolean,"codificacao"?: string,"conexao"?: string,"criado_em"?: string,"endereco": string,"id"?: string,"imprime_conta"?: boolean,"imprime_via_delivery"?: boolean,"largura"?: number,"nome": string,"porta"?: number,"restaurante_id": string,"ultimo_erro"?: string | null,"ultimo_erro_em"?: string | null,"ultimo_sucesso_em"?: string | null
+                  }
+                  Update: {
+                    "agente_id"?: string | null,"ativa"?: boolean,"codificacao"?: string,"conexao"?: string,"criado_em"?: string,"endereco"?: string,"id"?: string,"imprime_conta"?: boolean,"imprime_via_delivery"?: boolean,"largura"?: number,"nome"?: string,"porta"?: number,"restaurante_id"?: string,"ultimo_erro"?: string | null,"ultimo_erro_em"?: string | null,"ultimo_sucesso_em"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "impressoras_restaurante_id_agente_id_fkey"
+      columns: ["restaurante_id","agente_id"]
+isOneToOne: false
+      referencedRelation: "agentes_impressao"
+      referencedColumns: ["restaurante_id","id"]
+    },{
+      foreignKeyName: "impressoras_restaurante_id_fkey"
+      columns: ["restaurante_id"]
+isOneToOne: false
+      referencedRelation: "restaurantes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "impressoras_restaurante_id_fkey"
       columns: ["restaurante_id"]
 isOneToOne: false
       referencedRelation: "restaurantes_publicos"
@@ -630,7 +747,35 @@ isOneToOne: false
                 }
           }
           Functions: {
-            "buscar_usuario_por_email":
+            "agente_concluir":
+{ Args: { "p_agente_id": string,"p_erro"?: string,"p_fila_id": string,"p_ok": boolean }; Returns: undefined
+                           },
+"agente_pegar_trabalhos":
+{ Args: { "p_agente_id": string,"p_limite"?: number }; Returns: {
+              "agente_id": string | null,
+"comanda_id": string | null,
+"criado_em": string,
+"erro": string | null,
+"id": string,
+"impresso_em": string | null,
+"impressora_id": string,
+"item_id": string | null,
+"pedido_id": string | null,
+"pego_em": string | null,
+"restaurante_id": string,
+"status": string,
+"tarefa_id": string | null,
+"tentar_depois_em": string | null,
+"tentativas": number,
+"tipo": string
+            }[]
+                          SetofOptions: {
+        from: "*"
+        to: "fila_impressao"
+        isOneToOne: false
+        isSetofReturn: true
+      } },
+"buscar_usuario_por_email":
 { Args: { "p_email": string }; Returns: string
                            },
 "consultar_disponibilidade_delivery":
@@ -651,8 +796,17 @@ isOneToOne: false
 "entregar_pedido_delivery":
 { Args: { "p_forma": string,"p_pedido_id": string }; Returns: undefined
                            },
+"imprimir_conta":
+{ Args: { "p_comanda_id": string }; Returns: number
+                           },
+"imprimir_teste":
+{ Args: { "p_impressora_id": string }; Returns: undefined
+                           },
 "lancar_itens_comanda":
 { Args: { "p_comanda_id": string,"p_itens": Json }; Returns: Json
+                           },
+"reimprimir":
+{ Args: { "p_fila_id": string }; Returns: undefined
                            },
 "resumo_caixa_sessao":
 { Args: { "p_sessao_id": string }; Returns: Json

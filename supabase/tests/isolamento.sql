@@ -74,6 +74,13 @@ declare
   v_churrasqueira_a constant uuid := md5('brasa-espetinhos/praca/Churrasqueira')::uuid;
   v_tarefa uuid;
   v_status text;
+  v_res text[];
+  v_linha text;
+  v_impressora uuid;
+  v_agente uuid;
+  v_comanda_imp uuid;
+  v_fila uuid;
+  n2 integer;
   v_num1 integer;
   v_num2 integer;
 begin
@@ -624,6 +631,107 @@ begin
   exception when others then
     perform pg_temp.ok(sqlerrm like 'Restaurante não está recebendo pedidos%', 'delivery recusa restaurante sem delivery');
   end;
+
+  -- ======================================================================
+  -- Impressão: fila (tudo desfeito no fim; os resultados são conferidos depois)
+  -- ======================================================================
+  v_res := '{}';
+  begin
+    perform pg_temp.entrar('dono.brasa@exemplo.com');
+    insert into public.impressoras (restaurante_id, nome, conexao, endereco, imprime_conta, imprime_via_delivery)
+    values (a, 'Chapa', 'rede', '192.168.0.50', true, true) returning id into v_impressora;
+    update public.estacoes set impressora_id = v_impressora where id = v_chapa_a;
+    insert into public.agentes_impressao (restaurante_id, nome, codigo_hash, codigo_expira_em)
+    values (a, 'Notebook do caixa', 'hash-do-codigo', now() + interval '10 minutes') returning id into v_agente;
+    begin
+      perform codigo_hash from public.agentes_impressao where id = v_agente;
+      v_res := v_res || text 'false|dono não lê o hash do código de pareamento';
+    exception when insufficient_privilege then
+      v_res := v_res || text 'true|dono não lê o hash do código de pareamento';
+    end;
+
+    perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+    insert into public.comandas (restaurante_id, mesa_id)
+    select a, id from public.mesas where restaurante_id = a and numero = '9'
+    returning id into v_comanda_imp;
+    v_json := public.lancar_itens_comanda(v_comanda_imp, jsonb_build_array(
+      jsonb_build_object('produto_id', v_produto_a2, 'quantidade', 1),
+      jsonb_build_object('produto_id', v_produto_a, 'quantidade', 1)));
+    select count(*) into n from public.fila_impressao where restaurante_id = a;
+    v_res := v_res || ((n = 0)::text || '|garçom não vê a fila de impressão');
+    begin
+      insert into public.fila_impressao (restaurante_id, impressora_id, tipo) values (a, v_impressora, 'teste');
+      v_res := v_res || text 'false|garçom não escreve direto na fila';
+    exception when insufficient_privilege then
+      v_res := v_res || text 'true|garçom não escreve direto na fila';
+    end;
+    n := public.imprimir_conta(v_comanda_imp);
+    v_res := v_res || ((n = 1)::text || '|conta vai para a impressora de conta');
+
+    perform pg_temp.admin();
+    select count(*) into n from public.fila_impressao where pedido_id = (v_json ->> 'pedido_id')::uuid and tipo = 'producao';
+    v_res := v_res || ((n = 1)::text || '|só o ticket da praça com impressora entra na fila');
+
+    perform pg_temp.entrar('dono.burger@exemplo.com');
+    begin
+      perform public.imprimir_teste(v_impressora);
+      v_res := v_res || text 'false|B não imprime teste na impressora de A';
+    exception when others then
+      v_res := v_res || ((sqlerrm like 'Impressora não encontrada%')::text || '|B não imprime teste na impressora de A');
+    end;
+    perform pg_temp.entrar('dono.brasa@exemplo.com');
+    begin
+      perform public.agente_pegar_trabalhos(v_agente, 5);
+      v_res := v_res || text 'false|só o servidor fala pelo agente';
+    exception when insufficient_privilege then
+      v_res := v_res || text 'true|só o servidor fala pelo agente';
+    end;
+
+    perform pg_temp.admin();
+    update public.agentes_impressao set token_hash = 'hash-do-token', pareado_em = now() where id = v_agente;
+    select count(*) into n from public.agente_pegar_trabalhos(v_agente, 10);
+    v_res := v_res || ((n = 2)::text || '|agente pega os trabalhos pendentes (ticket e conta)');
+    select count(*) into n from public.agente_pegar_trabalhos(v_agente, 10);
+    v_res := v_res || ((n = 0)::text || '|trabalho pego não é entregue de novo');
+
+    select id into v_fila from public.fila_impressao where pedido_id = (v_json ->> 'pedido_id')::uuid and tipo = 'producao';
+    perform public.agente_concluir(v_agente, v_fila, true);
+    v_res := v_res || ((select status = 'impresso' from public.fila_impressao where id = v_fila)::text || '|agente confirma a impressão');
+
+    perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+    update public.itens_pedido set cancelado_em = now(), motivo_cancelamento = 'desistiu'
+    where pedido_id = (v_json ->> 'pedido_id')::uuid and produto_id = v_produto_a2;
+    perform pg_temp.admin();
+    select count(*) into n from public.fila_impressao where pedido_id = (v_json ->> 'pedido_id')::uuid and tipo = 'cancelamento';
+    v_res := v_res || ((n = 1)::text || '|item cancelado depois de impresso gera aviso na praça');
+
+    select id into v_fila from public.fila_impressao where comanda_id = v_comanda_imp and tipo = 'conta';
+    perform public.agente_concluir(v_agente, v_fila, false, 'sem papel');
+    v_res := v_res || ((select status = 'pendente' and erro = 'sem papel' from public.fila_impressao where id = v_fila)::text
+                       || '|falha volta para a fila com o erro');
+
+    perform pg_temp.anonimo();
+    v_json := public.criar_pedido_delivery(a, 'Rui', '69999990000', v_bairro_a, '{"rua": "R", "numero": "1"}', 'pix',
+      jsonb_build_array(jsonb_build_object('produto_id', v_produto_a2, 'quantidade', 1)));
+    perform pg_temp.admin();
+    select count(*) into n from public.fila_impressao where pedido_id = (v_json ->> 'id')::uuid;
+    v_res := v_res || ((n = 0)::text || '|delivery não imprime antes do caixa aceitar');
+    perform pg_temp.entrar('caixa.brasa@exemplo.com');
+    update public.pedidos set status = 'em_preparo' where id = (v_json ->> 'id')::uuid;
+    perform pg_temp.admin();
+    select count(*) filter (where tipo = 'producao'), count(*) filter (where tipo = 'delivery') into n, n2
+    from public.fila_impressao where pedido_id = (v_json ->> 'id')::uuid;
+    v_res := v_res || ((n = 1 and n2 = 1)::text || '|delivery aceito imprime o ticket da praça e a via do motoboy');
+
+    raise exception 'desfazer';
+  exception when others then
+    if sqlerrm <> 'desfazer' then
+      v_res := v_res || ('false|bloco de impressão: ' || sqlerrm);
+    end if;
+  end;
+  foreach v_linha in array v_res loop
+    perform pg_temp.ok(split_part(v_linha, '|', 1)::boolean, split_part(v_linha, '|', 2));
+  end loop;
 
   -- ======================================================================
   -- Fechamento de caixa

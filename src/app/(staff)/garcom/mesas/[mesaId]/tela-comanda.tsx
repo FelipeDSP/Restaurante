@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Minus, Plus, ReceiptText, Undo2, UtensilsCrossed, Wallet, X } from "lucide-react";
+import { Check, Minus, Plus, Printer, ReceiptText, Undo2, UtensilsCrossed, Wallet, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -22,6 +22,7 @@ import {
   cancelarItem,
   estornarPagamento,
   fecharComanda,
+  imprimirConta,
   registrarPagamento,
 } from "../../actions";
 import type { DetalheComanda, ItemComanda } from "../../dados";
@@ -454,11 +455,23 @@ export function TelaComanda({ mesaId, comanda, podeGerenciar, fusoHorario, orige
               Pagamento
             </Button>
           )}
+          {comanda.status === "conta_pedida" ? (
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-10 text-sm"
+              disabled={pendente}
+              onClick={() => executar(() => imprimirConta(comanda.id))}
+            >
+              <Printer />
+              Imprimir conta
+            </Button>
+          ) : null}
           {comanda.status === "conta_pedida" && !podeFechar ? (
             <Button
               type="button"
               variant="ghost"
-              className="col-span-2 h-10 text-sm"
+              className="h-10 text-sm"
               disabled={pendente}
               onClick={() => executar(() => alterarStatusConta(comanda.id, false))}
             >

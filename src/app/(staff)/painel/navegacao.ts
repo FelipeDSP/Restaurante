@@ -10,6 +10,7 @@ export const NAVEGACAO: { href: string; rotulo: string; papeis: Papel[]; descric
   { href: "/painel/produtos", rotulo: "Produtos", papeis: ["dono"], descricao: "Cardápio, preços, fotos e disponibilidade" },
   { href: "/painel/categorias", rotulo: "Categorias", papeis: ["dono"], descricao: "Seções e ordem do cardápio" },
   { href: "/painel/adicionais", rotulo: "Adicionais", papeis: ["dono"], descricao: "Ponto da carne, sabores e adicionais com preço" },
+  { href: "/painel/impressoras", rotulo: "Impressoras", papeis: ["dono", "caixa"], descricao: "Computador do caixa, impressoras e o que sai em cada uma" },
   { href: "/painel/pracas", rotulo: "Praças", papeis: ["dono"], descricao: "Churrasqueira, chapa, bar: para onde vai cada pedido" },
   { href: "/painel/mesas", rotulo: "Mesas", papeis: ["dono"], descricao: "Mesas do salão" },
   { href: "/painel/bairros", rotulo: "Bairros", papeis: ["dono"], descricao: "Áreas e taxas de entrega" },

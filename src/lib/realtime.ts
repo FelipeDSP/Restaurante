@@ -5,7 +5,7 @@ import { useEffect, useRef } from "react";
 
 import { createClient } from "@/lib/supabase/client";
 
-export type TabelaRealtime = "comandas" | "itens_pedido" | "pagamentos" | "pedidos" | "tarefas_producao";
+export type TabelaRealtime = "comandas" | "itens_pedido" | "pagamentos" | "pedidos" | "tarefas_producao" | "fila_impressao";
 type Evento = "*" | "INSERT" | "UPDATE" | "DELETE";
 export type MudancaRealtime = RealtimePostgresChangesPayload<Record<string, unknown>>;
 

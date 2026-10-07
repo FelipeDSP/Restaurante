@@ -81,6 +81,13 @@ Já existe (cozinha, fase 1 da impressão):
 - Papel `cozinha` (área `/cozinha`, também aberta a dono e caixa). Tela da cozinha em tempo real, com filtro por praça (`/cozinha?praca=<id>`), som, "pronto/voltar" e impressão pelo navegador (manual ou automática por aparelho).
 - Delivery só aparece na cozinha depois que o caixa aceita (status diferente de `recebido`).
 
+Já existe (impressão, fase 2):
+- `impressoras` (rede: IP + porta 9100; windows: nome da impressora USB no Windows; papel 58/80; acentos cp850/cp1252/sem), `estacoes.impressora_id` (praça -> impressora), `imprime_conta` e `imprime_via_delivery`.
+- `agentes_impressao`: computador pareado (app de impressão). Pareia com código de 6 dígitos gerado no painel; depois usa uma chave própria. O banco guarda só hashes; o navegador não lê os hashes (grants por coluna).
+- `fila_impressao`: só referências (tarefa/pedido/comanda/item). Entra por trigger (ticket de praça, delivery aceito, cancelamento depois de impresso) ou RPC (`imprimir_conta`, `imprimir_teste`, `reimprimir`). Falha volta para a fila esperando 10 s x tentativas; na 5ª fica `erro`.
+- O app fala só com `/api/agente/*` (parear, trabalhos, trabalhos/[id], estado). O servidor monta o papel na hora (`src/lib/impressao/tickets.ts`) e converte em ESC/POS (`escpos.ts`); o app só entrega os bytes. Essas rotas usam a chave secreta, sempre filtrando pelo agente autenticado (`autenticarAgente`).
+- Testar sem impressora: `node scripts/impressora-falsa.mjs` (porta 9100) + `node scripts/agente-teste.mjs --servidor http://localhost:3000 --codigo <código do painel>`.
+
 ## Produto (marca da plataforma)
 
 - Grupo `src/app/(site)/`: landing (`/`), `/cadastro` (conta do dono) e `/comecar` (cria o restaurante). Só aqui aparece a marca **uau foods** (cores e fontes `uau-*` do `globals.css`).
@@ -111,7 +118,7 @@ Por restaurante:
 - `itens_pedido`: id, restaurante_id, pedido_id, produto_id, nome_produto, preco_unitario, quantidade, observacao, total, criado_em, cancelado_em, cancelado_por, motivo_cancelamento
 - `pagamentos`: id, restaurante_id, comanda_id ou pedido_id (exatamente um), caixa_sessao_id, valor, forma (`dinheiro`|`pix`|`credito`|`debito`|`outro`), registrado_por, criado_em, estornado_em, estornado_por
 
-Na fase 2 entram `produto_componentes`, `impressoras`, `agentes_impressao`, `fila_impressao`. Na fase 3, `configuracoes_pagamento` (subconta Asaas), `planos`, `dominios`.
+Na fase 2 ainda entra `produto_componentes` (ficha técnica/estoque). Na fase 3, `configuracoes_pagamento` (subconta Asaas), `planos`, `dominios`.
 
 Já existe (cadastro self-service):
 - `assinaturas`: id, restaurante_id (único), plano (`essencial`|`completo`), status (`teste`|`ativa`|`atrasada`|`cancelada`|`cortesia`), teste_termina_em, periodo_termina_em, provedor (`kiwify`), provedor_assinatura_id. Criada por trigger com 14 dias de teste a cada restaurante novo; só o dono lê; ninguém escreve pelo app (a cobrança, provavelmente Kiwify, vai atualizar por webhook no servidor).

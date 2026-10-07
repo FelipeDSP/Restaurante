@@ -29,7 +29,7 @@ Em *Environment Variables* do app:
 | `NEXT_PUBLIC_SITE_URL` | `https://seu-dominio.com.br` | **sim** | sim |
 
 - As `NEXT_PUBLIC_*` são embutidas no código do navegador **durante o build**: sem marcar como *Build Variable*, o site abre mas não conecta ao banco. Se mudar alguma delas, faça **redeploy** (rebuild).
-- `SUPABASE_SECRET_KEY` nunca vai para o navegador; é usada só no servidor (cadastro de equipe e troca de senha). **Não** marque como build variable.
+- `SUPABASE_SECRET_KEY` nunca vai para o navegador; é usada só no servidor (cadastro de equipe, troca de senha e as rotas `/api/agente` do app de impressão). **Não** marque como build variable. Sem ela, a impressão automática não funciona.
 - `NEXT_PUBLIC_SITE_URL` é a origem pública, usada no link de confirmação de e-mail do cadastro. Sem ela, o app usa o host da requisição.
 
 ## 4. Supabase (uma vez)
