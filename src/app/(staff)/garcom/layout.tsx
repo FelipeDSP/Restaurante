@@ -8,6 +8,8 @@ import { NOME_PAPEL, podeAcessar } from "@/lib/auth/papeis";
 import { estiloMarca } from "@/lib/cores";
 import { urlIcone } from "@/lib/icone";
 
+import { AvisoPronto } from "./aviso-pronto";
+
 // PWA com a marca do restaurante: manifest e ícones em rotas públicas por restaurante.
 export async function generateMetadata(): Promise<Metadata> {
   const { restaurante } = await exigirAcesso("garcom");
@@ -51,6 +53,7 @@ export default async function GarcomLayout({ children }: LayoutProps<"/garcom">)
         </div>
         <FaixaConexao />
       </header>
+      <AvisoPronto restauranteId={acesso.restaurante.id} membroId={acesso.membroId} />
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col">{children}</div>
     </div>
   );

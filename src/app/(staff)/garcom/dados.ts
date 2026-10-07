@@ -6,6 +6,19 @@ import { createClient } from "@/lib/supabase/server";
 
 export type StatusMesa = "livre" | "aberta" | "conta_pedida";
 
+// Prato pronto fica em destaque por um tempo (não há etapa "servido"); depois some sozinho.
+const DESTAQUE_PRONTO_MS = 20 * 60_000;
+
+export type Preparo = "na_cozinha" | "pronto" | null;
+
+// Situação de um pedido na cozinha a partir dos tickets das praças.
+function preparoDoPedido(tarefas: { status: string; pronto_em: string | null }[], agora: number): Preparo {
+  if (tarefas.length === 0) return null;
+  if (tarefas.some((t) => t.status === "pendente")) return "na_cozinha";
+  const ultimo = Math.max(...tarefas.map((t) => (t.pronto_em ? new Date(t.pronto_em).getTime() : 0)));
+  return agora - ultimo < DESTAQUE_PRONTO_MS ? "pronto" : null;
+}
+
 export type MesaNoMapa = {
   id: string;
   numero: string;
@@ -14,6 +27,8 @@ export type MesaNoMapa = {
   total: number;
   abertaEm: string | null;
   garcom: string | null;
+  // Pedidos da mesa que a cozinha acabou de terminar (esperando o garçom levar).
+  pedidosProntos: number;
 };
 
 export async function caixaEstaAberto(restauranteId: string): Promise<boolean> {
@@ -39,7 +54,9 @@ export async function carregarMapa(restauranteId: string): Promise<MesaNoMapa[]>
       .order("numero"),
     supabase
       .from("comandas")
-      .select("id, mesa_id, status, total, aberta_em, garcom:membros!comandas_restaurante_id_garcom_id_fkey(nome)")
+      .select(
+        "id, mesa_id, status, total, aberta_em, garcom:membros!comandas_restaurante_id_garcom_id_fkey(nome), pedidos(status, tarefas_producao(status, pronto_em))",
+      )
       .eq("restaurante_id", restauranteId)
       .in("status", ["aberta", "conta_pedida"]),
   ]);
@@ -47,6 +64,7 @@ export async function carregarMapa(restauranteId: string): Promise<MesaNoMapa[]>
   if (comandas.error) throw new Error(comandas.error.message);
 
   const porMesa = new Map(comandas.data.map((c) => [c.mesa_id, c]));
+  const agora = Date.now();
   return mesas.data.map((mesa) => {
     const comanda = porMesa.get(mesa.id);
     return {
@@ -57,6 +75,9 @@ export async function carregarMapa(restauranteId: string): Promise<MesaNoMapa[]>
       total: comanda?.total ?? 0,
       abertaEm: comanda?.aberta_em ?? null,
       garcom: comanda?.garcom?.nome ?? null,
+      pedidosProntos: (comanda?.pedidos ?? []).filter(
+        (p) => p.status !== "cancelado" && preparoDoPedido(p.tarefas_producao, agora) === "pronto",
+      ).length,
     };
   });
 }
@@ -74,6 +95,7 @@ export type ItemComanda = {
   criadoEm: string;
   cancelado: boolean;
   motivoCancelamento: string | null;
+  preparo: Preparo;
 };
 
 export type PagamentoComanda = {
@@ -118,7 +140,7 @@ export async function carregarComandaDaMesa(restauranteId: string, mesaId: strin
     .select(
       `id, status, pessoas, total, aberta_em,
        garcom:membros!comandas_restaurante_id_garcom_id_fkey(nome),
-       pedidos(numero, status, itens_pedido(id, nome_produto, preco_unitario, preco_adicionais, adicionais, para_viagem, quantidade, observacao, total, criado_em, cancelado_em, motivo_cancelamento)),
+       pedidos(numero, status, tarefas_producao(status, pronto_em), itens_pedido(id, nome_produto, preco_unitario, preco_adicionais, adicionais, etapas, para_viagem, quantidade, observacao, total, criado_em, cancelado_em, motivo_cancelamento)),
        pagamentos(id, valor, forma, criado_em, estornado_em, motivo_estorno, registrado:membros!pagamentos_restaurante_id_registrado_por_fkey(nome))`,
     )
     .eq("restaurante_id", restauranteId)
@@ -128,10 +150,12 @@ export async function carregarComandaDaMesa(restauranteId: string, mesaId: strin
   if (error) throw new Error(error.message);
   if (!c) return null;
 
+  const agora = Date.now();
   const itens: ItemComanda[] = c.pedidos
     .filter((p) => p.status !== "cancelado")
-    .flatMap((p) =>
-      p.itens_pedido.map((i) => ({
+    .flatMap((p) => {
+      const preparo = preparoDoPedido(p.tarefas_producao, agora);
+      return p.itens_pedido.map((i) => ({
         id: i.id,
         pedidoNumero: p.numero,
         nome: i.nome_produto,
@@ -144,8 +168,10 @@ export async function carregarComandaDaMesa(restauranteId: string, mesaId: strin
         criadoEm: i.criado_em,
         cancelado: i.cancelado_em !== null,
         motivoCancelamento: i.motivo_cancelamento,
-      })),
-    )
+        // Item sem rota de preparo (ex.: bebida) não passa pela cozinha.
+        preparo: Array.isArray(i.etapas) && i.etapas.length > 0 ? preparo : null,
+      }));
+    })
     .sort((a, b) => a.criadoEm.localeCompare(b.criadoEm));
 
   const pagamentos: PagamentoComanda[] = c.pagamentos

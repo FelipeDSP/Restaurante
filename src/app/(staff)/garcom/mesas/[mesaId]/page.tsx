@@ -35,7 +35,7 @@ export default async function MesaPage(props: PageProps<"/garcom/mesas/[mesaId]"
     <main className="flex flex-1 flex-col gap-4 p-4">
       <AtualizarEmTempoReal
         restauranteId={acesso.restaurante.id}
-        tabelas={["comandas", "itens_pedido", "pagamentos"]}
+        tabelas={["comandas", "itens_pedido", "pagamentos", "tarefas_producao", "caixa_sessoes"]}
       />
       <div className="flex items-center gap-2">
         <Link

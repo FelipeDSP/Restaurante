@@ -19,15 +19,20 @@ function CartaoMesa({ mesa }: { mesa: MesaNoMapa }) {
   return (
     <Link
       href={`/garcom/mesas/${mesa.id}`}
-      aria-label={`Mesa ${mesa.numero}: ${ROTULO_STATUS[mesa.status]}`}
+      aria-label={`Mesa ${mesa.numero}: ${ROTULO_STATUS[mesa.status]}${mesa.pedidosProntos > 0 ? ", prato pronto para servir" : ""}`}
       className={cn(
-        "flex min-h-28 flex-col justify-between rounded-xl border-2 p-3 transition-transform active:scale-95 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
+        "relative flex min-h-28 flex-col justify-between rounded-xl border-2 p-3 transition-transform active:scale-95 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
         mesa.status === "livre" && "border-border bg-background",
         mesa.status === "aberta" &&
           "border-[var(--cor-primaria)] bg-[var(--cor-primaria)] text-[var(--cor-primaria-contraste)]",
         mesa.status === "conta_pedida" && "border-amber-500 bg-amber-300 text-amber-950",
       )}
     >
+      {mesa.pedidosProntos > 0 ? (
+        <span className="absolute -top-2 -right-2 rounded-full bg-green-600 px-2 py-0.5 text-xs font-bold text-white shadow ring-2 ring-background">
+          Pronto
+        </span>
+      ) : null}
       {/* Nomes longos ("Varanda 1") em fonte menor para não quebrar no meio da palavra. */}
       <span className={cn("leading-tight font-bold break-words", mesa.numero.length > 3 ? "text-base" : "text-2xl leading-none")}>
         {mesa.numero}
@@ -55,7 +60,7 @@ export default async function GarcomPage() {
 
   return (
     <main className="flex flex-col gap-4 p-4">
-      <AtualizarEmTempoReal restauranteId={acesso.restaurante.id} tabelas={["comandas"]} />
+      <AtualizarEmTempoReal restauranteId={acesso.restaurante.id} tabelas={["comandas", "tarefas_producao", "caixa_sessoes"]} />
       <div className="flex items-baseline justify-between">
         <h1 className="text-2xl font-semibold">Mesas</h1>
         <span className="text-sm text-muted-foreground">

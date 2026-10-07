@@ -21,6 +21,11 @@ type Linha = { produtoId: string; adicionais: AdicionalEscolhido[]; quantidade: 
 
 const SEM_LINHAS: Record<string, Linha> = {};
 
+// Rascunho por mesa, lembrando para qual comanda foi montado: se a comanda for fechada por
+// outra pessoa, os itens não se perdem nem vão sozinhos para a comanda do próximo cliente.
+type Rascunho = { comandaId: string; linhas: Record<string, Linha> };
+const SEM_RASCUNHO: Rascunho = { comandaId: "", linhas: SEM_LINHAS };
+
 function BotaoViagem({ ativo, aoMudar, rotulo }: { ativo: boolean; aoMudar: () => void; rotulo: string }) {
   return (
     <Button
@@ -194,10 +199,12 @@ function LinhaProdutoComOpcoes({
 }
 
 export function LancarItens({
+  mesaId,
   comandaId,
   destino,
   cardapio,
 }: {
+  mesaId: string;
   comandaId: string;
   // Para onde ir depois de enviar (comanda no app do garçom ou no painel).
   destino: string;
@@ -214,20 +221,27 @@ export function LancarItens({
     [cardapio],
   );
 
-  // O pedido montado fica na aba (por comanda): queda de rede ou "Tentar de novo" não apagam.
+  // O pedido montado fica na aba: queda de rede ou "Tentar de novo" não apagam.
   // Só voltam linhas de produtos que ainda estão no cardápio.
-  const normalizarLinhas = useCallback(
-    (valor: unknown): Record<string, Linha> | null => {
+  const normalizarRascunho = useCallback(
+    (valor: unknown): Rascunho | null => {
       if (!valor || typeof valor !== "object") return null;
-      return Object.fromEntries(
-        Object.entries(valor as Record<string, Linha>).filter(
+      const r = valor as Partial<Rascunho>;
+      if (typeof r.comandaId !== "string" || !r.linhas || typeof r.linhas !== "object") return null;
+      const linhas = Object.fromEntries(
+        Object.entries(r.linhas).filter(
           ([, l]) => l && produtosPorId.has(l.produtoId) && Number.isInteger(l.quantidade) && l.quantidade > 0 && Array.isArray(l.adicionais),
         ),
       );
+      return { comandaId: r.comandaId, linhas };
     },
     [produtosPorId],
   );
-  const [linhas, setLinhas, limparLinhas] = useRascunho(`lancamento:${comandaId}`, SEM_LINHAS, normalizarLinhas, "sessao");
+  const [rascunho, setRascunho, limparLinhas] = useRascunho(`lancamento:${mesaId}`, SEM_RASCUNHO, normalizarRascunho, "sessao");
+  const linhas = rascunho.comandaId === comandaId ? rascunho.linhas : SEM_LINHAS;
+  const deOutraComanda = rascunho.comandaId !== comandaId ? Object.values(rascunho.linhas) : [];
+  const setLinhas = (mudar: (atual: Record<string, Linha>) => Record<string, Linha>) =>
+    setRascunho((r) => ({ comandaId, linhas: mudar(r.comandaId === comandaId ? r.linhas : SEM_LINHAS) }));
 
   const visiveis = useMemo(() => {
     const termo = normalizar(busca.trim());
@@ -281,6 +295,22 @@ export function LancarItens({
 
   return (
     <div className="flex flex-1 flex-col gap-3 pb-28">
+      {deOutraComanda.length > 0 ? (
+        <div role="alert" className="flex flex-col gap-2 rounded-xl border-2 border-amber-400 bg-amber-50 p-3 text-sm text-amber-950">
+          <p className="font-semibold">
+            Itens montados para a comanda anterior desta mesa (fechada por outra pessoa):{" "}
+            {deOutraComanda.map((l) => `${l.quantidade}× ${produtosPorId.get(l.produtoId)?.nome ?? ""}`).join(", ")}.
+          </p>
+          <div className="flex gap-2">
+            <Button type="button" className="h-11 flex-1" onClick={() => setRascunho((r) => ({ ...r, comandaId }))}>
+              Usar nesta comanda
+            </Button>
+            <Button type="button" variant="outline" className="h-11 flex-1" onClick={limparLinhas}>
+              Descartar
+            </Button>
+          </div>
+        </div>
+      ) : null}
       <div className="relative">
         <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
         <Input

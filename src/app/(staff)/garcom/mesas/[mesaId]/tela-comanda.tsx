@@ -101,6 +101,11 @@ function LinhaItem({ item, editavel }: { item: ItemComanda; editavel: boolean })
             <span className="text-sm text-muted-foreground">{resumoAdicionais(item.adicionais)}</span>
           ) : null}
           {item.paraViagem ? <span className="text-xs font-bold text-violet-700 uppercase">Pra viagem</span> : null}
+          {item.preparo === "pronto" ? (
+            <span className="mt-0.5 w-fit rounded-full bg-green-600 px-2 py-0.5 text-xs font-bold text-white">Pronto p/ servir</span>
+          ) : item.preparo === "na_cozinha" ? (
+            <span className="text-xs font-medium text-muted-foreground">Na cozinha</span>
+          ) : null}
           {item.observacao ? <span className="text-sm text-muted-foreground">Obs.: {item.observacao}</span> : null}
           <span className="text-xs text-muted-foreground">Pedido nº {item.pedidoNumero}</span>
         </span>

@@ -3,6 +3,7 @@ import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
+import { AtualizarEmTempoReal } from "@/components/staff/atualizar-em-tempo-real";
 import { exigirAcesso } from "@/lib/auth/dal";
 import { id as idSchema } from "@/lib/validacao";
 
@@ -28,6 +29,8 @@ export default async function LancarPage(props: PageProps<"/garcom/mesas/[mesaId
 
   return (
     <main className="flex flex-1 flex-col gap-3 p-4">
+      {/* Comanda fechada ou cancelada por outra pessoa: a página recarrega e volta para a mesa. */}
+      <AtualizarEmTempoReal restauranteId={acesso.restaurante.id} tabelas={["comandas"]} />
       <Link
         href={destino}
         className="-ml-2 flex h-11 w-fit items-center gap-1 rounded-md px-2 text-sm font-medium hover:bg-muted"
@@ -39,7 +42,7 @@ export default async function LancarPage(props: PageProps<"/garcom/mesas/[mesaId
       {cardapio.length === 0 ? (
         <p className="text-muted-foreground">Nenhum produto disponível no cardápio.</p>
       ) : (
-        <LancarItens comandaId={comanda.id} destino={destino} cardapio={cardapio} />
+        <LancarItens mesaId={mesa.id} comandaId={comanda.id} destino={destino} cardapio={cardapio} />
       )}
     </main>
   );
