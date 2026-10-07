@@ -25,3 +25,11 @@ export function dataHoraLocal(iso: string, fusoHorario: string): string {
     timeZone: fusoHorario,
   }).format(new Date(iso));
 }
+
+// "sex 03/10" no fuso do restaurante (noite de trabalho, para listas de sessões de caixa).
+export function diaLocal(iso: string, fusoHorario: string): string {
+  return new Intl.DateTimeFormat("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", timeZone: fusoHorario })
+    .format(new Date(iso))
+    .replace(".", "")
+    .replace(",", "");
+}
