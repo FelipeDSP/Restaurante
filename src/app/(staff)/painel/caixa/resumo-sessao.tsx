@@ -72,7 +72,7 @@ export function ResumoSessao({ resumo, fusoHorario }: { resumo: ResumoCaixa; fus
         <CardHeader>
           <CardTitle>Gaveta (dinheiro)</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-2 sm:grid-cols-2">
+        <CardContent className="grid max-w-md gap-2">
           <div className="flex justify-between gap-2">
             <span className="text-muted-foreground">Troco inicial</span>
             <span className="tabular-nums">{formatarBRL(resumo.sessao.valor_inicial)}</span>
@@ -81,6 +81,18 @@ export function ResumoSessao({ resumo, fusoHorario }: { resumo: ResumoCaixa; fus
             <span className="text-muted-foreground">Recebido em dinheiro</span>
             <span className="tabular-nums">{formatarBRL(resumo.dinheiro_recebido)}</span>
           </div>
+          {resumo.suprimentos ? (
+            <div className="flex justify-between gap-2">
+              <span className="text-muted-foreground">Suprimentos (+)</span>
+              <span className="tabular-nums">{formatarBRL(resumo.suprimentos)}</span>
+            </div>
+          ) : null}
+          {resumo.sangrias ? (
+            <div className="flex justify-between gap-2">
+              <span className="text-muted-foreground">Sangrias (−)</span>
+              <span className="tabular-nums">{formatarBRL(resumo.sangrias)}</span>
+            </div>
+          ) : null}
           <div className="flex justify-between gap-2 font-semibold">
             <span>Esperado na gaveta</span>
             <span className="tabular-nums">{formatarBRL(esperado)}</span>
@@ -93,7 +105,7 @@ export function ResumoSessao({ resumo, fusoHorario }: { resumo: ResumoCaixa; fus
               </div>
               <div
                 className={cn(
-                  "flex justify-between gap-2 font-semibold sm:col-span-2",
+                  "flex justify-between gap-2 font-semibold",
                   diferenca === 0 ? "text-green-700" : "text-destructive",
                 )}
               >
@@ -167,6 +179,19 @@ export function ResumoSessao({ resumo, fusoHorario }: { resumo: ResumoCaixa; fus
           ]}
         />
       </div>
+
+      {resumo.movimentos?.length ? (
+        <Tabela
+          titulo="Sangrias e suprimentos"
+          vazio=""
+          linhas={resumo.movimentos.map((m, n) => ({
+            chave: `movimento-${n}`,
+            rotulo: m.tipo === "sangria" ? "Sangria" : "Suprimento",
+            detalhe: `${horaLocal(m.em, fusoHorario)} · ${m.por ?? "—"} · ${m.motivo}`,
+            valor: `${m.tipo === "sangria" ? "−" : "+"} ${formatarBRL(m.valor)}`,
+          }))}
+        />
+      ) : null}
 
       {resumo.estornos.length > 0 ? (
         <Tabela

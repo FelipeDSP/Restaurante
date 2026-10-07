@@ -8,7 +8,7 @@ import { formatarBRL } from "@/lib/dinheiro";
 import { dataHoraLocal } from "@/lib/tempo";
 
 import { carregarPendencias, carregarResumo, carregarSessaoAberta, dinheiroEsperado, listarSessoesFechadas } from "./dados";
-import { AbrirCaixa, FecharCaixa } from "./formularios";
+import { AbrirCaixa, FecharCaixa, MovimentoCaixa } from "./formularios";
 import { ResumoSessao } from "./resumo-sessao";
 
 export const metadata: Metadata = { title: "Caixa" };
@@ -41,6 +41,7 @@ export default async function CaixaPage() {
       {aberta && resumo ? (
         <>
           <ResumoSessao resumo={resumo} fusoHorario={fuso} />
+          <MovimentoCaixa />
           <FecharCaixa sessaoId={aberta.id} esperado={dinheiroEsperado(resumo)} pendencias={pendencias ?? { comandas: [], deliveries: [] }} />
         </>
       ) : (

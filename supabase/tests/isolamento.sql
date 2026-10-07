@@ -796,6 +796,33 @@ begin
   -- Fechamento de caixa
   -- ======================================================================
   perform pg_temp.entrar('caixa.brasa@exemplo.com');
+  -- Sangria e suprimento: só caixa/dono, entram no resumo e não são alterados.
+  insert into public.movimentos_caixa (restaurante_id, caixa_sessao_id, tipo, valor, motivo, registrado_por)
+  values (a, '00000000-0000-0000-0000-000000000000', 'sangria', 5000, 'depósito no banco', '00000000-0000-0000-0000-000000000000');
+  insert into public.movimentos_caixa (restaurante_id, caixa_sessao_id, tipo, valor, motivo, registrado_por)
+  values (a, '00000000-0000-0000-0000-000000000000', 'suprimento', 2000, 'troco extra', '00000000-0000-0000-0000-000000000000');
+  v_json := public.resumo_caixa_sessao(v_caixa_a);
+  perform pg_temp.ok((v_json ->> 'sangrias')::integer = 5000 and (v_json ->> 'suprimentos')::integer = 2000
+                     and jsonb_array_length(v_json -> 'movimentos') = 2,
+                     'sangria e suprimento entram no resumo da sessão');
+  begin
+    update public.movimentos_caixa set valor = 1 where restaurante_id = a;
+    perform pg_temp.ok(false, 'movimento de caixa não é alterado');
+  exception when insufficient_privilege then
+    perform pg_temp.ok(true, 'movimento de caixa não é alterado');
+  end;
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  begin
+    insert into public.movimentos_caixa (restaurante_id, caixa_sessao_id, tipo, valor, motivo, registrado_por)
+    values (a, '00000000-0000-0000-0000-000000000000', 'sangria', 100, 'teste', '00000000-0000-0000-0000-000000000000');
+    perform pg_temp.ok(false, 'garçom não faz sangria');
+  exception when insufficient_privilege then
+    perform pg_temp.ok(true, 'garçom não faz sangria');
+  end;
+  perform pg_temp.entrar('dono.burger@exemplo.com');
+  select count(*) into n from public.movimentos_caixa where restaurante_id = a;
+  perform pg_temp.ok(n = 0, 'B não lê movimentos de caixa de A');
+  perform pg_temp.entrar('caixa.brasa@exemplo.com');
   begin
     update public.caixa_sessoes set fechada_em = now(), valor_contado = 13200 where id = v_caixa_a;
     perform pg_temp.ok(false, 'não fecha caixa com delivery em andamento');

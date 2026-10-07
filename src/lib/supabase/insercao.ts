@@ -10,6 +10,7 @@ type PreenchidasPeloBanco = {
   pedidos: "caixa_sessao_id" | "numero";
   pagamentos: "caixa_sessao_id" | "registrado_por";
   caixa_sessoes: "aberta_por";
+  movimentos_caixa: "caixa_sessao_id" | "registrado_por";
 };
 
 type TabelaComTrigger = keyof PreenchidasPeloBanco;

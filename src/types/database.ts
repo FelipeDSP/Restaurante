@@ -457,6 +457,43 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"movimentos_caixa": {
+                  Row: {
+                    "caixa_sessao_id": string,"criado_em": string,"id": string,"motivo": string,"registrado_por": string,"restaurante_id": string,"tipo": string,"valor": number
+                  }
+                  Insert: {
+                    "caixa_sessao_id": string,"criado_em"?: string,"id"?: string,"motivo": string,"registrado_por": string,"restaurante_id": string,"tipo": string,"valor": number
+                  }
+                  Update: {
+                    "caixa_sessao_id"?: string,"criado_em"?: string,"id"?: string,"motivo"?: string,"registrado_por"?: string,"restaurante_id"?: string,"tipo"?: string,"valor"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "movimentos_caixa_restaurante_id_caixa_sessao_id_fkey"
+      columns: ["restaurante_id","caixa_sessao_id"]
+isOneToOne: false
+      referencedRelation: "caixa_sessoes"
+      referencedColumns: ["restaurante_id","id"]
+    },{
+      foreignKeyName: "movimentos_caixa_restaurante_id_fkey"
+      columns: ["restaurante_id"]
+isOneToOne: false
+      referencedRelation: "restaurantes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "movimentos_caixa_restaurante_id_fkey"
+      columns: ["restaurante_id"]
+isOneToOne: false
+      referencedRelation: "restaurantes_publicos"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "movimentos_caixa_restaurante_id_registrado_por_fkey"
+      columns: ["restaurante_id","registrado_por"]
+isOneToOne: false
+      referencedRelation: "membros"
+      referencedColumns: ["restaurante_id","id"]
+    }
+                  ]
                 },"pagamentos": {
                   Row: {
                     "caixa_sessao_id": string,"comanda_id": string | null,"criado_em": string,"estornado_em": string | null,"estornado_por": string | null,"forma": string,"id": string,"motivo_estorno": string | null,"pedido_id": string | null,"registrado_por": string,"restaurante_id": string,"valor": number

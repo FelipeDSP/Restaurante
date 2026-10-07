@@ -54,3 +54,25 @@ export async function fecharCaixa(sessaoId: string, _estado: ResultadoAcao, form
 
   redirect(`/painel/caixa/${dados.data.sessaoId}`);
 }
+
+// Sangria (tirar dinheiro da gaveta) ou suprimento (colocar troco). O banco liga à sessão aberta.
+export async function registrarMovimento(_estado: ResultadoAcao, formData: FormData): Promise<ResultadoAcao> {
+  const acesso = await exigirAcesso("painel");
+  const dados = z
+    .object({
+      tipo: z.enum(["sangria", "suprimento"], { error: "Escolha sangria ou suprimento." }),
+      valor: dinheiro("Valor").refine((v) => v > 0, "Informe um valor maior que zero."),
+      motivo: z.string().trim().min(3, "Informe o motivo.").max(200),
+    })
+    .safeParse({ tipo: formData.get("tipo"), valor: formData.get("valor"), motivo: formData.get("motivo") });
+  if (!dados.success) return falhaValidacao(dados.error, formData);
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("movimentos_caixa")
+    .insert(novoRegistro("movimentos_caixa", { restaurante_id: acesso.restaurante.id, ...dados.data }));
+  if (error) return falha(mensagemErroBanco(error), undefined, formData);
+
+  refresh();
+  return sucesso(dados.data.tipo === "sangria" ? "Sangria registrada." : "Suprimento registrado.");
+}

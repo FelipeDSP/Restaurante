@@ -26,6 +26,9 @@ export type ResumoCaixa = {
   };
   total_recebido: number;
   dinheiro_recebido: number;
+  sangrias: number;
+  suprimentos: number;
+  movimentos: { tipo: "sangria" | "suprimento"; valor: number; motivo: string; em: string; por: string | null }[];
   total_vendido: number;
   quantidade_itens: number;
   por_forma: (Valor & { forma: string })[];
@@ -97,9 +100,9 @@ export async function carregarResumo(restauranteId: string, sessaoId: string): P
   return (data as ResumoCaixa | null) ?? null;
 }
 
-// Dinheiro que deveria estar na gaveta: troco inicial + recebido em dinheiro.
+// Dinheiro que deveria estar na gaveta: troco inicial + recebido em dinheiro + suprimentos − sangrias.
 export function dinheiroEsperado(resumo: ResumoCaixa): number {
-  return resumo.sessao.valor_inicial + resumo.dinheiro_recebido;
+  return resumo.sessao.valor_inicial + resumo.dinheiro_recebido + (resumo.suprimentos ?? 0) - (resumo.sangrias ?? 0);
 }
 
 export type PendenciasFechamento = {

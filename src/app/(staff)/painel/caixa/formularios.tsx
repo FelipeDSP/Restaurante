@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { centavosDeTexto, formatarBRL } from "@/lib/dinheiro";
 import { cn } from "@/lib/utils";
 
-import { abrirCaixa, fecharCaixa } from "./actions";
+import { abrirCaixa, fecharCaixa, registrarMovimento } from "./actions";
 import type { PendenciasFechamento } from "./dados";
 
 export function AbrirCaixa() {
@@ -39,6 +39,65 @@ export function AbrirCaixa() {
           </Campo>
           <BotaoEnviar className="h-12 text-base" pendente="Abrindo...">
             Abrir caixa
+          </BotaoEnviar>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+
+// Sangria (tirar dinheiro da gaveta, ex.: levar ao banco) e suprimento (colocar troco).
+export function MovimentoCaixa() {
+  const [estado, acao] = useActionState(registrarMovimento, undefined);
+  useAvisoResultado(estado);
+  const [tipo, setTipo] = useState(valorCampo(estado, "tipo", "sangria"));
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Sangria ou suprimento</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form key={estado?.chave} action={acao} className="grid gap-4 sm:grid-cols-[auto_10rem_1fr_auto] sm:items-end">
+          <input type="hidden" name="tipo" value={tipo} />
+          <fieldset className="flex flex-col gap-2">
+            <legend className="mb-2 text-sm font-medium">Tipo</legend>
+            <div className="flex gap-2">
+              {[
+                { valor: "sangria", rotulo: "Tirar (sangria)" },
+                { valor: "suprimento", rotulo: "Colocar (suprimento)" },
+              ].map((t) => (
+                <Button
+                  key={t.valor}
+                  type="button"
+                  variant={tipo === t.valor ? "default" : "outline"}
+                  aria-pressed={tipo === t.valor}
+                  className="h-11"
+                  onClick={() => setTipo(t.valor)}
+                >
+                  {t.rotulo}
+                </Button>
+              ))}
+            </div>
+          </fieldset>
+          <Campo rotulo="Valor (R$)" htmlFor="movimento-valor">
+            <Input id="movimento-valor" name="valor" inputMode="decimal" defaultValue={valorCampo(estado, "valor", "")} required className="h-11" />
+            <ErroCampo estado={estado} campo="valor" />
+          </Campo>
+          <Campo rotulo="Motivo" htmlFor="movimento-motivo">
+            <Input
+              id="movimento-motivo"
+              name="motivo"
+              maxLength={200}
+              defaultValue={valorCampo(estado, "motivo", "")}
+              placeholder={tipo === "sangria" ? "Ex.: depósito no banco" : "Ex.: troco extra"}
+              required
+              className="h-11"
+            />
+            <ErroCampo estado={estado} campo="motivo" />
+          </Campo>
+          <BotaoEnviar className="h-11" pendente="Registrando...">
+            Registrar
           </BotaoEnviar>
         </form>
       </CardContent>
@@ -137,7 +196,7 @@ export function FecharCaixa({
                 rows={2}
                 maxLength={500}
                 defaultValue={valorCampo(estado, "observacao", "")}
-                placeholder="Ex.: sangria de R$ 100,00 às 22h"
+                placeholder="Ex.: diferença por troco errado na mesa 4"
               />
             </Campo>
             {estado && !estado.ok && estado.mensagem ? (
