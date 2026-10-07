@@ -19,6 +19,8 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname,
   },
+  // Só em `next dev`: permite testar pelo celular na mesma rede (ex.: http://192.168.1.37:3000).
+  allowedDevOrigins: ["192.168.*.*", "10.*.*.*"],
   async headers() {
     return [{ source: "/:path*", headers: cabecalhosSeguranca }];
   },
