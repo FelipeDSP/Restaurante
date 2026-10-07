@@ -195,7 +195,7 @@ function LinhaOpcao({ opcao, grupoId, primeiro, ultimo }: { opcao: Opcao; grupoI
             checked={opcao.disponivel}
             disabled={pendente}
             onChange={(e) => executar(() => alternarOpcao(opcao.id, e.target.checked))}
-            className="size-5 accent-[var(--cor-primaria)]"
+            className="size-5 accent-[var(--cor-primaria-texto)]"
           />
           Disponível
         </label>

@@ -51,7 +51,7 @@ function Alternador({
         aria-hidden
         className={cn(
           "inline-flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition-colors",
-          ligado ? "bg-[var(--cor-primaria)]" : "bg-muted-foreground/30",
+          ligado ? "bg-[var(--cor-primaria-texto)]" : "bg-muted-foreground/30",
         )}
       >
         <span

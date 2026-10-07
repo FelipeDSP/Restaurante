@@ -264,7 +264,7 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
             </li>
           ))}
         </ul>
-        <Link href={`/${restaurante.slug}`} className="text-sm font-medium text-[var(--cor-primaria)]">
+        <Link href={`/${restaurante.slug}`} className="text-sm font-medium text-[var(--cor-primaria-texto)]">
           + Adicionar mais itens
         </Link>
       </section>

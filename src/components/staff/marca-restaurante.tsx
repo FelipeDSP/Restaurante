@@ -9,7 +9,7 @@ export function MarcaRestaurante({ restaurante }: { restaurante: RestauranteResu
         <img
           src={restaurante.logoUrl}
           alt=""
-          className="size-9 shrink-0 rounded-md bg-white/90 object-contain"
+          className="h-9 w-auto max-w-28 shrink-0 rounded-md bg-white/90 object-contain p-0.5"
         />
       ) : (
         <span

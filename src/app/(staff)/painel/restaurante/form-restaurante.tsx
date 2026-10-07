@@ -12,6 +12,7 @@ import type { ResultadoAcao } from "@/lib/acoes";
 
 import { salvarRestaurante } from "./actions";
 import { EditorHorarios } from "./editor-horarios";
+import { PreviaMarca } from "./previa-marca";
 
 export type DadosRestaurante = {
   id: string;
@@ -113,6 +114,7 @@ export function FormRestaurante({ restaurante }: { restaurante: DadosRestaurante
               <span className="font-mono text-sm">{corSecundaria}</span>
             </div>
           </Campo>
+          <PreviaMarca nome={restaurante.nome} logoUrl={restaurante.logo_url} corPrimaria={corPrimaria} corSecundaria={corSecundaria} />
         </CardContent>
       </Card>
 
@@ -170,7 +172,7 @@ export function FormRestaurante({ restaurante }: { restaurante: DadosRestaurante
               type="checkbox"
               name="aceita_delivery"
               defaultChecked={marcadoCampo(estado, "aceita_delivery", restaurante.aceita_delivery)}
-              className="size-5 accent-[var(--cor-primaria)]"
+              className="size-5 accent-[var(--cor-primaria-texto)]"
             />
             Aceitar pedidos de delivery pelo site
           </label>

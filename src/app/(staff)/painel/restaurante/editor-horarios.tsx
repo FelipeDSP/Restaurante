@@ -31,7 +31,7 @@ export function EditorHorarios({ inicial }: { inicial: Horarios }) {
             <label className="flex w-32 shrink-0 items-center gap-2 pt-2 text-sm font-medium">
               <input
                 type="checkbox"
-                className="size-5 accent-[var(--cor-primaria)]"
+                className="size-5 accent-[var(--cor-primaria-texto)]"
                 checked={aberto}
                 onChange={(e) => alterar(dia, e.target.checked ? [{ abre: "18:00", fecha: "23:00" }] : [])}
               />

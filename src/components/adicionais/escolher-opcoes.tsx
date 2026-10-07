@@ -194,7 +194,7 @@ function Conteudo({
                         checked={marcada}
                         disabled={bloqueada}
                         onChange={() => alternar(grupo, opcao.id)}
-                        className="size-5 shrink-0 accent-[var(--primary)]"
+                        className="size-5 shrink-0 accent-[var(--cor-primaria-texto)]"
                       />
                       <span className="min-w-0 flex-1 font-medium break-words">{opcao.nome}</span>
                       {opcao.preco > 0 ? (
@@ -224,7 +224,7 @@ function Conteudo({
               type="checkbox"
               checked={paraViagem}
               onChange={(e) => setParaViagem(e.target.checked)}
-              className="size-5 accent-[var(--primary)]"
+              className="size-5 accent-[var(--cor-primaria-texto)]"
             />
             <span className="font-medium">Pra viagem</span>
           </label>

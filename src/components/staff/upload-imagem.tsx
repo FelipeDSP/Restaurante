@@ -6,6 +6,7 @@ import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { redimensionarImagem } from "@/lib/imagem";
 import { createClient } from "@/lib/supabase/client";
+import { cn } from "@/lib/utils";
 
 type Props = {
   bucket: "rest-logos" | "rest-produtos";
@@ -59,27 +60,30 @@ export function UploadImagem({ bucket, restauranteId, name, valorInicial, rotulo
       <div className="flex items-center gap-3">
         <div className="flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-muted">
           {url ? (
+            // Logo (muitas vezes horizontal) aparece inteiro; foto de produto preenche o quadro.
             // eslint-disable-next-line @next/next/no-img-element -- imagem do Storage
-            <img src={url} alt="" className="size-full object-cover" />
+            <img src={url} alt="" className={cn("size-full", bucket === "rest-logos" ? "object-contain p-1" : "object-cover")} />
           ) : (
             <ImageUp className="size-8 text-muted-foreground" aria-hidden />
           )}
         </div>
         <div className="flex flex-col gap-2">
-          <label
-            htmlFor={id}
-            className="inline-flex h-10 cursor-pointer items-center justify-center rounded-lg border px-4 text-sm font-medium hover:bg-muted"
-          >
-            {enviando ? "Enviando..." : url ? "Trocar imagem" : "Escolher imagem"}
-          </label>
+          {/* O input vem antes para o rótulo mostrar o anel de foco do teclado (peer). */}
           <input
             id={id}
             type="file"
             accept="image/*"
-            className="sr-only"
+            className="peer sr-only"
             onChange={aoEscolher}
             disabled={enviando}
           />
+          <label
+            htmlFor={id}
+            className="inline-flex h-11 cursor-pointer items-center justify-center rounded-lg border px-4 text-sm font-medium hover:bg-muted peer-focus-visible:ring-3 peer-focus-visible:ring-ring/50"
+          >
+            {enviando ? "Enviando..." : url ? "Trocar imagem" : "Escolher imagem"}
+          </label>
+          {bucket === "rest-logos" ? <span className="text-xs text-muted-foreground">PNG com fundo transparente fica melhor.</span> : null}
           {url ? (
             <Button type="button" variant="ghost" size="sm" onClick={() => setUrl("")}>
               <Trash2 />

@@ -70,7 +70,7 @@ export default async function CardapioPage(props: PageProps<"/[slug]">) {
             href={`https://wa.me/${whatsapp}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex w-fit items-center gap-1 text-sm font-medium text-[var(--cor-primaria)] underline-offset-4 hover:underline"
+            className="flex w-fit items-center gap-1 text-sm font-medium text-[var(--cor-primaria-texto)] underline-offset-4 hover:underline"
           >
             <MessageCircle className="size-4" aria-hidden />
             Falar no WhatsApp

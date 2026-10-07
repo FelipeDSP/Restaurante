@@ -159,7 +159,7 @@ function FormImpressora({
                   type="checkbox"
                   checked={marcada}
                   onChange={(e) => setEscolhidas((atual) => (e.target.checked ? [...atual, p.id] : atual.filter((x) => x !== p.id)))}
-                  className="size-4 accent-[var(--cor-primaria)]"
+                  className="size-4 accent-[var(--cor-primaria-texto)]"
                 />
                 Pedidos da {p.nome}
               </label>
@@ -170,7 +170,7 @@ function FormImpressora({
               type="checkbox"
               name="imprime_conta"
               defaultChecked={marcadoCampo(estado, "imprime_conta", impressora?.imprimeConta ?? false)}
-              className="size-4 accent-[var(--cor-primaria)]"
+              className="size-4 accent-[var(--cor-primaria-texto)]"
             />
             Conta das mesas
           </label>
@@ -179,7 +179,7 @@ function FormImpressora({
               type="checkbox"
               name="imprime_via_delivery"
               defaultChecked={marcadoCampo(estado, "imprime_via_delivery", impressora?.imprimeViaDelivery ?? false)}
-              className="size-4 accent-[var(--cor-primaria)]"
+              className="size-4 accent-[var(--cor-primaria-texto)]"
             />
             Via do delivery (motoboy)
           </label>
@@ -191,7 +191,7 @@ function FormImpressora({
           type="checkbox"
           name="ativa"
           defaultChecked={marcadoCampo(estado, "ativa", impressora?.ativa ?? true)}
-          className="size-5 accent-[var(--cor-primaria)]"
+          className="size-5 accent-[var(--cor-primaria-texto)]"
         />
         Ativa
       </label>

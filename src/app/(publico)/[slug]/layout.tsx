@@ -38,7 +38,7 @@ export default async function SiteLayout(props: LayoutProps<"/[slug]">) {
           <Link href={`/${restaurante.slug}`} className="flex min-w-0 items-center gap-3">
             {restaurante.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element -- logo do Storage do restaurante
-              <img src={restaurante.logoUrl} alt="" className="size-10 shrink-0 rounded-md bg-white object-contain" />
+              <img src={restaurante.logoUrl} alt="" className="h-10 w-auto max-w-36 shrink-0 rounded-md bg-white object-contain p-0.5" />
             ) : (
               <span
                 aria-hidden

@@ -117,7 +117,7 @@ export function FormProduto({
               type="checkbox"
               name="disponivel"
               defaultChecked={marcadoCampo(estado, "disponivel", produto?.disponivel ?? true)}
-              className="size-5 accent-[var(--cor-primaria)]"
+              className="size-5 accent-[var(--cor-primaria-texto)]"
             />
             Disponível (desmarque quando esgotar: some do salão e do delivery)
           </label>
@@ -126,7 +126,7 @@ export function FormProduto({
               type="checkbox"
               name="disponivel_delivery"
               defaultChecked={marcadoCampo(estado, "disponivel_delivery", produto?.disponivel_delivery ?? true)}
-              className="size-5 accent-[var(--cor-primaria)]"
+              className="size-5 accent-[var(--cor-primaria-texto)]"
             />
             Também vende no delivery
           </label>
@@ -152,7 +152,7 @@ export function FormProduto({
               type="checkbox"
               name="para_viagem"
               defaultChecked={marcadoCampo(estado, "para_viagem", produto?.para_viagem ?? false)}
-              className="mt-0.5 size-5 accent-[var(--cor-primaria)]"
+              className="mt-0.5 size-5 accent-[var(--cor-primaria-texto)]"
             />
             <span>
               Sempre sai pra viagem
@@ -199,7 +199,7 @@ export function FormProduto({
                         onChange={(e) =>
                           setGruposEscolhidos((atual) => (e.target.checked ? [...atual, g.id] : atual.filter((id) => id !== g.id)))
                         }
-                        className="mt-0.5 size-5 accent-[var(--cor-primaria)]"
+                        className="mt-0.5 size-5 accent-[var(--cor-primaria-texto)]"
                       />
                       <span className="flex min-w-0 flex-col gap-0.5">
                         <span className="font-medium">
