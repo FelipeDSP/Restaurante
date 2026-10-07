@@ -4,11 +4,13 @@ import Link from "next/link";
 import { AlertaPedidos } from "@/components/staff/alerta-pedidos";
 import { MarcaRestaurante } from "@/components/staff/marca-restaurante";
 import { MenuUsuario } from "@/components/staff/menu-usuario";
+import { carregarAssinatura } from "@/lib/assinatura";
 import { exigirAcesso } from "@/lib/auth/dal";
 import { NOME_PAPEL } from "@/lib/auth/papeis";
 import { estiloMarca } from "@/lib/cores";
 import { createClient } from "@/lib/supabase/server";
 
+import { AvisoAssinatura } from "./aviso-assinatura";
 import { NAVEGACAO } from "./navegacao";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -50,7 +52,10 @@ function ItemMenu({ href, rotulo, contador }: { href: string; rotulo: string; co
 export default async function PainelLayout({ children }: LayoutProps<"/painel">) {
   const acesso = await exigirAcesso("painel");
   const itens = NAVEGACAO.filter((item) => item.papeis.includes(acesso.papel));
-  const novos = await contarPedidosNovos(acesso.restaurante.id);
+  const [novos, assinatura] = await Promise.all([
+    contarPedidosNovos(acesso.restaurante.id),
+    acesso.papel === "dono" ? carregarAssinatura(acesso.restaurante.id) : null,
+  ]);
   const contador = (href: string) => (href === "/painel/delivery" ? novos : undefined);
 
   return (
@@ -81,6 +86,7 @@ export default async function PainelLayout({ children }: LayoutProps<"/painel">)
           ))}
         </nav>
       </header>
+      <AvisoAssinatura assinatura={assinatura} />
       <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col">{children}</div>
     </div>
   );

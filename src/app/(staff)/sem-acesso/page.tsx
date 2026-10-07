@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { sair } from "@/lib/auth/actions";
@@ -11,8 +12,11 @@ export default function SemAcessoPage() {
       <h1 className="text-2xl font-semibold">Sem acesso</h1>
       <p className="text-muted-foreground">
         Seu usuário não está vinculado a nenhum restaurante ativo. Peça ao responsável para
-        adicionar você à equipe.
+        adicionar você à equipe, ou cadastre o seu próprio restaurante.
       </p>
+      <Button className="h-11" nativeButton={false} render={<Link href="/comecar" />}>
+        Cadastrar meu restaurante
+      </Button>
       <form action={sair}>
         <Button type="submit" variant="outline" className="w-full">
           Sair

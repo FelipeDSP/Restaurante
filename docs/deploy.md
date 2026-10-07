@@ -26,20 +26,26 @@ Em *Environment Variables* do app:
 | `NEXT_PUBLIC_SUPABASE_URL` | `https://<ref>.supabase.co` | **sim** (marcar *Build Variable*) | sim |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | `sb_publishable_...` | **sim** | sim |
 | `SUPABASE_SECRET_KEY` | `sb_secret_...` | não | sim |
+| `NEXT_PUBLIC_SITE_URL` | `https://seu-dominio.com.br` | **sim** | sim |
 
 - As `NEXT_PUBLIC_*` são embutidas no código do navegador **durante o build**: sem marcar como *Build Variable*, o site abre mas não conecta ao banco. Se mudar alguma delas, faça **redeploy** (rebuild).
 - `SUPABASE_SECRET_KEY` nunca vai para o navegador; é usada só no servidor (cadastro de equipe e troca de senha). **Não** marque como build variable.
+- `NEXT_PUBLIC_SITE_URL` é a origem pública, usada no link de confirmação de e-mail do cadastro. Sem ela, o app usa o host da requisição.
 
 ## 4. Supabase (uma vez)
 
 - *Authentication → URL Configuration → Site URL*: `https://seu-dominio.com.br`.
+- *Authentication → URL Configuration → Redirect URLs*: adicionar `https://seu-dominio.com.br/auth/confirmar`.
+- *Authentication → Sign In / Providers → Email*: decidir se o cadastro exige confirmação de e-mail ("Confirm email").
+  O app funciona dos dois jeitos: sem confirmação, o dono entra direto em `/comecar`; com confirmação, o link do e-mail leva a `/auth/confirmar` e depois a `/comecar`.
+  Com confirmação ligada, configurar um SMTP próprio (*Authentication → Emails → SMTP*): o e-mail padrão do Supabase tem limite baixo de envios por hora e sai com remetente genérico.
 - Migrações: já aplicadas no projeto atual. Em um projeto novo, rodar `npx supabase link --project-ref <ref>` e `npx supabase db push` (sem o `seed.sql`).
 
 ## 5. Antes de abrir para o público (IMPORTANTE)
 
 O projeto Supabase atual tem o **seed de desenvolvimento**: 3 restaurantes de exemplo e contas `@exemplo.com` com a senha pública `senha123`.
 
-1. Criar o restaurante real e a conta do dono:
+1. Criar o restaurante real e a conta do dono, pelo cadastro do site (`/cadastro`) ou pelo script:
    ```bash
    node --env-file=.env.local scripts/criar-restaurante.mjs \
      --slug nome-do-restaurante --nome "Nome do Restaurante" \

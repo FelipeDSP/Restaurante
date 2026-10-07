@@ -12,4 +12,5 @@ export const NAVEGACAO: { href: string; rotulo: string; papeis: Papel[]; descric
   { href: "/painel/bairros", rotulo: "Bairros", papeis: ["dono"], descricao: "Áreas e taxas de entrega" },
   { href: "/painel/equipe", rotulo: "Equipe", papeis: ["dono"], descricao: "Pessoas, papéis e senhas" },
   { href: "/painel/restaurante", rotulo: "Restaurante", papeis: ["dono"], descricao: "Marca, horários e delivery" },
+  { href: "/painel/assinatura", rotulo: "Assinatura", papeis: ["dono"], descricao: "Plano, teste grátis e pagamento" },
 ];

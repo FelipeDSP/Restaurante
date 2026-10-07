@@ -80,6 +80,11 @@ Migrações aplicadas via MCP; os arquivos em `supabase/migrations/` têm as mes
 | `20261001210544` | `rpc_delivery` |
 | `20261001210546` | `storage_realtime` |
 | `20261001210808` | `ajustes_advisors` |
+| `20261001211853` | `equipe` |
+| `20261001213847` | `garcom` |
+| `20261003124714` | `resumo_caixa` |
+| `20261003131922` | `delivery` |
+| `20261007134517` | `cadastro` (assinaturas; restaurantes existentes viraram `cortesia`) |
 
 Seed de desenvolvimento aplicado (3 restaurantes, 13 usuários `@exemplo.com`, senha `senha123`).
 

@@ -10,6 +10,7 @@ import { dataHoraLocal } from "@/lib/tempo";
 
 import { carregarResumo, carregarSessaoAberta } from "./caixa/dados";
 import { NAVEGACAO } from "./navegacao";
+import { PrimeirosPassos } from "./primeiros-passos";
 
 async function StatusCaixa({ restauranteId, fuso }: { restauranteId: string; fuso: string }) {
   const sessao = await carregarSessaoAberta(restauranteId);
@@ -82,6 +83,7 @@ export default async function PainelPage() {
           {acesso.restaurante.nome} · {NOME_PAPEL[acesso.papel]}
         </p>
       </div>
+      {acesso.papel === "dono" ? <PrimeirosPassos acesso={acesso} /> : null}
       <StatusCaixa restauranteId={acesso.restaurante.id} fuso={acesso.restaurante.fusoHorario} />
       {atalhos.length > 0 ? (
         <section aria-labelledby="titulo-cadastros" className="flex flex-col gap-3">

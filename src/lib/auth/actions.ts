@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { gravarRestauranteAtivo } from "@/lib/auth/cookie-restaurante";
 import { COOKIE_RESTAURANTE, obterVinculos } from "@/lib/auth/dal";
 import { rotaInicial } from "@/lib/auth/papeis";
 import { createClient } from "@/lib/supabase/server";
@@ -65,12 +66,6 @@ export async function escolherRestaurante(formData: FormData): Promise<void> {
   const vinculo = (await obterVinculos()).find((v) => v.restaurante.id === dados.data.restauranteId);
   if (!vinculo) redirect("/selecionar");
 
-  (await cookies()).set(COOKIE_RESTAURANTE, vinculo.restaurante.id, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 365,
-  });
+  await gravarRestauranteAtivo(vinculo.restaurante.id);
   redirect(rotaInicial(vinculo.papel));
 }

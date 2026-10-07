@@ -75,6 +75,12 @@ Na área de staff, o restaurante vem da tabela `membros` do usuário logado. Se 
 - **Resumo é por sessão de caixa**, não por dia do calendário (o restaurante pode fechar depois da meia-noite). Datas exibidas no fuso do restaurante (`restaurantes.fuso_horario`, padrão `America/Porto_Velho` para o cliente zero).
 - Número amigável do pedido (`numero`) sequencial por restaurante por sessão de caixa, só para exibição. O ID real é uuid.
 
+## Produto (marca da plataforma)
+
+- Grupo `src/app/(site)/`: landing (`/`), `/cadastro` (conta do dono) e `/comecar` (cria o restaurante). Só aqui aparece a marca **uau foods** (cores e fontes `uau-*` do `globals.css`).
+- Fluxo: `/cadastro` → (confirmação de e-mail opcional, via `/auth/confirmar`) → `/comecar` → `/painel` com "Primeiros passos" e aviso de teste.
+- No painel, a assinatura aparece só para o dono e sem citar a marca da plataforma.
+
 ## Papéis
 
 - `dono`: tudo no restaurante, incluindo marca, equipe e cadastros.
@@ -98,7 +104,13 @@ Por restaurante:
 - `itens_pedido`: id, restaurante_id, pedido_id, produto_id, nome_produto, preco_unitario, quantidade, observacao, total, criado_em, cancelado_em, cancelado_por, motivo_cancelamento
 - `pagamentos`: id, restaurante_id, comanda_id ou pedido_id (exatamente um), caixa_sessao_id, valor, forma (`dinheiro`|`pix`|`credito`|`debito`|`outro`), registrado_por, criado_em, estornado_em, estornado_por
 
-Na fase 2 entram `estacoes`, `produto_componentes`, `tarefas_producao`, `impressoras`, `agentes_impressao`, `fila_impressao`, `grupos_adicionais`, `adicionais`. Na fase 3, `configuracoes_pagamento` (subconta Asaas), `planos`, `assinaturas`, `dominios`.
+Na fase 2 entram `estacoes`, `produto_componentes`, `tarefas_producao`, `impressoras`, `agentes_impressao`, `fila_impressao`, `grupos_adicionais`, `adicionais`. Na fase 3, `configuracoes_pagamento` (subconta Asaas), `planos`, `dominios`.
+
+Já existe (cadastro self-service):
+- `assinaturas`: id, restaurante_id (único), plano (`essencial`|`completo`), status (`teste`|`ativa`|`atrasada`|`cancelada`|`cortesia`), teste_termina_em, periodo_termina_em, provedor (`kiwify`), provedor_assinatura_id. Criada por trigger com 14 dias de teste a cada restaurante novo; só o dono lê; ninguém escreve pelo app (a cobrança, provavelmente Kiwify, vai atualizar por webhook no servidor).
+- RPCs `criar_meu_restaurante(...)` (usuário logado vira dono; limite de 3 por conta) e `slug_disponivel(slug)`.
+- Endereços reservados em `rest_privado.slug_reservado()`: ao criar uma rota nova no primeiro nível do app (`/algo`), acrescentar o nome lá numa migração.
+- Planos e preços (provisórios, mock) ficam em `src/lib/planos.ts`.
 
 ## Acesso público (anon)
 

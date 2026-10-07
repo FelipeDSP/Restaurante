@@ -58,6 +58,8 @@ declare
   v_produto_b uuid := md5('burger-do-ze/Burgers/Zé Clássico')::uuid;
   v_bairro_a uuid;
   v_bairro_b uuid;
+  v_novo uuid;
+  v_multi constant uuid := md5('multi@exemplo.com')::uuid;
   v_json jsonb;
   v_num1 integer;
   v_num2 integer;
@@ -451,6 +453,80 @@ begin
   exception when insufficient_privilege then
     perform pg_temp.ok(true, 'usuário logado não busca usuários por e-mail');
   end;
+
+  -- ======================================================================
+  -- Cadastro self-service e assinatura
+  -- ======================================================================
+  perform pg_temp.admin();
+  begin
+    insert into public.restaurantes (slug, nome) values ('cadastro', 'Rota reservada');
+    perform pg_temp.ok(false, 'banco recusa endereço reservado');
+  exception when check_violation then
+    perform pg_temp.ok(true, 'banco recusa endereço reservado');
+  end;
+  select count(*) into n from public.assinaturas where restaurante_id in (a, b);
+  perform pg_temp.ok(n = 2, 'restaurantes do seed têm assinatura');
+
+  perform pg_temp.anonimo();
+  begin
+    perform public.criar_meu_restaurante('Anônimo', 'anonimo-teste', 'Fulano', 'America/Sao_Paulo');
+    perform pg_temp.ok(false, 'anônimo não cria restaurante');
+  exception when insufficient_privilege then
+    perform pg_temp.ok(true, 'anônimo não cria restaurante');
+  end;
+  begin
+    select count(*) into n from public.assinaturas;
+    perform pg_temp.ok(false, 'anônimo não lê assinaturas');
+  exception when insufficient_privilege then
+    perform pg_temp.ok(true, 'anônimo não lê assinaturas');
+  end;
+
+  perform pg_temp.entrar('multi@exemplo.com');
+  perform pg_temp.ok(not public.slug_disponivel('brasa-espetinhos'), 'endereço em uso não está disponível');
+  perform pg_temp.ok(not public.slug_disponivel('painel'), 'endereço reservado não está disponível');
+  perform pg_temp.ok(not public.slug_disponivel('Com Espaço'), 'endereço inválido não está disponível');
+  perform pg_temp.ok(public.slug_disponivel('novo-teste-1'), 'endereço livre está disponível');
+  begin
+    perform public.criar_meu_restaurante('Reservado', 'painel', 'Multi', 'America/Sao_Paulo');
+    perform pg_temp.ok(false, 'cadastro recusa endereço reservado');
+  exception when others then
+    perform pg_temp.ok(sqlerrm like 'Esse endereço é reservado%', 'cadastro recusa endereço reservado');
+  end;
+  begin
+    perform public.criar_meu_restaurante('Copiado', 'burger-do-ze', 'Multi', 'America/Sao_Paulo');
+    perform pg_temp.ok(false, 'cadastro recusa endereço em uso');
+  exception when others then
+    perform pg_temp.ok(sqlerrm like 'Esse endereço já está em uso%', 'cadastro recusa endereço em uso');
+  end;
+
+  v_novo := public.criar_meu_restaurante('Novo Teste', 'novo-teste-1', 'Multi Dono', 'America/Sao_Paulo', '69999990000', '#1d4ed8', '#facc15');
+  select count(*) into n from public.membros where restaurante_id = v_novo and user_id = v_multi and papel = 'dono';
+  perform pg_temp.ok(n = 1, 'quem cadastra vira dono do restaurante');
+  select count(*) into n from public.assinaturas
+  where restaurante_id = v_novo and status = 'teste'
+    and teste_termina_em between now() + interval '13 days' and now() + interval '15 days';
+  perform pg_temp.ok(n = 1, 'restaurante novo começa com 14 dias de teste');
+  select count(*) into n from public.assinaturas where restaurante_id = a;
+  perform pg_temp.ok(n = 0, 'garçom de A não lê a assinatura de A');
+  begin
+    update public.assinaturas set status = 'ativa' where restaurante_id = v_novo;
+    perform pg_temp.ok(false, 'dono não altera a própria assinatura');
+  exception when insufficient_privilege then
+    perform pg_temp.ok(true, 'dono não altera a própria assinatura');
+  end;
+
+  perform public.criar_meu_restaurante('Novo Teste 2', 'novo-teste-2', 'Multi Dono', 'America/Sao_Paulo');
+  perform public.criar_meu_restaurante('Novo Teste 3', 'novo-teste-3', 'Multi Dono', 'America/Sao_Paulo');
+  begin
+    perform public.criar_meu_restaurante('Novo Teste 4', 'novo-teste-4', 'Multi Dono', 'America/Sao_Paulo');
+    perform pg_temp.ok(false, 'limite de 3 restaurantes por conta');
+  exception when others then
+    perform pg_temp.ok(sqlerrm like 'Limite de restaurantes%', 'limite de 3 restaurantes por conta');
+  end;
+
+  perform pg_temp.entrar('dono.burger@exemplo.com');
+  select count(*) into n from public.assinaturas;
+  perform pg_temp.ok(n = 1, 'dono de B só vê a assinatura de B');
 
   perform pg_temp.admin();
 end;

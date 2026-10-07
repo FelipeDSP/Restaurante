@@ -5,7 +5,32 @@ export type Database = {
   
   "public": {
           Tables: {
-            "bairros_entrega": {
+            "assinaturas": {
+                  Row: {
+                    "atualizado_em": string,"criado_em": string,"id": string,"periodo_termina_em": string | null,"plano": string,"provedor": string | null,"provedor_assinatura_id": string | null,"restaurante_id": string,"status": string,"teste_termina_em": string | null
+                  }
+                  Insert: {
+                    "atualizado_em"?: string,"criado_em"?: string,"id"?: string,"periodo_termina_em"?: string | null,"plano"?: string,"provedor"?: string | null,"provedor_assinatura_id"?: string | null,"restaurante_id": string,"status"?: string,"teste_termina_em"?: string | null
+                  }
+                  Update: {
+                    "atualizado_em"?: string,"criado_em"?: string,"id"?: string,"periodo_termina_em"?: string | null,"plano"?: string,"provedor"?: string | null,"provedor_assinatura_id"?: string | null,"restaurante_id"?: string,"status"?: string,"teste_termina_em"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "assinaturas_restaurante_id_fkey"
+      columns: ["restaurante_id"]
+isOneToOne: true
+      referencedRelation: "restaurantes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "assinaturas_restaurante_id_fkey"
+      columns: ["restaurante_id"]
+isOneToOne: true
+      referencedRelation: "restaurantes_publicos"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"bairros_entrega": {
                   Row: {
                     "ativo": boolean,"id": string,"nome": string,"restaurante_id": string,"taxa": number
                   }
@@ -419,6 +444,9 @@ isOneToOne: false
 "contar_restaurantes_do_usuario":
 { Args: { "p_user_id": string }; Returns: number
                            },
+"criar_meu_restaurante":
+{ Args: { "p_cor_primaria"?: string,"p_cor_secundaria"?: string,"p_fuso": string,"p_nome": string,"p_nome_dono": string,"p_slug": string,"p_whatsapp"?: string }; Returns: string
+                           },
 "criar_pedido_delivery":
 { Args: { "p_bairro_id": string,"p_cliente_nome": string,"p_cliente_telefone": string,"p_endereco": Json,"p_forma_pagamento": string,"p_itens": Json,"p_observacao"?: string,"p_restaurante_id": string,"p_troco_para"?: number }; Returns: Json
                            },
@@ -430,6 +458,9 @@ isOneToOne: false
                            },
 "resumo_caixa_sessao":
 { Args: { "p_sessao_id": string }; Returns: Json
+                           },
+"slug_disponivel":
+{ Args: { "p_slug": string }; Returns: boolean
                            }
           }
           Enums: {

@@ -2,12 +2,12 @@ import { Check, Plus } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
+import { DIAS_TESTE_GRATIS, PLANOS, partesPreco } from "@/lib/planos";
 import { cn } from "@/lib/utils";
 
 import { DemoMarca } from "./demo-marca";
 import { TituloSecao } from "./funcionalidades";
 import { BotaoPrincipal, LinhasVelocidade } from "./marca";
-import { DIAS_TESTE_GRATIS, PLANOS } from "./planos";
 
 export function SuaMarca() {
   return (
@@ -89,10 +89,11 @@ export function Planos() {
                 <h3 className="text-3xl font-black">{p.nome}</h3>
                 <p className={cn("mt-1 font-semibold", p.destaque ? "text-uau-marrom/75" : "text-uau-creme/70")}>{p.paraQuem}</p>
               </div>
-              <p className="text-xl font-black">
-                {p.precoMensal === null
-                  ? "Preço de lançamento em breve"
-                  : `R$ ${(p.precoMensal / 100).toFixed(2).replace(".", ",")}/mês`}
+              <p className="flex items-baseline gap-1 font-black">
+                <span className="text-xl">R$</span>
+                <span className="text-6xl tracking-tight tabular-nums">{partesPreco(p.precoMensal).reais}</span>
+                <span className="text-2xl">{partesPreco(p.precoMensal).centavos}</span>
+                <span className={cn("ml-1 text-base font-bold", p.destaque ? "text-uau-marrom/70" : "text-uau-creme/60")}>/mês</span>
               </p>
               <ul className="flex flex-col gap-3">
                 {p.itens.map((i) => (
