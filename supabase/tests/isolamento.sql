@@ -901,6 +901,9 @@ begin
   where restaurante_id = v_novo and status = 'teste'
     and teste_termina_em between now() + interval '13 days' and now() + interval '15 days';
   perform pg_temp.ok(n = 1, 'restaurante novo começa com 14 dias de teste');
+  select count(*) into n from public.restaurantes
+  where id = v_novo and horarios -> 'sex' -> 0 ->> 'abre' = '18:00' and horarios -> 'dom' -> 0 ->> 'fecha' = '23:00';
+  perform pg_temp.ok(n = 1, 'restaurante novo nasce aberto das 18h às 23h');
   select count(*) into n from public.assinaturas where restaurante_id = a;
   perform pg_temp.ok(n = 0, 'garçom de A não lê a assinatura de A');
   begin

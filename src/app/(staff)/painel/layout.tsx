@@ -13,6 +13,7 @@ import { urlIcone } from "@/lib/icone";
 import { createClient } from "@/lib/supabase/server";
 
 import { AvisoAssinatura } from "./aviso-assinatura";
+import { MenuCelular, MenuLateral } from "./menu-painel";
 import { NAVEGACAO } from "./navegacao";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -35,25 +36,6 @@ async function contarPedidosNovos(restauranteId: string): Promise<number> {
   return count ?? 0;
 }
 
-function ItemMenu({ href, rotulo, contador }: { href: string; rotulo: string; contador?: number }) {
-  return (
-    <Link
-      href={href}
-      className="flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-2 text-sm font-medium hover:bg-black/10"
-    >
-      {rotulo}
-      {contador ? (
-        <span
-          className="flex min-w-5 items-center justify-center rounded-full bg-[var(--cor-secundaria)] px-1.5 text-xs font-bold text-[var(--cor-secundaria-contraste)]"
-          aria-label={`${contador} novos`}
-        >
-          {contador}
-        </span>
-      ) : null}
-    </Link>
-  );
-}
-
 export default async function PainelLayout({ children }: LayoutProps<"/painel">) {
   const acesso = await exigirAcesso("painel");
   const itens = NAVEGACAO.filter((item) => item.papeis.includes(acesso.papel));
@@ -61,20 +43,13 @@ export default async function PainelLayout({ children }: LayoutProps<"/painel">)
     contarPedidosNovos(acesso.restaurante.id),
     acesso.papel === "dono" ? carregarAssinatura(acesso.restaurante.id) : null,
   ]);
-  const contador = (href: string) => (href === "/painel/delivery" ? novos : undefined);
-
   return (
     <div className="flex min-h-full flex-1 flex-col" style={estiloMarca(acesso.restaurante)}>
       <header className="sticky top-0 z-10 bg-[var(--cor-primaria)] text-[var(--cor-primaria-contraste)] shadow-sm print:hidden">
-        <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-3 px-4">
-          <Link href="/painel" className="min-w-0 shrink-0">
+        <div className="flex h-16 w-full items-center justify-between gap-3 px-4">
+          <Link href="/painel" className="min-w-0 flex-1">
             <MarcaRestaurante restaurante={acesso.restaurante} />
           </Link>
-          <nav aria-label="Painel" className="hidden min-w-0 flex-1 gap-0.5 overflow-x-auto sem-barra-rolagem xl:flex">
-            {itens.map((item) => (
-              <ItemMenu key={item.href} href={item.href} rotulo={item.rotulo} contador={contador(item.href)} />
-            ))}
-          </nav>
           <div className="flex shrink-0 items-center gap-1">
             <AlertaPedidos restauranteId={acesso.restaurante.id} />
             <MenuUsuario
@@ -85,15 +60,16 @@ export default async function PainelLayout({ children }: LayoutProps<"/painel">)
             />
           </div>
         </div>
-        <nav aria-label="Painel" className="flex gap-1 overflow-x-auto sem-barra-rolagem px-2 pb-2 xl:hidden">
-          {itens.map((item) => (
-            <ItemMenu key={item.href} href={item.href} rotulo={item.rotulo} contador={contador(item.href)} />
-          ))}
-        </nav>
+        <MenuCelular itens={itens} novos={novos} />
         <FaixaConexao />
       </header>
-      <AvisoAssinatura assinatura={assinatura} />
-      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col">{children}</div>
+      <div className="flex flex-1">
+        <MenuLateral itens={itens} novos={novos} />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <AvisoAssinatura assinatura={assinatura} />
+          <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col">{children}</div>
+        </div>
+      </div>
     </div>
   );
 }

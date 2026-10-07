@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 
 import { ListaPracas, NovaPraca } from "./lista-pracas";
 
-export const metadata: Metadata = { title: "Praças" };
+export const metadata: Metadata = { title: "Setores da cozinha" };
 
 export default async function PracasPage() {
   const acesso = await exigirDono();
@@ -25,7 +25,7 @@ export default async function PracasPage() {
   return (
     <main className="flex flex-col gap-6 p-4 md:p-6">
       <div>
-        <h1 className="text-2xl font-semibold">Praças</h1>
+        <h1 className="text-2xl font-semibold">Setores da cozinha</h1>
         <p className="text-muted-foreground">
           Onde cada coisa é preparada (churrasqueira, chapa, bar). Na tela de cada produto você define por quais praças ele passa e em que
           ordem; produto sem praça (ex.: refrigerante) não aparece na{" "}

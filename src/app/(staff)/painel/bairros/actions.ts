@@ -28,6 +28,24 @@ export async function criarBairro(_estado: ResultadoAcao, formData: FormData): P
     .insert({ restaurante_id: acesso.restaurante.id, ...dados.data });
   if (error) return falha(mensagemBairro(error.code, mensagemErroBanco(error)), undefined, formData);
 
+  // Primeiro bairro: liga o delivery (era um passo a mais, em outra tela, que muitos esqueciam).
+  const { count } = await supabase
+    .from("bairros_entrega")
+    .select("id", { count: "exact", head: true })
+    .eq("restaurante_id", acesso.restaurante.id);
+  if (count === 1) {
+    const { data: ligado } = await supabase
+      .from("restaurantes")
+      .update({ aceita_delivery: true })
+      .eq("id", acesso.restaurante.id)
+      .eq("aceita_delivery", false)
+      .select("id");
+    if (ligado?.length) {
+      refresh();
+      return sucesso(`Bairro ${dados.data.nome} adicionado e delivery ligado. Dá para desligar em Restaurante.`);
+    }
+  }
+
   refresh();
   return sucesso(`Bairro ${dados.data.nome} adicionado.`);
 }

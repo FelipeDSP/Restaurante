@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, X } from "lucide-react";
+import { Copy, Plus, X } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -71,18 +71,28 @@ export function EditorHorarios({ inicial }: { inicial: Horarios }) {
                     </Button>
                   </div>
                 ))}
-                {intervalos.length < 3 ? (
+                <div className="flex flex-wrap gap-1">
+                  {intervalos.length < 3 ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => alterar(dia, [...intervalos, { abre: "11:00", fecha: "14:00" }])}
+                    >
+                      <Plus />
+                      Adicionar intervalo
+                    </Button>
+                  ) : null}
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="self-start"
-                    onClick={() => alterar(dia, [...intervalos, { abre: "11:00", fecha: "14:00" }])}
+                    onClick={() => setHorarios(Object.fromEntries(DIAS.map((d) => [d, intervalos.map((x) => ({ ...x }))])))}
                   >
-                    <Plus />
-                    Adicionar intervalo
+                    <Copy />
+                    Copiar para todos os dias
                   </Button>
-                ) : null}
+                </div>
               </div>
             ) : (
               <span className="pt-2 text-sm text-muted-foreground">Fechado</span>
