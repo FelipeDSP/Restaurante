@@ -70,12 +70,20 @@ export function CartaoPedido({ pedido }: { pedido: PedidoDelivery }) {
       className={cn(
         "flex flex-col gap-3 rounded-xl border-2 bg-background p-4",
         pedido.status === "recebido" && "border-[var(--cor-primaria)] shadow-md",
+        pedido.status === "pronto" && "border-green-600 shadow-md",
         !ativo && "opacity-70",
       )}
     >
       <header className="flex items-start justify-between gap-2">
         <div>
-          <h3 className="text-lg font-bold">Nº {pedido.numero}</h3>
+          <h3 className="flex flex-wrap items-center gap-2 text-lg font-bold">
+            Nº {pedido.numero}
+            {pedido.status === "pronto" ? (
+              <span className="rounded-full bg-green-700 px-2.5 py-0.5 text-xs font-bold tracking-wide whitespace-nowrap text-white uppercase">
+                Pronto
+              </span>
+            ) : null}
+          </h3>
           <p className="text-xs text-muted-foreground">
             {pedido.hora} · {pedido.tempo}
           </p>
@@ -154,8 +162,9 @@ export function CartaoPedido({ pedido }: { pedido: PedidoDelivery }) {
       {ativo && modo === "normal" ? (
         <div className="flex flex-wrap gap-2">
           {naCozinha ? (
-            <p className="flex h-11 flex-1 items-center text-sm font-medium text-muted-foreground">
-              Na cozinha ({pedido.pracasPendentes} {pedido.pracasPendentes === 1 ? "praça" : "praças"})
+            <p className="basis-full rounded-md bg-muted px-3 py-2 text-sm font-medium">
+              Na cozinha: falta{pedido.pracasPendentes === 1 ? "" : "m"} {pedido.pracasPendentes}{" "}
+              {pedido.pracasPendentes === 1 ? "praça" : "praças"} marcar pronto
             </p>
           ) : null}
           {proximo ? (

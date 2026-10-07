@@ -24,6 +24,7 @@ export function AlertaPedidos({ restauranteId }: { restauranteId: string }) {
   const [novos, setNovos] = useState(0);
   // Pedidos "recebido" já avisados (null até a primeira conferência, que não avisa nada).
   const avisados = useRef<Set<string> | null>(null);
+  const prontosAvisados = useRef(new Set<string>());
 
   // Qualquer interação com a página já libera o som.
   useEffect(() => {
@@ -124,6 +125,24 @@ export function AlertaPedidos({ restauranteId }: { restauranteId: string }) {
     },
     "INSERT",
     () => void conferir(),
+  );
+
+  // A cozinha terminou um delivery: o caixa chama o entregador.
+  useMudancasRealtime(
+    restauranteId,
+    ["pedidos"],
+    (mudanca) => {
+      const pedido = mudanca.new as { id?: string; origem?: string; status?: string; numero?: number };
+      if (pedido.origem !== "delivery" || pedido.status !== "pronto" || !pedido.id) return;
+      if (prontosAvisados.current.has(pedido.id)) return;
+      prontosAvisados.current.add(pedido.id);
+      bipar();
+      toast.success(`Delivery nº ${pedido.numero ?? ""} pronto para sair`, {
+        duration: 15000,
+        action: { label: "Ver", onClick: () => router.push("/painel/delivery") },
+      });
+    },
+    "UPDATE",
   );
 
   function ativarSom() {

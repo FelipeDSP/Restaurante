@@ -95,6 +95,8 @@ export default async function DeliveryPage() {
           const lista = pedidos.filter((p) => coluna.status.includes(p.status));
           // Finalizados: mais recentes primeiro.
           if (coluna.titulo === "Finalizados") lista.reverse();
+          // Em preparo: os prontos (esperando o entregador) primeiro.
+          if (coluna.titulo === "Em preparo") lista.sort((x, y) => Number(y.status === "pronto") - Number(x.status === "pronto"));
           return (
             <section key={coluna.titulo} aria-labelledby={`coluna-${coluna.titulo}`} className="flex flex-col gap-3">
               <h2 id={`coluna-${coluna.titulo}`} className="flex items-center justify-between font-semibold">

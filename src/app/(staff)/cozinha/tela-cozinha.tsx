@@ -28,7 +28,8 @@ type Props = {
 
 function titulo(t: Ticket) {
   if (t.pedido.origem === "mesa" && t.pedido.mesa) return `Mesa ${t.pedido.mesa}`;
-  if (t.pedido.origem === "delivery") return "Delivery";
+  // Todo delivery tinha o mesmo título; o número e o nome do cliente diferenciam os tickets.
+  if (t.pedido.origem === "delivery") return `Delivery nº ${t.pedido.numero}${t.pedido.cliente ? ` · ${t.pedido.cliente}` : ""}`;
   return "Balcão";
 }
 
@@ -123,11 +124,10 @@ function CartaoTicket({
         )}
       >
         <div className="min-w-0">
-          <h2 className="text-2xl leading-tight font-bold">{titulo(ticket)}</h2>
+          <h2 className="text-2xl leading-tight font-bold break-words">{titulo(ticket)}</h2>
           <p className="truncate text-sm text-muted-foreground">
-            Nº {ticket.pedido.numero}
-            {ticket.pedido.origem === "delivery" && ticket.pedido.cliente ? ` · ${ticket.pedido.cliente}` : ""}
-            {ticket.pedido.autor ? ` · ${ticket.pedido.autor}` : ""}
+            {ticket.pedido.origem === "delivery" ? "" : `Nº ${ticket.pedido.numero}`}
+            {ticket.pedido.autor ? `${ticket.pedido.origem === "delivery" ? "" : " · "}${ticket.pedido.autor}` : ""}
           </p>
         </div>
         <div className="shrink-0 text-right">
@@ -147,16 +147,17 @@ function CartaoTicket({
         {ticket.itens.map((i) => (
           <li
             key={i.id}
-            className={cn(i.cancelado && "text-muted-foreground line-through", !i.cancelado && i.aguardando.length > 0 && "opacity-60")}
+            className={cn(i.cancelado && "text-muted-foreground line-through")}
           >
             <p className="text-lg leading-snug">
               <span className="font-bold">{i.quantidade}×</span> {i.nome}
               {i.cancelado ? <span className="ml-2 text-xs font-bold text-red-700 no-underline">CANCELADO</span> : null}
               {!i.cancelado && i.paraViagem && !viagemTodo ? <SeloViagem className="ml-2 align-middle" /> : null}
             </p>
-            {i.adicionais.length > 0 ? <p className="text-sm text-muted-foreground">{resumoAdicionais(i.adicionais)}</p> : null}
+            {/* Ponto da carne e adicionais: o erro de preparo mais caro, então bem legível. */}
+            {i.adicionais.length > 0 ? <p className="text-base font-semibold text-foreground sm:text-lg">{resumoAdicionais(i.adicionais)}</p> : null}
             {!i.cancelado && i.aguardando.length > 0 ? (
-              <p className="text-sm font-semibold text-sky-800">Aguardando {i.aguardando.join(" e ")}</p>
+              <p className="text-base font-semibold text-sky-900">Aguardando {i.aguardando.join(" e ")}</p>
             ) : null}
             {!i.cancelado && i.depois.length > 0 ? (
               <p className="text-sm text-muted-foreground">Depois segue para {i.depois.join(" e ")}</p>
