@@ -74,6 +74,9 @@ Na área de staff, o restaurante vem da tabela `membros` do usuário logado. Se 
 - **Pagamento nunca passa do que falta**: o trigger trava a comanda (ou o pedido) com `for update` e recusa valor acima do saldo (dois aparelhos cobrando a mesma mesa). O troco do dinheiro não é pagamento. Estorno exige `motivo_estorno`.
 - **Status do delivery só anda para frente** (`recebido` → `em_preparo` → `pronto` → `saiu_entrega` → `entregue`, pulos para frente permitidos depois do aceite; cancelar a qualquer momento). Ao ficar `pronto`/`saiu_entrega`/`entregue`, os tickets pendentes da cozinha são encerrados.
 - Restaurante novo nasce aberto das 18h às 23h todos os dias (padrão da coluna `horarios`); o primeiro bairro cadastrado liga o delivery.
+- **Sangria e suprimento** em `movimentos_caixa` (ligados à sessão aberta pelo banco; só caixa e dono; não se alteram, erro se corrige com o movimento contrário). Entram no esperado da gaveta e no resumo.
+- **Envio seguro**: `criar_pedido_delivery` e `lancar_itens_comanda` recebem a chave do envio (`pedidos.chave_idempotencia`, uuid gerado no aparelho; reenviar o mesmo conteúdo devolve o pedido já criado) e o total que a pessoa viu (preço mudado é recusado com aviso; a mensagem termina com `(precos_mudaram)` ou `(indisponivel)`, que o app usa para recarregar e não mostra).
+- `pedidos.aceito_em`: hora do aceite do delivery (só o banco define); o cronômetro da cozinha conta a partir dela.
 - **Resumo é por sessão de caixa**, não por dia do calendário (o restaurante pode fechar depois da meia-noite). Datas exibidas no fuso do restaurante (`restaurantes.fuso_horario`, padrão `America/Porto_Velho` para o cliente zero).
 - Número amigável do pedido (`numero`) sequencial por restaurante por sessão de caixa, só para exibição. O ID real é uuid.
 
@@ -185,6 +188,10 @@ Durante o desenvolvimento usamos um projeto Supabase que já contém outro siste
 - Ação destrutiva ou sem volta (excluir, desativar, fechar caixa/comanda, estornar) pede confirmação: `<BotaoConfirmar>` (`src/components/staff/botao-confirmar.tsx`) ou confirmação no lugar com motivo.
 - Cor de texto sobre a cor da marca: `corDeContraste()` (`src/lib/cores.ts`) escolhe preto ou branco pela razão de contraste WCAG. Avisos (toasts) ficam embaixo, acima das barras fixas.
 - Menu do painel: itens em `painel/navegacao.ts` com `grupo` (Operação, Cardápio, Configurações, Conta); barra lateral no computador e "Menu" no celular.
+- Nomes de status (pedido e mesa) só em `src/lib/rotulos.ts`.
+- Garçom: `<AvisoPronto>` (layout) avisa com vibração quando a cozinha termina um pedido das mesas dele; o lançamento guarda rascunho por mesa e tem revisão antes de enviar.
+- Senha: "Esqueci minha senha" (`/recuperar-senha` → e-mail → `/auth/confirmar` → `/nova-senha`). Na Equipe, o dono gera a senha inicial e envia o acesso pelo WhatsApp.
+- Botões crescem para 44 px em telas de toque (`pointer-coarse:min-h-11` nos tamanhos do `button.tsx`); não use `size="sm"` achando que fica pequeno no celular.
 - Site público: dados via `createPublicClient()` (anon, sem cookies), sempre filtrando pelo restaurante resolvido do slug; o restaurante nunca vem de id enviado pelo navegador.
 - Componentes de UI acessíveis e mobile-first; o PWA do garçom deve ser usável com uma mão e botões grandes.
 - Após cada migração: regenerar tipos, rodar os advisors de segurança do Supabase e corrigir alertas de RLS.
