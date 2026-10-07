@@ -623,6 +623,37 @@ begin
   end;
   perform pg_temp.ok(v_status = 'em_preparo>pronto', 'delivery fica pronto só quando todas as praças terminam');
 
+  -- Transições do delivery: não pula o aceite, não volta e encerra os tickets ao adiantar.
+  v_status := null;
+  begin
+    v_json := public.criar_pedido_delivery(a, 'Ana', '69999990000', v_bairro_a, '{"rua": "R", "numero": "1"}', 'pix',
+      jsonb_build_array(jsonb_build_object('produto_id', v_produto_a, 'quantidade', 1),
+                        jsonb_build_object('produto_id', v_produto_a2, 'quantidade', 1)));
+    perform pg_temp.entrar('caixa.brasa@exemplo.com');
+    begin
+      update public.pedidos set status = 'pronto' where id = (v_json ->> 'id')::uuid;
+      v_status := 'pulou o aceite';
+    exception when others then
+      v_status := case when sqlerrm like 'Aceite o pedido%' then 'ok' else sqlerrm end;
+    end;
+    update public.pedidos set status = 'em_preparo' where id = (v_json ->> 'id')::uuid;
+    select v_status || '>' || count(*) into v_status from public.tarefas_producao
+    where pedido_id = (v_json ->> 'id')::uuid and status = 'pendente';
+    update public.pedidos set status = 'saiu_entrega' where id = (v_json ->> 'id')::uuid;
+    select v_status || '>' || count(*) into v_status from public.tarefas_producao
+    where pedido_id = (v_json ->> 'id')::uuid and status = 'pendente';
+    begin
+      update public.pedidos set status = 'em_preparo' where id = (v_json ->> 'id')::uuid;
+      v_status := v_status || '>voltou';
+    exception when others then
+      v_status := v_status || case when sqlerrm like 'O pedido não pode voltar%' then '>ok' else '>' || sqlerrm end;
+    end;
+    raise exception 'desfazer';
+  exception when others then
+    if sqlerrm <> 'desfazer' then v_status := sqlerrm; end if;
+  end;
+  perform pg_temp.ok(v_status = 'ok>2>0>ok', 'delivery não pula o aceite, não volta e encerra os tickets ao sair (' || v_status || ')');
+
   begin
     perform public.criar_pedido_delivery(a, 'Maria', '69999991234', v_bairro_a, '{"rua": "R", "numero": "1"}',
       'pix', jsonb_build_array(jsonb_build_object('produto_id', v_produto_b, 'quantidade', 1)));
@@ -781,6 +812,8 @@ begin
     perform pg_temp.ok(true, 'B não entrega pedido de delivery de A');
   end;
   perform pg_temp.entrar('caixa.brasa@exemplo.com');
+  -- Entregar exige o aceite antes (o status não pula etapas).
+  update public.pedidos set status = 'em_preparo' where restaurante_id = a and origem = 'delivery' and status = 'recebido';
   perform public.entregar_pedido_delivery(p.id, 'dinheiro')
   from public.pedidos p where p.restaurante_id = a and p.origem = 'delivery' and p.status <> 'entregue';
   select count(*) into n from public.pedidos p

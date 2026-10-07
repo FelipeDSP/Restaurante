@@ -30,6 +30,8 @@ export type PedidoDelivery = {
   taxaEntrega: number;
   total: number;
   pago: number;
+  // Praças da cozinha que ainda não marcaram pronto: enquanto houver, quem marca "Pronto" é a cozinha.
+  pracasPendentes: number;
   motivoCancelamento: string | null;
   itens: { id: string; nome: string; quantidade: number; observacao: string | null; adicionais: AdicionalEscolhido[]; total: number }[];
 };
@@ -59,7 +61,8 @@ export function CartaoPedido({ pedido }: { pedido: PedidoDelivery }) {
   const e = pedido.endereco;
   const telefone = pedido.clienteTelefone.replace(/\D/g, "");
   const whatsapp = telefone.length <= 11 ? `55${telefone}` : telefone;
-  const proximo = PROXIMO[pedido.status];
+  const naCozinha = pedido.status === "em_preparo" && pedido.pracasPendentes > 0;
+  const proximo = naCozinha ? undefined : PROXIMO[pedido.status];
 
   return (
     <article
@@ -150,6 +153,11 @@ export function CartaoPedido({ pedido }: { pedido: PedidoDelivery }) {
 
       {ativo && modo === "normal" ? (
         <div className="flex flex-wrap gap-2">
+          {naCozinha ? (
+            <p className="flex h-11 flex-1 items-center text-sm font-medium text-muted-foreground">
+              Na cozinha ({pedido.pracasPendentes} {pedido.pracasPendentes === 1 ? "praça" : "praças"})
+            </p>
+          ) : null}
           {proximo ? (
             <Button
               type="button"

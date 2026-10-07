@@ -35,7 +35,8 @@ export default async function DeliveryPage() {
        observacao, subtotal, taxa_entrega, total, motivo_cancelamento,
        bairro:bairros_entrega!pedidos_restaurante_id_bairro_id_fkey(nome),
        itens_pedido(id, nome_produto, quantidade, observacao, adicionais, total, cancelado_em),
-       pagamentos(valor, estornado_em)`,
+       pagamentos(valor, estornado_em),
+       tarefas_producao(status)`,
     )
     .eq("restaurante_id", acesso.restaurante.id)
     .eq("origem", "delivery")
@@ -64,6 +65,7 @@ export default async function DeliveryPage() {
     taxaEntrega: p.taxa_entrega,
     total: p.total,
     pago: p.pagamentos.filter((pg) => !pg.estornado_em).reduce((soma, pg) => soma + pg.valor, 0),
+    pracasPendentes: p.tarefas_producao.filter((t) => t.status === "pendente").length,
     motivoCancelamento: p.motivo_cancelamento,
     itens: p.itens_pedido
       .filter((i) => !i.cancelado_em)
@@ -79,7 +81,7 @@ export default async function DeliveryPage() {
 
   return (
     <main className="flex flex-col gap-4 p-4 md:p-6">
-      <AtualizarEmTempoReal restauranteId={acesso.restaurante.id} tabelas={["pedidos", "pagamentos"]} />
+      <AtualizarEmTempoReal restauranteId={acesso.restaurante.id} tabelas={["pedidos", "pagamentos", "tarefas_producao"]} />
       <div>
         <h1 className="text-2xl font-semibold">Delivery</h1>
         <p className="text-muted-foreground">
