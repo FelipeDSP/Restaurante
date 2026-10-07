@@ -551,13 +551,13 @@ isOneToOne: false
                   ]
                 },"pedidos": {
                   Row: {
-                    "bairro_id": string | null,"caixa_sessao_id": string,"cancelado_em": string | null,"cancelado_por": string | null,"cliente_nome": string | null,"cliente_telefone": string | null,"comanda_id": string | null,"criado_em": string,"criado_por": string | null,"endereco": Json | null,"forma_pagamento_prevista": string | null,"id": string,"motivo_cancelamento": string | null,"numero": number,"observacao": string | null,"origem": string,"restaurante_id": string,"status": string,"subtotal": number,"taxa_entrega": number,"total": number,"troco_para": number | null
+                    "bairro_id": string | null,"caixa_sessao_id": string,"cancelado_em": string | null,"cancelado_por": string | null,"chave_idempotencia": string | null,"cliente_nome": string | null,"cliente_telefone": string | null,"comanda_id": string | null,"criado_em": string,"criado_por": string | null,"endereco": Json | null,"forma_pagamento_prevista": string | null,"id": string,"motivo_cancelamento": string | null,"numero": number,"observacao": string | null,"origem": string,"restaurante_id": string,"status": string,"subtotal": number,"taxa_entrega": number,"total": number,"troco_para": number | null
                   }
                   Insert: {
-                    "bairro_id"?: string | null,"caixa_sessao_id": string,"cancelado_em"?: string | null,"cancelado_por"?: string | null,"cliente_nome"?: string | null,"cliente_telefone"?: string | null,"comanda_id"?: string | null,"criado_em"?: string,"criado_por"?: string | null,"endereco"?: Json | null,"forma_pagamento_prevista"?: string | null,"id"?: string,"motivo_cancelamento"?: string | null,"numero": number,"observacao"?: string | null,"origem": string,"restaurante_id": string,"status"?: string,"subtotal"?: number,"taxa_entrega"?: number,"total"?: number,"troco_para"?: number | null
+                    "bairro_id"?: string | null,"caixa_sessao_id": string,"cancelado_em"?: string | null,"cancelado_por"?: string | null,"chave_idempotencia"?: string | null,"cliente_nome"?: string | null,"cliente_telefone"?: string | null,"comanda_id"?: string | null,"criado_em"?: string,"criado_por"?: string | null,"endereco"?: Json | null,"forma_pagamento_prevista"?: string | null,"id"?: string,"motivo_cancelamento"?: string | null,"numero": number,"observacao"?: string | null,"origem": string,"restaurante_id": string,"status"?: string,"subtotal"?: number,"taxa_entrega"?: number,"total"?: number,"troco_para"?: number | null
                   }
                   Update: {
-                    "bairro_id"?: string | null,"caixa_sessao_id"?: string,"cancelado_em"?: string | null,"cancelado_por"?: string | null,"cliente_nome"?: string | null,"cliente_telefone"?: string | null,"comanda_id"?: string | null,"criado_em"?: string,"criado_por"?: string | null,"endereco"?: Json | null,"forma_pagamento_prevista"?: string | null,"id"?: string,"motivo_cancelamento"?: string | null,"numero"?: number,"observacao"?: string | null,"origem"?: string,"restaurante_id"?: string,"status"?: string,"subtotal"?: number,"taxa_entrega"?: number,"total"?: number,"troco_para"?: number | null
+                    "bairro_id"?: string | null,"caixa_sessao_id"?: string,"cancelado_em"?: string | null,"cancelado_por"?: string | null,"chave_idempotencia"?: string | null,"cliente_nome"?: string | null,"cliente_telefone"?: string | null,"comanda_id"?: string | null,"criado_em"?: string,"criado_por"?: string | null,"endereco"?: Json | null,"forma_pagamento_prevista"?: string | null,"id"?: string,"motivo_cancelamento"?: string | null,"numero"?: number,"observacao"?: string | null,"origem"?: string,"restaurante_id"?: string,"status"?: string,"subtotal"?: number,"taxa_entrega"?: number,"total"?: number,"troco_para"?: number | null
                   }
                   Relationships: [
                     {
@@ -828,7 +828,7 @@ isOneToOne: false
 { Args: { "p_cor_primaria"?: string,"p_cor_secundaria"?: string,"p_fuso": string,"p_nome": string,"p_nome_dono": string,"p_slug": string,"p_whatsapp"?: string }; Returns: string
                            },
 "criar_pedido_delivery":
-{ Args: { "p_bairro_id": string,"p_cliente_nome": string,"p_cliente_telefone": string,"p_endereco": Json,"p_forma_pagamento": string,"p_itens": Json,"p_observacao"?: string,"p_restaurante_id": string,"p_troco_para"?: number }; Returns: Json
+{ Args: { "p_bairro_id": string,"p_chave"?: string,"p_cliente_nome": string,"p_cliente_telefone": string,"p_endereco": Json,"p_forma_pagamento": string,"p_itens": Json,"p_observacao"?: string,"p_restaurante_id": string,"p_total_esperado"?: number,"p_troco_para"?: number }; Returns: Json
                            },
 "entregar_pedido_delivery":
 { Args: { "p_forma": string,"p_pedido_id": string }; Returns: undefined
@@ -840,7 +840,7 @@ isOneToOne: false
 { Args: { "p_impressora_id": string }; Returns: undefined
                            },
 "lancar_itens_comanda":
-{ Args: { "p_comanda_id": string,"p_itens": Json }; Returns: Json
+{ Args: { "p_comanda_id": string,"p_itens": Json,"p_lote"?: string,"p_total_esperado"?: number }; Returns: Json
                            },
 "reimprimir":
 { Args: { "p_fila_id": string }; Returns: undefined

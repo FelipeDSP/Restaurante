@@ -140,21 +140,29 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
   const alterar = (campo: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm((f) => ({ ...f, [campo]: e.target.value }));
 
+  // Mesmo pedido = mesma chave: tocar "Enviar" de novo depois de uma falha não cria pedido duplicado.
+  const envioAtual = useRef<{ conteudo: string; chave: string } | null>(null);
+
   function enviar(e: React.FormEvent) {
     e.preventDefault();
     setErros({});
+    const dados = {
+      ...form,
+      itens: validos.map((i) => ({
+        produtoId: i.produtoId,
+        quantidade: i.quantidade,
+        observacao: i.observacao,
+        adicionais: i.adicionais.map((a) => a.id),
+      })),
+      totalEsperado: total,
+    };
+    const conteudo = JSON.stringify(dados);
+    if (envioAtual.current?.conteudo !== conteudo) envioAtual.current = { conteudo, chave: crypto.randomUUID() };
+    const chave = envioAtual.current.chave;
     iniciar(async () => {
       let resultado: Awaited<ReturnType<typeof enviarPedido>>;
       try {
-        resultado = await enviarPedido(restaurante.slug, {
-          ...form,
-          itens: validos.map((i) => ({
-            produtoId: i.produtoId,
-            quantidade: i.quantidade,
-            observacao: i.observacao,
-            adicionais: i.adicionais.map((a) => a.id),
-          })),
-        });
+        resultado = await enviarPedido(restaurante.slug, { ...dados, chave });
       } catch {
         toast.error(
           navigator.onLine
@@ -170,7 +178,9 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
         router.push(`/${restaurante.slug}/pedido/${resultado.pedidoId}`);
       } else {
         setErros(resultado.erros ?? {});
-        toast.error(resultado.mensagem);
+        toast.error(resultado.mensagem, { duration: resultado.atualizar ? 10000 : undefined });
+        // Preço mudou ou item esgotou: o cardápio recarrega e o carrinho mostra os valores de agora.
+        if (resultado.atualizar) router.refresh();
       }
     });
   }

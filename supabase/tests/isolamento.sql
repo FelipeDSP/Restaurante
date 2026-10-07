@@ -623,6 +623,32 @@ begin
   end;
   perform pg_temp.ok(v_status = 'em_preparo>pronto', 'delivery fica pronto só quando todas as praças terminam');
 
+  -- Envio repetido devolve o mesmo pedido; total diferente do visto é recusado.
+  v_status := null;
+  begin
+    v_json := public.criar_pedido_delivery(a, 'Rep', '69999990000', v_bairro_a, '{"rua": "R", "numero": "1"}', 'pix',
+      jsonb_build_array(jsonb_build_object('produto_id', v_produto_a2, 'quantidade', 1)), null, null,
+      '11111111-1111-1111-1111-111111111111', 3200 + 500);
+    v_status := (public.criar_pedido_delivery(a, 'Rep', '69999990000', v_bairro_a, '{"rua": "R", "numero": "1"}', 'pix',
+      jsonb_build_array(jsonb_build_object('produto_id', v_produto_a2, 'quantidade', 1)), null, null,
+      '11111111-1111-1111-1111-111111111111', 3200 + 500) ->> 'id' = v_json ->> 'id')::text;
+    perform pg_temp.admin();
+    select v_status || '>' || count(*) into v_status from public.pedidos
+    where chave_idempotencia = '11111111-1111-1111-1111-111111111111';
+    perform pg_temp.anonimo();
+    begin
+      perform public.criar_pedido_delivery(a, 'Rep', '69999990000', v_bairro_a, '{"rua": "R", "numero": "1"}', 'pix',
+        jsonb_build_array(jsonb_build_object('produto_id', v_produto_a2, 'quantidade', 1)), null, null, null, 3000);
+      v_status := v_status || '>aceitou';
+    exception when others then
+      v_status := v_status || case when sqlerrm like '%(precos_mudaram)' then '>ok' else '>' || sqlerrm end;
+    end;
+    raise exception 'desfazer';
+  exception when others then
+    if sqlerrm <> 'desfazer' then v_status := sqlerrm; end if;
+  end;
+  perform pg_temp.ok(v_status = 'true>1>ok', 'delivery: envio repetido não duplica e preço mudado é avisado (' || v_status || ')');
+
   -- Transições do delivery: não pula o aceite, não volta e encerra os tickets ao adiantar.
   v_status := null;
   begin

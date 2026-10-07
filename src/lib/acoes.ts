@@ -56,7 +56,8 @@ export function mensagemErroBanco(erro: PostgrestError): string {
     case "42501":
       return "Você não tem permissão para esta ação.";
     case "P0001":
-      return erro.message;
+      // Marcadores para o app reagir (ex.: "(precos_mudaram)") não aparecem para a pessoa.
+      return erro.message.replace(/\s*\((precos_mudaram|indisponivel)\)$/, "");
     default:
       return "Não foi possível salvar. Tente novamente.";
   }

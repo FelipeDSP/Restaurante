@@ -2,7 +2,7 @@
 
 import { ListPlus, MessageSquarePlus, Minus, Plus, Search, Send, ShoppingBag, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import { EscolherOpcoes } from "@/components/adicionais/escolher-opcoes";
 import { useAcao } from "@/components/staff/acoes-cliente";
@@ -276,6 +276,9 @@ export function LancarItens({
     });
   }
 
+  // Mesmo conteúdo = mesmo lote: reenviar depois de uma falha de rede não lança em dobro.
+  const envioAtual = useRef<{ conteudo: string; lote: string } | null>(null);
+
   function enviar() {
     const itens = selecionadas.map(([, l]) => ({
       produtoId: l.produtoId,
@@ -284,8 +287,16 @@ export function LancarItens({
       adicionais: l.adicionais.map((a) => a.id),
       paraViagem: l.paraViagem,
     }));
+    const conteudo = JSON.stringify([comandaId, itens]);
+    if (envioAtual.current?.conteudo !== conteudo) envioAtual.current = { conteudo, lote: crypto.randomUUID() };
+    const lote = envioAtual.current.lote;
     executar(
-      () => lancarItens(comandaId, itens),
+      async () => {
+        const resultado = await lancarItens(comandaId, itens, { lote, totalEsperado: totalValor });
+        // Preço ou disponibilidade mudou: recarrega o cardápio com os valores de agora.
+        if (!resultado?.ok) router.refresh();
+        return resultado;
+      },
       () => {
         limparLinhas();
         router.push(destino);

@@ -11,7 +11,8 @@ import { buscarRestaurantePorSlug, MENSAGEM_FECHADO } from "../dados";
 
 export type ResultadoPedido =
   | { ok: true; pedidoId: string }
-  | { ok: false; mensagem: string; erros?: Record<string, string> };
+  // atualizar: preço ou disponibilidade mudou; a tela recarrega o cardápio para o cliente conferir.
+  | { ok: false; mensagem: string; erros?: Record<string, string>; atualizar?: boolean };
 
 const pedidoSchema = z.object({
   itens: z
@@ -38,6 +39,10 @@ const pedidoSchema = z.object({
   forma: z.enum(["dinheiro", "pix", "credito", "debito"], { error: "Escolha a forma de pagamento." }),
   trocoPara: z.string().trim().max(20),
   observacao: z.string().trim().max(500),
+  // Id do envio (gerado no aparelho): reenviar depois de uma falha devolve o mesmo pedido.
+  chave: id,
+  // Total que o cliente viu; se mudou, o pedido é recusado com aviso.
+  totalEsperado: z.number().int().min(0),
 });
 
 export type DadosPedido = z.input<typeof pedidoSchema>;
@@ -103,13 +108,17 @@ export async function enviarPedido(slug: string, entrada: DadosPedido): Promise<
     })),
     p_troco_para: trocoPara ?? undefined,
     p_observacao: d.observacao || undefined,
+    p_chave: d.chave,
+    p_total_esperado: d.totalEsperado,
   });
 
   if (error) {
     if (error.code !== "P0001") return { ok: false, mensagem: "Não foi possível enviar o pedido. Tente novamente." };
     // "Restaurante não está recebendo pedidos agora (fora_do_horario)." -> mensagem amigável
     const motivo = MOTIVOS.find((m) => error.message.includes(`(${m})`));
-    return { ok: false, mensagem: motivo ? MENSAGEM_FECHADO[motivo] : error.message };
+    if (motivo) return { ok: false, mensagem: MENSAGEM_FECHADO[motivo] };
+    const atualizar = /\((precos_mudaram|indisponivel)\)$/.test(error.message);
+    return { ok: false, mensagem: error.message.replace(/\s*\((precos_mudaram|indisponivel)\)$/, ""), atualizar };
   }
 
   const pedidoId = (data as { id?: string } | null)?.id;

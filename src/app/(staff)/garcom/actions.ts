@@ -48,9 +48,14 @@ const itensSchema = z
 export async function lancarItens(
   comandaId: string,
   itens: { produtoId: string; quantidade: number; observacao: string | null; adicionais: string[]; paraViagem: boolean }[],
+  // lote: id do envio (toque duplo ou resposta perdida não lança em dobro);
+  // totalEsperado: o total mostrado na tela (preço que mudou é avisado, não cobrado em silêncio).
+  envio?: { lote: string; totalEsperado: number },
 ): Promise<ResultadoAcao> {
   await exigirAcesso("garcom");
   if (!id.safeParse(comandaId).success) return falha("Comanda inválida.");
+  const envioOk = z.object({ lote: id, totalEsperado: z.number().int().min(0) }).optional().safeParse(envio);
+  if (!envioOk.success) return falha("Dados inválidos.");
   const dados = itensSchema.safeParse(itens);
   if (!dados.success) return falha(dados.error.issues[0]?.message ?? "Itens inválidos.");
 
@@ -64,6 +69,8 @@ export async function lancarItens(
       adicionais: i.adicionais,
       para_viagem: i.paraViagem,
     })),
+    p_lote: envioOk.data?.lote,
+    p_total_esperado: envioOk.data?.totalEsperado,
   });
   if (error) return falha(mensagemErroBanco(error));
 
