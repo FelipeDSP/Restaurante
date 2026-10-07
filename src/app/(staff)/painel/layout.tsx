@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { AlertaPedidos } from "@/components/staff/alerta-pedidos";
+import { FaixaConexao } from "@/components/staff/faixa-conexao";
 import { MarcaRestaurante } from "@/components/staff/marca-restaurante";
 import { MenuUsuario } from "@/components/staff/menu-usuario";
 import { carregarAssinatura } from "@/lib/assinatura";
@@ -89,6 +90,7 @@ export default async function PainelLayout({ children }: LayoutProps<"/painel">)
             <ItemMenu key={item.href} href={item.href} rotulo={item.rotulo} contador={contador(item.href)} />
           ))}
         </nav>
+        <FaixaConexao />
       </header>
       <AvisoAssinatura assinatura={assinatura} />
       <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col">{children}</div>

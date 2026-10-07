@@ -17,7 +17,8 @@ export function AtualizarEmTempoReal({ restauranteId, tabelas }: { restauranteId
     agendado.current = setTimeout(() => router.refresh(), 300);
   };
 
-  useMudancasRealtime(restauranteId, tabelas, atualizar);
+  // Ao reconectar depois de uma queda, os eventos do intervalo se perderam: recarrega tudo.
+  useMudancasRealtime(restauranteId, tabelas, atualizar, "*", () => router.refresh());
 
   useEffect(() => {
     // Celular bloqueado perde eventos: ao voltar para o app, recarrega.

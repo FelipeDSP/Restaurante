@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { FaixaConexao } from "@/components/staff/faixa-conexao";
 import { MarcaRestaurante } from "@/components/staff/marca-restaurante";
 import { MenuUsuario } from "@/components/staff/menu-usuario";
 import { exigirAcesso } from "@/lib/auth/dal";
@@ -31,6 +32,7 @@ export default async function CozinhaLayout({ children }: LayoutProps<"/cozinha"
             outraArea={podeAcessar(acesso.papel, "painel") ? { href: "/painel", rotulo: "Abrir painel" } : undefined}
           />
         </div>
+        <FaixaConexao />
       </header>
       <div className="flex w-full flex-1 flex-col">{children}</div>
     </div>

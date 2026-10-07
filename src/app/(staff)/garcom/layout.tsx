@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 
+import { FaixaConexao } from "@/components/staff/faixa-conexao";
 import { MarcaRestaurante } from "@/components/staff/marca-restaurante";
 import { MenuUsuario } from "@/components/staff/menu-usuario";
 import { exigirAcesso } from "@/lib/auth/dal";
@@ -48,6 +49,7 @@ export default async function GarcomLayout({ children }: LayoutProps<"/garcom">)
             }
           />
         </div>
+        <FaixaConexao />
       </header>
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col">{children}</div>
     </div>
