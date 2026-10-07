@@ -1,3 +1,4 @@
+import { urlIcone } from "@/lib/icone";
 import { buscarRestaurantePublico } from "@/lib/supabase/publico";
 import { id } from "@/lib/validacao";
 
@@ -12,7 +13,8 @@ export async function GET(_request: Request, ctx: RouteContext<"/pwa/[restaurant
     return new Response("Não encontrado", { status: 404 });
   }
 
-  const icone = (tamanho: number) => `/pwa/${restauranteId}/icone/${tamanho}`;
+  const marca = { id: restaurante.id, nome: restaurante.nome, corPrimaria: restaurante.cor_primaria, logoUrl: restaurante.logo_url };
+  const icone = (tamanho: 192 | 512) => urlIcone(marca, tamanho);
   const manifest = {
     id: `/garcom?r=${restauranteId}`,
     name: restaurante.nome,

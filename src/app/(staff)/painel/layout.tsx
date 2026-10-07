@@ -8,6 +8,7 @@ import { carregarAssinatura } from "@/lib/assinatura";
 import { exigirAcesso } from "@/lib/auth/dal";
 import { NOME_PAPEL } from "@/lib/auth/papeis";
 import { estiloMarca } from "@/lib/cores";
+import { urlIcone } from "@/lib/icone";
 import { createClient } from "@/lib/supabase/server";
 
 import { AvisoAssinatura } from "./aviso-assinatura";
@@ -15,7 +16,10 @@ import { NAVEGACAO } from "./navegacao";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { restaurante } = await exigirAcesso("painel");
-  return { title: { template: `%s · ${restaurante.nome}`, default: restaurante.nome } };
+  return {
+    title: { template: `%s · ${restaurante.nome}`, default: restaurante.nome },
+    icons: { icon: urlIcone(restaurante, 192), apple: urlIcone(restaurante, 180) },
+  };
 }
 
 // Pedidos de delivery aguardando aceite (contador no menu).

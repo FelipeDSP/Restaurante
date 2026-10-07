@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import sharp from "sharp";
 
 import { corDeContraste } from "@/lib/cores";
 import { buscarRestaurantePublico } from "@/lib/supabase/publico";
@@ -6,9 +7,24 @@ import { id } from "@/lib/validacao";
 
 const TAMANHOS = new Set([180, 192, 512]);
 
+// O desenho do ImageResponse não lê WebP (formato dos uploads): converte o logo para PNG.
+async function logoEmPng(url: string, lado: number): Promise<string | null> {
+  try {
+    const resposta = await fetch(url);
+    if (!resposta.ok) return null;
+    const png = await sharp(Buffer.from(await resposta.arrayBuffer()))
+      .resize(lado, lado, { fit: "contain", background: { r: 255, g: 255, b: 255, alpha: 0 } })
+      .png()
+      .toBuffer();
+    return `data:image/png;base64,${png.toString("base64")}`;
+  } catch {
+    return null;
+  }
+}
+
 // Ícone do PWA: logo do restaurante (se houver) ou a inicial sobre a cor da marca.
 // Margem de ~20% para servir também como ícone "maskable" (Android recorta em círculo).
-export async function GET(_request: Request, ctx: RouteContext<"/pwa/[restauranteId]/icone/[tamanho]">) {
+export async function GET(request: Request, ctx: RouteContext<"/pwa/[restauranteId]/icone/[tamanho]">) {
   const { restauranteId, tamanho: tamanhoTexto } = await ctx.params;
   const tamanho = Number(tamanhoTexto);
   if (!id.safeParse(restauranteId).success || !TAMANHOS.has(tamanho)) {
@@ -21,6 +37,8 @@ export async function GET(_request: Request, ctx: RouteContext<"/pwa/[restaurant
   }
 
   const conteudo = Math.round(tamanho * 0.6);
+  // Logo que não abre: cai na inicial em vez de um quadrado vazio.
+  const logo = restaurante.logo_url ? await logoEmPng(restaurante.logo_url, conteudo * 2) : null;
   return new ImageResponse(
     (
       <div
@@ -33,10 +51,10 @@ export async function GET(_request: Request, ctx: RouteContext<"/pwa/[restaurant
           background: restaurante.cor_primaria,
         }}
       >
-        {restaurante.logo_url ? (
+        {logo ? (
           // eslint-disable-next-line @next/next/no-img-element -- renderizado pelo ImageResponse
           <img
-            src={restaurante.logo_url}
+            src={logo}
             alt=""
             width={conteudo}
             height={conteudo}
@@ -59,7 +77,10 @@ export async function GET(_request: Request, ctx: RouteContext<"/pwa/[restaurant
     {
       width: tamanho,
       height: tamanho,
-      headers: { "Cache-Control": "public, max-age=3600" },
+      // Com a versão da marca no endereço (?v=), o ícone pode ficar em cache por muito tempo.
+      headers: {
+        "Cache-Control": new URL(request.url).searchParams.has("v") ? "public, max-age=604800, immutable" : "public, max-age=3600",
+      },
     },
   );
 }

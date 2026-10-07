@@ -5,6 +5,7 @@ import { MenuUsuario } from "@/components/staff/menu-usuario";
 import { exigirAcesso } from "@/lib/auth/dal";
 import { NOME_PAPEL, podeAcessar } from "@/lib/auth/papeis";
 import { estiloMarca } from "@/lib/cores";
+import { urlIcone } from "@/lib/icone";
 
 // PWA com a marca do restaurante: manifest e ícones em rotas públicas por restaurante.
 export async function generateMetadata(): Promise<Metadata> {
@@ -13,10 +14,10 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: { template: `%s · ${restaurante.nome}`, default: restaurante.nome },
     applicationName: restaurante.nome,
-    manifest: `${base}/manifest`,
+    manifest: `${base}/manifest?v=${urlIcone(restaurante, 192).split("v=")[1]}`,
     icons: {
-      icon: [{ url: `${base}/icone/192`, sizes: "192x192", type: "image/png" }],
-      apple: [{ url: `${base}/icone/180`, sizes: "180x180", type: "image/png" }],
+      icon: [{ url: urlIcone(restaurante, 192), sizes: "192x192", type: "image/png" }],
+      apple: [{ url: urlIcone(restaurante, 180), sizes: "180x180", type: "image/png" }],
     },
     appleWebApp: { capable: true, title: restaurante.nome, statusBarStyle: "default" },
   };

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { estiloMarca } from "@/lib/cores";
+import { urlIcone } from "@/lib/icone";
 
 import { IconeCarrinho } from "./componentes-carrinho";
 import { buscarRestaurantePorSlug } from "./dados";
@@ -14,7 +15,7 @@ export async function generateMetadata(props: LayoutProps<"/[slug]">): Promise<M
   return {
     title: { template: `%s · ${restaurante.nome}`, default: `${restaurante.nome} · Cardápio e delivery` },
     description: `Peça online no ${restaurante.nome}.`,
-    icons: { icon: `/pwa/${restaurante.id}/icone/192` },
+    icons: { icon: urlIcone(restaurante, 192), apple: urlIcone(restaurante, 180) },
   };
 }
 
