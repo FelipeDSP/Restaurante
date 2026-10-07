@@ -105,13 +105,14 @@ function LinhaProduto({
       <div className="flex flex-wrap items-center gap-1">
         <Alternador
           ligado={produto.disponivel}
-          rotulo="Salão"
+          // Desligar tira do salão e do delivery (esgotou); "Delivery" só tira do site.
+          rotulo="Disponível"
           desabilitado={pendente}
           aoAlternar={() => executar(() => alternarDisponibilidade(produto.id, "disponivel", !produto.disponivel))}
         />
         <Alternador
           ligado={produto.disponivel_delivery}
-          rotulo="Delivery"
+          rotulo="No delivery"
           desabilitado={pendente}
           aoAlternar={() =>
             executar(() => alternarDisponibilidade(produto.id, "disponivel_delivery", !produto.disponivel_delivery))

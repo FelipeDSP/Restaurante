@@ -119,7 +119,7 @@ export function FormProduto({
               defaultChecked={marcadoCampo(estado, "disponivel", produto?.disponivel ?? true)}
               className="size-5 accent-[var(--cor-primaria)]"
             />
-            Disponível (salão)
+            Disponível (desmarque quando esgotar: some do salão e do delivery)
           </label>
           <label className="flex items-center gap-3 text-sm font-medium">
             <input
@@ -128,7 +128,7 @@ export function FormProduto({
               defaultChecked={marcadoCampo(estado, "disponivel_delivery", produto?.disponivel_delivery ?? true)}
               className="size-5 accent-[var(--cor-primaria)]"
             />
-            Aparece no delivery
+            Também vende no delivery
           </label>
         </CardContent>
       </Card>

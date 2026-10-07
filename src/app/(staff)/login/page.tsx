@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,12 +26,6 @@ export default async function LoginPage(props: PageProps<"/login">) {
             </p>
           ) : null}
           <FormLogin next={typeof next === "string" ? next : undefined} />
-          <p className="text-center text-sm text-muted-foreground">
-            Quer usar no seu restaurante?{" "}
-            <Link href="/cadastro" className="font-medium text-foreground underline underline-offset-4">
-              Criar conta
-            </Link>
-          </p>
         </CardContent>
       </Card>
     </main>

@@ -16,7 +16,7 @@ export function Hero() {
           backgroundPosition: "0 0, 11px 7px",
         }}
       />
-      <div className="relative mx-auto grid max-w-6xl items-center gap-14 px-5 pt-14 pb-20 md:pt-20 lg:grid-cols-[1.15fr_1fr] lg:pb-28">
+      <div className="relative mx-auto grid max-w-6xl grid-cols-1 items-center gap-14 px-5 pt-14 pb-20 md:pt-20 lg:grid-cols-[1.15fr_1fr] lg:pb-28">
         <div className="flex flex-col items-start gap-7">
           <p className="inline-flex items-center gap-2 rounded-full border border-uau-borda bg-uau-papel px-4 py-1.5 text-sm font-bold text-uau-marrom-claro">
             <span className="size-2 rounded-full bg-uau-laranja" aria-hidden />
@@ -24,7 +24,7 @@ export function Hero() {
           </p>
           <h1 className="text-[2.75rem] leading-[1.02] font-black tracking-[-0.02em] text-balance sm:text-6xl lg:text-[4.25rem]">
             Da mesa ao caixa,{" "}
-            <span className="relative inline-block pl-[0.95em] whitespace-nowrap">
+            <span className="relative inline-block pl-[0.95em] sm:whitespace-nowrap">
               <LinhasVelocidade className="absolute top-1/2 left-[0.05em] h-[0.42em] w-[0.72em] -translate-y-1/2" animar />
               sem papel
             </span>{" "}
