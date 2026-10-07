@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { id as idSchema } from "@/lib/validacao";
 
 import { FormProduto } from "../form-produto";
+import { carregarGruposParaProduto } from "../grupos";
 
 export const metadata: Metadata = { title: "Editar produto" };
 
@@ -15,7 +16,7 @@ export default async function EditarProdutoPage(props: PageProps<"/painel/produt
   if (!idSchema.safeParse(id).success) notFound();
 
   const supabase = await createClient();
-  const [produto, categorias] = await Promise.all([
+  const [produto, categorias, grupos, ligacoes] = await Promise.all([
     supabase
       .from("produtos")
       .select("id, nome, descricao, preco, categoria_id, foto_url, disponivel, disponivel_delivery")
@@ -23,7 +24,14 @@ export default async function EditarProdutoPage(props: PageProps<"/painel/produt
       .eq("restaurante_id", acesso.restaurante.id)
       .maybeSingle(),
     supabase.from("categorias").select("id, nome").eq("restaurante_id", acesso.restaurante.id).order("ordem"),
+    carregarGruposParaProduto(supabase, acesso.restaurante.id),
+    supabase
+      .from("produtos_grupos_adicionais")
+      .select("grupo_id")
+      .eq("restaurante_id", acesso.restaurante.id)
+      .eq("produto_id", id),
   ]);
+  if (ligacoes.error) throw new Error(ligacoes.error.message);
   if (produto.error) throw new Error(produto.error.message);
   if (categorias.error) throw new Error(categorias.error.message);
   if (!produto.data) notFound();
@@ -31,7 +39,13 @@ export default async function EditarProdutoPage(props: PageProps<"/painel/produt
   return (
     <main className="flex flex-col gap-6 p-4 md:p-6">
       <h1 className="text-2xl font-semibold">Editar produto</h1>
-      <FormProduto restauranteId={acesso.restaurante.id} categorias={categorias.data} produto={produto.data} />
+      <FormProduto
+        restauranteId={acesso.restaurante.id}
+        categorias={categorias.data}
+        produto={produto.data}
+        grupos={grupos}
+        gruposDoProduto={ligacoes.data.map((l) => l.grupo_id)}
+      />
     </main>
   );
 }

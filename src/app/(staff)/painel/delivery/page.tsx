@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { AtualizarEmTempoReal } from "@/components/staff/atualizar-em-tempo-real";
+import { lerAdicionais } from "@/lib/adicionais";
 import { exigirAcesso } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { horaLocal, tempoDesde } from "@/lib/tempo";
@@ -33,7 +34,7 @@ export default async function DeliveryPage() {
       `id, numero, status, criado_em, cliente_nome, cliente_telefone, endereco, forma_pagamento_prevista, troco_para,
        observacao, subtotal, taxa_entrega, total, motivo_cancelamento,
        bairro:bairros_entrega!pedidos_restaurante_id_bairro_id_fkey(nome),
-       itens_pedido(id, nome_produto, quantidade, observacao, total, cancelado_em),
+       itens_pedido(id, nome_produto, quantidade, observacao, adicionais, total, cancelado_em),
        pagamentos(valor, estornado_em)`,
     )
     .eq("restaurante_id", acesso.restaurante.id)
@@ -66,7 +67,14 @@ export default async function DeliveryPage() {
     motivoCancelamento: p.motivo_cancelamento,
     itens: p.itens_pedido
       .filter((i) => !i.cancelado_em)
-      .map((i) => ({ id: i.id, nome: i.nome_produto, quantidade: i.quantidade, observacao: i.observacao, total: i.total })),
+      .map((i) => ({
+        id: i.id,
+        nome: i.nome_produto,
+        quantidade: i.quantidade,
+        observacao: i.observacao,
+        adicionais: lerAdicionais(i.adicionais),
+        total: i.total,
+      })),
   }));
 
   return (

@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useAcao } from "@/components/staff/acoes-cliente";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { type AdicionalEscolhido, resumoAdicionais } from "@/lib/adicionais";
 import { formatarBRL } from "@/lib/dinheiro";
 import { FORMAS_PAGAMENTO, nomeForma } from "@/lib/rotulos";
 import { cn } from "@/lib/utils";
@@ -30,7 +31,7 @@ export type PedidoDelivery = {
   total: number;
   pago: number;
   motivoCancelamento: string | null;
-  itens: { id: string; nome: string; quantidade: number; observacao: string | null; total: number }[];
+  itens: { id: string; nome: string; quantidade: number; observacao: string | null; adicionais: AdicionalEscolhido[]; total: number }[];
 };
 
 const PROXIMO: Partial<Record<PedidoDelivery["status"], { status: string; rotulo: string }>> = {
@@ -112,6 +113,9 @@ export function CartaoPedido({ pedido }: { pedido: PedidoDelivery }) {
           <li key={item.id} className="flex justify-between gap-2">
             <span>
               <strong>{item.quantidade}×</strong> {item.nome}
+              {item.adicionais.length > 0 ? (
+                <span className="block text-xs text-muted-foreground">{resumoAdicionais(item.adicionais)}</span>
+              ) : null}
               {item.observacao ? <span className="block text-xs text-amber-700">→ {item.observacao}</span> : null}
             </span>
             <span className="tabular-nums text-muted-foreground">{formatarBRL(item.total)}</span>

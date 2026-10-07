@@ -4,17 +4,20 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/types/database";
 
-type TabelaOrdenavel = "categorias" | "produtos" | "mesas";
+type TabelaOrdenavel = "categorias" | "produtos" | "mesas" | "grupos_adicionais" | "adicionais";
+
+// Subgrupo ordenado dentro do restaurante: produtos por categoria, opções por grupo.
+type Escopo = { coluna: "categoria_id" | "grupo_id"; valor: string };
 
 // Move um item uma posição para cima/baixo e renumera a ordem (1..n) do grupo.
-// O grupo são os registros do restaurante (e, em produtos, da mesma categoria).
+// O grupo são os registros do restaurante (e, em produtos/opções, da mesma categoria/grupo).
 export async function moverItem(
   supabase: SupabaseClient<Database>,
   tabela: TabelaOrdenavel,
   restauranteId: string,
   id: string,
   direcao: "cima" | "baixo",
-  categoriaId?: string,
+  escopo?: Escopo,
 ): Promise<string | null> {
   let consulta = supabase
     .from(tabela)
@@ -22,8 +25,8 @@ export async function moverItem(
     .eq("restaurante_id", restauranteId)
     .order("ordem")
     .order("id");
-  // `filter` porque categoria_id só existe em produtos (o tipo da união não o conhece).
-  if (categoriaId) consulta = consulta.filter("categoria_id", "eq", categoriaId);
+  // `filter` porque a coluna do escopo não existe em todas as tabelas (o tipo da união não a conhece).
+  if (escopo) consulta = consulta.filter(escopo.coluna, "eq", escopo.valor);
 
   const { data, error } = await consulta;
   if (error) return error.message;
@@ -55,7 +58,7 @@ export async function proximaOrdem(
   supabase: SupabaseClient<Database>,
   tabela: TabelaOrdenavel,
   restauranteId: string,
-  categoriaId?: string,
+  escopo?: Escopo,
 ): Promise<number> {
   let consulta = supabase
     .from(tabela)
@@ -63,8 +66,8 @@ export async function proximaOrdem(
     .eq("restaurante_id", restauranteId)
     .order("ordem", { ascending: false })
     .limit(1);
-  // `filter` porque categoria_id só existe em produtos (o tipo da união não o conhece).
-  if (categoriaId) consulta = consulta.filter("categoria_id", "eq", categoriaId);
+  // `filter` porque a coluna do escopo não existe em todas as tabelas (o tipo da união não a conhece).
+  if (escopo) consulta = consulta.filter(escopo.coluna, "eq", escopo.valor);
   const { data } = await consulta;
   return (data?.[0]?.ordem ?? 0) + 1;
 }

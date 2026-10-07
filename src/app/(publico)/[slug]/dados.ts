@@ -2,6 +2,8 @@ import "server-only";
 
 import { cache } from "react";
 
+import type { AdicionalEscolhido, GrupoAdicionais } from "@/lib/adicionais";
+import { carregarAdicionaisPorProduto } from "@/lib/adicionais-dados";
 import { lerHorarios } from "@/lib/horarios";
 import { createPublicClient } from "@/lib/supabase/publico";
 
@@ -63,6 +65,7 @@ export type ProdutoPublico = {
   descricao: string | null;
   preco: number;
   fotoUrl: string | null;
+  grupos: GrupoAdicionais[];
 };
 
 export type CategoriaPublica = { id: string; nome: string; produtos: ProdutoPublico[] };
@@ -70,6 +73,7 @@ export type CategoriaPublica = { id: string; nome: string; produtos: ProdutoPubl
 // Cardápio do delivery: a RLS de anon já limita a produtos disponíveis no delivery.
 export async function carregarCardapioDelivery(restauranteId: string): Promise<CategoriaPublica[]> {
   const supabase = createPublicClient();
+  const adicionais = carregarAdicionaisPorProduto(supabase, restauranteId);
   const { data, error } = await supabase
     .from("categorias")
     .select("id, nome, produtos(id, nome, descricao, preco, foto_url, ordem)")
@@ -79,6 +83,7 @@ export async function carregarCardapioDelivery(restauranteId: string): Promise<C
     .order("ordem", { referencedTable: "produtos" })
     .order("nome", { referencedTable: "produtos" });
   if (error) throw new Error(error.message);
+  const gruposPorProduto = await adicionais;
 
   return data
     .map((c) => ({
@@ -90,6 +95,7 @@ export async function carregarCardapioDelivery(restauranteId: string): Promise<C
         descricao: p.descricao,
         preco: p.preco,
         fotoUrl: p.foto_url,
+        grupos: gruposPorProduto.get(p.id) ?? [],
       })),
     }))
     .filter((c) => c.produtos.length > 0);
@@ -137,7 +143,15 @@ export type PedidoPublico = {
   total: number;
   forma_pagamento_prevista: string | null;
   tempo_estimado_entrega_min: number | null;
-  itens: { nome_produto: string; quantidade: number; preco_unitario: number; total: number; observacao: string | null }[];
+  itens: {
+    nome_produto: string;
+    quantidade: number;
+    preco_unitario: number;
+    preco_adicionais: number;
+    adicionais: Omit<AdicionalEscolhido, "id">[];
+    total: number;
+    observacao: string | null;
+  }[];
 };
 
 export async function consultarPedido(pedidoId: string): Promise<PedidoPublico | null> {

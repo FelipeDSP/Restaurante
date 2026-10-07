@@ -2,21 +2,51 @@
 
 import { Minus, Plus, ShoppingBag } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
+import { toast } from "sonner";
 
+import { EscolherOpcoes, type ProdutoComOpcoes } from "@/components/adicionais/escolher-opcoes";
 import { Button } from "@/components/ui/button";
+import { chaveDaEscolha } from "@/lib/adicionais";
 import { formatarBRL } from "@/lib/dinheiro";
 
 import { useCarrinho } from "./carrinho-store";
 
-export function AdicionarProduto({
-  restauranteId,
-  produto,
-}: {
-  restauranteId: string;
-  produto: { id: string; nome: string; preco: number };
-}) {
-  const { itens, definir } = useCarrinho(restauranteId);
-  const quantidade = itens.find((i) => i.produtoId === produto.id)?.quantidade ?? 0;
+export function AdicionarProduto({ restauranteId, produto }: { restauranteId: string; produto: ProdutoComOpcoes }) {
+  const { itens, adicionar, alterarQuantidade } = useCarrinho(restauranteId);
+  const [escolhendo, setEscolhendo] = useState(false);
+
+  // Produto com opções: abre a escolha; cada combinação vira uma linha no carrinho.
+  if (produto.grupos.length > 0) {
+    const noCarrinho = itens.filter((i) => i.produtoId === produto.id).reduce((soma, i) => soma + i.quantidade, 0);
+    return (
+      <>
+        <Button
+          type="button"
+          size="sm"
+          className="h-10 rounded-full px-4"
+          onClick={() => setEscolhendo(true)}
+          aria-label={`Escolher opções de ${produto.nome}`}
+        >
+          <Plus />
+          {noCarrinho > 0 ? `Mais um (${noCarrinho})` : "Adicionar"}
+        </Button>
+        <EscolherOpcoes
+          produto={escolhendo ? produto : null}
+          aoFechar={() => setEscolhendo(false)}
+          aoConfirmar={(escolha) => {
+            adicionar(produto, escolha);
+            setEscolhendo(false);
+            toast.success(`${produto.nome} no carrinho.`);
+          }}
+          rotuloConfirmar="Adicionar ao carrinho"
+        />
+      </>
+    );
+  }
+
+  const linha = chaveDaEscolha(produto.id, []);
+  const quantidade = itens.find((i) => i.chave === linha)?.quantidade ?? 0;
 
   if (quantidade === 0) {
     return (
@@ -24,7 +54,7 @@ export function AdicionarProduto({
         type="button"
         size="sm"
         className="h-10 rounded-full px-4"
-        onClick={() => definir(produto, 1)}
+        onClick={() => adicionar(produto)}
         aria-label={`Adicionar ${produto.nome} ao carrinho`}
       >
         <Plus />
@@ -41,7 +71,7 @@ export function AdicionarProduto({
         size="icon"
         className="size-9 rounded-full"
         aria-label={`Remover um ${produto.nome}`}
-        onClick={() => definir(produto, quantidade - 1)}
+        onClick={() => alterarQuantidade(linha, quantidade - 1)}
       >
         <Minus />
       </Button>
@@ -53,7 +83,7 @@ export function AdicionarProduto({
         size="icon"
         className="size-9 rounded-full"
         aria-label={`Adicionar mais um ${produto.nome}`}
-        onClick={() => definir(produto, quantidade + 1)}
+        onClick={() => alterarQuantidade(linha, quantidade + 1)}
       >
         <Plus />
       </Button>

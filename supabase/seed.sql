@@ -135,6 +135,51 @@ from (values
 on conflict (id) do nothing;
 
 -- ---------------------------------------------------------------------------
+-- Adicionais e opções (só em produtos que os testes não usam)
+-- ---------------------------------------------------------------------------
+
+insert into public.grupos_adicionais (id, restaurante_id, nome, minimo, maximo, ordem)
+select md5(slug || '/grupo/' || nome)::uuid, md5(slug)::uuid, nome, minimo, maximo, ordem
+from (values
+  ('brasa-espetinhos', 'Ponto da carne', 1, 1, 1), ('brasa-espetinhos', 'Turbine seu burger', 0, 3, 2),
+  ('burger-do-ze', 'Ponto da carne', 1, 1, 1), ('burger-do-ze', 'Adicionais', 0, 4, 2),
+  ('burger-do-ze', 'Sabor', 1, 1, 3)
+) as g (slug, nome, minimo, maximo, ordem)
+on conflict (id) do nothing;
+
+insert into public.adicionais (restaurante_id, grupo_id, nome, preco, ordem)
+select md5(slug)::uuid, md5(slug || '/grupo/' || grupo)::uuid, nome, preco, ordem
+from (values
+  ('brasa-espetinhos', 'Ponto da carne', 'Mal passado', 0, 1),
+  ('brasa-espetinhos', 'Ponto da carne', 'Ao ponto', 0, 2),
+  ('brasa-espetinhos', 'Ponto da carne', 'Bem passado', 0, 3),
+  ('brasa-espetinhos', 'Turbine seu burger', 'Bacon extra', 500, 1),
+  ('brasa-espetinhos', 'Turbine seu burger', 'Cheddar extra', 400, 2),
+  ('brasa-espetinhos', 'Turbine seu burger', 'Ovo', 300, 3),
+  ('burger-do-ze', 'Ponto da carne', 'Ao ponto', 0, 1),
+  ('burger-do-ze', 'Ponto da carne', 'Bem passado', 0, 2),
+  ('burger-do-ze', 'Adicionais', 'Bacon', 400, 1),
+  ('burger-do-ze', 'Adicionais', 'Cheddar', 300, 2),
+  ('burger-do-ze', 'Adicionais', 'Cebola caramelizada', 300, 3),
+  ('burger-do-ze', 'Adicionais', 'Carne extra', 1200, 4),
+  ('burger-do-ze', 'Sabor', 'Chocolate', 0, 1),
+  ('burger-do-ze', 'Sabor', 'Morango', 0, 2),
+  ('burger-do-ze', 'Sabor', 'Ovomaltine', 300, 3)
+) as a (slug, grupo, nome, preco, ordem)
+where not exists (select 1 from public.adicionais x where x.grupo_id = md5(slug || '/grupo/' || grupo)::uuid and x.nome = a.nome);
+
+insert into public.produtos_grupos_adicionais (restaurante_id, produto_id, grupo_id)
+select md5(slug)::uuid, md5(slug || '/' || produto)::uuid, md5(slug || '/grupo/' || grupo)::uuid
+from (values
+  ('brasa-espetinhos', 'Burgers/Burger bacon', 'Ponto da carne'),
+  ('brasa-espetinhos', 'Burgers/Burger bacon', 'Turbine seu burger'),
+  ('burger-do-ze', 'Burgers/Zé Duplo', 'Ponto da carne'),
+  ('burger-do-ze', 'Burgers/Zé Duplo', 'Adicionais'),
+  ('burger-do-ze', 'Bebidas/Milkshake', 'Sabor')
+) as l (slug, produto, grupo)
+on conflict (restaurante_id, produto_id, grupo_id) do nothing;
+
+-- ---------------------------------------------------------------------------
 -- Mesas e bairros
 -- ---------------------------------------------------------------------------
 

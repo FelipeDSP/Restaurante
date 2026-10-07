@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import { useAcao } from "@/components/staff/acoes-cliente";
 import { BotaoEnviar, Campo, ErroCampo, marcadoCampo, Selecao, useAvisoResultado, valorCampo } from "@/components/staff/formulario";
@@ -10,7 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { regraDoGrupo } from "@/lib/adicionais";
 import { textoDeCentavos } from "@/lib/dinheiro";
+import { cn } from "@/lib/utils";
 
 import { excluirProduto, salvarProduto } from "./actions";
 
@@ -25,17 +27,23 @@ export type ProdutoEditavel = {
   disponivel_delivery: boolean;
 };
 
+export type GrupoParaProduto = { id: string; nome: string; minimo: number; maximo: number; ativo: boolean; opcoes: string[] };
+
 type Props = {
   restauranteId: string;
   categorias: { id: string; nome: string }[];
   produto?: ProdutoEditavel;
   categoriaInicial?: string;
+  grupos: GrupoParaProduto[];
+  gruposDoProduto?: string[];
 };
 
-export function FormProduto({ restauranteId, categorias, produto, categoriaInicial }: Props) {
+export function FormProduto({ restauranteId, categorias, produto, categoriaInicial, grupos, gruposDoProduto = [] }: Props) {
   const [estado, acao] = useActionState(salvarProduto.bind(null, produto?.id ?? null), undefined);
   useAvisoResultado(estado);
   const { pendente, executar } = useAcao();
+  // Fora do <form>: sobrevive à remontagem após erro (o React 19 reseta o formulário).
+  const [gruposEscolhidos, setGruposEscolhidos] = useState<string[]>(gruposDoProduto);
 
   return (
     <form key={estado?.chave} action={acao} className="flex flex-col gap-6">
@@ -107,6 +115,65 @@ export function FormProduto({ restauranteId, categorias, produto, categoriaInici
             />
             Aparece no delivery
           </label>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="font-semibold">Adicionais e opções</h2>
+            <Link href="/painel/adicionais" className="text-sm underline underline-offset-4">
+              Gerenciar grupos
+            </Link>
+          </div>
+          <input type="hidden" name="grupos" value={JSON.stringify(gruposEscolhidos)} />
+          {grupos.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Nenhum grupo cadastrado. Crie em{" "}
+              <Link href="/painel/adicionais" className="underline underline-offset-4">
+                Adicionais
+              </Link>{" "}
+              (ex.: ponto da carne, adicionais com preço) e volte aqui para ligar ao produto.
+            </p>
+          ) : (
+            <ul className="grid gap-2 sm:grid-cols-2">
+              {grupos.map((g) => {
+                const marcado = gruposEscolhidos.includes(g.id);
+                return (
+                  <li key={g.id}>
+                    <label
+                      className={cn(
+                        "flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors",
+                        marcado ? "border-primary bg-primary/5" : "hover:bg-muted/50",
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={marcado}
+                        onChange={(e) =>
+                          setGruposEscolhidos((atual) => (e.target.checked ? [...atual, g.id] : atual.filter((id) => id !== g.id)))
+                        }
+                        className="mt-0.5 size-5 accent-[var(--cor-primaria)]"
+                      />
+                      <span className="flex min-w-0 flex-col gap-0.5">
+                        <span className="font-medium">
+                          {g.nome}
+                          {!g.ativo ? <span className="ml-2 text-xs font-normal text-muted-foreground">(inativo)</span> : null}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {g.minimo > 0 ? "Obrigatório · " : ""}
+                          {regraDoGrupo(g)}
+                        </span>
+                        <span className="line-clamp-1 text-xs text-muted-foreground">
+                          {g.opcoes.length > 0 ? g.opcoes.join(", ") : "Sem opções"}
+                        </span>
+                      </span>
+                    </label>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </CardContent>
       </Card>
 

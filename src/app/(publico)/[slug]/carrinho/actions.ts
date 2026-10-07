@@ -20,6 +20,7 @@ const pedidoSchema = z.object({
         produtoId: id,
         quantidade: z.number().int().min(1).max(99),
         observacao: z.string().trim().max(300),
+        adicionais: z.array(id).max(30).default([]),
       }),
     )
     .min(1, "Seu carrinho está vazio.")
@@ -80,7 +81,12 @@ export async function enviarPedido(slug: string, entrada: DadosPedido): Promise<
       referencia: d.referencia || null,
     },
     p_forma_pagamento: d.forma,
-    p_itens: d.itens.map((i) => ({ produto_id: i.produtoId, quantidade: i.quantidade, observacao: i.observacao || null })),
+    p_itens: d.itens.map((i) => ({
+      produto_id: i.produtoId,
+      quantidade: i.quantidade,
+      observacao: i.observacao || null,
+      adicionais: i.adicionais,
+    })),
     p_troco_para: trocoPara ?? undefined,
     p_observacao: d.observacao || undefined,
   });

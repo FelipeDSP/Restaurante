@@ -5,7 +5,38 @@ export type Database = {
   
   "public": {
           Tables: {
-            "assinaturas": {
+            "adicionais": {
+                  Row: {
+                    "criado_em": string,"disponivel": boolean,"grupo_id": string,"id": string,"nome": string,"ordem": number,"preco": number,"restaurante_id": string
+                  }
+                  Insert: {
+                    "criado_em"?: string,"disponivel"?: boolean,"grupo_id": string,"id"?: string,"nome": string,"ordem"?: number,"preco"?: number,"restaurante_id": string
+                  }
+                  Update: {
+                    "criado_em"?: string,"disponivel"?: boolean,"grupo_id"?: string,"id"?: string,"nome"?: string,"ordem"?: number,"preco"?: number,"restaurante_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "adicionais_restaurante_id_fkey"
+      columns: ["restaurante_id"]
+isOneToOne: false
+      referencedRelation: "restaurantes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "adicionais_restaurante_id_fkey"
+      columns: ["restaurante_id"]
+isOneToOne: false
+      referencedRelation: "restaurantes_publicos"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "adicionais_restaurante_id_grupo_id_fkey"
+      columns: ["restaurante_id","grupo_id"]
+isOneToOne: false
+      referencedRelation: "grupos_adicionais"
+      referencedColumns: ["restaurante_id","id"]
+    }
+                  ]
+                },"assinaturas": {
                   Row: {
                     "atualizado_em": string,"criado_em": string,"id": string,"periodo_termina_em": string | null,"plano": string,"provedor": string | null,"provedor_assinatura_id": string | null,"restaurante_id": string,"status": string,"teste_termina_em": string | null
                   }
@@ -166,15 +197,40 @@ isOneToOne: false
       referencedColumns: ["restaurante_id","id"]
     }
                   ]
-                },"itens_pedido": {
+                },"grupos_adicionais": {
                   Row: {
-                    "cancelado_em": string | null,"cancelado_por": string | null,"criado_em": string,"id": string,"motivo_cancelamento": string | null,"nome_produto": string,"observacao": string | null,"pedido_id": string,"preco_unitario": number,"produto_id": string,"quantidade": number,"restaurante_id": string,"total": number
+                    "ativo": boolean,"criado_em": string,"id": string,"maximo": number,"minimo": number,"nome": string,"ordem": number,"restaurante_id": string
                   }
                   Insert: {
-                    "cancelado_em"?: string | null,"cancelado_por"?: string | null,"criado_em"?: string,"id"?: string,"motivo_cancelamento"?: string | null,"nome_produto": string,"observacao"?: string | null,"pedido_id": string,"preco_unitario": number,"produto_id": string,"quantidade": number,"restaurante_id": string,"total"?: number
+                    "ativo"?: boolean,"criado_em"?: string,"id"?: string,"maximo"?: number,"minimo"?: number,"nome": string,"ordem"?: number,"restaurante_id": string
                   }
                   Update: {
-                    "cancelado_em"?: string | null,"cancelado_por"?: string | null,"criado_em"?: string,"id"?: string,"motivo_cancelamento"?: string | null,"nome_produto"?: string,"observacao"?: string | null,"pedido_id"?: string,"preco_unitario"?: number,"produto_id"?: string,"quantidade"?: number,"restaurante_id"?: string,"total"?: number
+                    "ativo"?: boolean,"criado_em"?: string,"id"?: string,"maximo"?: number,"minimo"?: number,"nome"?: string,"ordem"?: number,"restaurante_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "grupos_adicionais_restaurante_id_fkey"
+      columns: ["restaurante_id"]
+isOneToOne: false
+      referencedRelation: "restaurantes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "grupos_adicionais_restaurante_id_fkey"
+      columns: ["restaurante_id"]
+isOneToOne: false
+      referencedRelation: "restaurantes_publicos"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"itens_pedido": {
+                  Row: {
+                    "adicionais": NonNullable<Json>,"cancelado_em": string | null,"cancelado_por": string | null,"criado_em": string,"id": string,"motivo_cancelamento": string | null,"nome_produto": string,"observacao": string | null,"pedido_id": string,"preco_adicionais": number,"preco_unitario": number,"produto_id": string,"quantidade": number,"restaurante_id": string,"total": number
+                  }
+                  Insert: {
+                    "adicionais"?: NonNullable<Json>,"cancelado_em"?: string | null,"cancelado_por"?: string | null,"criado_em"?: string,"id"?: string,"motivo_cancelamento"?: string | null,"nome_produto": string,"observacao"?: string | null,"pedido_id": string,"preco_adicionais"?: number,"preco_unitario": number,"produto_id": string,"quantidade": number,"restaurante_id": string,"total"?: number
+                  }
+                  Update: {
+                    "adicionais"?: NonNullable<Json>,"cancelado_em"?: string | null,"cancelado_por"?: string | null,"criado_em"?: string,"id"?: string,"motivo_cancelamento"?: string | null,"nome_produto"?: string,"observacao"?: string | null,"pedido_id"?: string,"preco_adicionais"?: number,"preco_unitario"?: number,"produto_id"?: string,"quantidade"?: number,"restaurante_id"?: string,"total"?: number
                   }
                   Relationships: [
                     {
@@ -398,6 +454,43 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "restaurantes_publicos"
       referencedColumns: ["id"]
+    }
+                  ]
+                },"produtos_grupos_adicionais": {
+                  Row: {
+                    "grupo_id": string,"id": string,"produto_id": string,"restaurante_id": string
+                  }
+                  Insert: {
+                    "grupo_id": string,"id"?: string,"produto_id": string,"restaurante_id": string
+                  }
+                  Update: {
+                    "grupo_id"?: string,"id"?: string,"produto_id"?: string,"restaurante_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "produtos_grupos_adicionais_restaurante_id_fkey"
+      columns: ["restaurante_id"]
+isOneToOne: false
+      referencedRelation: "restaurantes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "produtos_grupos_adicionais_restaurante_id_fkey"
+      columns: ["restaurante_id"]
+isOneToOne: false
+      referencedRelation: "restaurantes_publicos"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "produtos_grupos_adicionais_restaurante_id_grupo_id_fkey"
+      columns: ["restaurante_id","grupo_id"]
+isOneToOne: false
+      referencedRelation: "grupos_adicionais"
+      referencedColumns: ["restaurante_id","id"]
+    },{
+      foreignKeyName: "produtos_grupos_adicionais_restaurante_id_produto_id_fkey"
+      columns: ["restaurante_id","produto_id"]
+isOneToOne: false
+      referencedRelation: "produtos"
+      referencedColumns: ["restaurante_id","id"]
     }
                   ]
                 },"restaurantes": {

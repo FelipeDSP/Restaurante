@@ -11,6 +11,51 @@ import { urlImagemDoRestaurante } from "@/lib/storage";
 import { createClient } from "@/lib/supabase/server";
 import { checkbox, dadosDoFormulario, dinheiro, id, textoObrigatorio, textoOpcional } from "@/lib/validacao";
 
+// Grupos de opções ligados ao produto (campo oculto com JSON de ids).
+const gruposSchema = z.preprocess((valor) => {
+  try {
+    return JSON.parse(typeof valor === "string" && valor ? valor : "[]");
+  } catch {
+    return null;
+  }
+}, z.array(id, { error: "Grupos inválidos." }).max(30));
+
+// Deixa as ligações produto-grupo iguais à lista escolhida.
+async function sincronizarGrupos(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  restauranteId: string,
+  produtoId: string,
+  grupos: string[],
+): Promise<string | null> {
+  const { data: atuais, error } = await supabase
+    .from("produtos_grupos_adicionais")
+    .select("grupo_id")
+    .eq("restaurante_id", restauranteId)
+    .eq("produto_id", produtoId);
+  if (error) return error.message;
+
+  const existentes = atuais.map((l) => l.grupo_id);
+  const remover = existentes.filter((g) => !grupos.includes(g));
+  const incluir = grupos.filter((g) => !existentes.includes(g));
+
+  if (remover.length > 0) {
+    const { error: erro } = await supabase
+      .from("produtos_grupos_adicionais")
+      .delete()
+      .eq("restaurante_id", restauranteId)
+      .eq("produto_id", produtoId)
+      .in("grupo_id", remover);
+    if (erro) return erro.message;
+  }
+  if (incluir.length > 0) {
+    const { error: erro } = await supabase
+      .from("produtos_grupos_adicionais")
+      .insert(incluir.map((grupoId) => ({ restaurante_id: restauranteId, produto_id: produtoId, grupo_id: grupoId })));
+    if (erro) return erro.message;
+  }
+  return null;
+}
+
 function produtoSchema(restauranteId: string) {
   return z.object({
     nome: textoObrigatorio("o nome", 120),
@@ -34,6 +79,8 @@ export async function salvarProduto(
 
   const dados = produtoSchema(restauranteId).safeParse(dadosDoFormulario(formData));
   if (!dados.success) return falhaValidacao(dados.error, formData);
+  const grupos = gruposSchema.safeParse(formData.get("grupos"));
+  if (!grupos.success) return falha("Grupos de adicionais inválidos.", undefined, formData);
 
   const supabase = await createClient();
 
@@ -49,7 +96,7 @@ export async function salvarProduto(
       .single();
     const ordem =
       atual && atual.categoria_id !== dados.data.categoria_id
-        ? { ordem: await proximaOrdem(supabase, "produtos", restauranteId, dados.data.categoria_id) }
+        ? { ordem: await proximaOrdem(supabase, "produtos", restauranteId, { coluna: "categoria_id", valor: dados.data.categoria_id }) }
         : {};
 
     const { error } = await supabase
@@ -58,12 +105,20 @@ export async function salvarProduto(
       .eq("id", produtoId)
       .eq("restaurante_id", restauranteId);
     if (error) return falha(mensagemErroBanco(error), undefined, formData);
+    if (await sincronizarGrupos(supabase, restauranteId, produtoId, grupos.data)) {
+      return falha("Produto salvo, mas não foi possível atualizar os adicionais.", undefined, formData);
+    }
   } else {
-    const ordem = await proximaOrdem(supabase, "produtos", restauranteId, dados.data.categoria_id);
-    const { error } = await supabase
+    const ordem = await proximaOrdem(supabase, "produtos", restauranteId, { coluna: "categoria_id", valor: dados.data.categoria_id });
+    const { data: criado, error } = await supabase
       .from("produtos")
-      .insert({ ...dados.data, restaurante_id: restauranteId, ordem });
+      .insert({ ...dados.data, restaurante_id: restauranteId, ordem })
+      .select("id")
+      .single();
     if (error) return falha(mensagemErroBanco(error), undefined, formData);
+    if (await sincronizarGrupos(supabase, restauranteId, criado.id, grupos.data)) {
+      return falha("Produto criado, mas não foi possível ligar os adicionais. Edite o produto para tentar de novo.");
+    }
   }
 
   redirect("/painel/produtos");
@@ -105,7 +160,7 @@ export async function moverProduto(
     acesso.restaurante.id,
     produtoId,
     direcao === "cima" ? "cima" : "baixo",
-    categoriaId,
+    { coluna: "categoria_id", valor: categoriaId },
   );
   if (erro) return falha("Não foi possível reordenar.");
 

@@ -25,7 +25,7 @@ export default async function CarrinhoPage(props: PageProps<"/[slug]/carrinho">)
 
   // Nome e preço atuais: o carrinho no navegador pode estar desatualizado.
   const produtosDisponiveis = Object.fromEntries(
-    cardapio.flatMap((c) => c.produtos.map((p) => [p.id, { nome: p.nome, preco: p.preco }])),
+    cardapio.flatMap((c) => c.produtos.map((p) => [p.id, { nome: p.nome, preco: p.preco, grupos: p.grupos }])),
   );
 
   return (

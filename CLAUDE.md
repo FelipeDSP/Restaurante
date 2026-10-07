@@ -12,13 +12,12 @@ Um SaaS multi-restaurante e white label para espetinhos, hamburguerias e similar
 
 Entra:
 1. **Painel (caixa + admin)**: cadastro de cardápio, mesas, bairros de entrega e marca do restaurante; comandas abertas; pedidos de delivery em tempo real; registrar pagamentos; abrir/fechar caixa; resumo da sessão de caixa.
-2. **PWA do garçom**: mapa de mesas, abrir comanda, lançar/editar/cancelar itens, pedir conta, marcar como pago, fechar comanda.
+2. **PWA do garçom**: mapa de mesas, abrir comanda, lançar/editar/cancelar itens (com opções e adicionais), pedir conta, marcar como pago, fechar comanda.
 3. **Site de delivery** (demonstração): cardápio público com a marca do restaurante, carrinho, checkout sem pagamento online, acompanhamento do pedido.
 
 Não entra agora (mas o desenho não pode impedir):
 - Impressão automática, agente local de impressão e leitor de QR code (fase 2).
 - Praças de produção (churrasqueira/cozinha), dependência entre praças e tarefas de produção (fase 2).
-- Adicionais com preço e grupos de opções (fase 2; no MVP só observação livre).
 - Pagamento online via Asaas (subcontas + split) e cobrança de assinatura (fase 3).
 - Painel super admin, subdomínio e domínio próprio por restaurante (fase 3).
 - Modo offline do PWA, NFC-e.
@@ -104,13 +103,19 @@ Por restaurante:
 - `itens_pedido`: id, restaurante_id, pedido_id, produto_id, nome_produto, preco_unitario, quantidade, observacao, total, criado_em, cancelado_em, cancelado_por, motivo_cancelamento
 - `pagamentos`: id, restaurante_id, comanda_id ou pedido_id (exatamente um), caixa_sessao_id, valor, forma (`dinheiro`|`pix`|`credito`|`debito`|`outro`), registrado_por, criado_em, estornado_em, estornado_por
 
-Na fase 2 entram `estacoes`, `produto_componentes`, `tarefas_producao`, `impressoras`, `agentes_impressao`, `fila_impressao`, `grupos_adicionais`, `adicionais`. Na fase 3, `configuracoes_pagamento` (subconta Asaas), `planos`, `dominios`.
+Na fase 2 entram `estacoes`, `produto_componentes`, `tarefas_producao`, `impressoras`, `agentes_impressao`, `fila_impressao`. Na fase 3, `configuracoes_pagamento` (subconta Asaas), `planos`, `dominios`.
 
 Já existe (cadastro self-service):
 - `assinaturas`: id, restaurante_id (único), plano (`essencial`|`completo`), status (`teste`|`ativa`|`atrasada`|`cancelada`|`cortesia`), teste_termina_em, periodo_termina_em, provedor (`kiwify`), provedor_assinatura_id. Criada por trigger com 14 dias de teste a cada restaurante novo; só o dono lê; ninguém escreve pelo app (a cobrança, provavelmente Kiwify, vai atualizar por webhook no servidor).
 - RPCs `criar_meu_restaurante(...)` (usuário logado vira dono; limite de 3 por conta) e `slug_disponivel(slug)`.
 - Endereços reservados em `rest_privado.slug_reservado()`: ao criar uma rota nova no primeiro nível do app (`/algo`), acrescentar o nome lá numa migração.
 - Planos e preços (provisórios, mock) ficam em `src/lib/planos.ts`.
+
+Já existe (adicionais e opções):
+- `grupos_adicionais` (nome, minimo, maximo, ordem, ativo), `adicionais` (grupo_id, nome, preco, disponivel, ordem) e `produtos_grupos_adicionais` (produto_id, grupo_id). Um grupo serve para vários produtos.
+- `itens_pedido.adicionais` (jsonb) guarda o retrato das opções `[{id, grupo_id, grupo, nome, preco}]` e `preco_adicionais` a soma. Total do item = (preco_unitario + preco_adicionais) × quantidade.
+- Quem lança manda só os ids das opções (`"adicionais": [uuid, ...]` no item das RPCs `lancar_itens_comanda` e `criar_pedido_delivery`); o trigger valida (opção do produto, disponível, mínimo/máximo de cada grupo ativo) e monta o retrato. As opções não mudam depois de lançadas: cancela e lança de novo.
+- Interface: tipos e regras em `src/lib/adicionais.ts`, carga em `src/lib/adicionais-dados.ts`, seletor `<EscolherOpcoes>` em `src/components/adicionais/` (site e garçom).
 
 ## Acesso público (anon)
 

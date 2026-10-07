@@ -9,10 +9,11 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { type AdicionalEscolhido, type GrupoAdicionais, resumoAdicionais, validarEscolha } from "@/lib/adicionais";
 import { centavosDeTexto, formatarBRL } from "@/lib/dinheiro";
 import { cn } from "@/lib/utils";
 
-import { useCarrinho } from "../carrinho-store";
+import { type ItemCarrinho, precoUnitario, useCarrinho } from "../carrinho-store";
 import { type DadosPedido, enviarPedido } from "./actions";
 
 type Props = {
@@ -20,8 +21,25 @@ type Props = {
   aberto: boolean;
   mensagemFechado: string | null;
   bairros: { id: string; nome: string; taxa: number }[];
-  produtosDisponiveis: Record<string, { nome: string; preco: number }>;
+  produtosDisponiveis: Record<string, { nome: string; preco: number; grupos: GrupoAdicionais[] }>;
 };
+
+type Situacao = { ok: true; dados: { nome: string; preco: number; adicionais: AdicionalEscolhido[] } } | { ok: false; motivo: string };
+
+// Confere a linha do carrinho contra o cardápio atual (produto e opções ainda disponíveis, regras dos grupos).
+function situacaoDaLinha(item: ItemCarrinho, produtos: Props["produtosDisponiveis"]): Situacao {
+  const produto = produtos[item.produtoId];
+  if (!produto) return { ok: false, motivo: "não está mais disponível" };
+  const opcoes = new Map(produto.grupos.flatMap((g) => g.opcoes.map((o) => [o.id, { ...o, grupo: g.nome }] as const)));
+  const adicionais: AdicionalEscolhido[] = [];
+  for (const a of item.adicionais) {
+    const atual = opcoes.get(a.id);
+    if (!atual) return { ok: false, motivo: `a opção "${a.nome}" não está mais disponível` };
+    adicionais.push({ id: atual.id, grupo: atual.grupo, nome: atual.nome, preco: atual.preco });
+  }
+  if (validarEscolha(produto.grupos, adicionais.map((a) => a.id))) return { ok: false, motivo: "mudou de opções; escolha de novo" };
+  return { ok: true, dados: { nome: produto.nome, preco: produto.preco, adicionais } };
+}
 
 const FORMAS = [
   { valor: "pix", rotulo: "Pix" },
@@ -36,7 +54,7 @@ function Erro({ texto }: { texto?: string }) {
 
 export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produtosDisponiveis }: Props) {
   const router = useRouter();
-  const { itens, definir, limpar } = useCarrinho(restaurante.id);
+  const { itens, alterarQuantidade, alterarObservacao, atualizarDados, limpar } = useCarrinho(restaurante.id);
   const [enviando, iniciar] = useTransition();
   const [erros, setErros] = useState<Record<string, string>>({});
   const [form, setForm] = useState({
@@ -52,25 +70,25 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
     observacao: "",
   });
 
-  // Itens que saíram do cardápio (ou mudaram de preço) desde que foram para o carrinho.
-  const indisponiveis = itens.filter((i) => !produtosDisponiveis[i.produtoId]);
-  const validos = useMemo(
-    () =>
-      itens
-        .filter((i) => produtosDisponiveis[i.produtoId])
-        .map((i) => ({ ...i, ...produtosDisponiveis[i.produtoId] })),
+  // Itens que saíram do cardápio (ou mudaram de preço/opções) desde que foram para o carrinho.
+  const situacoes = useMemo(
+    () => itens.map((item) => ({ item, situacao: situacaoDaLinha(item, produtosDisponiveis) })),
     [itens, produtosDisponiveis],
   );
+  const indisponiveis = situacoes.flatMap(({ item, situacao }) => (situacao.ok ? [] : [{ item, motivo: situacao.motivo }]));
+  const validos = useMemo(
+    () => situacoes.flatMap(({ item, situacao }) => (situacao.ok ? [{ ...item, ...situacao.dados }] : [])),
+    [situacoes],
+  );
   useEffect(() => {
-    for (const i of itens) {
-      const atual = produtosDisponiveis[i.produtoId];
-      if (atual && (atual.preco !== i.preco || atual.nome !== i.nome)) {
-        definir({ id: i.produtoId, ...atual }, i.quantidade, i.observacao);
+    for (const { item, situacao } of situacoes) {
+      if (situacao.ok && JSON.stringify(situacao.dados) !== JSON.stringify({ nome: item.nome, preco: item.preco, adicionais: item.adicionais })) {
+        atualizarDados(item.chave, situacao.dados);
       }
     }
-  }, [itens, produtosDisponiveis, definir]);
+  }, [situacoes, atualizarDados]);
 
-  const subtotal = validos.reduce((soma, i) => soma + i.preco * i.quantidade, 0);
+  const subtotal = validos.reduce((soma, i) => soma + precoUnitario(i) * i.quantidade, 0);
   const bairro = bairros.find((b) => b.id === form.bairroId);
   const taxa = bairro?.taxa ?? 0;
   const total = subtotal + taxa;
@@ -86,7 +104,12 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
     iniciar(async () => {
       const resultado = await enviarPedido(restaurante.slug, {
         ...form,
-        itens: validos.map((i) => ({ produtoId: i.produtoId, quantidade: i.quantidade, observacao: i.observacao })),
+        itens: validos.map((i) => ({
+          produtoId: i.produtoId,
+          quantidade: i.quantidade,
+          observacao: i.observacao,
+          adicionais: i.adicionais.map((a) => a.id),
+        })),
       });
       if (resultado.ok) {
         toast.dismiss();
@@ -117,17 +140,30 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
           Seu pedido
         </h2>
         {indisponiveis.length > 0 ? (
-          <p className="rounded-lg bg-amber-50 p-2 text-sm text-amber-900">
-            {indisponiveis.map((i) => i.nome).join(", ")} {indisponiveis.length === 1 ? "não está" : "não estão"} mais
-            disponível e não entra no pedido.
-          </p>
+          <ul className="flex flex-col gap-1 rounded-lg bg-amber-50 p-2 text-sm text-amber-900">
+            {indisponiveis.map(({ item, motivo }) => (
+              <li key={item.chave} className="flex items-center justify-between gap-2">
+                <span>
+                  <strong>{item.nome}</strong>: {motivo}. Não entra no pedido.
+                </span>
+                <Button type="button" variant="ghost" size="sm" onClick={() => alterarQuantidade(item.chave, 0)}>
+                  Remover
+                </Button>
+              </li>
+            ))}
+          </ul>
         ) : null}
         <ul className="divide-y">
           {validos.map((item) => (
-            <li key={item.produtoId} className="flex flex-col gap-2 py-3">
+            <li key={item.chave} className="flex flex-col gap-2 py-3">
               <div className="flex items-start justify-between gap-2">
-                <span className="font-medium">{item.nome}</span>
-                <span className="tabular-nums">{formatarBRL(item.preco * item.quantidade)}</span>
+                <span className="flex flex-col">
+                  <span className="font-medium">{item.nome}</span>
+                  {item.adicionais.length > 0 ? (
+                    <span className="text-sm text-muted-foreground">{resumoAdicionais(item.adicionais)}</span>
+                  ) : null}
+                </span>
+                <span className="tabular-nums">{formatarBRL(precoUnitario(item) * item.quantidade)}</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1 rounded-full border p-0.5">
@@ -137,7 +173,7 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
                     size="icon"
                     className="size-9 rounded-full"
                     aria-label={`Diminuir ${item.nome}`}
-                    onClick={() => definir({ id: item.produtoId, nome: item.nome, preco: item.preco }, item.quantidade - 1)}
+                    onClick={() => alterarQuantidade(item.chave, item.quantidade - 1)}
                   >
                     {item.quantidade === 1 ? <Trash2 /> : <Minus />}
                   </Button>
@@ -148,16 +184,14 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
                     size="icon"
                     className="size-9 rounded-full"
                     aria-label={`Aumentar ${item.nome}`}
-                    onClick={() => definir({ id: item.produtoId, nome: item.nome, preco: item.preco }, item.quantidade + 1)}
+                    onClick={() => alterarQuantidade(item.chave, item.quantidade + 1)}
                   >
                     <Plus />
                   </Button>
                 </div>
                 <Input
                   value={item.observacao}
-                  onChange={(e) =>
-                    definir({ id: item.produtoId, nome: item.nome, preco: item.preco }, item.quantidade, e.target.value)
-                  }
+                  onChange={(e) => alterarObservacao(item.chave, e.target.value)}
                   placeholder="Observação (ex.: sem cebola)"
                   maxLength={300}
                   aria-label={`Observação de ${item.nome}`}

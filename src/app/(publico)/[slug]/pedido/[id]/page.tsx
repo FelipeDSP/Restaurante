@@ -3,6 +3,7 @@ import { Check, CircleX } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { resumoAdicionais } from "@/lib/adicionais";
 import { formatarBRL } from "@/lib/dinheiro";
 import { nomeForma } from "@/lib/rotulos";
 import { horaLocal } from "@/lib/tempo";
@@ -104,7 +105,10 @@ export default async function PedidoPage(props: PageProps<"/[slug]/pedido/[id]">
                 <span>
                   {item.quantidade}× {item.nome_produto}
                 </span>
-                {item.observacao ? <span className="text-sm text-muted-foreground">{item.observacao}</span> : null}
+                {item.adicionais?.length ? (
+                  <span className="text-sm text-muted-foreground">{resumoAdicionais(item.adicionais)}</span>
+                ) : null}
+                {item.observacao ? <span className="text-sm text-muted-foreground">Obs.: {item.observacao}</span> : null}
               </span>
               <span className="tabular-nums">{formatarBRL(item.total)}</span>
             </li>

@@ -1,5 +1,7 @@
 import "server-only";
 
+import { type AdicionalEscolhido, type GrupoAdicionais, lerAdicionais } from "@/lib/adicionais";
+import { carregarAdicionaisPorProduto } from "@/lib/adicionais-dados";
 import { createClient } from "@/lib/supabase/server";
 
 export type StatusMesa = "livre" | "aberta" | "conta_pedida";
@@ -63,7 +65,8 @@ export type ItemComanda = {
   id: string;
   pedidoNumero: number;
   nome: string;
-  precoUnitario: number;
+  precoUnitario: number; // produto + opções
+  adicionais: AdicionalEscolhido[];
   quantidade: number;
   observacao: string | null;
   total: number;
@@ -113,7 +116,7 @@ export async function carregarComandaDaMesa(restauranteId: string, mesaId: strin
     .select(
       `id, status, pessoas, total, aberta_em,
        garcom:membros!comandas_restaurante_id_garcom_id_fkey(nome),
-       pedidos(numero, status, itens_pedido(id, nome_produto, preco_unitario, quantidade, observacao, total, criado_em, cancelado_em, motivo_cancelamento)),
+       pedidos(numero, status, itens_pedido(id, nome_produto, preco_unitario, preco_adicionais, adicionais, quantidade, observacao, total, criado_em, cancelado_em, motivo_cancelamento)),
        pagamentos(id, valor, forma, criado_em, estornado_em, registrado:membros!pagamentos_restaurante_id_registrado_por_fkey(nome))`,
     )
     .eq("restaurante_id", restauranteId)
@@ -130,7 +133,8 @@ export async function carregarComandaDaMesa(restauranteId: string, mesaId: strin
         id: i.id,
         pedidoNumero: p.numero,
         nome: i.nome_produto,
-        precoUnitario: i.preco_unitario,
+        precoUnitario: i.preco_unitario + i.preco_adicionais,
+        adicionais: lerAdicionais(i.adicionais),
         quantidade: i.quantidade,
         observacao: i.observacao,
         total: i.total,
@@ -165,12 +169,13 @@ export async function carregarComandaDaMesa(restauranteId: string, mesaId: strin
   };
 }
 
-export type ProdutoCardapio = { id: string; nome: string; preco: number; descricao: string | null };
+export type ProdutoCardapio = { id: string; nome: string; preco: number; descricao: string | null; grupos: GrupoAdicionais[] };
 export type CategoriaCardapio = { id: string; nome: string; produtos: ProdutoCardapio[] };
 
 // Cardápio do salão: categorias ativas e produtos disponíveis.
 export async function carregarCardapioSalao(restauranteId: string): Promise<CategoriaCardapio[]> {
   const supabase = await createClient();
+  const adicionais = carregarAdicionaisPorProduto(supabase, restauranteId);
   const { data, error } = await supabase
     .from("categorias")
     .select("id, nome, produtos(id, nome, preco, descricao, disponivel, ordem)")
@@ -180,6 +185,7 @@ export async function carregarCardapioSalao(restauranteId: string): Promise<Cate
     .order("ordem", { referencedTable: "produtos" })
     .order("nome", { referencedTable: "produtos" });
   if (error) throw new Error(error.message);
+  const gruposPorProduto = await adicionais;
 
   return data
     .map((c) => ({
@@ -187,7 +193,7 @@ export async function carregarCardapioSalao(restauranteId: string): Promise<Cate
       nome: c.nome,
       produtos: c.produtos
         .filter((p) => p.disponivel)
-        .map((p) => ({ id: p.id, nome: p.nome, preco: p.preco, descricao: p.descricao })),
+        .map((p) => ({ id: p.id, nome: p.nome, preco: p.preco, descricao: p.descricao, grupos: gruposPorProduto.get(p.id) ?? [] })),
     }))
     .filter((c) => c.produtos.length > 0);
 }

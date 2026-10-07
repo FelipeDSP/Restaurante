@@ -9,6 +9,7 @@ import { useAcao } from "@/components/staff/acoes-cliente";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { resumoAdicionais } from "@/lib/adicionais";
 import { centavosDeTexto, formatarBRL, textoDeCentavos } from "@/lib/dinheiro";
 import { FORMAS_PAGAMENTO, nomeForma } from "@/lib/rotulos";
 import { horaLocal } from "@/lib/tempo";
@@ -73,6 +74,7 @@ function LinhaItem({ item, editavel }: { item: ItemComanda; editavel: boolean })
         <div className="flex justify-between gap-2 line-through">
           <span>
             {item.quantidade}× {item.nome}
+            {item.adicionais.length > 0 ? ` (${resumoAdicionais(item.adicionais)})` : ""}
           </span>
           <span>{formatarBRL(item.total)}</span>
         </div>
@@ -94,7 +96,10 @@ function LinhaItem({ item, editavel }: { item: ItemComanda; editavel: boolean })
           <span className="font-medium">
             {item.quantidade}× {item.nome}
           </span>
-          {item.observacao ? <span className="text-sm text-muted-foreground">{item.observacao}</span> : null}
+          {item.adicionais.length > 0 ? (
+            <span className="text-sm text-muted-foreground">{resumoAdicionais(item.adicionais)}</span>
+          ) : null}
+          {item.observacao ? <span className="text-sm text-muted-foreground">Obs.: {item.observacao}</span> : null}
           <span className="text-xs text-muted-foreground">Pedido nº {item.pedidoNumero}</span>
         </span>
         <span className="font-medium tabular-nums">{formatarBRL(item.total)}</span>

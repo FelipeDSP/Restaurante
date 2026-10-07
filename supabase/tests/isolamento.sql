@@ -61,6 +61,15 @@ declare
   v_novo uuid;
   v_multi constant uuid := md5('multi@exemplo.com')::uuid;
   v_json jsonb;
+  v_burger_bacon constant uuid := md5('brasa-espetinhos/Burgers/Burger bacon')::uuid; -- 3600
+  v_ponto uuid;
+  v_bem_passado uuid;
+  v_bacon uuid;
+  v_cheddar uuid;
+  v_ovo uuid;
+  v_bacon_b uuid;
+  v_item uuid;
+  v_teste integer;
   v_num1 integer;
   v_num2 integer;
 begin
@@ -301,8 +310,97 @@ begin
     jsonb_build_object('produto_id', v_produto_a2, 'quantidade', 2, 'observacao', 'sem cebola')));
   perform pg_temp.ok((select total from public.comandas where id = v_comanda_a) = 2 * 3200,
                      'RPC do garçom lança itens com preço do cadastro');
+  -- ======================================================================
+  -- Adicionais e opções
+  -- ======================================================================
+  select id into v_ponto from public.adicionais where grupo_id = md5('brasa-espetinhos/grupo/Ponto da carne')::uuid and nome = 'Ao ponto';
+  select id into v_bem_passado from public.adicionais where grupo_id = md5('brasa-espetinhos/grupo/Ponto da carne')::uuid and nome = 'Bem passado';
+  select id into v_bacon from public.adicionais where grupo_id = md5('brasa-espetinhos/grupo/Turbine seu burger')::uuid and nome = 'Bacon extra';
+  select id into v_cheddar from public.adicionais where grupo_id = md5('brasa-espetinhos/grupo/Turbine seu burger')::uuid and nome = 'Cheddar extra';
+  select id into v_ovo from public.adicionais where grupo_id = md5('brasa-espetinhos/grupo/Turbine seu burger')::uuid and nome = 'Ovo';
+  perform pg_temp.ok(v_ponto is not null and v_bacon is not null, 'garçom lê as opções do próprio restaurante');
+  perform pg_temp.admin();
+  select id into v_bacon_b from public.adicionais where restaurante_id = b and nome = 'Bacon';
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+
+  begin
+    perform public.lancar_itens_comanda(v_comanda_a, jsonb_build_array(jsonb_build_object('produto_id', v_burger_bacon, 'quantidade', 1)));
+    perform pg_temp.ok(false, 'grupo obrigatório sem escolha é recusado');
+  exception when others then
+    perform pg_temp.ok(sqlerrm like 'Escolha 1 opção em "Ponto da carne"%', 'grupo obrigatório sem escolha é recusado');
+  end;
+  begin
+    perform public.lancar_itens_comanda(v_comanda_a, jsonb_build_array(jsonb_build_object(
+      'produto_id', v_burger_bacon, 'quantidade', 1, 'adicionais', jsonb_build_array(v_ponto, v_bem_passado))));
+    perform pg_temp.ok(false, 'grupo acima do máximo é recusado');
+  exception when others then
+    perform pg_temp.ok(sqlerrm like 'Escolha no máximo 1 opção%', 'grupo acima do máximo é recusado');
+  end;
+  begin
+    perform public.lancar_itens_comanda(v_comanda_a, jsonb_build_array(jsonb_build_object(
+      'produto_id', v_burger_bacon, 'quantidade', 1, 'adicionais', jsonb_build_array(v_ponto, v_bacon_b))));
+    perform pg_temp.ok(false, 'opção de outro restaurante é recusada');
+  exception when others then
+    perform pg_temp.ok(sqlerrm like 'Adicional não disponível para este produto%', 'opção de outro restaurante é recusada');
+  end;
+  begin
+    perform public.lancar_itens_comanda(v_comanda_a, jsonb_build_array(jsonb_build_object(
+      'produto_id', v_produto_a2, 'quantidade', 1, 'adicionais', jsonb_build_array(v_bacon))));
+    perform pg_temp.ok(false, 'opção de grupo não ligado ao produto é recusada');
+  exception when others then
+    perform pg_temp.ok(sqlerrm like 'Adicional não disponível para este produto%', 'opção de grupo não ligado ao produto é recusada');
+  end;
+
+  v_json := public.lancar_itens_comanda(v_comanda_a, jsonb_build_array(jsonb_build_object(
+    'produto_id', v_burger_bacon, 'quantidade', 2, 'adicionais', jsonb_build_array(v_ponto, v_bacon, v_cheddar))));
+  select id into v_item from public.itens_pedido where pedido_id = (v_json ->> 'pedido_id')::uuid;
+  perform pg_temp.ok((select total = (3600 + 500 + 400) * 2 and preco_adicionais = 900 and jsonb_array_length(adicionais) = 3
+                      from public.itens_pedido where id = v_item),
+                     'item com opções: total = (produto + opções) x quantidade');
+  perform pg_temp.ok((select adicionais -> 0 ->> 'nome' = 'Ao ponto' and adicionais -> 0 ->> 'grupo' = 'Ponto da carne'
+                      from public.itens_pedido where id = v_item),
+                     'item guarda o retrato das opções (grupo e nome)');
+
+  -- Preço da opção vem do cadastro, não do cliente.
+  insert into public.itens_pedido (restaurante_id, pedido_id, produto_id, nome_produto, preco_unitario, quantidade, adicionais)
+  values (a, (v_json ->> 'pedido_id')::uuid, v_burger_bacon, 'x', 1, 1,
+          jsonb_build_array(jsonb_build_object('id', v_ponto), jsonb_build_object('id', v_bacon, 'preco', 1)));
+  perform pg_temp.ok((select preco_adicionais = 500 and total = 4100 from public.itens_pedido
+                      where pedido_id = (v_json ->> 'pedido_id')::uuid and id <> v_item),
+                     'preço da opção vem do cadastro');
+
+  update public.itens_pedido set adicionais = '[]'::jsonb, preco_adicionais = 0, quantidade = 1 where id = v_item;
+  perform pg_temp.ok((select preco_adicionais = 900 and jsonb_array_length(adicionais) = 3 and total = 4500
+                      from public.itens_pedido where id = v_item),
+                     'opções do item não mudam depois de lançado (só a quantidade)');
+
+  begin
+    insert into public.grupos_adicionais (restaurante_id, nome) values (a, 'Do garçom');
+    perform pg_temp.ok(false, 'garçom não cria grupo de adicionais');
+  exception when insufficient_privilege then
+    perform pg_temp.ok(true, 'garçom não cria grupo de adicionais');
+  end;
+
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  update public.adicionais set disponivel = false where id = v_ovo;
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  begin
+    perform public.lancar_itens_comanda(v_comanda_a, jsonb_build_array(jsonb_build_object(
+      'produto_id', v_burger_bacon, 'quantidade', 1, 'adicionais', jsonb_build_array(v_ponto, v_ovo))));
+    perform pg_temp.ok(false, 'opção indisponível é recusada');
+  exception when others then
+    perform pg_temp.ok(sqlerrm like 'Adicional indisponível: Ovo%', 'opção indisponível é recusada');
+  end;
+
+  perform pg_temp.entrar('dono.burger@exemplo.com');
+  update public.grupos_adicionais set nome = 'Invadido' where restaurante_id = a;
+  get diagnostics n = row_count;
+  perform pg_temp.ok(n = 0, 'dono de B não edita grupos de A');
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+
   -- Comanda precisa estar fechada para o caixa fechar no fim do teste.
-  insert into public.pagamentos (restaurante_id, comanda_id, valor, forma) values (a, v_comanda_a, 6400, 'pix');
+  insert into public.pagamentos (restaurante_id, comanda_id, valor, forma)
+  values (a, v_comanda_a, (select total from public.comandas where id = v_comanda_a), 'pix');
   update public.comandas set status = 'fechada' where id = v_comanda_a;
   perform pg_temp.entrar('dono.brasa@exemplo.com');
 
@@ -361,6 +459,31 @@ begin
                      'acompanhamento público retorna status e itens');
   perform pg_temp.ok(not (v_json ? 'cliente_telefone') and not (v_json ? 'endereco'),
                      'acompanhamento não expõe dados do cliente');
+
+  select count(*) into n from public.grupos_adicionais where restaurante_id = a;
+  perform pg_temp.ok(n = 2, 'anon lê os grupos de opções ativos');
+  begin
+    insert into public.adicionais (restaurante_id, grupo_id, nome) values (a, md5('brasa-espetinhos/grupo/Ponto da carne')::uuid, 'X');
+    perform pg_temp.ok(false, 'anon não cria opções');
+  exception when insufficient_privilege then
+    perform pg_temp.ok(true, 'anon não cria opções');
+  end;
+  -- Pedido com opções, desfeito no fim do bloco para não alterar os testes seguintes.
+  v_teste := null;
+  begin
+    v_json := public.criar_pedido_delivery(a, 'Ana', '69999990000', v_bairro_a, '{"rua": "R", "numero": "1"}', 'pix',
+      jsonb_build_array(jsonb_build_object('produto_id', v_burger_bacon, 'quantidade', 1,
+                                           'adicionais', jsonb_build_array(v_ponto, v_bacon))));
+    v_teste := (v_json ->> 'total')::integer;
+    v_json := public.consultar_pedido_publico((v_json ->> 'id')::uuid);
+    raise exception 'desfazer';
+  exception when others then
+    if sqlerrm <> 'desfazer' then v_teste := -1; end if;
+  end;
+  perform pg_temp.ok(v_teste = 3600 + 500 + 500, 'delivery soma as opções no total (com taxa)');
+  perform pg_temp.ok(jsonb_array_length(v_json -> 'itens' -> 0 -> 'adicionais') = 2
+                     and v_json -> 'itens' -> 0 -> 'adicionais' -> 1 ->> 'nome' = 'Bacon extra',
+                     'acompanhamento público mostra as opções do item');
 
   begin
     perform public.criar_pedido_delivery(a, 'Maria', '69999991234', v_bairro_a, '{"rua": "R", "numero": "1"}',

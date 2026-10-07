@@ -38,6 +38,7 @@ const itensSchema = z
       produtoId: id,
       quantidade: z.number().int().min(1).max(99),
       observacao: z.string().trim().max(300).nullable(),
+      adicionais: z.array(id).max(30),
     }),
   )
   .min(1, "Escolha pelo menos um item.")
@@ -45,7 +46,7 @@ const itensSchema = z
 
 export async function lancarItens(
   comandaId: string,
-  itens: { produtoId: string; quantidade: number; observacao: string | null }[],
+  itens: { produtoId: string; quantidade: number; observacao: string | null; adicionais: string[] }[],
 ): Promise<ResultadoAcao> {
   await exigirAcesso("garcom");
   if (!id.safeParse(comandaId).success) return falha("Comanda inválida.");
@@ -59,6 +60,7 @@ export async function lancarItens(
       produto_id: i.produtoId,
       quantidade: i.quantidade,
       observacao: i.observacao || null,
+      adicionais: i.adicionais,
     })),
   });
   if (error) return falha(mensagemErroBanco(error));

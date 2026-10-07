@@ -117,10 +117,7 @@ export default async function CardapioPage(props: PageProps<"/[slug]">) {
                     ) : null}
                     <div className="mt-auto flex items-center justify-between gap-2 pt-1">
                       <span className="font-semibold tabular-nums">{formatarBRL(produto.preco)}</span>
-                      <AdicionarProduto
-                        restauranteId={restaurante.id}
-                        produto={{ id: produto.id, nome: produto.nome, preco: produto.preco }}
-                      />
+                      <AdicionarProduto restauranteId={restaurante.id} produto={produto} />
                     </div>
                   </div>
                   {produto.fotoUrl ? (
