@@ -3,7 +3,7 @@
 import { Check, Minus, Plus, Printer, ReceiptText, Undo2, UtensilsCrossed, Wallet, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useAcao } from "@/components/staff/acoes-cliente";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +25,7 @@ import {
   imprimirConta,
   registrarPagamento,
 } from "../../actions";
-import type { DetalheComanda, ItemComanda } from "../../dados";
+import type { DetalheComanda, ItemComanda, PagamentoComanda } from "../../dados";
 
 const MOTIVOS = ["Lançado errado", "Cliente desistiu", "Produto em falta", "Demorou demais"];
 
@@ -192,107 +192,208 @@ function LinhaItem({ item, editavel }: { item: ItemComanda; editavel: boolean })
 
 function PainelPagamento({
   comandaId,
+  total,
   falta,
   pessoas,
   aoFechar,
 }: {
   comandaId: string;
+  total: number;
   falta: number;
   pessoas: number | null;
   aoFechar: () => void;
 }) {
   const [forma, setForma] = useState<string>("pix");
   const [valorTexto, setValorTexto] = useState(textoDeCentavos(falta));
+  const [faltaBase, setFaltaBase] = useState(falta);
   const [recebidoTexto, setRecebidoTexto] = useState("");
   const { pendente, executar } = useAcao();
+  const secao = useRef<HTMLElement>(null);
+
+  // Outro aparelho registrou um pagamento: o valor acompanha o que falta agora.
+  if (falta !== faltaBase) {
+    setFaltaBase(falta);
+    setValorTexto(textoDeCentavos(falta));
+  }
+
+  // O painel abre abaixo da lista; no celular ficaria fora da tela.
+  useEffect(() => {
+    secao.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
 
   const valor = centavosDeTexto(valorTexto);
   const recebido = recebidoTexto ? centavosDeTexto(recebidoTexto) : null;
   const troco = forma === "dinheiro" && valor !== null && recebido !== null ? recebido - valor : null;
-  const porPessoa = pessoas && pessoas > 1 ? Math.ceil(falta / pessoas) : null;
+  // Parte de cada pessoa sobre o total da conta (não sobre o que falta), limitada ao que falta.
+  const porPessoa = pessoas && pessoas > 1 ? Math.min(falta, Math.ceil(total / pessoas)) : null;
+  const acima = valor !== null && valor > falta;
 
   return (
-    <section aria-labelledby="titulo-pagamento" className="flex flex-col gap-4 rounded-xl border-2 border-[var(--cor-primaria)] p-4">
+    <section
+      ref={secao}
+      aria-labelledby="titulo-pagamento"
+      className="flex scroll-mt-4 flex-col gap-4 rounded-xl border-2 border-[var(--cor-primaria)] p-4"
+    >
       <div className="flex items-center justify-between">
         <h2 id="titulo-pagamento" className="text-lg font-semibold">
           Registrar pagamento
         </h2>
-        <Button type="button" variant="ghost" size="icon" aria-label="Fechar" onClick={aoFechar}>
+        <Button type="button" variant="ghost" size="icon" className="size-11" aria-label="Fechar" onClick={aoFechar}>
           <X />
         </Button>
       </div>
 
-      <fieldset className="flex flex-col gap-2">
-        <legend className="mb-2 text-sm font-medium">Forma</legend>
-        <div className="grid grid-cols-3 gap-2">
-          {FORMAS_PAGAMENTO.map((f) => (
-            <Button
-              key={f.valor}
-              type="button"
-              variant={forma === f.valor ? "default" : "outline"}
-              className="h-12"
-              aria-pressed={forma === f.valor}
-              onClick={() => setForma(f.valor)}
-            >
-              {f.rotulo}
-            </Button>
-          ))}
-        </div>
-      </fieldset>
+      {falta === 0 ? (
+        <p role="status" className="rounded-lg bg-green-50 p-3 font-medium text-green-800">
+          Esta conta já foi paga. Confira a lista de pagamentos.
+        </p>
+      ) : (
+        <>
+          <fieldset className="flex flex-col gap-2">
+            <legend className="mb-2 text-sm font-medium">Forma</legend>
+            <div className="grid grid-cols-3 gap-2">
+              {FORMAS_PAGAMENTO.map((f) => (
+                <Button
+                  key={f.valor}
+                  type="button"
+                  variant={forma === f.valor ? "default" : "outline"}
+                  className="h-12"
+                  aria-pressed={forma === f.valor}
+                  onClick={() => setForma(f.valor)}
+                >
+                  {f.rotulo}
+                </Button>
+              ))}
+            </div>
+          </fieldset>
 
-      <label className="flex flex-col gap-2 text-sm font-medium">
-        Valor (R$)
-        <Input
-          value={valorTexto}
-          onChange={(e) => setValorTexto(e.target.value)}
-          inputMode="decimal"
-          className="h-12 text-lg"
-          aria-invalid={valor === null}
-        />
-      </label>
-      <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" size="sm" onClick={() => setValorTexto(textoDeCentavos(falta))}>
-          Tudo ({formatarBRL(falta)})
-        </Button>
-        {porPessoa ? (
-          <Button type="button" variant="outline" size="sm" onClick={() => setValorTexto(textoDeCentavos(porPessoa))}>
-            1 de {pessoas} ({formatarBRL(porPessoa)})
+          <label className="flex flex-col gap-2 text-sm font-medium">
+            Valor (R$)
+            <Input
+              value={valorTexto}
+              onChange={(e) => setValorTexto(e.target.value)}
+              inputMode="decimal"
+              className="h-12 text-lg"
+              aria-invalid={valor === null || acima}
+              aria-describedby={acima ? "valor-acima" : undefined}
+            />
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" className="h-11" onClick={() => setValorTexto(textoDeCentavos(falta))}>
+              Tudo ({formatarBRL(falta)})
+            </Button>
+            {porPessoa ? (
+              <Button type="button" variant="outline" className="h-11" onClick={() => setValorTexto(textoDeCentavos(porPessoa))}>
+                1 de {pessoas} ({formatarBRL(porPessoa)})
+              </Button>
+            ) : null}
+          </div>
+
+          {forma === "dinheiro" ? (
+            <label className="flex flex-col gap-2 text-sm font-medium">
+              Recebido em dinheiro (para calcular o troco)
+              <Input
+                value={recebidoTexto}
+                onChange={(e) => setRecebidoTexto(e.target.value)}
+                inputMode="decimal"
+                placeholder="Ex.: 100,00"
+                className="h-12 text-lg"
+              />
+              {troco !== null && troco > 0 ? <span className="text-base font-semibold">Troco: {formatarBRL(troco)}</span> : null}
+              {troco !== null && troco < 0 ? <span className="text-sm text-destructive">Recebido é menor que o valor.</span> : null}
+            </label>
+          ) : null}
+
+          {acima ? (
+            <p id="valor-acima" role="alert" className="text-sm font-medium text-destructive">
+              O valor é maior que o que falta ({formatarBRL(falta)}).
+              {forma === "dinheiro" ? " Para dar troco, preencha o recebido em dinheiro." : ""}
+            </p>
+          ) : null}
+
+          <Button
+            type="button"
+            className="h-14 text-lg"
+            disabled={pendente || valor === null || valor <= 0 || acima || (troco !== null && troco < 0)}
+            onClick={() => valor && executar(() => registrarPagamento(comandaId, valor, forma), aoFechar)}
+          >
+            {pendente ? "Registrando..." : `Registrar ${valor ? formatarBRL(valor) : ""}`}
+          </Button>
+        </>
+      )}
+    </section>
+  );
+}
+
+const MOTIVOS_ESTORNO = ["Valor errado", "Forma errada", "Cobrado em dobro"];
+
+function LinhaPagamento({
+  pagamento: p,
+  podeEstornar,
+  fusoHorario,
+}: {
+  pagamento: PagamentoComanda;
+  podeEstornar: boolean;
+  fusoHorario: string;
+}) {
+  const [estornando, setEstornando] = useState(false);
+  const [motivo, setMotivo] = useState("");
+  const { pendente, executar } = useAcao();
+
+  return (
+    <li className={cn("flex flex-col gap-2 py-2", p.estornado && "text-muted-foreground")}>
+      <div className="flex items-center justify-between gap-2">
+        <span className="flex flex-col">
+          <span className={cn("font-medium", p.estornado && "line-through")}>
+            {nomeForma(p.forma)} · {formatarBRL(p.valor)}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            {horaLocal(p.criadoEm, fusoHorario)} · {p.registradoPor ?? "—"}
+            {p.estornado ? ` · estornado${p.motivoEstorno ? `: ${p.motivoEstorno}` : ""}` : ""}
+          </span>
+        </span>
+        {podeEstornar && !p.estornado && !estornando ? (
+          <Button type="button" variant="ghost" className="h-11" onClick={() => setEstornando(true)}>
+            <Undo2 />
+            Estornar
           </Button>
         ) : null}
       </div>
-
-      {forma === "dinheiro" ? (
-        <label className="flex flex-col gap-2 text-sm font-medium">
-          Recebido em dinheiro (para calcular o troco)
+      {estornando ? (
+        <div className="flex flex-col gap-3 rounded-lg bg-muted/60 p-3">
+          <span className="text-sm font-medium">Por que estornar {formatarBRL(p.valor)}?</span>
+          <div className="flex flex-wrap gap-2">
+            {MOTIVOS_ESTORNO.map((m) => (
+              <Button key={m} type="button" variant={motivo === m ? "default" : "outline"} className="h-11" onClick={() => setMotivo(m)}>
+                {m}
+              </Button>
+            ))}
+          </div>
           <Input
-            value={recebidoTexto}
-            onChange={(e) => setRecebidoTexto(e.target.value)}
-            inputMode="decimal"
-            placeholder="Ex.: 100,00"
-            className="h-12 text-lg"
+            value={MOTIVOS_ESTORNO.includes(motivo) ? "" : motivo}
+            onChange={(e) => setMotivo(e.target.value)}
+            placeholder="Ou escreva o motivo"
+            maxLength={500}
+            className="h-11 bg-background"
+            aria-label="Outro motivo"
           />
-          {troco !== null && troco > 0 ? (
-            <span className="text-base font-semibold text-[var(--cor-primaria)]">Troco: {formatarBRL(troco)}</span>
-          ) : null}
-          {troco !== null && troco < 0 ? (
-            <span className="text-sm text-destructive">Recebido é menor que o valor.</span>
-          ) : null}
-        </label>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="destructive"
+              className="h-11 flex-1"
+              disabled={pendente || motivo.trim().length < 3}
+              onClick={() => executar(() => estornarPagamento(p.id, motivo), () => setEstornando(false))}
+            >
+              Confirmar estorno
+            </Button>
+            <Button type="button" variant="ghost" className="h-11" onClick={() => setEstornando(false)}>
+              Voltar
+            </Button>
+          </div>
+        </div>
       ) : null}
-
-      {valor !== null && valor > falta && falta > 0 ? (
-        <p className="text-sm text-amber-700">O valor é maior que o que falta ({formatarBRL(falta)}).</p>
-      ) : null}
-
-      <Button
-        type="button"
-        className="h-14 text-lg"
-        disabled={pendente || valor === null || valor <= 0 || (troco !== null && troco < 0)}
-        onClick={() => valor && executar(() => registrarPagamento(comandaId, valor, forma), aoFechar)}
-      >
-        {pendente ? "Registrando..." : `Registrar ${valor ? formatarBRL(valor) : ""}`}
-      </Button>
-    </section>
+    </li>
   );
 }
 
@@ -312,13 +413,14 @@ export function TelaComanda({ mesaId, comanda, podeGerenciar, fusoHorario, orige
 
   const falta = Math.max(0, comanda.total - comanda.pago);
   const quitada = comanda.total > 0 && comanda.pago >= comanda.total;
+  const pagoAMais = Math.max(0, comanda.pago - comanda.total);
   // Fecha quando está paga; se todos os itens foram cancelados (total zero), fecha sem pagamento.
   const podeFechar = comanda.itens.length > 0 && comanda.pago >= comanda.total;
   const itensAtivos = comanda.itens.filter((i) => !i.cancelado);
   const voltarAoMapa = () => router.push(origem === "painel" ? "/painel/comandas" : "/garcom");
 
   return (
-    <div className="flex flex-1 flex-col gap-5 pb-28">
+    <div className="flex flex-1 flex-col gap-5 pb-44">
       <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
         {comanda.status === "conta_pedida" ? (
           <Badge className="bg-amber-300 text-amber-950">Conta pedida</Badge>
@@ -354,10 +456,17 @@ export function TelaComanda({ mesaId, comanda, podeGerenciar, fusoHorario, orige
           <span>Pago</span>
           <span className="tabular-nums">{formatarBRL(comanda.pago)}</span>
         </div>
-        <div className={cn("flex justify-between font-semibold", quitada ? "text-green-700" : comanda.total === 0 ? "text-muted-foreground" : "text-destructive")}>
-          <span>{quitada ? "Quitada" : "Falta"}</span>
-          <span className="tabular-nums">{formatarBRL(falta)}</span>
-        </div>
+        {pagoAMais > 0 ? (
+          <div className="flex justify-between font-semibold text-amber-800">
+            <span>Pago a mais (estorne o excedente)</span>
+            <span className="tabular-nums">{formatarBRL(pagoAMais)}</span>
+          </div>
+        ) : (
+          <div className={cn("flex justify-between font-semibold", quitada ? "text-green-700" : comanda.total === 0 ? "text-muted-foreground" : "text-destructive")}>
+            <span>{quitada ? "Quitada" : "Falta"}</span>
+            <span className="tabular-nums">{formatarBRL(falta)}</span>
+          </div>
+        )}
       </section>
 
       {comanda.pagamentos.length > 0 ? (
@@ -367,29 +476,7 @@ export function TelaComanda({ mesaId, comanda, podeGerenciar, fusoHorario, orige
           </h2>
           <ul className="divide-y">
             {comanda.pagamentos.map((p) => (
-              <li key={p.id} className={cn("flex items-center justify-between gap-2 py-2", p.estornado && "text-muted-foreground")}>
-                <span className="flex flex-col">
-                  <span className={cn("font-medium", p.estornado && "line-through")}>
-                    {nomeForma(p.forma)} · {formatarBRL(p.valor)}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {horaLocal(p.criadoEm, fusoHorario)} · {p.registradoPor ?? "—"}
-                    {p.estornado ? " · estornado" : ""}
-                  </span>
-                </span>
-                {podeGerenciar && !p.estornado ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    disabled={pendente}
-                    onClick={() => executar(() => estornarPagamento(p.id))}
-                  >
-                    <Undo2 />
-                    Estornar
-                  </Button>
-                ) : null}
-              </li>
+              <LinhaPagamento key={p.id} pagamento={p} podeEstornar={podeGerenciar} fusoHorario={fusoHorario} />
             ))}
           </ul>
         </section>
@@ -398,6 +485,7 @@ export function TelaComanda({ mesaId, comanda, podeGerenciar, fusoHorario, orige
       {pagando ? (
         <PainelPagamento
           comandaId={comanda.id}
+          total={comanda.total}
           falta={falta}
           pessoas={comanda.pessoas}
           aoFechar={() => setPagando(false)}

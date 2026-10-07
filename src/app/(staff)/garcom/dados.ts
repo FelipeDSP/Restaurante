@@ -83,6 +83,7 @@ export type PagamentoComanda = {
   registradoPor: string | null;
   criadoEm: string;
   estornado: boolean;
+  motivoEstorno: string | null;
 };
 
 export type DetalheComanda = {
@@ -118,7 +119,7 @@ export async function carregarComandaDaMesa(restauranteId: string, mesaId: strin
       `id, status, pessoas, total, aberta_em,
        garcom:membros!comandas_restaurante_id_garcom_id_fkey(nome),
        pedidos(numero, status, itens_pedido(id, nome_produto, preco_unitario, preco_adicionais, adicionais, para_viagem, quantidade, observacao, total, criado_em, cancelado_em, motivo_cancelamento)),
-       pagamentos(id, valor, forma, criado_em, estornado_em, registrado:membros!pagamentos_restaurante_id_registrado_por_fkey(nome))`,
+       pagamentos(id, valor, forma, criado_em, estornado_em, motivo_estorno, registrado:membros!pagamentos_restaurante_id_registrado_por_fkey(nome))`,
     )
     .eq("restaurante_id", restauranteId)
     .eq("mesa_id", mesaId)
@@ -155,6 +156,7 @@ export async function carregarComandaDaMesa(restauranteId: string, mesaId: strin
       registradoPor: p.registrado?.nome ?? null,
       criadoEm: p.criado_em,
       estornado: p.estornado_em !== null,
+      motivoEstorno: p.motivo_estorno,
     }))
     .sort((a, b) => a.criadoEm.localeCompare(b.criadoEm));
 

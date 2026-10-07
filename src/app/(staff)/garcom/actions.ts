@@ -170,16 +170,19 @@ export async function registrarPagamento(comandaId: string, valor: number, forma
   return sucesso(`Pagamento de ${formatarBRL(dados.data.valor)} registrado.`);
 }
 
-export async function estornarPagamento(pagamentoId: string): Promise<ResultadoAcao> {
+export async function estornarPagamento(pagamentoId: string, motivo: string): Promise<ResultadoAcao> {
   const acesso = await exigirAcesso("garcom");
   if (acesso.papel === "garcom") return falha("Só o caixa ou o dono podem estornar.");
-  if (!id.safeParse(pagamentoId).success) return falha("Pagamento inválido.");
+  const dados = z
+    .object({ pagamentoId: id, motivo: z.string().trim().min(3, "Informe o motivo do estorno.").max(500) })
+    .safeParse({ pagamentoId, motivo });
+  if (!dados.success) return falha(dados.error.issues[0]?.message ?? "Dados inválidos.");
 
   const supabase = await createClient();
   const { error } = await supabase
     .from("pagamentos")
-    .update({ estornado_em: new Date().toISOString() })
-    .eq("id", pagamentoId)
+    .update({ estornado_em: new Date().toISOString(), motivo_estorno: dados.data.motivo })
+    .eq("id", dados.data.pagamentoId)
     .eq("restaurante_id", acesso.restaurante.id);
   if (error) return falha(mensagemErroBanco(error));
 

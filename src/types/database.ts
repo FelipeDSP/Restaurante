@@ -459,13 +459,13 @@ isOneToOne: false
                   ]
                 },"pagamentos": {
                   Row: {
-                    "caixa_sessao_id": string,"comanda_id": string | null,"criado_em": string,"estornado_em": string | null,"estornado_por": string | null,"forma": string,"id": string,"pedido_id": string | null,"registrado_por": string,"restaurante_id": string,"valor": number
+                    "caixa_sessao_id": string,"comanda_id": string | null,"criado_em": string,"estornado_em": string | null,"estornado_por": string | null,"forma": string,"id": string,"motivo_estorno": string | null,"pedido_id": string | null,"registrado_por": string,"restaurante_id": string,"valor": number
                   }
                   Insert: {
-                    "caixa_sessao_id": string,"comanda_id"?: string | null,"criado_em"?: string,"estornado_em"?: string | null,"estornado_por"?: string | null,"forma": string,"id"?: string,"pedido_id"?: string | null,"registrado_por": string,"restaurante_id": string,"valor": number
+                    "caixa_sessao_id": string,"comanda_id"?: string | null,"criado_em"?: string,"estornado_em"?: string | null,"estornado_por"?: string | null,"forma": string,"id"?: string,"motivo_estorno"?: string | null,"pedido_id"?: string | null,"registrado_por": string,"restaurante_id": string,"valor": number
                   }
                   Update: {
-                    "caixa_sessao_id"?: string,"comanda_id"?: string | null,"criado_em"?: string,"estornado_em"?: string | null,"estornado_por"?: string | null,"forma"?: string,"id"?: string,"pedido_id"?: string | null,"registrado_por"?: string,"restaurante_id"?: string,"valor"?: number
+                    "caixa_sessao_id"?: string,"comanda_id"?: string | null,"criado_em"?: string,"estornado_em"?: string | null,"estornado_por"?: string | null,"forma"?: string,"id"?: string,"motivo_estorno"?: string | null,"pedido_id"?: string | null,"registrado_por"?: string,"restaurante_id"?: string,"valor"?: number
                   }
                   Relationships: [
                     {

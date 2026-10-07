@@ -36,7 +36,7 @@ export type ResumoCaixa = {
   itens_mais_vendidos: { nome: string; quantidade: number; total: number }[];
   itens_cancelados: { nome: string; quantidade: number; total: number; motivo: string | null; em: string; por: string | null }[];
   pedidos_cancelados: { numero: number; origem: string; total: number; motivo: string | null; em: string; por: string | null }[];
-  estornos: { forma: string; valor: number; em: string; por: string | null; registrado_por: string | null }[];
+  estornos: { forma: string; valor: number; em: string; por: string | null; registrado_por: string | null; motivo: string | null }[];
 };
 
 export async function carregarSessaoAberta(restauranteId: string): Promise<SessaoCaixa | null> {

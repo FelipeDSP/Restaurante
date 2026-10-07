@@ -195,7 +195,35 @@ begin
   exception when others then
     perform pg_temp.ok(sqlerrm like 'Comanda não quitada%', 'comanda só fecha quitada');
   end;
-  insert into public.pagamentos (restaurante_id, comanda_id, valor, forma) values (a, v_comanda_a, 1200, 'dinheiro');
+  -- Nunca acima do que falta (dois aparelhos cobrando a mesma mesa).
+  begin
+    insert into public.pagamentos (restaurante_id, comanda_id, valor, forma) values (a, v_comanda_a, 1300, 'pix');
+    perform pg_temp.ok(false, 'pagamento acima do que falta é recusado');
+  exception when others then
+    perform pg_temp.ok(sqlerrm like 'Valor maior que o que falta (R$ 12,00)%', 'pagamento acima do que falta é recusado');
+  end;
+
+  -- Estorno exige motivo e libera o valor de novo.
+  perform pg_temp.entrar('caixa.brasa@exemplo.com');
+  begin
+    update public.pagamentos set estornado_em = now() where comanda_id = v_comanda_a;
+    perform pg_temp.ok(false, 'estorno exige motivo');
+  exception when others then
+    perform pg_temp.ok(sqlerrm like 'Informe o motivo do estorno%', 'estorno exige motivo');
+  end;
+  update public.pagamentos set estornado_em = now(), motivo_estorno = 'cobrado na maquininha errada'
+  where comanda_id = v_comanda_a;
+  select count(*) into n from public.pagamentos
+  where comanda_id = v_comanda_a and motivo_estorno = 'cobrado na maquininha errada' and estornado_por is not null;
+  perform pg_temp.ok(n = 1, 'estorno guarda motivo e quem estornou');
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  insert into public.pagamentos (restaurante_id, comanda_id, valor, forma) values (a, v_comanda_a, 3200, 'pix');
+  begin
+    insert into public.pagamentos (restaurante_id, comanda_id, valor, forma) values (a, v_comanda_a, 100, 'dinheiro');
+    perform pg_temp.ok(false, 'conta quitada não recebe outro pagamento');
+  exception when others then
+    perform pg_temp.ok(sqlerrm like 'Esta conta já está paga%', 'conta quitada não recebe outro pagamento');
+  end;
   update public.comandas set status = 'fechada' where id = v_comanda_a;
   select count(*) into n from public.comandas where id = v_comanda_a and status = 'fechada' and fechada_por is not null;
   perform pg_temp.ok(n = 1, 'comanda quitada fecha');

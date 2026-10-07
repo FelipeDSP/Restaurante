@@ -175,7 +175,7 @@ export function ResumoSessao({ resumo, fusoHorario }: { resumo: ResumoCaixa; fus
           linhas={resumo.estornos.map((e, n) => ({
             chave: `estorno-${n}`,
             rotulo: nomeForma(e.forma),
-            detalhe: `${horaLocal(e.em, fusoHorario)} · estornado por ${e.por ?? "—"} · recebido por ${e.registrado_por ?? "—"}`,
+            detalhe: `${horaLocal(e.em, fusoHorario)} · estornado por ${e.por ?? "—"} · recebido por ${e.registrado_por ?? "—"}${e.motivo ? ` · ${e.motivo}` : ""}`,
             valor: formatarBRL(e.valor),
           }))}
         />
