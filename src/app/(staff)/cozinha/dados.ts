@@ -10,6 +10,11 @@ export type ItemTicket = {
   adicionais: AdicionalEscolhido[];
   observacao: string | null;
   cancelado: boolean;
+  paraViagem: boolean;
+  // Praças anteriores da rota que ainda não terminaram (o item espera por elas).
+  aguardando: string[];
+  // Para onde o item segue depois desta praça.
+  depois: string[];
 };
 
 // Um ticket = os itens de um pedido para uma praça.
@@ -36,8 +41,20 @@ const CAMPOS = `id, status, criado_em, pronto_em, estacao_id,
     numero, origem, status, cliente_nome, observacao,
     comanda:comandas!pedidos_restaurante_id_comanda_id_fkey(mesa:mesas!comandas_restaurante_id_mesa_id_fkey(numero)),
     autor:membros!pedidos_restaurante_id_criado_por_fkey(nome),
-    itens_pedido(id, quantidade, nome_produto, adicionais, observacao, cancelado_em, estacao_id, criado_em)
+    itens_pedido(id, quantidade, nome_produto, adicionais, observacao, cancelado_em, etapas, para_viagem, criado_em),
+    tarefas:tarefas_producao!tarefas_producao_restaurante_id_pedido_id_fkey(
+      estacao_id, status, estacao:estacoes!tarefas_producao_restaurante_id_estacao_id_fkey(nome)
+    )
   )`;
+
+type Etapa = { estacao_id: string; ordem: number };
+
+function lerEtapas(valor: unknown): Etapa[] {
+  if (!Array.isArray(valor)) return [];
+  return valor.flatMap((e): Etapa[] =>
+    e && typeof e === "object" && typeof e.estacao_id === "string" ? [{ estacao_id: e.estacao_id, ordem: Number(e.ordem) || 1 }] : [],
+  );
+}
 
 // Pendentes (todas) + prontas nas últimas 3 horas, para desfazer um "pronto" por engano.
 export async function carregarTickets(
@@ -66,17 +83,26 @@ export async function carregarTickets(
       if (!p || !t.praca || p.status === "cancelado") return [];
       // Delivery só entra na cozinha depois que o caixa aceita.
       if (p.origem === "delivery" && p.status === "recebido") return [];
+      const situacao = new Map(p.tarefas.map((x) => [x.estacao_id, { pendente: x.status === "pendente", nome: x.estacao?.nome ?? "" }]));
       const itens = p.itens_pedido
-        .filter((i) => i.estacao_id === t.estacao_id)
-        .sort((a, b) => a.criado_em.localeCompare(b.criado_em))
-        .map((i) => ({
-          id: i.id,
-          quantidade: i.quantidade,
-          nome: i.nome_produto,
-          adicionais: lerAdicionais(i.adicionais),
-          observacao: i.observacao,
-          cancelado: i.cancelado_em !== null,
-        }));
+        .map((i) => ({ i, etapas: lerEtapas(i.etapas) }))
+        .filter(({ etapas }) => etapas.some((e) => e.estacao_id === t.estacao_id))
+        .sort((a, b) => a.i.criado_em.localeCompare(b.i.criado_em))
+        .map(({ i, etapas }) => {
+          const aqui = etapas.find((e) => e.estacao_id === t.estacao_id)!.ordem;
+          const nome = (e: Etapa) => situacao.get(e.estacao_id)?.nome ?? "";
+          return {
+            id: i.id,
+            quantidade: i.quantidade,
+            nome: i.nome_produto,
+            adicionais: lerAdicionais(i.adicionais),
+            observacao: i.observacao,
+            cancelado: i.cancelado_em !== null,
+            paraViagem: i.para_viagem,
+            aguardando: etapas.filter((e) => e.ordem < aqui && situacao.get(e.estacao_id)?.pendente).map(nome),
+            depois: etapas.filter((e) => e.ordem > aqui).map(nome),
+          };
+        });
       return [
         {
           id: t.id,

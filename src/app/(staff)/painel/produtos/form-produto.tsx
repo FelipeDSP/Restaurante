@@ -15,6 +15,7 @@ import { textoDeCentavos } from "@/lib/dinheiro";
 import { cn } from "@/lib/utils";
 
 import { excluirProduto, salvarProduto } from "./actions";
+import { EditorRota, type EtapaEditavel, etapasDoBanco, etapasParaBanco } from "./editor-rota";
 
 export type ProdutoEditavel = {
   id: string;
@@ -25,7 +26,7 @@ export type ProdutoEditavel = {
   foto_url: string | null;
   disponivel: boolean;
   disponivel_delivery: boolean;
-  estacao_id: string | null;
+  para_viagem: boolean;
 };
 
 export type GrupoParaProduto = { id: string; nome: string; minimo: number; maximo: number; ativo: boolean; opcoes: string[] };
@@ -38,14 +39,25 @@ type Props = {
   grupos: GrupoParaProduto[];
   gruposDoProduto?: string[];
   pracas: { id: string; nome: string }[];
+  etapasDoProduto?: { estacao_id: string; ordem: number }[];
 };
 
-export function FormProduto({ restauranteId, categorias, produto, categoriaInicial, grupos, gruposDoProduto = [], pracas }: Props) {
+export function FormProduto({
+  restauranteId,
+  categorias,
+  produto,
+  categoriaInicial,
+  grupos,
+  gruposDoProduto = [],
+  pracas,
+  etapasDoProduto = [],
+}: Props) {
   const [estado, acao] = useActionState(salvarProduto.bind(null, produto?.id ?? null), undefined);
   useAvisoResultado(estado);
   const { pendente, executar } = useAcao();
   // Fora do <form>: sobrevive à remontagem após erro (o React 19 reseta o formulário).
   const [gruposEscolhidos, setGruposEscolhidos] = useState<string[]>(gruposDoProduto);
+  const [etapas, setEtapas] = useState<EtapaEditavel[]>(() => etapasDoBanco(etapasDoProduto));
 
   return (
     <form key={estado?.chave} action={acao} className="flex flex-col gap-6">
@@ -90,22 +102,6 @@ export function FormProduto({ restauranteId, categorias, produto, categoriaInici
             </Selecao>
             <ErroCampo estado={estado} campo="categoria_id" />
           </Campo>
-          <Campo
-            rotulo="Praça"
-            htmlFor="estacao_id"
-            className="sm:col-span-2"
-            dica={pracas.length === 0 ? "Cadastre as praças em Painel > Praças para os pedidos aparecerem na cozinha." : "Sem praça, o item não aparece na tela da cozinha (ex.: bebidas)."}
-          >
-            <Selecao id="estacao_id" name="estacao_id" defaultValue={valorCampo(estado, "estacao_id", produto?.estacao_id)} className="h-11">
-              <option value="">Nenhuma (não vai para a cozinha)</option>
-              {pracas.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nome}
-                </option>
-              ))}
-            </Selecao>
-            <ErroCampo estado={estado} campo="estacao_id" />
-          </Campo>
           <div className="sm:col-span-2">
             <UploadImagem
               bucket="rest-produtos"
@@ -132,6 +128,37 @@ export function FormProduto({ restauranteId, categorias, produto, categoriaInici
               className="size-5 accent-[var(--cor-primaria)]"
             />
             Aparece no delivery
+          </label>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="font-semibold">Preparo na cozinha</h2>
+            <Link href="/painel/pracas" className="text-sm underline underline-offset-4">
+              Gerenciar praças
+            </Link>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Por quais praças o produto passa. Ex.: espeto só na churrasqueira; picanha na churrasqueira e depois na cozinha.
+          </p>
+          <input type="hidden" name="etapas" value={JSON.stringify(etapasParaBanco(etapas))} />
+          <EditorRota pracas={pracas} etapas={etapas} aoMudar={setEtapas} />
+          <ErroCampo estado={estado} campo="etapas" />
+          <label className="mt-2 flex items-start gap-3 text-sm font-medium">
+            <input
+              type="checkbox"
+              name="para_viagem"
+              defaultChecked={marcadoCampo(estado, "para_viagem", produto?.para_viagem ?? false)}
+              className="mt-0.5 size-5 accent-[var(--cor-primaria)]"
+            />
+            <span>
+              Sempre sai pra viagem
+              <span className="block font-normal text-muted-foreground">
+                Ex.: marmita ou açaí no copo. O garçom ainda pode mudar na hora; delivery é sempre pra viagem.
+              </span>
+            </span>
           </label>
         </CardContent>
       </Card>

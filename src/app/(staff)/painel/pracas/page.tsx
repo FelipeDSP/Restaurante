@@ -14,21 +14,21 @@ export default async function PracasPage() {
 
   const { data, error } = await supabase
     .from("estacoes")
-    .select("id, nome, ativa, produtos(count)")
+    .select("id, nome, ativa, produto_etapas(count)")
     .eq("restaurante_id", acesso.restaurante.id)
     .order("ordem")
     .order("nome");
   if (error) throw new Error(error.message);
 
-  const pracas = data.map((p) => ({ id: p.id, nome: p.nome, ativa: p.ativa, produtos: p.produtos[0]?.count ?? 0 }));
+  const pracas = data.map((p) => ({ id: p.id, nome: p.nome, ativa: p.ativa, produtos: p.produto_etapas[0]?.count ?? 0 }));
 
   return (
     <main className="flex flex-col gap-6 p-4 md:p-6">
       <div>
         <h1 className="text-2xl font-semibold">Praças</h1>
         <p className="text-muted-foreground">
-          Onde cada coisa é preparada (churrasqueira, chapa, bar). Ligue cada produto à sua praça na tela do produto; produto sem
-          praça (ex.: refrigerante) não aparece na{" "}
+          Onde cada coisa é preparada (churrasqueira, chapa, bar). Na tela de cada produto você define por quais praças ele passa e em que
+          ordem; produto sem praça (ex.: refrigerante) não aparece na{" "}
           <Link href="/cozinha" className="underline underline-offset-4">
             tela da cozinha
           </Link>

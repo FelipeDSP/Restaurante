@@ -32,6 +32,12 @@ function titulo(t: Ticket) {
   return "Balcão";
 }
 
+// Ticket inteiro pra viagem (ex.: delivery): destaque no topo em vez de item por item.
+function tudoViagem(t: Ticket) {
+  const ativos = t.itens.filter((i) => !i.cancelado);
+  return ativos.length > 0 && ativos.every((i) => i.paraViagem);
+}
+
 function minutosDesde(iso: string, agora: number) {
   return Math.max(0, Math.floor((agora - new Date(iso).getTime()) / 60000));
 }
@@ -43,6 +49,7 @@ function TicketImpressao({ ticket, restauranteNome, fuso }: { ticket: Ticket; re
       <p className="text-center text-[11px]">{restauranteNome}</p>
       <p className="text-center text-[14px] font-bold uppercase">{ticket.praca.nome}</p>
       <p className="my-1 text-center text-[22px] leading-tight font-bold">{titulo(ticket)}</p>
+      {tudoViagem(ticket) ? <p className="text-center text-[16px] font-bold">*** PRA VIAGEM ***</p> : null}
       <p className="text-center">
         Pedido nº {ticket.pedido.numero} · {horaLocal(ticket.criadoEm, fuso)}
       </p>
@@ -55,9 +62,11 @@ function TicketImpressao({ ticket, restauranteNome, fuso }: { ticket: Ticket; re
             <p className="text-[15px] font-bold">
               {i.quantidade}x {i.nome}
               {i.cancelado ? " (CANCELADO)" : ""}
+              {i.paraViagem && !i.cancelado ? " [VIAGEM]" : ""}
             </p>
             {i.adicionais.length > 0 ? <p className="pl-3">+ {resumoAdicionais(i.adicionais)}</p> : null}
             {i.observacao ? <p className="pl-3 font-bold">&gt;&gt; {i.observacao}</p> : null}
+            {i.depois.length > 0 ? <p className="pl-3">depois: {i.depois.join(", ")}</p> : null}
           </li>
         ))}
       </ul>
@@ -68,6 +77,14 @@ function TicketImpressao({ ticket, restauranteNome, fuso }: { ticket: Ticket; re
         </>
       ) : null}
     </div>
+  );
+}
+
+function SeloViagem({ className }: { className?: string }) {
+  return (
+    <span className={cn("inline-block rounded-md bg-violet-700 px-2 py-0.5 text-xs font-bold tracking-wide text-white uppercase", className)}>
+      Pra viagem
+    </span>
   );
 }
 
@@ -89,6 +106,8 @@ function CartaoTicket({
   const atrasado = minutos >= 20;
   const atencao = minutos >= 10 && !atrasado;
   const ativos = ticket.itens.filter((i) => !i.cancelado);
+  const esperando = [...new Set(ativos.flatMap((i) => i.aguardando))];
+  const viagemTodo = tudoViagem(ticket);
 
   return (
     <article
@@ -118,17 +137,30 @@ function CartaoTicket({
           <p className="text-xs text-muted-foreground">{horaLocal(ticket.criadoEm, fuso)}</p>
         </div>
       </header>
-      {mostrarPraca ? (
-        <p className="border-b px-4 py-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{ticket.praca.nome}</p>
+      {mostrarPraca || viagemTodo ? (
+        <div className="flex items-center justify-between gap-2 border-b px-4 py-1">
+          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{mostrarPraca ? ticket.praca.nome : ""}</p>
+          {viagemTodo ? <SeloViagem /> : null}
+        </div>
       ) : null}
       <ul className="flex flex-1 flex-col gap-2 px-4 py-3">
         {ticket.itens.map((i) => (
-          <li key={i.id} className={cn(i.cancelado && "text-muted-foreground line-through")}>
+          <li
+            key={i.id}
+            className={cn(i.cancelado && "text-muted-foreground line-through", !i.cancelado && i.aguardando.length > 0 && "opacity-60")}
+          >
             <p className="text-lg leading-snug">
               <span className="font-bold">{i.quantidade}×</span> {i.nome}
               {i.cancelado ? <span className="ml-2 text-xs font-bold text-red-700 no-underline">CANCELADO</span> : null}
+              {!i.cancelado && i.paraViagem && !viagemTodo ? <SeloViagem className="ml-2 align-middle" /> : null}
             </p>
             {i.adicionais.length > 0 ? <p className="text-sm text-muted-foreground">{resumoAdicionais(i.adicionais)}</p> : null}
+            {!i.cancelado && i.aguardando.length > 0 ? (
+              <p className="text-sm font-semibold text-sky-800">Aguardando {i.aguardando.join(" e ")}</p>
+            ) : null}
+            {!i.cancelado && i.depois.length > 0 ? (
+              <p className="text-sm text-muted-foreground">Depois segue para {i.depois.join(" e ")}</p>
+            ) : null}
             {i.observacao ? (
               <p className="mt-1 rounded-md bg-amber-100 px-2 py-1 text-sm font-semibold text-amber-950">{i.observacao}</p>
             ) : null}
@@ -145,11 +177,11 @@ function CartaoTicket({
         <Button
           type="button"
           className="h-12 flex-1 text-base"
-          disabled={pendente}
+          disabled={pendente || esperando.length > 0}
           onClick={() => executar(() => marcarTicket(ticket.id, "pronto"))}
         >
           <Check />
-          {ativos.length === 0 ? "Tirar da tela" : "Pronto"}
+          {esperando.length > 0 ? `Aguardando ${esperando.join(" e ")}` : ativos.length === 0 ? "Tirar da tela" : "Pronto"}
         </Button>
       </footer>
     </article>

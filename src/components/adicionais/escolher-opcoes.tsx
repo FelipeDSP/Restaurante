@@ -25,7 +25,7 @@ export type ProdutoComOpcoes = {
   grupos: GrupoAdicionais[];
 };
 
-export type EscolhaFeita = { adicionais: AdicionalEscolhido[]; quantidade: number; observacao: string };
+export type EscolhaFeita = { adicionais: AdicionalEscolhido[]; quantidade: number; observacao: string; paraViagem: boolean };
 
 // Folha (celular) / janela (tela grande) para escolher as opções de um produto.
 // Usada no site de delivery e no lançamento do garçom; cores vêm da marca do restaurante.
@@ -34,11 +34,14 @@ export function EscolherOpcoes({
   aoFechar,
   aoConfirmar,
   rotuloConfirmar = "Adicionar",
+  viagemPadrao,
 }: {
   produto: ProdutoComOpcoes | null;
   aoFechar: () => void;
   aoConfirmar: (escolha: EscolhaFeita) => void;
   rotuloConfirmar?: string;
+  // Só no salão: mostra o "pra viagem" já marcado com o padrão do produto.
+  viagemPadrao?: boolean;
 }) {
   // O portal fica dentro da tela do restaurante (e não no <body>) para herdar as cores da marca.
   const [ancora, setAncora] = useState<HTMLSpanElement | null>(null);
@@ -56,7 +59,15 @@ export function EscolherOpcoes({
           )}
         >
           {/* Remonta a cada produto: começa sempre sem nada escolhido. */}
-          {produto ? <Conteudo key={produto.id} produto={produto} aoConfirmar={aoConfirmar} rotuloConfirmar={rotuloConfirmar} /> : null}
+          {produto ? (
+            <Conteudo
+              key={produto.id}
+              produto={produto}
+              aoConfirmar={aoConfirmar}
+              rotuloConfirmar={rotuloConfirmar}
+              viagemPadrao={viagemPadrao}
+            />
+          ) : null}
         </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>
@@ -67,15 +78,18 @@ function Conteudo({
   produto,
   aoConfirmar,
   rotuloConfirmar,
+  viagemPadrao,
 }: {
   produto: ProdutoComOpcoes;
   aoConfirmar: (escolha: EscolhaFeita) => void;
   rotuloConfirmar: string;
+  viagemPadrao?: boolean;
 }) {
   const [escolhidos, setEscolhidos] = useState<string[]>([]);
   const [quantidade, setQuantidade] = useState(1);
   const [observacao, setObservacao] = useState("");
   const [tentou, setTentou] = useState(false);
+  const [paraViagem, setParaViagem] = useState(viagemPadrao ?? false);
 
   const opcoes = produto.grupos.flatMap((g) => g.opcoes.map((o) => ({ ...o, grupo: g.nome })));
   const selecionadas = opcoes.filter((o) => escolhidos.includes(o.id));
@@ -101,6 +115,7 @@ function Conteudo({
       adicionais: selecionadas.map((o) => ({ id: o.id, grupo: o.grupo, nome: o.nome, preco: o.preco })),
       quantidade,
       observacao: observacao.trim(),
+      paraViagem,
     });
   }
 
@@ -203,6 +218,17 @@ function Conteudo({
             className="h-11 font-normal"
           />
         </label>
+        {viagemPadrao !== undefined ? (
+          <label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border px-3 py-2 has-focus-visible:ring-3 has-focus-visible:ring-ring/50">
+            <input
+              type="checkbox"
+              checked={paraViagem}
+              onChange={(e) => setParaViagem(e.target.checked)}
+              className="size-5 accent-[var(--primary)]"
+            />
+            <span className="font-medium">Pra viagem</span>
+          </label>
+        ) : null}
       </div>
 
       <div className="flex flex-col gap-2 border-t p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">

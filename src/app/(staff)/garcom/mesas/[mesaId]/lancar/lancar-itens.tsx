@@ -1,6 +1,6 @@
 "use client";
 
-import { ListPlus, MessageSquarePlus, Minus, Plus, Search, Send, Trash2 } from "lucide-react";
+import { ListPlus, MessageSquarePlus, Minus, Plus, Search, Send, ShoppingBag, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
@@ -16,7 +16,23 @@ import { lancarItens } from "../../../actions";
 import type { CategoriaCardapio, ProdutoCardapio } from "../../../dados";
 
 // Uma linha do lançamento: produto + opções escolhidas. Produto sem opções tem uma linha só.
-type Linha = { produtoId: string; adicionais: AdicionalEscolhido[]; quantidade: number; observacao: string };
+type Linha = { produtoId: string; adicionais: AdicionalEscolhido[]; quantidade: number; observacao: string; paraViagem: boolean };
+
+function BotaoViagem({ ativo, aoMudar, rotulo }: { ativo: boolean; aoMudar: () => void; rotulo: string }) {
+  return (
+    <Button
+      type="button"
+      variant={ativo ? "default" : "ghost"}
+      size="sm"
+      aria-pressed={ativo}
+      aria-label={`Pra viagem: ${rotulo}`}
+      onClick={aoMudar}
+    >
+      <ShoppingBag />
+      Pra viagem
+    </Button>
+  );
+}
 
 function normalizar(texto: string) {
   return texto.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
@@ -70,8 +86,9 @@ function LinhaProdutoSimples({
 }) {
   const [mostrarObs, setMostrarObs] = useState(Boolean(linha?.observacao));
   const quantidade = linha?.quantidade ?? 0;
-  const mudar = (qtd: number, observacao = linha?.observacao ?? "") =>
-    aoMudar(qtd > 0 ? { produtoId: produto.id, adicionais: [], quantidade: qtd, observacao } : undefined);
+  const viagem = linha?.paraViagem ?? produto.paraViagem;
+  const mudar = (qtd: number, observacao = linha?.observacao ?? "", paraViagem = viagem) =>
+    aoMudar(qtd > 0 ? { produtoId: produto.id, adicionais: [], quantidade: qtd, observacao, paraViagem } : undefined);
 
   return (
     <li className={cn("rounded-xl border p-3 transition-colors", quantidade > 0 && "border-[var(--cor-primaria)] bg-[var(--cor-primaria)]/5")}>
@@ -94,22 +111,25 @@ function LinhaProdutoSimples({
         )}
       </div>
       {quantidade > 0 ? (
-        mostrarObs ? (
-          <Input
-            value={linha?.observacao ?? ""}
-            onChange={(e) => mudar(quantidade, e.target.value)}
-            placeholder="Observação (ex.: sem cebola, ao ponto)"
-            maxLength={300}
-            className="mt-2 h-11"
-            aria-label={`Observação de ${produto.nome}`}
-            autoFocus
-          />
-        ) : (
-          <Button type="button" variant="ghost" size="sm" className="mt-1" onClick={() => setMostrarObs(true)}>
-            <MessageSquarePlus />
-            Observação
-          </Button>
-        )
+        <div className="mt-1 flex flex-wrap items-center gap-1">
+          {mostrarObs ? (
+            <Input
+              value={linha?.observacao ?? ""}
+              onChange={(e) => mudar(quantidade, e.target.value)}
+              placeholder="Observação (ex.: sem cebola, ao ponto)"
+              maxLength={300}
+              className="h-11 min-w-48 flex-1"
+              aria-label={`Observação de ${produto.nome}`}
+              autoFocus
+            />
+          ) : (
+            <Button type="button" variant="ghost" size="sm" onClick={() => setMostrarObs(true)}>
+              <MessageSquarePlus />
+              Observação
+            </Button>
+          )}
+          <BotaoViagem ativo={viagem} rotulo={produto.nome} aoMudar={() => mudar(quantidade, linha?.observacao ?? "", !viagem)} />
+        </div>
       ) : null}
     </li>
   );
@@ -152,7 +172,10 @@ function LinhaProdutoComOpcoes({
           {linhas.map(([chave, linha]) => (
             <li key={chave} className="flex items-center gap-3">
               <span className="flex min-w-0 flex-1 flex-col text-sm">
-                <span className="font-medium">{resumoAdicionais(linha.adicionais) || "Sem opções"}</span>
+                <span className="font-medium">
+                  {resumoAdicionais(linha.adicionais) || "Sem opções"}
+                  {linha.paraViagem ? <span className="ml-2 text-xs font-bold text-violet-700 uppercase">Pra viagem</span> : null}
+                </span>
                 {linha.observacao ? <span className="text-muted-foreground">Obs.: {linha.observacao}</span> : null}
                 <span className="text-muted-foreground tabular-nums">
                   {formatarBRL((produto.preco + precoDasOpcoes(linha.adicionais)) * linha.quantidade)}
@@ -228,6 +251,7 @@ export function LancarItens({
       quantidade: l.quantidade,
       observacao: l.observacao.trim() || null,
       adicionais: l.adicionais.map((a) => a.id),
+      paraViagem: l.paraViagem,
     }));
     executar(() => lancarItens(comandaId, itens), () => router.push(destino));
   }
@@ -295,14 +319,17 @@ export function LancarItens({
         produto={escolhendo}
         aoFechar={() => setEscolhendo(null)}
         rotuloConfirmar="Adicionar ao pedido"
+        viagemPadrao={escolhendo?.paraViagem ?? false}
         aoConfirmar={(escolha) => {
           if (!escolhendo) return;
-          const chave = chaveDaEscolha(escolhendo.id, escolha.adicionais.map((a) => a.id), escolha.observacao);
+          const chave =
+            chaveDaEscolha(escolhendo.id, escolha.adicionais.map((a) => a.id), escolha.observacao) + (escolha.paraViagem ? "|viagem" : "");
           const existente = linhas[chave];
           definirLinha(chave, {
             produtoId: escolhendo.id,
             adicionais: escolha.adicionais,
             observacao: escolha.observacao,
+            paraViagem: escolha.paraViagem,
             quantidade: Math.min(99, (existente?.quantidade ?? 0) + escolha.quantidade),
           });
           setEscolhendo(null);

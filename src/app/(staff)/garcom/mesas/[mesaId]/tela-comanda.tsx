@@ -99,6 +99,7 @@ function LinhaItem({ item, editavel }: { item: ItemComanda; editavel: boolean })
           {item.adicionais.length > 0 ? (
             <span className="text-sm text-muted-foreground">{resumoAdicionais(item.adicionais)}</span>
           ) : null}
+          {item.paraViagem ? <span className="text-xs font-bold text-violet-700 uppercase">Pra viagem</span> : null}
           {item.observacao ? <span className="text-sm text-muted-foreground">Obs.: {item.observacao}</span> : null}
           <span className="text-xs text-muted-foreground">Pedido nº {item.pedidoNumero}</span>
         </span>

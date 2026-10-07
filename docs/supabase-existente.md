@@ -87,6 +87,7 @@ Migrações aplicadas via MCP; os arquivos em `supabase/migrations/` têm as mes
 | `20261007134517` | `cadastro` (assinaturas; restaurantes existentes viraram `cortesia`) |
 | `20261007142344` | `adicionais` (grupos de opções; `itens_pedido.adicionais` e `preco_adicionais`) |
 | `20261007154237` | `cozinha` (praças, `tarefas_producao`, papel `cozinha`, `/cozinha` reservado) |
+| `20261007155855` | `preparo` (rota de preparo por produto em `produto_etapas`; "pra viagem" no produto e no item) |
 
 Seed de desenvolvimento aplicado (3 restaurantes, 13 usuários `@exemplo.com`, senha `senha123`).
 

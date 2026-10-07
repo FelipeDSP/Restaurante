@@ -321,8 +321,9 @@ begin
   select id into v_tarefa from public.tarefas_producao
   where pedido_id = (v_json ->> 'pedido_id')::uuid and estacao_id = v_chapa_a and status = 'pendente';
   perform pg_temp.ok(v_tarefa is not null, 'item com praça abre a tarefa da praça');
-  perform pg_temp.ok((select estacao_id = v_chapa_a from public.itens_pedido where pedido_id = (v_json ->> 'pedido_id')::uuid),
-                     'item guarda a praça do produto');
+  perform pg_temp.ok((select etapas = jsonb_build_array(jsonb_build_object('estacao_id', v_chapa_a, 'ordem', 1)) and not para_viagem
+                      from public.itens_pedido where pedido_id = (v_json ->> 'pedido_id')::uuid),
+                     'item guarda a rota de preparo do produto (e come no salão por padrão)');
   v_json := public.lancar_itens_comanda(v_comanda_a, jsonb_build_array(
     jsonb_build_object('produto_id', md5('brasa-espetinhos/Bebidas/Refrigerante lata')::uuid, 'quantidade', 1)));
   select count(*) into n from public.tarefas_producao where pedido_id = (v_json ->> 'pedido_id')::uuid;
@@ -421,6 +422,39 @@ begin
   perform pg_temp.ok((select preco_adicionais = 900 and jsonb_array_length(adicionais) = 3 and total = 4500
                       from public.itens_pedido where id = v_item),
                      'opções do item não mudam depois de lançado (só a quantidade)');
+  perform pg_temp.ok((select etapas = jsonb_build_array(jsonb_build_object('estacao_id', v_churrasqueira_a, 'ordem', 1),
+                                                         jsonb_build_object('estacao_id', v_chapa_a, 'ordem', 2))
+                      from public.itens_pedido where id = v_item),
+                     'item em sequência guarda as etapas na ordem (brasa, depois chapa)');
+  select count(*) into n from public.tarefas_producao where pedido_id = (select pedido_id from public.itens_pedido where id = v_item);
+  perform pg_temp.ok(n = 2, 'item em sequência abre um ticket em cada praça');
+
+  v_json := public.lancar_itens_comanda(v_comanda_a, jsonb_build_array(
+    jsonb_build_object('produto_id', v_produto_a, 'quantidade', 2, 'para_viagem', true)));
+  perform pg_temp.ok((select para_viagem from public.itens_pedido where pedido_id = (v_json ->> 'pedido_id')::uuid),
+                     'garçom marca item pra viagem');
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  update public.produtos set para_viagem = true where id = v_produto_a;
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  v_json := public.lancar_itens_comanda(v_comanda_a, jsonb_build_array(
+    jsonb_build_object('produto_id', v_produto_a, 'quantidade', 1)));
+  perform pg_temp.ok((select para_viagem from public.itens_pedido where pedido_id = (v_json ->> 'pedido_id')::uuid),
+                     'produto marcado pelo dono sai pra viagem por padrão');
+  v_json := public.lancar_itens_comanda(v_comanda_a, jsonb_build_array(
+    jsonb_build_object('produto_id', v_produto_a, 'quantidade', 1, 'para_viagem', false)));
+  perform pg_temp.ok((select not para_viagem from public.itens_pedido where pedido_id = (v_json ->> 'pedido_id')::uuid),
+                     'garçom pode tirar o pra viagem do padrão');
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  update public.produtos set para_viagem = false where id = v_produto_a;
+  begin
+    insert into public.produto_etapas (restaurante_id, produto_id, estacao_id) values (a, v_produto_a, v_chapa_a);
+    perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+    insert into public.produto_etapas (restaurante_id, produto_id, estacao_id) values (a, v_produto_a2, v_churrasqueira_a);
+    perform pg_temp.ok(false, 'garçom não muda a rota de preparo');
+  exception when insufficient_privilege then
+    perform pg_temp.ok(true, 'garçom não muda a rota de preparo');
+  end;
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
 
   begin
     insert into public.grupos_adicionais (restaurante_id, nome) values (a, 'Do garçom');
@@ -539,6 +573,9 @@ begin
       jsonb_build_array(jsonb_build_object('produto_id', v_produto_a, 'quantidade', 1),
                         jsonb_build_object('produto_id', v_produto_a2, 'quantidade', 1)));
     perform pg_temp.entrar('caixa.brasa@exemplo.com');
+    if exists (select 1 from public.itens_pedido where pedido_id = (v_json ->> 'id')::uuid and not para_viagem) then
+      raise exception 'delivery com item que não é pra viagem';
+    end if;
     update public.pedidos set status = 'em_preparo' where id = (v_json ->> 'id')::uuid;
     perform pg_temp.entrar('cozinha.brasa@exemplo.com');
     update public.tarefas_producao set status = 'pronto' where pedido_id = (v_json ->> 'id')::uuid and estacao_id = v_chapa_a;

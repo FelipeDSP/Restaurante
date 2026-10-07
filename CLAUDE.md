@@ -75,8 +75,9 @@ Na área de staff, o restaurante vem da tabela `membros` do usuário logado. Se 
 - Número amigável do pedido (`numero`) sequencial por restaurante por sessão de caixa, só para exibição. O ID real é uuid.
 
 Já existe (cozinha, fase 1 da impressão):
-- `estacoes` (praças: nome, ordem, ativa), `produtos.estacao_id` (vazio = não vai para a cozinha) e `itens_pedido.estacao_id` (praça congelada no lançamento, como o preço).
-- `tarefas_producao`: uma por pedido e praça (o "ticket" da praça), criada por trigger quando entra item com praça; a equipe só muda `status` (`pendente`|`pronto`), quem e quando vêm do banco. No delivery, a última praça pronta leva o pedido de `em_preparo` para `pronto`.
+- `estacoes` (praças: nome, ordem, ativa) e `produto_etapas` (rota de preparo do produto: praça + ordem; mesma ordem = ao mesmo tempo, ordem maior = depois; sem etapas = não vai para a cozinha). `itens_pedido.etapas` congela a rota no lançamento, como o preço.
+- "Pra viagem": `produtos.para_viagem` (padrão do dono), `itens_pedido.para_viagem` (o garçom pode mudar por item; delivery é sempre true, decidido pelo trigger).
+- `tarefas_producao`: uma por pedido e praça (o "ticket" da praça), criada por trigger para cada praça da rota do item; na tela, o item que depende de praça anterior aparece "aguardando" e o Pronto só libera quando ela termina; a equipe só muda `status` (`pendente`|`pronto`), quem e quando vêm do banco. No delivery, a última praça pronta leva o pedido de `em_preparo` para `pronto`.
 - Papel `cozinha` (área `/cozinha`, também aberta a dono e caixa). Tela da cozinha em tempo real, com filtro por praça (`/cozinha?praca=<id>`), som, "pronto/voltar" e impressão pelo navegador (manual ou automática por aparelho).
 - Delivery só aparece na cozinha depois que o caixa aceita (status diferente de `recebido`).
 

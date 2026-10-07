@@ -16,10 +16,10 @@ export default async function EditarProdutoPage(props: PageProps<"/painel/produt
   if (!idSchema.safeParse(id).success) notFound();
 
   const supabase = await createClient();
-  const [produto, categorias, grupos, ligacoes, pracas] = await Promise.all([
+  const [produto, categorias, grupos, ligacoes, pracas, etapas] = await Promise.all([
     supabase
       .from("produtos")
-      .select("id, nome, descricao, preco, categoria_id, foto_url, disponivel, disponivel_delivery, estacao_id")
+      .select("id, nome, descricao, preco, categoria_id, foto_url, disponivel, disponivel_delivery, para_viagem")
       .eq("id", id)
       .eq("restaurante_id", acesso.restaurante.id)
       .maybeSingle(),
@@ -31,7 +31,13 @@ export default async function EditarProdutoPage(props: PageProps<"/painel/produt
       .eq("restaurante_id", acesso.restaurante.id)
       .eq("produto_id", id),
     carregarPracas(supabase, acesso.restaurante.id),
+    supabase
+      .from("produto_etapas")
+      .select("estacao_id, ordem")
+      .eq("restaurante_id", acesso.restaurante.id)
+      .eq("produto_id", id),
   ]);
+  if (etapas.error) throw new Error(etapas.error.message);
   if (ligacoes.error) throw new Error(ligacoes.error.message);
   if (produto.error) throw new Error(produto.error.message);
   if (categorias.error) throw new Error(categorias.error.message);
@@ -47,6 +53,7 @@ export default async function EditarProdutoPage(props: PageProps<"/painel/produt
         grupos={grupos}
         gruposDoProduto={ligacoes.data.map((l) => l.grupo_id)}
         pracas={pracas}
+        etapasDoProduto={etapas.data}
       />
     </main>
   );

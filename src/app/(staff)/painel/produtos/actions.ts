@@ -20,6 +20,41 @@ const gruposSchema = z.preprocess((valor) => {
   }
 }, z.array(id, { error: "Grupos inválidos." }).max(30));
 
+// Rota de preparo (campo oculto com JSON): praças distintas, ordem de 1 a 10.
+const etapasSchema = z.preprocess(
+  (valor) => {
+    try {
+      return JSON.parse(typeof valor === "string" && valor ? valor : "[]");
+    } catch {
+      return null;
+    }
+  },
+  z
+    .array(z.object({ estacao_id: id, ordem: z.number().int().min(1).max(10) }), { error: "Rota de preparo inválida." })
+    .max(10)
+    .refine((lista) => new Set(lista.map((e) => e.estacao_id)).size === lista.length, "Cada praça só pode aparecer uma vez."),
+);
+
+// Troca a rota de preparo do produto pela lista enviada.
+async function salvarEtapas(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  restauranteId: string,
+  produtoId: string,
+  etapas: { estacao_id: string; ordem: number }[],
+): Promise<string | null> {
+  const { error } = await supabase
+    .from("produto_etapas")
+    .delete()
+    .eq("restaurante_id", restauranteId)
+    .eq("produto_id", produtoId);
+  if (error) return error.message;
+  if (etapas.length === 0) return null;
+  const { error: erro } = await supabase
+    .from("produto_etapas")
+    .insert(etapas.map((e) => ({ restaurante_id: restauranteId, produto_id: produtoId, ...e })));
+  return erro?.message ?? null;
+}
+
 // Deixa as ligações produto-grupo iguais à lista escolhida.
 async function sincronizarGrupos(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -65,8 +100,7 @@ function produtoSchema(restauranteId: string) {
     foto_url: urlImagemDoRestaurante("rest-produtos", restauranteId),
     disponivel: checkbox,
     disponivel_delivery: checkbox,
-    // Vazio = não vai para a cozinha.
-    estacao_id: z.preprocess((v) => (v === "" || v === undefined ? null : v), id.nullable()),
+    para_viagem: checkbox,
   });
 }
 
@@ -83,6 +117,10 @@ export async function salvarProduto(
   if (!dados.success) return falhaValidacao(dados.error, formData);
   const grupos = gruposSchema.safeParse(formData.get("grupos"));
   if (!grupos.success) return falha("Grupos de adicionais inválidos.", undefined, formData);
+  const etapas = etapasSchema.safeParse(formData.get("etapas"));
+  if (!etapas.success) {
+    return falha("Confira a rota de preparo.", { etapas: etapas.error.issues[0]?.message ?? "Rota inválida." }, formData);
+  }
 
   const supabase = await createClient();
 
@@ -110,6 +148,9 @@ export async function salvarProduto(
     if (await sincronizarGrupos(supabase, restauranteId, produtoId, grupos.data)) {
       return falha("Produto salvo, mas não foi possível atualizar os adicionais.", undefined, formData);
     }
+    if (await salvarEtapas(supabase, restauranteId, produtoId, etapas.data)) {
+      return falha("Produto salvo, mas não foi possível atualizar a rota de preparo.", undefined, formData);
+    }
   } else {
     const ordem = await proximaOrdem(supabase, "produtos", restauranteId, { coluna: "categoria_id", valor: dados.data.categoria_id });
     const { data: criado, error } = await supabase
@@ -120,6 +161,9 @@ export async function salvarProduto(
     if (error) return falha(mensagemErroBanco(error), undefined, formData);
     if (await sincronizarGrupos(supabase, restauranteId, criado.id, grupos.data)) {
       return falha("Produto criado, mas não foi possível ligar os adicionais. Edite o produto para tentar de novo.");
+    }
+    if (await salvarEtapas(supabase, restauranteId, criado.id, etapas.data)) {
+      return falha("Produto criado, mas não foi possível salvar a rota de preparo. Edite o produto para tentar de novo.");
     }
   }
 

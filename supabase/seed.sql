@@ -147,12 +147,24 @@ from (values
 ) as e (slug, nome, ordem)
 on conflict (id) do nothing;
 
-update public.produtos p set estacao_id = md5(x.slug || '/praca/' || x.praca)::uuid
+-- Rota de preparo por produto (mesma ordem = ao mesmo tempo; ordem maior = depois).
+insert into public.produto_etapas (restaurante_id, produto_id, estacao_id, ordem)
+select p.restaurante_id, p.id, md5(x.slug || '/praca/' || x.praca)::uuid, 1
 from (values
   ('brasa-espetinhos', 'Espetos', 'Churrasqueira'), ('brasa-espetinhos', 'Burgers', 'Chapa'),
   ('burger-do-ze', 'Burgers', 'Chapa'), ('burger-do-ze', 'Acompanhamentos', 'Fritadeira')
 ) as x (slug, categoria, praca)
-where p.categoria_id = md5(x.slug || '/' || x.categoria)::uuid;
+join public.produtos p on p.categoria_id = md5(x.slug || '/' || x.categoria)::uuid
+on conflict (restaurante_id, produto_id, estacao_id) do nothing;
+
+-- Exemplo de sequência: o blend do Burger bacon vai primeiro para a brasa, depois a chapa monta.
+insert into public.produto_etapas (restaurante_id, produto_id, estacao_id, ordem)
+values (md5('brasa-espetinhos')::uuid, md5('brasa-espetinhos/Burgers/Burger bacon')::uuid,
+        md5('brasa-espetinhos/praca/Churrasqueira')::uuid, 1)
+on conflict (restaurante_id, produto_id, estacao_id) do nothing;
+update public.produto_etapas set ordem = 2
+where produto_id = md5('brasa-espetinhos/Burgers/Burger bacon')::uuid
+  and estacao_id = md5('brasa-espetinhos/praca/Chapa')::uuid;
 
 -- ---------------------------------------------------------------------------
 -- Adicionais e opções (só em produtos que os testes não usam)
