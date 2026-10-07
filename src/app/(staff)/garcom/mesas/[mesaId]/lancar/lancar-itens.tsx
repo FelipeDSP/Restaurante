@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { type AdicionalEscolhido, chaveDaEscolha, precoDasOpcoes, regraDoGrupo, resumoAdicionais } from "@/lib/adicionais";
 import { formatarBRL } from "@/lib/dinheiro";
+import { novoId } from "@/lib/id";
 import { useRascunho } from "@/lib/rascunho";
 import { cn } from "@/lib/utils";
 
@@ -292,7 +293,7 @@ export function LancarItens({
       paraViagem: l.paraViagem,
     }));
     const conteudo = JSON.stringify([comandaId, itens]);
-    if (envioAtual.current?.conteudo !== conteudo) envioAtual.current = { conteudo, lote: crypto.randomUUID() };
+    if (envioAtual.current?.conteudo !== conteudo) envioAtual.current = { conteudo, lote: novoId() };
     const lote = envioAtual.current.lote;
     executar(
       async () => {

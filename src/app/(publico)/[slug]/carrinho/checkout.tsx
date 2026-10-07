@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { type AdicionalEscolhido, type GrupoAdicionais, resumoAdicionais, validarEscolha } from "@/lib/adicionais";
 import { centavosDeTexto, formatarBRL } from "@/lib/dinheiro";
+import { novoId } from "@/lib/id";
 import { useRascunho } from "@/lib/rascunho";
 import { cn } from "@/lib/utils";
 
@@ -157,7 +158,7 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
       totalEsperado: total,
     };
     const conteudo = JSON.stringify(dados);
-    if (envioAtual.current?.conteudo !== conteudo) envioAtual.current = { conteudo, chave: crypto.randomUUID() };
+    if (envioAtual.current?.conteudo !== conteudo) envioAtual.current = { conteudo, chave: novoId() };
     const chave = envioAtual.current.chave;
     iniciar(async () => {
       let resultado: Awaited<ReturnType<typeof enviarPedido>>;

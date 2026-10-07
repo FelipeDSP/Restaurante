@@ -4,6 +4,7 @@ import { ImageUp, Trash2 } from "lucide-react";
 import { useId, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { novoId } from "@/lib/id";
 import { redimensionarImagem } from "@/lib/imagem";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -39,7 +40,7 @@ export function UploadImagem({ bucket, restauranteId, name, valorInicial, rotulo
     setErro(null);
     try {
       const imagem = await redimensionarImagem(arquivo, ladoMaximo);
-      const caminho = `${restauranteId}/${crypto.randomUUID()}.webp`;
+      const caminho = `${restauranteId}/${novoId()}.webp`;
       const supabase = createClient();
       const { error } = await supabase.storage
         .from(bucket)
