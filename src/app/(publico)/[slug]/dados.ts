@@ -142,6 +142,10 @@ export type PedidoPublico = {
   taxa_entrega: number;
   total: number;
   forma_pagamento_prevista: string | null;
+  troco_para: number | null;
+  observacao: string | null;
+  endereco: { rua: string | null; numero: string | null; complemento: string | null; referencia: string | null; bairro: string | null };
+  motivo_cancelamento: string | null;
   tempo_estimado_entrega_min: number | null;
   itens: {
     nome_produto: string;

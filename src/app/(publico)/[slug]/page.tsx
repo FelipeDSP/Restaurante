@@ -5,6 +5,7 @@ import { formatarBRL } from "@/lib/dinheiro";
 import { DIAS, NOME_DIA } from "@/lib/horarios";
 import { cn } from "@/lib/utils";
 
+import { BannerUltimoPedido } from "./banner-ultimo-pedido";
 import { AdicionarProduto, BarraCarrinho } from "./componentes-carrinho";
 import {
   buscarRestaurantePorSlug,
@@ -75,6 +76,7 @@ export default async function CardapioPage(props: PageProps<"/[slug]">) {
             Falar no WhatsApp
           </a>
         ) : null}
+        <BannerUltimoPedido restauranteId={restaurante.id} slug={restaurante.slug} />
       </section>
 
       {cardapio.length > 1 ? (
