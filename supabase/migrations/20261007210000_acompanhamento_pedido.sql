@@ -1,6 +1,6 @@
--- Acompanhamento do pedido pelo cliente: também o endereço de entrega, o troco,
--- a observação e o motivo do cancelamento (quem tem o link é quem fez o pedido;
--- o id é um uuid impossível de adivinhar).
+-- Acompanhamento do pedido pelo cliente: também o troco e o motivo do cancelamento.
+-- Continua sem dados pessoais (nome, telefone, endereço, observação): o link do pedido
+-- costuma ser repassado (WhatsApp, família).
 create or replace function public.consultar_pedido_publico(p_pedido_id uuid)
 returns jsonb
 language sql stable security definer
@@ -17,14 +17,6 @@ as $$
     'total', p.total,
     'forma_pagamento_prevista', p.forma_pagamento_prevista,
     'troco_para', p.troco_para,
-    'observacao', p.observacao,
-    'endereco', jsonb_build_object(
-      'rua', p.endereco ->> 'rua',
-      'numero', p.endereco ->> 'numero',
-      'complemento', p.endereco ->> 'complemento',
-      'referencia', p.endereco ->> 'referencia',
-      'bairro', b.nome
-    ),
     'motivo_cancelamento', case when p.status = 'cancelado' then p.motivo_cancelamento end,
     'tempo_estimado_entrega_min', r.tempo_estimado_entrega_min,
     'itens', coalesce((
@@ -46,7 +38,6 @@ as $$
   )
   from public.pedidos p
   join public.restaurantes r on r.id = p.restaurante_id
-  left join public.bairros_entrega b on b.id = p.bairro_id
   where p.id = p_pedido_id
     and p.origem = 'delivery'
     and r.ativo and r.excluido_em is null;

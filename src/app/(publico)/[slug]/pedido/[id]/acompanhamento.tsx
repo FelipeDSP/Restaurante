@@ -116,8 +116,6 @@ export function Acompanhamento({ inicial, restaurante }: Props) {
   }
 
   const whatsapp = restaurante.whatsapp?.replace(/\D/g, "");
-  const e = pedido.endereco;
-  const endereco = [e?.rua && e.numero ? `${e.rua}, ${e.numero}` : e?.rua, e?.complemento, e?.bairro].filter(Boolean).join(" · ");
 
   return (
     <main className="flex flex-col gap-4 p-4">
@@ -224,17 +222,6 @@ export function Acompanhamento({ inicial, restaurante }: Props) {
           </p>
         ) : null}
       </section>
-
-      {endereco || pedido.observacao ? (
-        <section className="flex flex-col gap-1 rounded-xl bg-background p-4 text-sm shadow-sm" aria-labelledby="titulo-entrega">
-          <h2 id="titulo-entrega" className="text-base font-semibold">
-            Entrega
-          </h2>
-          {endereco ? <p>{endereco}</p> : null}
-          {e?.referencia ? <p className="text-muted-foreground">Referência: {e.referencia}</p> : null}
-          {pedido.observacao ? <p className="text-muted-foreground">Observação: {pedido.observacao}</p> : null}
-        </section>
-      ) : null}
 
       <div className="flex flex-col items-center gap-3 text-center">
         <Button type="button" variant="outline" className="h-11 w-full max-w-xs" onClick={compartilhar}>
