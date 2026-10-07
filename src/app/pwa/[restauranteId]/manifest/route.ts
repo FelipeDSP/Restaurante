@@ -4,6 +4,18 @@ import { id } from "@/lib/validacao";
 
 // Manifest do app do garçom com a marca do restaurante (white label).
 // Rota pública: o navegador baixa o manifest sem cookies.
+// Nome embaixo do ícone (cabe ~12 letras): palavras inteiras, sem cortar no meio ("Brasa Espeti").
+function nomeCurto(nome: string): string {
+  if (nome.length <= 12) return nome;
+  let curto = "";
+  for (const palavra of nome.split(/\s+/)) {
+    const proximo = curto ? `${curto} ${palavra}` : palavra;
+    if (proximo.length > 12) break;
+    curto = proximo;
+  }
+  return curto || nome.slice(0, 12);
+}
+
 export async function GET(_request: Request, ctx: RouteContext<"/pwa/[restauranteId]/manifest">) {
   const { restauranteId } = await ctx.params;
   if (!id.safeParse(restauranteId).success) return new Response("Não encontrado", { status: 404 });
@@ -18,7 +30,7 @@ export async function GET(_request: Request, ctx: RouteContext<"/pwa/[restaurant
   const manifest = {
     id: `/garcom?r=${restauranteId}`,
     name: restaurante.nome,
-    short_name: restaurante.nome.slice(0, 12),
+    short_name: nomeCurto(restaurante.nome),
     description: `Atendimento de mesas · ${restaurante.nome}`,
     start_url: "/garcom",
     scope: "/",

@@ -1,5 +1,6 @@
 "use client";
 
+import { Plus } from "lucide-react";
 import Link from "next/link";
 import { useActionState, useState } from "react";
 
@@ -15,6 +16,7 @@ import { regraDoGrupo } from "@/lib/adicionais";
 import { textoDeCentavos } from "@/lib/dinheiro";
 import { cn } from "@/lib/utils";
 
+import { criarCategoriaRapida } from "../categorias/actions";
 import { excluirProduto, salvarProduto } from "./actions";
 import { EditorRota, type EtapaEditavel, etapasDoBanco, etapasParaBanco } from "./editor-rota";
 
@@ -59,6 +61,26 @@ export function FormProduto({
   // Fora do <form>: sobrevive à remontagem após erro (o React 19 reseta o formulário).
   const [gruposEscolhidos, setGruposEscolhidos] = useState<string[]>(gruposDoProduto);
   const [etapas, setEtapas] = useState<EtapaEditavel[]>(() => etapasDoBanco(etapasDoProduto));
+  // Categorias criadas aqui mesmo entram na lista e já ficam escolhidas.
+  const [criadas, setCriadas] = useState<{ id: string; nome: string }[]>([]);
+  const [categoriaNova, setCategoriaNova] = useState<string | undefined>(undefined);
+  const [criandoCategoria, setCriandoCategoria] = useState(false);
+  const [nomeCategoria, setNomeCategoria] = useState("");
+  const listaCategorias = [...categorias, ...criadas.filter((c) => !categorias.some((x) => x.id === c.id))];
+
+  function criarCategoria() {
+    const nome = nomeCategoria.trim();
+    executar(async () => {
+      const r = await criarCategoriaRapida(nome);
+      if (r.ok && r.id) {
+        setCriadas((atual) => [...atual, { id: r.id!, nome }]);
+        setCategoriaNova(r.id);
+        setCriandoCategoria(false);
+        setNomeCategoria("");
+      }
+      return { ok: r.ok, mensagem: r.mensagem };
+    });
+  }
 
   return (
     <form key={estado?.chave} action={acao} className="flex flex-col gap-6">
@@ -86,22 +108,48 @@ export function FormProduto({
           </Campo>
           <Campo rotulo="Categoria" htmlFor="categoria_id">
             <Selecao
+              key={`${estado?.chave ?? ""}-${listaCategorias.length}`}
               id="categoria_id"
               name="categoria_id"
-              defaultValue={valorCampo(estado, "categoria_id", produto?.categoria_id ?? categoriaInicial)}
+              defaultValue={categoriaNova ?? valorCampo(estado, "categoria_id", produto?.categoria_id ?? categoriaInicial)}
               required
               className="h-11"
             >
               <option value="" disabled>
                 Escolha...
               </option>
-              {categorias.map((c) => (
+              {listaCategorias.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.nome}
                 </option>
               ))}
             </Selecao>
             <ErroCampo estado={estado} campo="categoria_id" />
+            {/* Sem sair da tela: antes o primeiro produto mandava criar a categoria em outra página. */}
+            {criandoCategoria ? (
+              <div className="flex gap-2">
+                <Input
+                  value={nomeCategoria}
+                  onChange={(e) => setNomeCategoria(e.target.value)}
+                  placeholder="Ex.: Espetos"
+                  maxLength={80}
+                  className="h-11"
+                  aria-label="Nome da nova categoria"
+                  autoFocus
+                />
+                <Button type="button" className="h-11" disabled={nomeCategoria.trim().length < 2} onClick={criarCategoria}>
+                  Criar
+                </Button>
+                <Button type="button" variant="ghost" className="h-11" onClick={() => setCriandoCategoria(false)}>
+                  Cancelar
+                </Button>
+              </div>
+            ) : (
+              <Button type="button" variant="ghost" size="sm" className="self-start" onClick={() => setCriandoCategoria(true)}>
+                <Plus />
+                Nova categoria
+              </Button>
+            )}
           </Campo>
           <div className="sm:col-span-2">
             <UploadImagem

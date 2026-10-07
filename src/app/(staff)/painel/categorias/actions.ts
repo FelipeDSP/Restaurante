@@ -100,3 +100,20 @@ export async function excluirCategoria(categoriaId: string): Promise<ResultadoAc
   refresh();
   return sucesso("Categoria excluída.");
 }
+
+// Criada de dentro do formulário de produto (sem sair da tela): devolve o id para já selecionar.
+export async function criarCategoriaRapida(nome: string): Promise<{ ok: boolean; mensagem?: string; id?: string }> {
+  const acesso = await exigirDono();
+  const dados = nomeSchema.safeParse({ nome });
+  if (!dados.success) return { ok: false, mensagem: dados.error.issues[0]?.message ?? "Informe o nome." };
+
+  const supabase = await createClient();
+  const ordem = await proximaOrdem(supabase, "categorias", acesso.restaurante.id);
+  const { data, error } = await supabase
+    .from("categorias")
+    .insert({ restaurante_id: acesso.restaurante.id, nome: dados.data.nome, ordem })
+    .select("id")
+    .single();
+  if (error) return { ok: false, mensagem: mensagemErroBanco(error) };
+  return { ok: true, id: data.id, mensagem: `Categoria ${dados.data.nome} criada.` };
+}

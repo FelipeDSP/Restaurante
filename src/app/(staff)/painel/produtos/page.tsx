@@ -27,17 +27,15 @@ export default async function ProdutosPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Produtos</h1>
-          <p className="text-muted-foreground">Toque nos interruptores para tirar um item do salão ou do delivery.</p>
+          <p className="text-muted-foreground">Esgotou? Desligue <strong>Disponível</strong>. Para tirar só do site, desligue <strong>No delivery</strong>.</p>
         </div>
-        {data.length > 0 ? (
-          <Button className="h-11" nativeButton={false} render={<Link href="/painel/produtos/novo" />}>
-            Novo produto
-          </Button>
-        ) : null}
+        <Button className="h-11" nativeButton={false} render={<Link href="/painel/produtos/novo" />}>
+          Novo produto
+        </Button>
       </div>
       {data.length === 0 ? (
         <p className="text-muted-foreground">
-          Crie as <Link href="/painel/categorias" className="underline">categorias</Link> antes dos produtos.
+          Nenhum produto ainda. Toque em <strong>Novo produto</strong>: a categoria (ex.: Espetos, Bebidas) dá para criar ali mesmo.
         </p>
       ) : (
         <ListaProdutos categorias={data} />

@@ -51,7 +51,7 @@ export default async function CardapioPage(props: PageProps<"/[slug]">) {
             </span>
           ) : null}
           {restaurante.pedidoMinimo > 0 ? (
-            <span className="text-sm text-muted-foreground">· Pedido mínimo {formatarBRL(restaurante.pedidoMinimo)}</span>
+            <span className="text-sm text-muted-foreground">Pedido mínimo {formatarBRL(restaurante.pedidoMinimo)}</span>
           ) : null}
         </div>
         {!disponibilidade.aberto && disponibilidade.motivo ? (
@@ -70,7 +70,7 @@ export default async function CardapioPage(props: PageProps<"/[slug]">) {
             href={`https://wa.me/${whatsapp}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex w-fit items-center gap-1 text-sm font-medium text-[var(--cor-primaria-texto)] underline-offset-4 hover:underline"
+            className="flex min-h-11 w-fit items-center gap-1 text-sm font-medium text-[var(--cor-primaria-texto)] underline-offset-4 hover:underline"
           >
             <MessageCircle className="size-4" aria-hidden />
             Falar no WhatsApp
@@ -88,7 +88,7 @@ export default async function CardapioPage(props: PageProps<"/[slug]">) {
             <a
               key={c.id}
               href={`#categoria-${c.id}`}
-              className="shrink-0 rounded-full border px-4 py-2 text-sm font-medium hover:bg-muted"
+              className="flex min-h-11 shrink-0 items-center rounded-full border px-4 text-sm font-medium hover:bg-muted"
             >
               {c.nome}
             </a>
