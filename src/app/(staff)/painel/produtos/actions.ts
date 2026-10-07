@@ -65,6 +65,8 @@ function produtoSchema(restauranteId: string) {
     foto_url: urlImagemDoRestaurante("rest-produtos", restauranteId),
     disponivel: checkbox,
     disponivel_delivery: checkbox,
+    // Vazio = não vai para a cozinha.
+    estacao_id: z.preprocess((v) => (v === "" || v === undefined ? null : v), id.nullable()),
   });
 }
 

@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { id as idSchema } from "@/lib/validacao";
 
 import { FormProduto } from "../form-produto";
-import { carregarGruposParaProduto } from "../grupos";
+import { carregarGruposParaProduto, carregarPracas } from "../grupos";
 
 export const metadata: Metadata = { title: "Editar produto" };
 
@@ -16,10 +16,10 @@ export default async function EditarProdutoPage(props: PageProps<"/painel/produt
   if (!idSchema.safeParse(id).success) notFound();
 
   const supabase = await createClient();
-  const [produto, categorias, grupos, ligacoes] = await Promise.all([
+  const [produto, categorias, grupos, ligacoes, pracas] = await Promise.all([
     supabase
       .from("produtos")
-      .select("id, nome, descricao, preco, categoria_id, foto_url, disponivel, disponivel_delivery")
+      .select("id, nome, descricao, preco, categoria_id, foto_url, disponivel, disponivel_delivery, estacao_id")
       .eq("id", id)
       .eq("restaurante_id", acesso.restaurante.id)
       .maybeSingle(),
@@ -30,6 +30,7 @@ export default async function EditarProdutoPage(props: PageProps<"/painel/produt
       .select("grupo_id")
       .eq("restaurante_id", acesso.restaurante.id)
       .eq("produto_id", id),
+    carregarPracas(supabase, acesso.restaurante.id),
   ]);
   if (ligacoes.error) throw new Error(ligacoes.error.message);
   if (produto.error) throw new Error(produto.error.message);
@@ -45,6 +46,7 @@ export default async function EditarProdutoPage(props: PageProps<"/painel/produt
         produto={produto.data}
         grupos={grupos}
         gruposDoProduto={ligacoes.data.map((l) => l.grupo_id)}
+        pracas={pracas}
       />
     </main>
   );

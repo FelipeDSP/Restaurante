@@ -74,6 +74,12 @@ Na área de staff, o restaurante vem da tabela `membros` do usuário logado. Se 
 - **Resumo é por sessão de caixa**, não por dia do calendário (o restaurante pode fechar depois da meia-noite). Datas exibidas no fuso do restaurante (`restaurantes.fuso_horario`, padrão `America/Porto_Velho` para o cliente zero).
 - Número amigável do pedido (`numero`) sequencial por restaurante por sessão de caixa, só para exibição. O ID real é uuid.
 
+Já existe (cozinha, fase 1 da impressão):
+- `estacoes` (praças: nome, ordem, ativa), `produtos.estacao_id` (vazio = não vai para a cozinha) e `itens_pedido.estacao_id` (praça congelada no lançamento, como o preço).
+- `tarefas_producao`: uma por pedido e praça (o "ticket" da praça), criada por trigger quando entra item com praça; a equipe só muda `status` (`pendente`|`pronto`), quem e quando vêm do banco. No delivery, a última praça pronta leva o pedido de `em_preparo` para `pronto`.
+- Papel `cozinha` (área `/cozinha`, também aberta a dono e caixa). Tela da cozinha em tempo real, com filtro por praça (`/cozinha?praca=<id>`), som, "pronto/voltar" e impressão pelo navegador (manual ou automática por aparelho).
+- Delivery só aparece na cozinha depois que o caixa aceita (status diferente de `recebido`).
+
 ## Produto (marca da plataforma)
 
 - Grupo `src/app/(site)/`: landing (`/`), `/cadastro` (conta do dono) e `/comecar` (cria o restaurante). Só aqui aparece a marca **uau foods** (cores e fontes `uau-*` do `globals.css`).
@@ -85,6 +91,7 @@ Na área de staff, o restaurante vem da tabela `membros` do usuário logado. Se 
 - `dono`: tudo no restaurante, incluindo marca, equipe e cadastros.
 - `caixa`: painel do caixa, pagamentos, sessão de caixa, pedidos de delivery.
 - `garcom`: PWA do garçom (mesas, comandas, itens, pagamentos das suas mesas).
+- `cozinha`: só a tela da cozinha (marca tickets como prontos).
 
 ## Banco de dados (MVP)
 
@@ -103,7 +110,7 @@ Por restaurante:
 - `itens_pedido`: id, restaurante_id, pedido_id, produto_id, nome_produto, preco_unitario, quantidade, observacao, total, criado_em, cancelado_em, cancelado_por, motivo_cancelamento
 - `pagamentos`: id, restaurante_id, comanda_id ou pedido_id (exatamente um), caixa_sessao_id, valor, forma (`dinheiro`|`pix`|`credito`|`debito`|`outro`), registrado_por, criado_em, estornado_em, estornado_por
 
-Na fase 2 entram `estacoes`, `produto_componentes`, `tarefas_producao`, `impressoras`, `agentes_impressao`, `fila_impressao`. Na fase 3, `configuracoes_pagamento` (subconta Asaas), `planos`, `dominios`.
+Na fase 2 entram `produto_componentes`, `impressoras`, `agentes_impressao`, `fila_impressao`. Na fase 3, `configuracoes_pagamento` (subconta Asaas), `planos`, `dominios`.
 
 Já existe (cadastro self-service):
 - `assinaturas`: id, restaurante_id (único), plano (`essencial`|`completo`), status (`teste`|`ativa`|`atrasada`|`cancelada`|`cortesia`), teste_termina_em, periodo_termina_em, provedor (`kiwify`), provedor_assinatura_id. Criada por trigger com 14 dias de teste a cada restaurante novo; só o dono lê; ninguém escreve pelo app (a cobrança, provavelmente Kiwify, vai atualizar por webhook no servidor).

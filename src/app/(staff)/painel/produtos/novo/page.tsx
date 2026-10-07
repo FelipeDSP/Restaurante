@@ -4,7 +4,7 @@ import { exigirDono } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 
 import { FormProduto } from "../form-produto";
-import { carregarGruposParaProduto } from "../grupos";
+import { carregarGruposParaProduto, carregarPracas } from "../grupos";
 
 export const metadata: Metadata = { title: "Novo produto" };
 
@@ -13,9 +13,10 @@ export default async function NovoProdutoPage(props: PageProps<"/painel/produtos
   const { categoria } = await props.searchParams;
   const supabase = await createClient();
 
-  const [{ data: categorias, error }, grupos] = await Promise.all([
+  const [{ data: categorias, error }, grupos, pracas] = await Promise.all([
     supabase.from("categorias").select("id, nome").eq("restaurante_id", acesso.restaurante.id).order("ordem"),
     carregarGruposParaProduto(supabase, acesso.restaurante.id),
+    carregarPracas(supabase, acesso.restaurante.id),
   ]);
   if (error) throw new Error(error.message);
 
@@ -30,6 +31,7 @@ export default async function NovoProdutoPage(props: PageProps<"/painel/produtos
         categorias={categorias}
         categoriaInicial={categoriaInicial}
         grupos={grupos}
+        pracas={pracas}
       />
     </main>
   );

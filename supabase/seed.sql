@@ -85,7 +85,8 @@ cross join (values
   ('dono', 'Dono', 'dono'),
   ('caixa', 'Caixa', 'caixa'),
   ('garcom1', 'Garçom 1', 'garcom'),
-  ('garcom2', 'Garçom 2', 'garcom')
+  ('garcom2', 'Garçom 2', 'garcom'),
+  ('cozinha', 'Cozinha', 'cozinha')
 ) as u (prefixo, nome, papel)
 on conflict (restaurante_id, user_id) do nothing;
 
@@ -133,6 +134,25 @@ from (values
   ('espeto-da-praca', 'Bebidas', 'Água', null, 400, 2, true)
 ) as p (slug, categoria, nome, descricao, preco, ordem, delivery)
 on conflict (id) do nothing;
+
+-- ---------------------------------------------------------------------------
+-- Praças de produção (bebidas ficam sem praça: não vão para a cozinha)
+-- ---------------------------------------------------------------------------
+
+insert into public.estacoes (id, restaurante_id, nome, ordem)
+select md5(slug || '/praca/' || nome)::uuid, md5(slug)::uuid, nome, ordem
+from (values
+  ('brasa-espetinhos', 'Churrasqueira', 1), ('brasa-espetinhos', 'Chapa', 2),
+  ('burger-do-ze', 'Chapa', 1), ('burger-do-ze', 'Fritadeira', 2)
+) as e (slug, nome, ordem)
+on conflict (id) do nothing;
+
+update public.produtos p set estacao_id = md5(x.slug || '/praca/' || x.praca)::uuid
+from (values
+  ('brasa-espetinhos', 'Espetos', 'Churrasqueira'), ('brasa-espetinhos', 'Burgers', 'Chapa'),
+  ('burger-do-ze', 'Burgers', 'Chapa'), ('burger-do-ze', 'Acompanhamentos', 'Fritadeira')
+) as x (slug, categoria, praca)
+where p.categoria_id = md5(x.slug || '/' || x.categoria)::uuid;
 
 -- ---------------------------------------------------------------------------
 -- Adicionais e opções (só em produtos que os testes não usam)

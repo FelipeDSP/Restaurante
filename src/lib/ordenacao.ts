@@ -4,7 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/types/database";
 
-type TabelaOrdenavel = "categorias" | "produtos" | "mesas" | "grupos_adicionais" | "adicionais";
+type TabelaOrdenavel = "categorias" | "produtos" | "mesas" | "grupos_adicionais" | "adicionais" | "estacoes";
 
 // Subgrupo ordenado dentro do restaurante: produtos por categoria, opções por grupo.
 type Escopo = { coluna: "categoria_id" | "grupo_id"; valor: string };

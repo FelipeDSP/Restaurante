@@ -70,6 +70,10 @@ declare
   v_bacon_b uuid;
   v_item uuid;
   v_teste integer;
+  v_chapa_a constant uuid := md5('brasa-espetinhos/praca/Chapa')::uuid;
+  v_churrasqueira_a constant uuid := md5('brasa-espetinhos/praca/Churrasqueira')::uuid;
+  v_tarefa uuid;
+  v_status text;
   v_num1 integer;
   v_num2 integer;
 begin
@@ -310,6 +314,50 @@ begin
     jsonb_build_object('produto_id', v_produto_a2, 'quantidade', 2, 'observacao', 'sem cebola')));
   perform pg_temp.ok((select total from public.comandas where id = v_comanda_a) = 2 * 3200,
                      'RPC do garçom lança itens com preço do cadastro');
+
+  -- ======================================================================
+  -- Cozinha: praças e tarefas
+  -- ======================================================================
+  select id into v_tarefa from public.tarefas_producao
+  where pedido_id = (v_json ->> 'pedido_id')::uuid and estacao_id = v_chapa_a and status = 'pendente';
+  perform pg_temp.ok(v_tarefa is not null, 'item com praça abre a tarefa da praça');
+  perform pg_temp.ok((select estacao_id = v_chapa_a from public.itens_pedido where pedido_id = (v_json ->> 'pedido_id')::uuid),
+                     'item guarda a praça do produto');
+  v_json := public.lancar_itens_comanda(v_comanda_a, jsonb_build_array(
+    jsonb_build_object('produto_id', md5('brasa-espetinhos/Bebidas/Refrigerante lata')::uuid, 'quantidade', 1)));
+  select count(*) into n from public.tarefas_producao where pedido_id = (v_json ->> 'pedido_id')::uuid;
+  perform pg_temp.ok(n = 0, 'item sem praça não vai para a cozinha');
+
+  begin
+    insert into public.tarefas_producao (restaurante_id, pedido_id, estacao_id)
+    values (a, (v_json ->> 'pedido_id')::uuid, v_chapa_a);
+    perform pg_temp.ok(false, 'equipe não cria tarefa direto');
+  exception when insufficient_privilege then
+    perform pg_temp.ok(true, 'equipe não cria tarefa direto');
+  end;
+
+  perform pg_temp.entrar('cozinha.brasa@exemplo.com');
+  update public.tarefas_producao set status = 'pronto' where id = v_tarefa;
+  perform pg_temp.ok((select status = 'pronto' and pronto_em is not null
+                        and pronto_por = (select id from public.membros where user_id = md5('cozinha.brasa@exemplo.com')::uuid)
+                      from public.tarefas_producao where id = v_tarefa),
+                     'cozinha marca pronto e o banco registra quem e quando');
+  begin
+    update public.tarefas_producao set estacao_id = v_churrasqueira_a where id = v_tarefa;
+    perform pg_temp.ok(false, 'tarefa não muda de praça');
+  exception when insufficient_privilege then
+    perform pg_temp.ok(true, 'tarefa não muda de praça');
+  end;
+  begin
+    insert into public.estacoes (restaurante_id, nome) values (a, 'Da cozinha');
+    perform pg_temp.ok(false, 'cozinha não cria praça');
+  exception when insufficient_privilege then
+    perform pg_temp.ok(true, 'cozinha não cria praça');
+  end;
+  perform pg_temp.entrar('dono.burger@exemplo.com');
+  select count(*) into n from public.tarefas_producao where restaurante_id = a;
+  perform pg_temp.ok(n = 0, 'B não vê tarefas da cozinha de A');
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
   -- ======================================================================
   -- Adicionais e opções
   -- ======================================================================
@@ -481,9 +529,27 @@ begin
     if sqlerrm <> 'desfazer' then v_teste := -1; end if;
   end;
   perform pg_temp.ok(v_teste = 3600 + 500 + 500, 'delivery soma as opções no total (com taxa)');
+
   perform pg_temp.ok(jsonb_array_length(v_json -> 'itens' -> 0 -> 'adicionais') = 2
                      and v_json -> 'itens' -> 0 -> 'adicionais' -> 1 ->> 'nome' = 'Bacon extra',
                      'acompanhamento público mostra as opções do item');
+  v_status := null;
+  begin
+    v_json := public.criar_pedido_delivery(a, 'Bia', '69999990000', v_bairro_a, '{"rua": "R", "numero": "1"}', 'pix',
+      jsonb_build_array(jsonb_build_object('produto_id', v_produto_a, 'quantidade', 1),
+                        jsonb_build_object('produto_id', v_produto_a2, 'quantidade', 1)));
+    perform pg_temp.entrar('caixa.brasa@exemplo.com');
+    update public.pedidos set status = 'em_preparo' where id = (v_json ->> 'id')::uuid;
+    perform pg_temp.entrar('cozinha.brasa@exemplo.com');
+    update public.tarefas_producao set status = 'pronto' where pedido_id = (v_json ->> 'id')::uuid and estacao_id = v_chapa_a;
+    select status into v_status from public.pedidos where id = (v_json ->> 'id')::uuid;
+    update public.tarefas_producao set status = 'pronto' where pedido_id = (v_json ->> 'id')::uuid and estacao_id = v_churrasqueira_a;
+    select v_status || '>' || status into v_status from public.pedidos where id = (v_json ->> 'id')::uuid;
+    raise exception 'desfazer';
+  exception when others then
+    if sqlerrm <> 'desfazer' then v_status := sqlerrm; end if;
+  end;
+  perform pg_temp.ok(v_status = 'em_preparo>pronto', 'delivery fica pronto só quando todas as praças terminam');
 
   begin
     perform public.criar_pedido_delivery(a, 'Maria', '69999991234', v_bairro_a, '{"rua": "R", "numero": "1"}',

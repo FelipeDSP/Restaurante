@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { publicEnv } from "@/lib/env";
 import type { Database } from "@/types/database";
 
-const ROTAS_STAFF = ["/painel", "/garcom", "/inicio", "/selecionar", "/sem-acesso", "/comecar"];
+const ROTAS_STAFF = ["/painel", "/garcom", "/inicio", "/selecionar", "/sem-acesso", "/comecar", "/cozinha"];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });

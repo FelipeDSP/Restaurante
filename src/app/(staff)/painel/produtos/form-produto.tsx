@@ -25,6 +25,7 @@ export type ProdutoEditavel = {
   foto_url: string | null;
   disponivel: boolean;
   disponivel_delivery: boolean;
+  estacao_id: string | null;
 };
 
 export type GrupoParaProduto = { id: string; nome: string; minimo: number; maximo: number; ativo: boolean; opcoes: string[] };
@@ -36,9 +37,10 @@ type Props = {
   categoriaInicial?: string;
   grupos: GrupoParaProduto[];
   gruposDoProduto?: string[];
+  pracas: { id: string; nome: string }[];
 };
 
-export function FormProduto({ restauranteId, categorias, produto, categoriaInicial, grupos, gruposDoProduto = [] }: Props) {
+export function FormProduto({ restauranteId, categorias, produto, categoriaInicial, grupos, gruposDoProduto = [], pracas }: Props) {
   const [estado, acao] = useActionState(salvarProduto.bind(null, produto?.id ?? null), undefined);
   useAvisoResultado(estado);
   const { pendente, executar } = useAcao();
@@ -87,6 +89,22 @@ export function FormProduto({ restauranteId, categorias, produto, categoriaInici
               ))}
             </Selecao>
             <ErroCampo estado={estado} campo="categoria_id" />
+          </Campo>
+          <Campo
+            rotulo="Praça"
+            htmlFor="estacao_id"
+            className="sm:col-span-2"
+            dica={pracas.length === 0 ? "Cadastre as praças em Painel > Praças para os pedidos aparecerem na cozinha." : "Sem praça, o item não aparece na tela da cozinha (ex.: bebidas)."}
+          >
+            <Selecao id="estacao_id" name="estacao_id" defaultValue={valorCampo(estado, "estacao_id", produto?.estacao_id)} className="h-11">
+              <option value="">Nenhuma (não vai para a cozinha)</option>
+              {pracas.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nome}
+                </option>
+              ))}
+            </Selecao>
+            <ErroCampo estado={estado} campo="estacao_id" />
           </Campo>
           <div className="sm:col-span-2">
             <UploadImagem
