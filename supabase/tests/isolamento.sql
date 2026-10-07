@@ -662,7 +662,9 @@ begin
     exception when others then
       v_status := case when sqlerrm like 'Aceite o pedido%' then 'ok' else sqlerrm end;
     end;
-    update public.pedidos set status = 'em_preparo' where id = (v_json ->> 'id')::uuid;
+    update public.pedidos set status = 'em_preparo', aceito_em = '2000-01-01' where id = (v_json ->> 'id')::uuid;
+    select v_status || '>' || (aceito_em > now() - interval '1 minute')::text into v_status from public.pedidos
+    where id = (v_json ->> 'id')::uuid;
     select v_status || '>' || count(*) into v_status from public.tarefas_producao
     where pedido_id = (v_json ->> 'id')::uuid and status = 'pendente';
     update public.pedidos set status = 'saiu_entrega' where id = (v_json ->> 'id')::uuid;
@@ -678,7 +680,7 @@ begin
   exception when others then
     if sqlerrm <> 'desfazer' then v_status := sqlerrm; end if;
   end;
-  perform pg_temp.ok(v_status = 'ok>2>0>ok', 'delivery não pula o aceite, não volta e encerra os tickets ao sair (' || v_status || ')');
+  perform pg_temp.ok(v_status = 'ok>true>2>0>ok', 'delivery não pula o aceite, não volta, guarda a hora do aceite e encerra os tickets (' || v_status || ')');
 
   begin
     perform public.criar_pedido_delivery(a, 'Maria', '69999991234', v_bairro_a, '{"rua": "R", "numero": "1"}',

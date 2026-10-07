@@ -43,7 +43,7 @@ export type Ticket = {
 const CAMPOS_TICKET = `id, status, criado_em, pronto_em, estacao_id,
   praca:estacoes!tarefas_producao_restaurante_id_estacao_id_fkey(id, nome),
   pedido:pedidos!tarefas_producao_restaurante_id_pedido_id_fkey(
-    numero, origem, status, cliente_nome, observacao,
+    numero, origem, status, cliente_nome, observacao, aceito_em,
     comanda:comandas!pedidos_restaurante_id_comanda_id_fkey(mesa:mesas!comandas_restaurante_id_mesa_id_fkey(numero)),
     autor:membros!pedidos_restaurante_id_criado_por_fkey(nome),
     itens_pedido(id, quantidade, nome_produto, adicionais, observacao, cancelado_em, etapas, para_viagem, criado_em),
@@ -98,7 +98,8 @@ export function montarTickets(linhas: LinhaTarefa[]): Ticket[] {
       {
         id: t.id,
         status: t.status as Ticket["status"],
-        criadoEm: t.criado_em,
+        // Delivery conta a partir do aceite do caixa (antes do aceite ele nem aparece na cozinha).
+        criadoEm: p.origem === "delivery" && p.aceito_em ? p.aceito_em : t.criado_em,
         prontoEm: t.pronto_em,
         praca: { id: t.praca.id, nome: t.praca.nome },
         pedido: {

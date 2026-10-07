@@ -5,16 +5,10 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { useRascunho } from "@/lib/rascunho";
+import { nomeStatusPedido } from "@/lib/rotulos";
 
 import type { PedidoPublico } from "./dados";
 import { chaveUltimoPedido, normalizarUltimoPedido, SEM_PEDIDO } from "./ultimo-pedido";
-
-const STATUS: Partial<Record<PedidoPublico["status"], string>> = {
-  recebido: "Recebido",
-  em_preparo: "Em preparo",
-  pronto: "Pronto",
-  saiu_entrega: "Saiu para entrega",
-};
 
 // "Acompanhar pedido nº X" no cardápio enquanto o último pedido deste aparelho está em andamento.
 export function BannerUltimoPedido({ restauranteId, slug }: { restauranteId: string; slug: string }) {
@@ -41,7 +35,10 @@ export function BannerUltimoPedido({ restauranteId, slug }: { restauranteId: str
     };
   }, [ultimo, limpar]);
 
-  const rotulo = status ? STATUS[status] : undefined;
+  // Só aparece enquanto o pedido está em andamento.
+  // Para o cliente, "recebido" (no caixa é "Novo").
+  const rotulo =
+    status && status !== "entregue" && status !== "cancelado" ? (status === "recebido" ? "Recebido" : nomeStatusPedido(status)) : undefined;
   if (!ultimo || !rotulo) return null;
   return (
     <Link

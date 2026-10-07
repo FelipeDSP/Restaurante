@@ -3,23 +3,19 @@ import Link from "next/link";
 import { AtualizarEmTempoReal } from "@/components/staff/atualizar-em-tempo-real";
 import { exigirAcesso } from "@/lib/auth/dal";
 import { formatarBRL } from "@/lib/dinheiro";
+import { NOME_STATUS_MESA } from "@/lib/rotulos";
 import { tempoDesde } from "@/lib/tempo";
 import { cn } from "@/lib/utils";
 
 import { AvisoCaixaFechado } from "./aviso-caixa";
 import { caixaEstaAberto, carregarMapa, type MesaNoMapa } from "./dados";
 
-const ROTULO_STATUS: Record<MesaNoMapa["status"], string> = {
-  livre: "Livre",
-  aberta: "Ocupada",
-  conta_pedida: "Conta pedida",
-};
 
 function CartaoMesa({ mesa }: { mesa: MesaNoMapa }) {
   return (
     <Link
       href={`/garcom/mesas/${mesa.id}`}
-      aria-label={`Mesa ${mesa.numero}: ${ROTULO_STATUS[mesa.status]}${mesa.pedidosProntos > 0 ? ", prato pronto para servir" : ""}`}
+      aria-label={`Mesa ${mesa.numero}: ${NOME_STATUS_MESA[mesa.status]}${mesa.pedidosProntos > 0 ? ", prato pronto para servir" : ""}`}
       className={cn(
         "relative flex min-h-28 flex-col justify-between rounded-xl border-2 p-3 transition-transform active:scale-95 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
         mesa.status === "livre" && "border-border bg-background",
@@ -38,7 +34,7 @@ function CartaoMesa({ mesa }: { mesa: MesaNoMapa }) {
         {mesa.numero}
       </span>
       <span className="flex flex-col text-xs leading-tight">
-        <span className="font-semibold">{ROTULO_STATUS[mesa.status]}</span>
+        <span className="font-semibold">{NOME_STATUS_MESA[mesa.status]}</span>
         {mesa.status !== "livre" ? (
           <>
             <span>{formatarBRL(mesa.total)}</span>

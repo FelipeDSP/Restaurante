@@ -438,7 +438,7 @@ export function TelaComanda({ mesaId, comanda, podeGerenciar, fusoHorario, orige
         {comanda.status === "conta_pedida" ? (
           <Badge className="bg-amber-300 text-amber-950">Conta pedida</Badge>
         ) : (
-          <Badge>Aberta</Badge>
+          <Badge>Ocupada</Badge>
         )}
         <span>desde {horaLocal(comanda.abertaEm, fusoHorario)}</span>
         {comanda.pessoas ? <span>· {comanda.pessoas} pessoas</span> : null}

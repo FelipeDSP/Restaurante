@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { centavosDeTexto, formatarBRL } from "@/lib/dinheiro";
+import { nomeStatusPedido } from "@/lib/rotulos";
 import { cn } from "@/lib/utils";
 
 import { abrirCaixa, fecharCaixa, registrarMovimento } from "./actions";
@@ -105,12 +106,6 @@ export function MovimentoCaixa() {
   );
 }
 
-const NOME_STATUS_DELIVERY: Record<string, string> = {
-  recebido: "novo, sem aceite",
-  em_preparo: "em preparo",
-  pronto: "pronto",
-  saiu_entrega: "saiu para entrega",
-};
 
 export function FecharCaixa({
   sessaoId,
@@ -158,7 +153,7 @@ export function FecharCaixa({
                   <Link href="/painel/delivery" className="font-medium underline underline-offset-4">
                     Delivery nº {d.numero}
                   </Link>{" "}
-                  · {NOME_STATUS_DELIVERY[d.status] ?? d.status}
+                  · {d.status === "recebido" ? "novo, sem aceite" : nomeStatusPedido(d.status).toLowerCase()}
                 </li>
               ))}
             </ul>
