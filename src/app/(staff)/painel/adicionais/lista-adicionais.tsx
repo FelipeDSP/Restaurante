@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 
 import { ControlesOrdem, useAcao } from "@/components/staff/acoes-cliente";
+import { BotaoConfirmar } from "@/components/staff/botao-confirmar";
 import { BotaoEnviar, ErroCampo, useAvisoResultado, valorCampo } from "@/components/staff/formulario";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -198,16 +199,11 @@ function LinhaOpcao({ opcao, grupoId, primeiro, ultimo }: { opcao: Opcao; grupoI
           />
           Disponível
         </label>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label={`Excluir ${opcao.nome}`}
-          disabled={pendente}
-          onClick={() => executar(() => excluirOpcao(opcao.id))}
-        >
-          <Trash2 />
-        </Button>
+        <BotaoConfirmar
+          rotulo={`Excluir ${opcao.nome}`}
+          desabilitado={pendente}
+          aoConfirmar={() => executar(() => excluirOpcao(opcao.id))}
+        />
       </div>
     </li>
   );

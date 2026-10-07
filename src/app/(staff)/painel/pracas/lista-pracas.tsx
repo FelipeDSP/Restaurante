@@ -1,9 +1,9 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
 import { useActionState, useState } from "react";
 
 import { ControlesOrdem, useAcao } from "@/components/staff/acoes-cliente";
+import { BotaoConfirmar } from "@/components/staff/botao-confirmar";
 import { BotaoEnviar, ErroCampo, useAvisoResultado, valorCampo } from "@/components/staff/formulario";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -79,16 +79,11 @@ function LinhaPraca({ praca, primeiro, ultimo }: { praca: Praca; primeiro: boole
         >
           {praca.ativa ? "Desativar" : "Ativar"}
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label={`Excluir ${praca.nome}`}
-          disabled={pendente}
-          onClick={() => executar(() => excluirPraca(praca.id))}
-        >
-          <Trash2 />
-        </Button>
+        <BotaoConfirmar
+          rotulo={`Excluir ${praca.nome}`}
+          desabilitado={pendente}
+          aoConfirmar={() => executar(() => excluirPraca(praca.id))}
+        />
       </div>
     </li>
   );

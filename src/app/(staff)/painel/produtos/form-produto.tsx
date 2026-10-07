@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 
 import { useAcao } from "@/components/staff/acoes-cliente";
+import { BotaoConfirmar } from "@/components/staff/botao-confirmar";
 import { BotaoEnviar, Campo, ErroCampo, marcadoCampo, Selecao, useAvisoResultado, valorCampo } from "@/components/staff/formulario";
 import { UploadImagem } from "@/components/staff/upload-imagem";
 import { Button } from "@/components/ui/button";
@@ -234,15 +235,17 @@ export function FormProduto({
           Cancelar
         </Button>
         {produto ? (
-          <Button
-            type="button"
-            variant="destructive"
-            className="ml-auto h-11"
-            disabled={pendente}
-            onClick={() => executar(() => excluirProduto(produto.id))}
-          >
-            Excluir produto
-          </Button>
+          <span className="ml-auto">
+            <BotaoConfirmar
+              rotulo="Excluir produto"
+              icone={false}
+              className="h-11 text-destructive"
+              desabilitado={pendente}
+              aoConfirmar={() => executar(() => excluirProduto(produto.id))}
+            >
+              Excluir produto
+            </BotaoConfirmar>
+          </span>
         ) : null}
       </div>
     </form>

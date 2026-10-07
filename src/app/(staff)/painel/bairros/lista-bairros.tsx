@@ -1,9 +1,9 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
 import { useActionState, useState } from "react";
 
 import { useAcao } from "@/components/staff/acoes-cliente";
+import { BotaoConfirmar } from "@/components/staff/botao-confirmar";
 import { BotaoEnviar, Campo, ErroCampo, useAvisoResultado, valorCampo } from "@/components/staff/formulario";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -88,16 +88,11 @@ function LinhaBairro({ bairro }: { bairro: Bairro }) {
       >
         {bairro.ativo ? "Desativar" : "Ativar"}
       </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        aria-label={`Excluir ${bairro.nome}`}
-        disabled={pendente}
-        onClick={() => executar(() => excluirBairro(bairro.id))}
-      >
-        <Trash2 />
-      </Button>
+      <BotaoConfirmar
+        rotulo={`Excluir ${bairro.nome}`}
+        desabilitado={pendente}
+        aoConfirmar={() => executar(() => excluirBairro(bairro.id))}
+      />
     </li>
   );
 }

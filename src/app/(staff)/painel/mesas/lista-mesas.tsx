@@ -1,9 +1,9 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
 import { useActionState, useState } from "react";
 
 import { ControlesOrdem, useAcao } from "@/components/staff/acoes-cliente";
+import { BotaoConfirmar } from "@/components/staff/botao-confirmar";
 import { BotaoEnviar, Campo, ErroCampo, useAvisoResultado, valorCampo } from "@/components/staff/formulario";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -107,16 +107,11 @@ function LinhaMesa({ mesa, primeiro, ultimo }: { mesa: Mesa; primeiro: boolean; 
       >
         {mesa.ativa ? "Desativar" : "Ativar"}
       </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        aria-label={`Excluir mesa ${mesa.numero}`}
-        disabled={pendente}
-        onClick={() => executar(() => excluirMesa(mesa.id))}
-      >
-        <Trash2 />
-      </Button>
+      <BotaoConfirmar
+        rotulo={`Excluir mesa ${mesa.numero}`}
+        desabilitado={pendente}
+        aoConfirmar={() => executar(() => excluirMesa(mesa.id))}
+      />
     </li>
   );
 }

@@ -7,7 +7,7 @@ import { exigirAcesso } from "@/lib/auth/dal";
 import { formatarBRL } from "@/lib/dinheiro";
 import { dataHoraLocal } from "@/lib/tempo";
 
-import { carregarResumo, carregarSessaoAberta, dinheiroEsperado, listarSessoesFechadas } from "./dados";
+import { carregarPendencias, carregarResumo, carregarSessaoAberta, dinheiroEsperado, listarSessoesFechadas } from "./dados";
 import { AbrirCaixa, FecharCaixa } from "./formularios";
 import { ResumoSessao } from "./resumo-sessao";
 
@@ -20,7 +20,9 @@ export default async function CaixaPage() {
     carregarSessaoAberta(acesso.restaurante.id),
     listarSessoesFechadas(acesso.restaurante.id),
   ]);
-  const resumo = aberta ? await carregarResumo(acesso.restaurante.id, aberta.id) : null;
+  const [resumo, pendencias] = aberta
+    ? await Promise.all([carregarResumo(acesso.restaurante.id, aberta.id), carregarPendencias(acesso.restaurante.id, aberta.id)])
+    : [null, null];
 
   return (
     <main className="flex flex-col gap-6 p-4 md:p-6">
@@ -39,7 +41,7 @@ export default async function CaixaPage() {
       {aberta && resumo ? (
         <>
           <ResumoSessao resumo={resumo} fusoHorario={fuso} />
-          <FecharCaixa sessaoId={aberta.id} esperado={dinheiroEsperado(resumo)} comandasAbertas={resumo.comandas.abertas} />
+          <FecharCaixa sessaoId={aberta.id} esperado={dinheiroEsperado(resumo)} pendencias={pendencias ?? { comandas: [], deliveries: [] }} />
         </>
       ) : (
         <AbrirCaixa />

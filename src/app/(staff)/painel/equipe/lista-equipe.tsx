@@ -4,6 +4,7 @@ import { KeyRound } from "lucide-react";
 import { useActionState, useState } from "react";
 
 import { useAcao } from "@/components/staff/acoes-cliente";
+import { BotaoConfirmar } from "@/components/staff/botao-confirmar";
 import { BotaoEnviar, Campo, ErroCampo, Selecao, useAvisoResultado, valorCampo } from "@/components/staff/formulario";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -163,15 +164,27 @@ function LinhaMembro({ membro, contasHabilitadas }: { membro: Membro; contasHabi
         {!membro.ativo ? <Badge variant="secondary">Sem acesso</Badge> : null}
         <div className="ml-auto flex flex-wrap items-center gap-1">
           {contasHabilitadas ? <TrocarSenha membro={membro} /> : null}
-          {!membro.euMesmo ? (
+          {!membro.euMesmo && membro.ativo ? (
+            <BotaoConfirmar
+              rotulo={`Desativar acesso de ${membro.nome}`}
+              confirmar="Confirmar: desativar"
+              icone={false}
+              className="h-11 sm:h-9"
+              desabilitado={pendente}
+              aoConfirmar={() => executar(() => alternarMembro(membro.id, false))}
+            >
+              Desativar acesso
+            </BotaoConfirmar>
+          ) : null}
+          {!membro.euMesmo && !membro.ativo ? (
             <Button
               type="button"
               variant="outline"
-              size="sm"
+              className="h-11 sm:h-9"
               disabled={pendente}
-              onClick={() => executar(() => alternarMembro(membro.id, !membro.ativo))}
+              onClick={() => executar(() => alternarMembro(membro.id, true))}
             >
-              {membro.ativo ? "Desativar acesso" : "Reativar acesso"}
+              Reativar acesso
             </Button>
           ) : null}
         </div>

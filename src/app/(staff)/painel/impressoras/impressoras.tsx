@@ -1,9 +1,10 @@
 "use client";
 
-import { Pencil, Printer, Trash2 } from "lucide-react";
+import { Pencil, Printer } from "lucide-react";
 import { useActionState, useEffect, useRef, useState } from "react";
 
 import { useAcao } from "@/components/staff/acoes-cliente";
+import { BotaoConfirmar } from "@/components/staff/botao-confirmar";
 import { BotaoEnviar, Campo, ErroCampo, marcadoCampo, Selecao, useAvisoResultado, valorCampo } from "@/components/staff/formulario";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -245,9 +246,11 @@ function LinhaImpressora({
               <Button type="button" variant="ghost" size="icon" aria-label={`Editar ${impressora.nome}`} onClick={() => setEditando((v) => !v)}>
                 <Pencil />
               </Button>
-              <Button type="button" variant="ghost" size="icon" aria-label={`Excluir ${impressora.nome}`} disabled={pendente} onClick={() => executar(() => excluirImpressora(impressora.id))}>
-                <Trash2 />
-              </Button>
+              <BotaoConfirmar
+                rotulo={`Excluir ${impressora.nome}`}
+                desabilitado={pendente}
+                aoConfirmar={() => executar(() => excluirImpressora(impressora.id))}
+              />
             </>
           ) : null}
         </div>

@@ -101,3 +101,32 @@ export async function carregarResumo(restauranteId: string, sessaoId: string): P
 export function dinheiroEsperado(resumo: ResumoCaixa): number {
   return resumo.sessao.valor_inicial + resumo.dinheiro_recebido;
 }
+
+export type PendenciasFechamento = {
+  comandas: { mesaId: string; mesa: string }[];
+  deliveries: { numero: number; status: string }[];
+};
+
+// O que impede fechar o caixa (o banco também recusa): mostrado antes do clique, com link.
+export async function carregarPendencias(restauranteId: string, sessaoId: string): Promise<PendenciasFechamento> {
+  const supabase = await createClient();
+  const [comandas, deliveries] = await Promise.all([
+    supabase
+      .from("comandas")
+      .select("mesa_id, mesas(numero)")
+      .eq("restaurante_id", restauranteId)
+      .in("status", ["aberta", "conta_pedida"]),
+    supabase
+      .from("pedidos")
+      .select("numero, status")
+      .eq("restaurante_id", restauranteId)
+      .eq("caixa_sessao_id", sessaoId)
+      .eq("origem", "delivery")
+      .not("status", "in", "(entregue,cancelado)")
+      .order("numero"),
+  ]);
+  return {
+    comandas: (comandas.data ?? []).map((c) => ({ mesaId: c.mesa_id, mesa: c.mesas?.numero ?? "?" })),
+    deliveries: (deliveries.data ?? []).map((p) => ({ numero: p.numero, status: p.status })),
+  };
+}

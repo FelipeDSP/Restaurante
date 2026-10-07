@@ -1,9 +1,9 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
 import { useActionState, useState } from "react";
 
 import { ControlesOrdem, useAcao } from "@/components/staff/acoes-cliente";
+import { BotaoConfirmar } from "@/components/staff/botao-confirmar";
 import { BotaoEnviar, ErroCampo, useAvisoResultado, valorCampo } from "@/components/staff/formulario";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -79,17 +79,12 @@ function LinhaCategoria({ categoria, primeiro, ultimo }: { categoria: Categoria;
         >
           {categoria.ativa ? "Desativar" : "Ativar"}
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label={`Excluir ${categoria.nome}`}
-          disabled={pendente || categoria.produtos > 0}
-          title={categoria.produtos > 0 ? "Categoria com produtos não pode ser excluída" : undefined}
-          onClick={() => executar(() => excluirCategoria(categoria.id))}
-        >
-          <Trash2 />
-        </Button>
+        <BotaoConfirmar
+          rotulo={`Excluir ${categoria.nome}`}
+          desabilitado={pendente || categoria.produtos > 0}
+          titulo={categoria.produtos > 0 ? "Categoria com produtos não pode ser excluída" : undefined}
+          aoConfirmar={() => executar(() => excluirCategoria(categoria.id))}
+        />
       </div>
     </li>
   );

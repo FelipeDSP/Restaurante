@@ -409,7 +409,15 @@ type Props = {
 export function TelaComanda({ mesaId, comanda, podeGerenciar, fusoHorario, origem = "garcom" }: Props) {
   const router = useRouter();
   const [pagando, setPagando] = useState(false);
+  const [confirmarFechar, setConfirmarFechar] = useState(false);
   const { pendente, executar } = useAcao();
+
+  // Fechar a comanda não tem volta: o primeiro toque só arma (desarma sozinho em 6 s).
+  useEffect(() => {
+    if (!confirmarFechar) return;
+    const t = setTimeout(() => setConfirmarFechar(false), 6000);
+    return () => clearTimeout(t);
+  }, [confirmarFechar]);
 
   const falta = Math.max(0, comanda.total - comanda.pago);
   const quitada = comanda.total > 0 && comanda.pago >= comanda.total;
@@ -513,12 +521,17 @@ export function TelaComanda({ mesaId, comanda, podeGerenciar, fusoHorario, orige
           {podeFechar ? (
             <Button
               type="button"
-              className="h-14 bg-green-700 text-base text-white hover:bg-green-800"
+              className={cn(
+                "h-14 text-base text-white",
+                confirmarFechar ? "bg-green-900 ring-4 ring-green-300 hover:bg-green-900" : "bg-green-700 hover:bg-green-800",
+              )}
               disabled={pendente}
-              onClick={() => executar(() => fecharComanda(comanda.id), voltarAoMapa)}
+              onClick={() =>
+                confirmarFechar ? executar(() => fecharComanda(comanda.id), voltarAoMapa) : setConfirmarFechar(true)
+              }
             >
               <Check />
-              Fechar comanda
+              {confirmarFechar ? "Toque de novo para fechar" : "Fechar comanda"}
             </Button>
           ) : comanda.status === "aberta" ? (
             <Button
