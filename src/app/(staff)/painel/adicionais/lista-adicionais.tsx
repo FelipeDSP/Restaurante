@@ -34,6 +34,7 @@ export type Grupo = {
   nome: string;
   minimo: number;
   maximo: number;
+  repetir: boolean;
   ativo: boolean;
   opcoes: Opcao[];
   produtos: { id: string; nome: string }[];
@@ -46,7 +47,19 @@ const MODELOS = [
   { rotulo: "Vários opcionais", exemplo: "adicionais com preço", minimo: 0, maximo: 5 },
 ];
 
-function CamposRegra({ estado, minimo, maximo, prefixo }: { estado: Parameters<typeof valorCampo>[0]; minimo: number; maximo: number; prefixo: string }) {
+function CamposRegra({
+  estado,
+  minimo,
+  maximo,
+  repetir,
+  prefixo,
+}: {
+  estado: Parameters<typeof valorCampo>[0];
+  minimo: number;
+  maximo: number;
+  repetir: boolean;
+  prefixo: string;
+}) {
   const [regra, setRegra] = useState({ minimo: valorCampo(estado, "minimo", minimo), maximo: valorCampo(estado, "maximo", maximo) });
   const min = Number(regra.minimo);
   const max = Number(regra.maximo);
@@ -105,6 +118,18 @@ function CamposRegra({ estado, minimo, maximo, prefixo }: { estado: Parameters<t
           {valida ? `Cliente vê: "${min > 0 ? "Obrigatório · " : ""}${regraDoGrupo({ minimo: min, maximo: max })}"` : "Mínimo de 0 a 20; máximo de 1 a 20."}
         </p>
       </div>
+      <label className="flex items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          name="repetir"
+          defaultChecked={estado?.valores ? estado.valores.repetir === "on" : repetir}
+          className="mt-0.5 size-5 accent-[var(--cor-primaria-texto)]"
+        />
+        <span>
+          <span className="font-medium">Pode repetir a mesma opção</span>
+          <span className="block text-muted-foreground">Ex.: 2x arroz, 3x carne extra. O máximo conta cada unidade.</span>
+        </span>
+      </label>
       <ErroCampo estado={estado} campo="minimo" />
       <ErroCampo estado={estado} campo="maximo" />
     </div>
@@ -132,7 +157,7 @@ export function NovoGrupo() {
             />
             <ErroCampo estado={estado} campo="nome" />
           </div>
-          <CamposRegra estado={estado} minimo={1} maximo={1} prefixo="novo" />
+          <CamposRegra estado={estado} minimo={1} maximo={1} repetir={false} prefixo="novo" />
           <BotaoEnviar className="h-11 w-fit" pendente="Criando...">
             Criar grupo
           </BotaoEnviar>
@@ -306,7 +331,7 @@ function CartaoGrupo({ grupo, primeiro, ultimo }: { grupo: Grupo; primeiro: bool
               <Input id={`grupo-${grupo.id}-nome`} name="nome" defaultValue={valorCampo(estado, "nome", grupo.nome)} required className="h-10" />
               <ErroCampo estado={estado} campo="nome" />
             </div>
-            <CamposRegra estado={estado} minimo={grupo.minimo} maximo={grupo.maximo} prefixo={`grupo-${grupo.id}`} />
+            <CamposRegra estado={estado} minimo={grupo.minimo} maximo={grupo.maximo} repetir={grupo.repetir} prefixo={`grupo-${grupo.id}`} />
             <BotaoEnviar size="sm" className="w-fit">
               Salvar grupo
             </BotaoEnviar>

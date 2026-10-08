@@ -457,6 +457,33 @@ begin
   perform pg_temp.ok((select preco_adicionais = 900 and jsonb_array_length(adicionais) = 3 and total = 4500
                       from public.itens_pedido where id = v_item),
                      'opções do item não mudam depois de lançado (só a quantidade)');
+
+  -- Mesma opção mais de uma vez: só em grupo que permite repetir; o máximo conta unidades.
+  begin
+    perform public.lancar_itens_comanda(v_comanda_a, jsonb_build_array(jsonb_build_object(
+      'produto_id', v_burger_bacon, 'quantidade', 1, 'adicionais', jsonb_build_array(v_ponto, v_bacon, v_bacon))));
+    perform pg_temp.ok(false, 'opção repetida recusada em grupo que não permite');
+  exception when others then
+    perform pg_temp.ok(sqlerrm like '%cada opção só pode ser escolhida uma vez%', 'opção repetida recusada em grupo que não permite');
+  end;
+  perform pg_temp.admin();
+  update public.grupos_adicionais set repetir = true where id = md5('brasa-espetinhos/grupo/Turbine seu burger')::uuid;
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  v_json := public.lancar_itens_comanda(v_comanda_a, jsonb_build_array(jsonb_build_object(
+    'produto_id', v_burger_bacon, 'quantidade', 1, 'adicionais', jsonb_build_array(v_ponto, v_bacon, v_bacon))));
+  perform pg_temp.ok((select preco_adicionais = 1000 and jsonb_array_length(adicionais) = 3 and total = 3600 + 1000
+                      from public.itens_pedido where pedido_id = (v_json ->> 'pedido_id')::uuid),
+                     'grupo que permite repetir: 2x bacon soma duas vezes');
+  begin
+    perform public.lancar_itens_comanda(v_comanda_a, jsonb_build_array(jsonb_build_object(
+      'produto_id', v_burger_bacon, 'quantidade', 1, 'adicionais', jsonb_build_array(v_ponto, v_bacon, v_bacon, v_bacon, v_bacon))));
+    perform pg_temp.ok(false, 'repetição respeita o máximo do grupo');
+  exception when others then
+    perform pg_temp.ok(sqlerrm like 'Escolha no máximo%', 'repetição respeita o máximo do grupo');
+  end;
+  perform pg_temp.admin();
+  update public.grupos_adicionais set repetir = false where id = md5('brasa-espetinhos/grupo/Turbine seu burger')::uuid;
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
   perform pg_temp.ok((select etapas = jsonb_build_array(jsonb_build_object('estacao_id', v_churrasqueira_a, 'ordem', 1),
                                                          jsonb_build_object('estacao_id', v_chapa_a, 'ordem', 2))
                       from public.itens_pedido where id = v_item),

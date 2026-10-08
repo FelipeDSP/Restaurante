@@ -92,9 +92,22 @@ function Conteudo({
   const [paraViagem, setParaViagem] = useState(viagemPadrao ?? false);
 
   const opcoes = produto.grupos.flatMap((g) => g.opcoes.map((o) => ({ ...o, grupo: g.nome })));
-  const selecionadas = opcoes.filter((o) => escolhidos.includes(o.id));
+  // Opção repetida (2x arroz) aparece repetida; na ordem do cardápio.
+  const selecionadas = opcoes.flatMap((o) => escolhidos.filter((id) => id === o.id).map(() => o));
   const erro = validarEscolha(produto.grupos, escolhidos);
   const total = (produto.preco + precoDasOpcoes(selecionadas)) * quantidade;
+
+  // Grupo que permite repetir: + e - por opção, limitado ao máximo do grupo (em unidades).
+  function mudarRepeticao(grupo: GrupoAdicionais, opcaoId: string, delta: 1 | -1) {
+    setEscolhidos((atual) => {
+      if (delta === -1) {
+        const i = atual.lastIndexOf(opcaoId);
+        return i < 0 ? atual : [...atual.slice(0, i), ...atual.slice(i + 1)];
+      }
+      const doGrupo = new Set(grupo.opcoes.map((o) => o.id));
+      return atual.filter((id) => doGrupo.has(id)).length >= grupo.maximo ? atual : [...atual, opcaoId];
+    });
+  }
 
   function alternar(grupo: GrupoAdicionais, opcaoId: string) {
     setEscolhidos((atual) => {
@@ -143,7 +156,8 @@ function Conteudo({
 
       <div className="flex min-w-0 flex-1 flex-col gap-5 overflow-x-hidden overflow-y-auto p-4">
         {produto.grupos.map((grupo) => {
-          const noGrupo = grupo.opcoes.filter((o) => escolhidos.includes(o.id)).length;
+          const doGrupo = new Set(grupo.opcoes.map((o) => o.id));
+          const noGrupo = escolhidos.filter((id) => doGrupo.has(id)).length;
           const unica = grupo.maximo === 1 && grupo.minimo === 1;
           const faltando = tentou && noGrupo < grupo.minimo;
           return (
@@ -177,6 +191,55 @@ function Conteudo({
                 <p className="text-sm text-muted-foreground">Nenhuma opção disponível agora.</p>
               ) : (
                 grupo.opcoes.map((opcao) => {
+                  if (grupo.repetir) {
+                    const vezes = escolhidos.filter((id) => id === opcao.id).length;
+                    return (
+                      <div
+                        key={opcao.id}
+                        className={cn(
+                          "flex min-h-12 items-center gap-3 rounded-xl border px-3 py-1.5 transition-colors",
+                          vezes > 0 ? "border-primary bg-primary/5" : "",
+                        )}
+                      >
+                        <span className="flex min-w-0 flex-1 flex-col">
+                          <span className="font-medium break-words">{opcao.nome}</span>
+                          {opcao.preco > 0 ? (
+                            <span className="text-sm text-muted-foreground tabular-nums">+ {formatarBRL(opcao.preco)}</span>
+                          ) : null}
+                        </span>
+                        <div className="flex shrink-0 items-center gap-1">
+                          {vezes > 0 ? (
+                            <>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                className="size-11 rounded-full"
+                                aria-label={`Tirar um ${opcao.nome}`}
+                                onClick={() => mudarRepeticao(grupo, opcao.id, -1)}
+                              >
+                                <Minus />
+                              </Button>
+                              <span className="w-6 text-center font-bold tabular-nums" aria-live="polite">
+                                {vezes}
+                              </span>
+                            </>
+                          ) : null}
+                          <Button
+                            type="button"
+                            variant={vezes > 0 ? "default" : "outline"}
+                            size="icon"
+                            className="size-11 rounded-full"
+                            aria-label={`Adicionar ${opcao.nome}`}
+                            disabled={noGrupo >= grupo.maximo}
+                            onClick={() => mudarRepeticao(grupo, opcao.id, 1)}
+                          >
+                            <Plus />
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  }
                   const marcada = escolhidos.includes(opcao.id);
                   const bloqueada = !marcada && grupo.maximo > 1 && noGrupo >= grupo.maximo;
                   return (

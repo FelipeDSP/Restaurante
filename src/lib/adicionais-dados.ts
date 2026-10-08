@@ -15,7 +15,7 @@ export async function carregarAdicionaisPorProduto(
   const [grupos, ligacoes] = await Promise.all([
     supabase
       .from("grupos_adicionais")
-      .select("id, nome, minimo, maximo, ativo, ordem, adicionais(id, nome, preco, disponivel, ordem)")
+      .select("id, nome, minimo, maximo, repetir, ativo, ordem, adicionais(id, nome, preco, disponivel, ordem)")
       .eq("restaurante_id", restauranteId)
       .eq("ativo", true)
       .order("ordem")
@@ -35,6 +35,7 @@ export async function carregarAdicionaisPorProduto(
         id: g.id,
         nome: g.nome,
         minimo: g.minimo,
+        repetir: g.repetir,
         maximo: g.maximo,
         opcoes: g.adicionais.filter((a) => a.disponivel).map((a) => ({ id: a.id, nome: a.nome, preco: a.preco })),
       } satisfies GrupoAdicionais,

@@ -23,6 +23,8 @@ const grupoSchema = z
     nome: textoObrigatorio("o nome do grupo", 80),
     minimo: inteiro("Mínimo", 0, 20),
     maximo: inteiro("Máximo", 1, 20),
+    // Caixa de seleção: só vem no formulário quando marcada.
+    repetir: z.preprocess((v) => v === "on" || v === "true", z.boolean()),
   })
   .refine((g) => g.minimo <= g.maximo, { path: ["maximo"], message: "O máximo não pode ser menor que o mínimo." });
 

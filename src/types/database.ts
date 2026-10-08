@@ -310,13 +310,13 @@ isOneToOne: false
                   ]
                 },"grupos_adicionais": {
                   Row: {
-                    "ativo": boolean,"criado_em": string,"id": string,"maximo": number,"minimo": number,"nome": string,"ordem": number,"restaurante_id": string
+                    "ativo": boolean,"criado_em": string,"id": string,"maximo": number,"minimo": number,"nome": string,"ordem": number,"repetir": boolean,"restaurante_id": string
                   }
                   Insert: {
-                    "ativo"?: boolean,"criado_em"?: string,"id"?: string,"maximo"?: number,"minimo"?: number,"nome": string,"ordem"?: number,"restaurante_id": string
+                    "ativo"?: boolean,"criado_em"?: string,"id"?: string,"maximo"?: number,"minimo"?: number,"nome": string,"ordem"?: number,"repetir"?: boolean,"restaurante_id": string
                   }
                   Update: {
-                    "ativo"?: boolean,"criado_em"?: string,"id"?: string,"maximo"?: number,"minimo"?: number,"nome"?: string,"ordem"?: number,"restaurante_id"?: string
+                    "ativo"?: boolean,"criado_em"?: string,"id"?: string,"maximo"?: number,"minimo"?: number,"nome"?: string,"ordem"?: number,"repetir"?: boolean,"restaurante_id"?: string
                   }
                   Relationships: [
                     {

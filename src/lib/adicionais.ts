@@ -8,6 +8,8 @@ export type GrupoAdicionais = {
   nome: string;
   minimo: number;
   maximo: number;
+  // A mesma opção pode ser escolhida mais de uma vez (2x arroz); o máximo conta unidades.
+  repetir: boolean;
   opcoes: OpcaoAdicional[];
 };
 
@@ -21,7 +23,11 @@ export function precoDasOpcoes(escolhidos: { preco: number }[]): number {
 // Mensagem do primeiro grupo fora do mínimo/máximo, ou null se a escolha vale.
 export function validarEscolha(grupos: GrupoAdicionais[], ids: string[]): string | null {
   for (const grupo of grupos) {
-    const qtd = grupo.opcoes.filter((o) => ids.includes(o.id)).length;
+    const doGrupo = new Set(grupo.opcoes.map((o) => o.id));
+    const qtd = ids.filter((id) => doGrupo.has(id)).length;
+    if (!grupo.repetir && new Set(ids.filter((id) => doGrupo.has(id))).size < qtd) {
+      return `Em "${grupo.nome}", cada opção só pode ser escolhida uma vez.`;
+    }
     if (qtd < grupo.minimo) {
       return grupo.minimo === 1 ? `Escolha 1 opção em "${grupo.nome}".` : `Escolha ${grupo.minimo} opções em "${grupo.nome}".`;
     }
@@ -37,9 +43,12 @@ export function regraDoGrupo(grupo: { minimo: number; maximo: number }): string 
   return `Escolha de ${grupo.minimo} a ${grupo.maximo}`;
 }
 
-// "Ao ponto · Bacon extra · Cheddar" para mostrar abaixo do nome do item.
+// "Ao ponto · 2x Arroz · Cheddar" para mostrar abaixo do nome do item
+// (opção repetida vem repetida no retrato do pedido; aqui vira "2x").
 export function resumoAdicionais(escolhidos: { nome: string }[]): string {
-  return escolhidos.map((a) => a.nome).join(" · ");
+  const contagem = new Map<string, number>();
+  for (const a of escolhidos) contagem.set(a.nome, (contagem.get(a.nome) ?? 0) + 1);
+  return [...contagem].map(([nome, n]) => (n > 1 ? `${n}x ${nome}` : nome)).join(" · ");
 }
 
 // Lê o retrato salvo no banco (jsonb) com segurança.
