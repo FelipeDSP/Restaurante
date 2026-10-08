@@ -1215,6 +1215,89 @@ begin
 end;
 $$;
 
+-- ======================================================================
+-- Painel da plataforma (super admin)
+-- ======================================================================
+do $$
+declare
+  a constant uuid := md5('brasa-espetinhos')::uuid;
+  v_admin constant uuid := md5('admin.plataforma@exemplo.com')::uuid;
+  v_json jsonb;
+  n integer;
+begin
+  perform pg_temp.admin();
+  insert into auth.users (instance_id, id, aud, role, email, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+  values ('00000000-0000-0000-0000-000000000000', v_admin, 'authenticated', 'authenticated', 'admin.plataforma@exemplo.com',
+          '{"provider": "email"}', '{}', now(), now());
+  insert into rest_privado.administradores (user_id) values (v_admin);
+
+  -- Dono de restaurante não é admin da plataforma.
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  perform pg_temp.ok(not public.admin_sou_admin(), 'admin: dono de restaurante não é admin');
+  begin
+    perform public.admin_painel();
+    perform pg_temp.ok(false, 'admin: dono não abre o painel da plataforma');
+  exception when insufficient_privilege then
+    perform pg_temp.ok(true, 'admin: dono não abre o painel da plataforma');
+  end;
+  begin
+    perform public.admin_definir_assinatura(a, 'cortesia', 'completo', null, null);
+    perform pg_temp.ok(false, 'admin: dono não muda a própria assinatura pelo admin');
+  exception when insufficient_privilege then
+    perform pg_temp.ok(true, 'admin: dono não muda a própria assinatura pelo admin');
+  end;
+  begin
+    select count(*) into n from rest_privado.administradores;
+    perform pg_temp.ok(false, 'admin: lista de admins fora do alcance do app');
+  exception when insufficient_privilege then
+    perform pg_temp.ok(true, 'admin: lista de admins fora do alcance do app');
+  end;
+
+  perform pg_temp.anonimo();
+  begin
+    perform public.admin_painel();
+    perform pg_temp.ok(false, 'admin: anônimo não chama');
+  exception when insufficient_privilege then
+    perform pg_temp.ok(true, 'admin: anônimo não chama');
+  end;
+
+  -- Admin vê todos e altera com registro.
+  perform pg_temp.entrar('admin.plataforma@exemplo.com');
+  perform pg_temp.ok(public.admin_sou_admin(), 'admin: admin é reconhecido');
+  v_json := public.admin_painel();
+  perform pg_temp.ok(jsonb_array_length(v_json -> 'restaurantes') >= 3, 'admin: vê todos os restaurantes');
+  v_json := public.admin_restaurante(a);
+  perform pg_temp.ok(v_json -> 'restaurante' ->> 'nome' is not null and jsonb_array_length(v_json -> 'equipe') > 0,
+                     'admin: ficha do restaurante com a equipe');
+
+  perform public.admin_definir_assinatura(a, 'cortesia', 'completo', null, null);
+  perform pg_temp.admin();
+  select count(*) into n from public.assinaturas where restaurante_id = a and status = 'cortesia';
+  perform pg_temp.ok(n = 1, 'admin: muda a assinatura');
+  select count(*) into n from rest_privado.admin_registros where restaurante_id = a and acao = 'assinatura' and user_id = v_admin;
+  perform pg_temp.ok(n = 1, 'admin: alteração registrada');
+
+  perform pg_temp.entrar('admin.plataforma@exemplo.com');
+  begin
+    perform public.admin_definir_assinatura(a, 'teste', 'completo', null, null);
+    perform pg_temp.ok(false, 'admin: teste exige data');
+  exception when others then
+    perform pg_temp.ok(sqlerrm like 'Informe até quando%', 'admin: teste exige data');
+  end;
+  begin
+    perform public.admin_definir_ativo(a, false, '');
+    perform pg_temp.ok(false, 'admin: desativar exige motivo');
+  exception when others then
+    perform pg_temp.ok(sqlerrm like 'Informe o motivo%', 'admin: desativar exige motivo');
+  end;
+  perform public.admin_definir_ativo(a, false, 'Teste de suspensão');
+  perform pg_temp.anonimo();
+  select count(*) into n from public.restaurantes_publicos where id = a;
+  perform pg_temp.ok(n = 0, 'admin: restaurante desativado sai do site público');
+  perform pg_temp.admin();
+end;
+$$;
+
 select n, ok, teste from resultado order by n;
 select count(*) filter (where not ok) as falhas, count(*) as total from resultado;
 

@@ -852,7 +852,22 @@ isOneToOne: false
                 }
           }
           Functions: {
-            "agente_concluir":
+            "admin_definir_assinatura":
+{ Args: { "p_periodo_termina_em": string,"p_plano": string,"p_restaurante_id": string,"p_status": string,"p_teste_termina_em": string }; Returns: undefined
+                           },
+"admin_definir_ativo":
+{ Args: { "p_ativo": boolean,"p_motivo": string,"p_restaurante_id": string }; Returns: undefined
+                           },
+"admin_painel":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"admin_restaurante":
+{ Args: { "p_restaurante_id": string }; Returns: Json
+                           },
+"admin_sou_admin":
+{ Args: Record<PropertyKey, never>; Returns: boolean
+                           },
+"agente_concluir":
 { Args: { "p_agente_id": string,"p_erro"?: string,"p_fila_id": string,"p_ok": boolean }; Returns: undefined
                            },
 "agente_pegar_trabalhos":

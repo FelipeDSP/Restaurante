@@ -145,6 +145,13 @@ Já existe (adicionais e opções):
 - Quem lança manda só os ids das opções (`"adicionais": [uuid, ...]` no item das RPCs `lancar_itens_comanda` e `criar_pedido_delivery`); o trigger valida (opção do produto, disponível, mínimo/máximo de cada grupo ativo) e monta o retrato. As opções não mudam depois de lançadas: cancela e lança de novo.
 - Interface: tipos e regras em `src/lib/adicionais.ts`, carga em `src/lib/adicionais-dados.ts`, seletor `<EscolherOpcoes>` em `src/components/adicionais/` (site e garçom).
 
+Já existe (painel da plataforma, super admin):
+- `/admin` (grupo `(site)`, marca uau foods): visão geral (restaurantes, pagantes, testes vencendo, uso), lista com busca e filtros, e ficha do restaurante (uso, equipe, assinatura editável com "+7/14/30 dias de teste", ativar/desativar o site, histórico).
+- Admins em `rest_privado.administradores` (fora da API). Tudo por RPCs `admin_*` security definer que chamam `rest_privado.exigir_admin()`; sem chave secreta. Cada alteração vai para `rest_privado.admin_registros`.
+- `exigirAdmin()` (`src/app/(site)/admin/dados.ts`): sem login vai para `/login?next=/admin`; logado sem ser admin recebe 404 (o título também não cita o admin).
+- Tornar admin: `insert into rest_privado.administradores (user_id) select id from auth.users where email = '...';` no SQL do Supabase.
+- Desativar (`restaurantes.ativo = false`) tira só o site público do ar; a equipe continua no painel.
+
 Já existe (relatórios do dono):
 - `/painel/relatorios` (só dono): período por atalhos (7/30 dias, este mês, mês passado) ou datas; a noite entra pelo dia em que o caixa abriu (fuso do restaurante).
 - RPC `relatorio_vendas(restaurante_id, de, ate)` (security invoker; recusa quem não é dono; até 400 dias) com as mesmas definições do `resumo_caixa_sessao` (vendido = itens não cancelados de pedidos não cancelados + taxa; recebido = pagamentos não estornados; contas = comandas fechadas + pedidos fora de mesa). Traz por noite, dia da semana, horário, origem, forma de pagamento, produtos, bairros e garçons.
