@@ -2,10 +2,10 @@ import { Clock, MapPin, MessageCircle } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { formatarBRL } from "@/lib/dinheiro";
-import { DIAS, NOME_DIA } from "@/lib/horarios";
 import { cn } from "@/lib/utils";
 
 import { BannerUltimoPedido } from "./banner-ultimo-pedido";
+import { HorariosDialog } from "./horarios-dialog";
 import { AdicionarProduto, BarraCarrinho } from "./componentes-carrinho";
 import {
   buscarRestaurantePorSlug,
@@ -53,6 +53,9 @@ export default async function CardapioPage(props: PageProps<"/[slug]">) {
           {restaurante.pedidoMinimo > 0 ? (
             <span className="text-sm text-muted-foreground">Pedido mínimo {formatarBRL(restaurante.pedidoMinimo)}</span>
           ) : null}
+          <span className="ml-auto">
+            <HorariosDialog horarios={restaurante.horarios} fusoHorario={restaurante.fusoHorario} />
+          </span>
         </div>
         {!disponibilidade.aberto && disponibilidade.motivo ? (
           <p role="status" className="rounded-lg bg-red-50 p-3 text-sm text-red-900">
@@ -115,21 +118,28 @@ export default async function CardapioPage(props: PageProps<"/[slug]">) {
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
                     <h3 className="font-semibold">{produto.nome}</h3>
                     {produto.descricao ? (
-                      <p className="line-clamp-2 text-sm text-muted-foreground">{produto.descricao}</p>
+                      <p className={cn("text-sm text-muted-foreground", produto.fotoUrl ? "line-clamp-3" : "line-clamp-2")}>
+                        {produto.descricao}
+                      </p>
                     ) : null}
-                    <div className="mt-auto flex items-center justify-between gap-2 pt-1">
+                    {/* Com foto, o preço vem logo abaixo da descrição; o botão fica embaixo da foto. */}
+                    <div
+                      className={cn(
+                        "flex items-center justify-between gap-2 pt-1",
+                        produto.fotoUrl ? "" : "mt-auto min-h-11",
+                      )}
+                    >
                       <span className="font-semibold tabular-nums">{formatarBRL(produto.preco)}</span>
-                      <AdicionarProduto restauranteId={restaurante.id} produto={produto} />
+                      {produto.fotoUrl ? null : <AdicionarProduto restauranteId={restaurante.id} produto={produto} />}
                     </div>
                   </div>
+                  {/* Com foto: foto em cima e o botão embaixo, no mesmo canto dos cartões sem foto. */}
                   {produto.fotoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element -- foto do Storage do restaurante
-                    <img
-                      src={produto.fotoUrl}
-                      alt={produto.nome}
-                      loading="lazy"
-                      className="size-24 shrink-0 rounded-lg object-cover"
-                    />
+                    <div className="flex shrink-0 flex-col items-end gap-2">
+                      {/* eslint-disable-next-line @next/next/no-img-element -- foto do Storage do restaurante */}
+                      <img src={produto.fotoUrl} alt={produto.nome} loading="lazy" className="size-28 rounded-lg object-cover" />
+                      <AdicionarProduto restauranteId={restaurante.id} produto={produto} />
+                    </div>
                   ) : null}
                 </li>
               ))}
@@ -137,29 +147,6 @@ export default async function CardapioPage(props: PageProps<"/[slug]">) {
           </section>
         ))
       )}
-
-      <section aria-labelledby="titulo-horarios" className="mx-4 mt-4 rounded-xl bg-background p-4 shadow-sm">
-        <h2 id="titulo-horarios" className="mb-2 font-semibold">
-          Horários
-        </h2>
-        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-          {DIAS.map((dia) => {
-            const intervalos = restaurante.horarios[dia] ?? [];
-            return (
-              <div key={dia} className="contents">
-                <dt className="text-muted-foreground">{NOME_DIA[dia]}</dt>
-                <dd>
-                  {intervalos.length === 0
-                    ? "Fechado"
-                    : intervalos
-                        .map((i) => (i.abre === i.fecha ? "24 horas" : `${i.abre} às ${i.fecha}`))
-                        .join(" e ")}
-                </dd>
-              </div>
-            );
-          })}
-        </dl>
-      </section>
 
       <BarraCarrinho restauranteId={restaurante.id} slug={restaurante.slug} />
     </main>

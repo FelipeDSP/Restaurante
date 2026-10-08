@@ -128,7 +128,7 @@ export async function consultarDisponibilidade(restauranteId: string): Promise<D
 export const MENSAGEM_FECHADO: Record<NonNullable<Disponibilidade["motivo"]>, string> = {
   restaurante_indisponivel: "Restaurante indisponível no momento.",
   sem_delivery: "Este restaurante não está fazendo delivery pelo site.",
-  fora_do_horario: "Estamos fechados agora. Confira os horários abaixo.",
+  fora_do_horario: "Estamos fechados agora. Toque em Horários para ver quando abrimos.",
   caixa_fechado: "Ainda não estamos recebendo pedidos. Tente novamente em instantes.",
 };
 
