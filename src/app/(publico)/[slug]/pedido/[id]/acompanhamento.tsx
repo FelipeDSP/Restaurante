@@ -8,13 +8,12 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { resumoAdicionais } from "@/lib/adicionais";
 import { formatarBRL } from "@/lib/dinheiro";
-import { useRascunho } from "@/lib/rascunho";
 import { nomeForma } from "@/lib/rotulos";
 import { horaLocal } from "@/lib/tempo";
 import { cn } from "@/lib/utils";
 
 import type { PedidoPublico } from "../../dados";
-import { chaveUltimoPedido, normalizarUltimoPedido, SEM_PEDIDO } from "../../ultimo-pedido";
+import { useMeusPedidos } from "../../meus-pedidos";
 
 type Status = PedidoPublico["status"];
 
@@ -52,12 +51,12 @@ export function Acompanhamento({ inicial, restaurante }: Props) {
   const [atualizadoEm, setAtualizadoEm] = useState(() => new Date().toISOString());
   const [semConexao, setSemConexao] = useState(false);
   const ativo = emAndamento(pedido.status);
-  const [, guardarUltimo] = useRascunho(chaveUltimoPedido(restaurante.id), SEM_PEDIDO, normalizarUltimoPedido);
+  const { guardar } = useMeusPedidos(restaurante.id);
 
-  // Guarda o pedido no aparelho para o cliente achar de novo pelo cardápio.
+  // Guarda o pedido no aparelho para o cliente achar de novo (cardápio e "Meus pedidos").
   useEffect(() => {
-    guardarUltimo({ id: inicial.id, numero: inicial.numero, criadoEm: inicial.criado_em });
-  }, [guardarUltimo, inicial.id, inicial.numero, inicial.criado_em]);
+    guardar({ id: inicial.id, numero: inicial.numero, criadoEm: inicial.criado_em });
+  }, [guardar, inicial.id, inicial.numero, inicial.criado_em]);
 
   const falhas = useRef(0);
   useEffect(() => {
@@ -238,9 +237,14 @@ export function Acompanhamento({ inicial, restaurante }: Props) {
             Falar com o restaurante no WhatsApp
           </a>
         ) : null}
-        <Link href={`/${restaurante.slug}`} className="flex min-h-11 items-center text-sm text-muted-foreground underline">
-          Voltar ao cardápio
-        </Link>
+        <div className="flex gap-6">
+          <Link href={`/${restaurante.slug}/pedidos`} className="flex min-h-11 items-center text-sm text-muted-foreground underline">
+            Meus pedidos
+          </Link>
+          <Link href={`/${restaurante.slug}`} className="flex min-h-11 items-center text-sm text-muted-foreground underline">
+            Voltar ao cardápio
+          </Link>
+        </div>
       </div>
     </main>
   );

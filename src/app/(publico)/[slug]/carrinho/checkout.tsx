@@ -12,11 +12,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { type AdicionalEscolhido, type GrupoAdicionais, resumoAdicionais, validarEscolha } from "@/lib/adicionais";
 import { centavosDeTexto, formatarBRL } from "@/lib/dinheiro";
 import { novoId } from "@/lib/id";
-import { useRascunho } from "@/lib/rascunho";
 import { cn } from "@/lib/utils";
 
 import { type ItemCarrinho, precoUnitario, useCarrinho } from "../carrinho-store";
-import { type DadosPedido, enviarPedido } from "./actions";
+import { enviarPedido } from "./actions";
+import { FORM_VAZIO, FORMAS, temDadosSalvos, useDadosCliente } from "./dados-cliente";
 
 type Props = {
   restaurante: { id: string; slug: string; pedidoMinimo: number };
@@ -43,50 +43,6 @@ function situacaoDaLinha(item: ItemCarrinho, produtos: Props["produtosDisponivei
   return { ok: true, dados: { nome: produto.nome, preco: produto.preco, adicionais } };
 }
 
-const FORMAS = [
-  { valor: "pix", rotulo: "Pix" },
-  { valor: "dinheiro", rotulo: "Dinheiro" },
-  { valor: "credito", rotulo: "Crédito" },
-  { valor: "debito", rotulo: "Débito" },
-] as const;
-
-type FormCheckout = {
-  nome: string;
-  telefone: string;
-  bairroId: string;
-  rua: string;
-  numero: string;
-  complemento: string;
-  referencia: string;
-  forma: DadosPedido["forma"];
-  trocoPara: string;
-  observacao: string;
-};
-
-const FORM_VAZIO: FormCheckout = {
-  nome: "",
-  telefone: "",
-  bairroId: "",
-  rua: "",
-  numero: "",
-  complemento: "",
-  referencia: "",
-  forma: "pix",
-  trocoPara: "",
-  observacao: "",
-};
-
-// O rascunho vem do aparelho: só aceita os campos conhecidos, em texto.
-function normalizarForm(valor: unknown): FormCheckout | null {
-  if (!valor || typeof valor !== "object") return null;
-  const salvo = valor as Record<string, unknown>;
-  const form = Object.fromEntries(
-    Object.entries(FORM_VAZIO).map(([campo, padrao]) => [campo, typeof salvo[campo] === "string" ? salvo[campo] : padrao]),
-  ) as FormCheckout;
-  if (!FORMAS.some((f) => f.valor === form.forma)) form.forma = "pix";
-  return form;
-}
-
 function Erro({ texto }: { texto?: string }) {
   return texto ? (
     <p role="alert" className="text-sm font-medium text-destructive">
@@ -111,7 +67,10 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
   }, [erros]);
   // Rascunho no aparelho: queda de rede ou recarga não apagam o que o cliente digitou,
   // e nome, telefone e endereço ficam para o próximo pedido.
-  const [form, setForm] = useRascunho(`checkout:${restaurante.id}`, FORM_VAZIO, normalizarForm);
+  const [form, setForm] = useDadosCliente(restaurante.id);
+  // Enquanto o cliente não mexe, o que está nos campos veio de um pedido anterior
+  // (aparelho emprestado: "Não é você?"). O aparelho só é lido depois da hidratação.
+  const [editou, setEditou] = useState(false);
 
   // Itens que saíram do cardápio (ou mudaram de preço/opções) desde que foram para o carrinho.
   const situacoes = useMemo(
@@ -138,8 +97,10 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
   const faltaMinimo = Math.max(0, restaurante.pedidoMinimo - subtotal);
   const troco = form.forma === "dinheiro" && form.trocoPara ? centavosDeTexto(form.trocoPara) : null;
 
-  const alterar = (campo: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+  const alterar = (campo: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    setEditou(true);
     setForm((f) => ({ ...f, [campo]: e.target.value }));
+  };
 
   // Mesmo pedido = mesma chave: tocar "Enviar" de novo depois de uma falha não cria pedido duplicado.
   const envioAtual = useRef<{ conteudo: string; chave: string } | null>(null);
@@ -274,6 +235,18 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
         <h2 id="titulo-entrega" className="font-semibold">
           Entrega
         </h2>
+        {!editou && temDadosSalvos(form) ? (
+          <p className="flex flex-wrap items-center gap-x-2 rounded-lg bg-muted p-2 text-sm text-muted-foreground">
+            Preenchido com os dados salvos neste aparelho.
+            <button
+              type="button"
+              className="min-h-11 font-medium text-foreground underline underline-offset-4"
+              onClick={() => setForm((f) => ({ ...FORM_VAZIO, forma: f.forma }))}
+            >
+              Não é você? Limpar
+            </button>
+          </p>
+        ) : null}
         <label className="flex flex-col gap-1 text-sm font-medium">
           Nome
           <Input value={form.nome} onChange={alterar("nome")} autoComplete="name" className="h-11" aria-invalid={!!erros.nome} />

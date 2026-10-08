@@ -1,6 +1,6 @@
 "use client";
 
-import { Minus, Plus, ShoppingBag } from "lucide-react";
+import { Minus, Plus, ReceiptText, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -11,6 +11,7 @@ import { chaveDaEscolha } from "@/lib/adicionais";
 import { formatarBRL } from "@/lib/dinheiro";
 
 import { useCarrinho } from "./carrinho-store";
+import { useMeusPedidos } from "./meus-pedidos";
 
 export function AdicionarProduto({ restauranteId, produto }: { restauranteId: string; produto: ProdutoComOpcoes }) {
   const { itens, adicionar, alterarQuantidade } = useCarrinho(restauranteId);
@@ -125,6 +126,21 @@ export function IconeCarrinho({ restauranteId, slug }: { restauranteId: string; 
           {quantidade}
         </span>
       ) : null}
+    </Link>
+  );
+}
+
+// Atalho para "Meus pedidos" no topo, só depois do primeiro pedido feito neste aparelho.
+export function IconeMeusPedidos({ restauranteId, slug }: { restauranteId: string; slug: string }) {
+  const { pedidos } = useMeusPedidos(restauranteId);
+  if (pedidos.length === 0) return null;
+  return (
+    <Link
+      href={`/${slug}/pedidos`}
+      aria-label="Meus pedidos"
+      className="flex size-11 items-center justify-center rounded-full hover:bg-black/10"
+    >
+      <ReceiptText className="size-5" />
     </Link>
   );
 }

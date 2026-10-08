@@ -149,7 +149,7 @@ Já existe (adicionais e opções):
 
 - Leitura de `restaurantes` (apenas colunas públicas, via view `restaurantes_publicos`), `categorias` ativas, `produtos` disponíveis para delivery e `bairros_entrega` ativos, somente de restaurantes ativos.
 - Criação de pedido apenas pela RPC `criar_pedido_delivery`.
-- Acompanhamento do pedido por RPC `consultar_pedido_publico(pedido_id)` retornando só status, itens e totais (mais troco e motivo do cancelamento; nunca nome, telefone, endereço ou observação: o link é repassado). A tela consulta `/api/pedidos/[id]` de tempos em tempos e sobrevive a queda de rede; o último pedido fica no aparelho (`ultimo-pedido:<restaurante>`) e aparece no cardápio.
+- Acompanhamento do pedido por RPC `consultar_pedido_publico(pedido_id)` retornando só status, itens e totais (mais troco e motivo do cancelamento; nunca nome, telefone, endereço ou observação: o link é repassado). A tela consulta `/api/pedidos/[id]` de tempos em tempos e sobrevive a queda de rede; os pedidos ficam no aparelho (`meus-pedidos:<restaurante>`, até 20; `src/app/(publico)/[slug]/meus-pedidos.ts`): o último em andamento aparece no cardápio e todos em `/[slug]/pedidos` ("Meus pedidos", ícone no topo), junto com os dados de entrega guardados pelo checkout (`checkout:<restaurante>`, `carrinho/dados-cliente.ts`) e o botão para apagar tudo do aparelho. Sem conta: nada disso vai para o servidor.
 
 ## Tempo real
 

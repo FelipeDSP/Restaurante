@@ -4,15 +4,15 @@ import { ChevronRight, Clock } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { useRascunho } from "@/lib/rascunho";
 import { nomeStatusPedido } from "@/lib/rotulos";
 
 import type { PedidoPublico } from "./dados";
-import { chaveUltimoPedido, normalizarUltimoPedido, SEM_PEDIDO } from "./ultimo-pedido";
+import { useMeusPedidos } from "./meus-pedidos";
 
 // "Acompanhar pedido nº X" no cardápio enquanto o último pedido deste aparelho está em andamento.
 export function BannerUltimoPedido({ restauranteId, slug }: { restauranteId: string; slug: string }) {
-  const [ultimo, , limpar] = useRascunho(chaveUltimoPedido(restauranteId), SEM_PEDIDO, normalizarUltimoPedido);
+  const { pedidos, esquecer } = useMeusPedidos(restauranteId);
+  const ultimo = pedidos[0];
   const [status, setStatus] = useState<PedidoPublico["status"] | null>(null);
 
   useEffect(() => {
@@ -22,7 +22,7 @@ export function BannerUltimoPedido({ restauranteId, slug }: { restauranteId: str
       .then(async (r) => {
         if (cancelado) return;
         if (r.status === 404) {
-          limpar();
+          esquecer(ultimo.id);
           return;
         }
         if (r.ok) setStatus(((await r.json()) as PedidoPublico).status);
@@ -33,7 +33,7 @@ export function BannerUltimoPedido({ restauranteId, slug }: { restauranteId: str
     return () => {
       cancelado = true;
     };
-  }, [ultimo, limpar]);
+  }, [ultimo, esquecer]);
 
   // Só aparece enquanto o pedido está em andamento.
   // Para o cliente, "recebido" (no caixa é "Novo").

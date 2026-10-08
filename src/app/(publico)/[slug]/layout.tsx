@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { estiloMarca } from "@/lib/cores";
 import { urlIcone } from "@/lib/icone";
 
-import { IconeCarrinho } from "./componentes-carrinho";
+import { IconeCarrinho, IconeMeusPedidos } from "./componentes-carrinho";
 import { buscarRestaurantePorSlug } from "./dados";
 
 export async function generateMetadata(props: LayoutProps<"/[slug]">): Promise<Metadata> {
@@ -49,7 +49,10 @@ export default async function SiteLayout(props: LayoutProps<"/[slug]">) {
             )}
             <span className="truncate text-lg font-bold">{restaurante.nome}</span>
           </Link>
-          <IconeCarrinho restauranteId={restaurante.id} slug={restaurante.slug} />
+          <div className="flex shrink-0 items-center">
+            <IconeMeusPedidos restauranteId={restaurante.id} slug={restaurante.slug} />
+            <IconeCarrinho restauranteId={restaurante.id} slug={restaurante.slug} />
+          </div>
         </div>
       </header>
       <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col">{props.children}</div>
