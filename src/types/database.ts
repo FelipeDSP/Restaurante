@@ -173,6 +173,68 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"clientes": {
+                  Row: {
+                    "criado_em": string,"id": string,"nome": string,"restaurante_id": string,"telefone": string,"user_id": string
+                  }
+                  Insert: {
+                    "criado_em"?: string,"id"?: string,"nome": string,"restaurante_id": string,"telefone": string,"user_id": string
+                  }
+                  Update: {
+                    "criado_em"?: string,"id"?: string,"nome"?: string,"restaurante_id"?: string,"telefone"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "clientes_restaurante_id_fkey"
+      columns: ["restaurante_id"]
+isOneToOne: false
+      referencedRelation: "restaurantes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "clientes_restaurante_id_fkey"
+      columns: ["restaurante_id"]
+isOneToOne: false
+      referencedRelation: "restaurantes_publicos"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"clientes_enderecos": {
+                  Row: {
+                    "bairro_id": string,"cliente_id": string,"complemento": string | null,"criado_em": string,"id": string,"numero": string,"referencia": string | null,"restaurante_id": string,"rua": string,"usado_em": string
+                  }
+                  Insert: {
+                    "bairro_id": string,"cliente_id": string,"complemento"?: string | null,"criado_em"?: string,"id"?: string,"numero": string,"referencia"?: string | null,"restaurante_id": string,"rua": string,"usado_em"?: string
+                  }
+                  Update: {
+                    "bairro_id"?: string,"cliente_id"?: string,"complemento"?: string | null,"criado_em"?: string,"id"?: string,"numero"?: string,"referencia"?: string | null,"restaurante_id"?: string,"rua"?: string,"usado_em"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "clientes_enderecos_bairro_id_fkey"
+      columns: ["bairro_id"]
+isOneToOne: false
+      referencedRelation: "bairros_entrega"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "clientes_enderecos_restaurante_id_cliente_id_fkey"
+      columns: ["restaurante_id","cliente_id"]
+isOneToOne: false
+      referencedRelation: "clientes"
+      referencedColumns: ["restaurante_id","id"]
+    },{
+      foreignKeyName: "clientes_enderecos_restaurante_id_fkey"
+      columns: ["restaurante_id"]
+isOneToOne: false
+      referencedRelation: "restaurantes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "clientes_enderecos_restaurante_id_fkey"
+      columns: ["restaurante_id"]
+isOneToOne: false
+      referencedRelation: "restaurantes_publicos"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"comandas": {
                   Row: {
                     "aberta_em": string,"caixa_sessao_id": string,"fechada_em": string | null,"fechada_por": string | null,"garcom_id": string | null,"id": string,"mesa_id": string,"pessoas": number | null,"restaurante_id": string,"status": string,"total": number
@@ -551,13 +613,13 @@ isOneToOne: false
                   ]
                 },"pedidos": {
                   Row: {
-                    "aceito_em": string | null,"bairro_id": string | null,"caixa_sessao_id": string,"cancelado_em": string | null,"cancelado_por": string | null,"chave_idempotencia": string | null,"cliente_nome": string | null,"cliente_telefone": string | null,"comanda_id": string | null,"criado_em": string,"criado_por": string | null,"endereco": Json | null,"forma_pagamento_prevista": string | null,"id": string,"motivo_cancelamento": string | null,"numero": number,"observacao": string | null,"origem": string,"restaurante_id": string,"status": string,"subtotal": number,"taxa_entrega": number,"total": number,"troco_para": number | null
+                    "aceito_em": string | null,"bairro_id": string | null,"caixa_sessao_id": string,"cancelado_em": string | null,"cancelado_por": string | null,"chave_idempotencia": string | null,"cliente_id": string | null,"cliente_nome": string | null,"cliente_telefone": string | null,"comanda_id": string | null,"criado_em": string,"criado_por": string | null,"endereco": Json | null,"forma_pagamento_prevista": string | null,"id": string,"motivo_cancelamento": string | null,"numero": number,"observacao": string | null,"origem": string,"restaurante_id": string,"status": string,"subtotal": number,"taxa_entrega": number,"total": number,"troco_para": number | null
                   }
                   Insert: {
-                    "aceito_em"?: string | null,"bairro_id"?: string | null,"caixa_sessao_id": string,"cancelado_em"?: string | null,"cancelado_por"?: string | null,"chave_idempotencia"?: string | null,"cliente_nome"?: string | null,"cliente_telefone"?: string | null,"comanda_id"?: string | null,"criado_em"?: string,"criado_por"?: string | null,"endereco"?: Json | null,"forma_pagamento_prevista"?: string | null,"id"?: string,"motivo_cancelamento"?: string | null,"numero": number,"observacao"?: string | null,"origem": string,"restaurante_id": string,"status"?: string,"subtotal"?: number,"taxa_entrega"?: number,"total"?: number,"troco_para"?: number | null
+                    "aceito_em"?: string | null,"bairro_id"?: string | null,"caixa_sessao_id": string,"cancelado_em"?: string | null,"cancelado_por"?: string | null,"chave_idempotencia"?: string | null,"cliente_id"?: string | null,"cliente_nome"?: string | null,"cliente_telefone"?: string | null,"comanda_id"?: string | null,"criado_em"?: string,"criado_por"?: string | null,"endereco"?: Json | null,"forma_pagamento_prevista"?: string | null,"id"?: string,"motivo_cancelamento"?: string | null,"numero": number,"observacao"?: string | null,"origem": string,"restaurante_id": string,"status"?: string,"subtotal"?: number,"taxa_entrega"?: number,"total"?: number,"troco_para"?: number | null
                   }
                   Update: {
-                    "aceito_em"?: string | null,"bairro_id"?: string | null,"caixa_sessao_id"?: string,"cancelado_em"?: string | null,"cancelado_por"?: string | null,"chave_idempotencia"?: string | null,"cliente_nome"?: string | null,"cliente_telefone"?: string | null,"comanda_id"?: string | null,"criado_em"?: string,"criado_por"?: string | null,"endereco"?: Json | null,"forma_pagamento_prevista"?: string | null,"id"?: string,"motivo_cancelamento"?: string | null,"numero"?: number,"observacao"?: string | null,"origem"?: string,"restaurante_id"?: string,"status"?: string,"subtotal"?: number,"taxa_entrega"?: number,"total"?: number,"troco_para"?: number | null
+                    "aceito_em"?: string | null,"bairro_id"?: string | null,"caixa_sessao_id"?: string,"cancelado_em"?: string | null,"cancelado_por"?: string | null,"chave_idempotencia"?: string | null,"cliente_id"?: string | null,"cliente_nome"?: string | null,"cliente_telefone"?: string | null,"comanda_id"?: string | null,"criado_em"?: string,"criado_por"?: string | null,"endereco"?: Json | null,"forma_pagamento_prevista"?: string | null,"id"?: string,"motivo_cancelamento"?: string | null,"numero"?: number,"observacao"?: string | null,"origem"?: string,"restaurante_id"?: string,"status"?: string,"subtotal"?: number,"taxa_entrega"?: number,"total"?: number,"troco_para"?: number | null
                   }
                   Relationships: [
                     {
@@ -577,6 +639,12 @@ isOneToOne: false
       columns: ["restaurante_id","cancelado_por"]
 isOneToOne: false
       referencedRelation: "membros"
+      referencedColumns: ["restaurante_id","id"]
+    },{
+      foreignKeyName: "pedidos_restaurante_id_cliente_id_fkey"
+      columns: ["restaurante_id","cliente_id"]
+isOneToOne: false
+      referencedRelation: "clientes"
       referencedColumns: ["restaurante_id","id"]
     },{
       foreignKeyName: "pedidos_restaurante_id_comanda_id_fkey"
@@ -830,6 +898,9 @@ isOneToOne: false
 "criar_pedido_delivery":
 { Args: { "p_bairro_id": string,"p_chave"?: string,"p_cliente_nome": string,"p_cliente_telefone": string,"p_endereco": Json,"p_forma_pagamento": string,"p_itens": Json,"p_observacao"?: string,"p_restaurante_id": string,"p_total_esperado"?: number,"p_troco_para"?: number }; Returns: Json
                            },
+"entrar_como_cliente":
+{ Args: { "p_nome": string,"p_restaurante_id": string }; Returns: string
+                           },
 "entregar_pedido_delivery":
 { Args: { "p_forma": string,"p_pedido_id": string }; Returns: undefined
                            },
@@ -841,6 +912,9 @@ isOneToOne: false
                            },
 "lancar_itens_comanda":
 { Args: { "p_comanda_id": string,"p_itens": Json,"p_lote"?: string,"p_total_esperado"?: number }; Returns: Json
+                           },
+"meus_pedidos_cliente":
+{ Args: { "p_restaurante_id": string }; Returns: Json
                            },
 "reimprimir":
 { Args: { "p_fila_id": string }; Returns: undefined

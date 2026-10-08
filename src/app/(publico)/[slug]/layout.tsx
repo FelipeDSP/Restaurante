@@ -50,7 +50,7 @@ export default async function SiteLayout(props: LayoutProps<"/[slug]">) {
             <span className="truncate text-lg font-bold">{restaurante.nome}</span>
           </Link>
           <div className="flex shrink-0 items-center">
-            <IconeMeusPedidos restauranteId={restaurante.id} slug={restaurante.slug} />
+            <IconeMeusPedidos slug={restaurante.slug} />
             <IconeCarrinho restauranteId={restaurante.id} slug={restaurante.slug} />
           </div>
         </div>

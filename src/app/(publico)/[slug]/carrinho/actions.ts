@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { centavosDeTexto } from "@/lib/dinheiro";
 import { ipDoCliente, limiteAtingido, registrarUso } from "@/lib/limite-taxa";
-import { createPublicClient } from "@/lib/supabase/publico";
+import { createClient } from "@/lib/supabase/server";
 import { id } from "@/lib/validacao";
 
 import { buscarRestaurantePorSlug, MENSAGEM_FECHADO } from "../dados";
@@ -87,7 +87,8 @@ export async function enviarPedido(slug: string, entrada: DadosPedido): Promise<
     };
   }
 
-  const supabase = createPublicClient();
+  // Sessão do navegador: sem conta é anônimo; com a conta de cliente, o banco liga o pedido a ela.
+  const supabase = await createClient();
   const { data, error } = await supabase.rpc("criar_pedido_delivery", {
     p_restaurante_id: restaurante.id,
     p_cliente_nome: d.nome,

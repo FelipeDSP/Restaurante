@@ -65,6 +65,12 @@ O instalador não tem assinatura de código (certificado custa caro): o Windows 
 - *Authentication → Sign In / Providers → Email*: decidir se o cadastro exige confirmação de e-mail ("Confirm email").
   O app funciona dos dois jeitos: sem confirmação, o dono entra direto em `/comecar`; com confirmação, o link do e-mail leva a `/auth/confirmar` e depois a `/comecar`.
   Com confirmação ligada, configurar um SMTP próprio (*Authentication → Emails → SMTP*): o e-mail padrão do Supabase tem limite baixo de envios por hora e sai com remetente genérico.
+- **Conta do cliente (entrar com o celular), opcional.** Enquanto não houver provedor de mensagens, deixe como está: o site esconde o "Entrar" e o delivery funciona sem conta. Para ligar:
+  1. Gerar um segredo: `echo "v1,whsec_$(openssl rand -base64 32)"`.
+  2. *Authentication → Sign In / Providers → Phone*: ligar o telefone, com "Confirm phone" ligado. Se o painel exigir um provedor de SMS, escolher qualquer um com valores de mentira: quem envia é o gancho do passo 3.
+  3. *Authentication → Auth Hooks → Send SMS*: tipo HTTPS, URL `https://seu-dominio.com.br/api/auth/enviar-codigo`, segredo do passo 1.
+  4. No Coolify: `SEND_SMS_HOOK_SECRET` (o mesmo segredo) e `MENSAGENS_PROVEDOR` com o provedor escolhido (implementado em `src/lib/mensagens.ts`).
+  5. *Authentication → Rate Limits*: conferir o limite de SMS por hora (cada código custa uma mensagem).
 - Migrações: já aplicadas no projeto atual. Em um projeto novo, rodar `npx supabase link --project-ref <ref>` e `npx supabase db push` (sem o `seed.sql`).
 
 ## 5. Antes de abrir para o público (IMPORTANTE)

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { loginClienteDisponivel } from "@/lib/mensagens";
+
 import {
   buscarRestaurantePorSlug,
   carregarBairros,
@@ -8,6 +10,7 @@ import {
   consultarDisponibilidade,
   MENSAGEM_FECHADO,
 } from "../dados";
+import { obterConta } from "../conta";
 import { Checkout } from "./checkout";
 
 export const metadata: Metadata = { title: "Carrinho" };
@@ -17,10 +20,11 @@ export default async function CarrinhoPage(props: PageProps<"/[slug]/carrinho">)
   const restaurante = await buscarRestaurantePorSlug(slug);
   if (!restaurante) notFound();
 
-  const [bairros, cardapio, disponibilidade] = await Promise.all([
+  const [bairros, cardapio, disponibilidade, conta] = await Promise.all([
     carregarBairros(restaurante.id),
     carregarCardapioDelivery(restaurante.id),
     consultarDisponibilidade(restaurante.id),
+    obterConta(restaurante.id),
   ]);
 
   // Nome e preço atuais: o carrinho no navegador pode estar desatualizado.
@@ -37,6 +41,8 @@ export default async function CarrinhoPage(props: PageProps<"/[slug]/carrinho">)
         mensagemFechado={disponibilidade.motivo ? MENSAGEM_FECHADO[disponibilidade.motivo] : null}
         bairros={bairros}
         produtosDisponiveis={produtosDisponiveis}
+        conta={conta}
+        podeEntrar={loginClienteDisponivel()}
       />
     </main>
   );

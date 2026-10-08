@@ -12,9 +12,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { type AdicionalEscolhido, type GrupoAdicionais, resumoAdicionais, validarEscolha } from "@/lib/adicionais";
 import { centavosDeTexto, formatarBRL } from "@/lib/dinheiro";
 import { novoId } from "@/lib/id";
+import { formatarTelefone } from "@/lib/telefone";
 import { cn } from "@/lib/utils";
 
 import { type ItemCarrinho, precoUnitario, useCarrinho } from "../carrinho-store";
+import type { ContaCliente, EnderecoSalvo } from "../conta";
 import { enviarPedido } from "./actions";
 import { FORM_VAZIO, FORMAS, temDadosSalvos, useDadosCliente } from "./dados-cliente";
 
@@ -24,6 +26,10 @@ type Props = {
   mensagemFechado: string | null;
   bairros: { id: string; nome: string; taxa: number }[];
   produtosDisponiveis: Record<string, { nome: string; preco: number; grupos: GrupoAdicionais[] }>;
+  // Conta do cliente (entrou com o celular): preenche nome e telefone e oferece os endereços usados.
+  conta: ContaCliente | null;
+  // Envio de código configurado: mostra o convite para entrar.
+  podeEntrar: boolean;
 };
 
 type Situacao = { ok: true; dados: { nome: string; preco: number; adicionais: AdicionalEscolhido[] } } | { ok: false; motivo: string };
@@ -51,7 +57,7 @@ function Erro({ texto }: { texto?: string }) {
   ) : null;
 }
 
-export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produtosDisponiveis }: Props) {
+export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produtosDisponiveis, conta, podeEntrar }: Props) {
   const router = useRouter();
   const { itens, alterarQuantidade, alterarObservacao, atualizarDados, limpar } = useCarrinho(restaurante.id);
   const [enviando, iniciar] = useTransition();
@@ -71,6 +77,32 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
   // Enquanto o cliente não mexe, o que está nos campos veio de um pedido anterior
   // (aparelho emprestado: "Não é você?"). O aparelho só é lido depois da hidratação.
   const [editou, setEditou] = useState(false);
+
+  // Com a conta: nome, telefone e o último endereço usado vêm da conta (o aparelho pode ter os
+  // dados de outra pessoa). Uma vez por aba, para não desfazer o que o cliente mudar depois.
+  useEffect(() => {
+    if (!conta) return;
+    const marca = `checkout-conta:${restaurante.id}:${conta.id}`;
+    try {
+      if (sessionStorage.getItem(marca)) return;
+      sessionStorage.setItem(marca, "1");
+    } catch {
+      // Sem armazenamento: aplica a cada carregamento.
+    }
+    const endereco = conta.enderecos.find((e) => bairros.some((b) => b.id === e.bairroId));
+    setForm((f) => ({
+      ...f,
+      nome: conta.nome,
+      telefone: formatarTelefone(conta.telefone),
+      ...(endereco ? camposDoEndereco(endereco) : {}),
+    }));
+  }, [conta, bairros, setForm, restaurante.id]);
+  const enderecosDaConta = (conta?.enderecos ?? []).filter((e) => bairros.some((b) => b.id === e.bairroId));
+  const enderecoAtual = (e: EnderecoSalvo) =>
+    form.bairroId === e.bairroId &&
+    form.rua.trim().toLowerCase() === e.rua.toLowerCase() &&
+    form.numero.trim().toLowerCase() === e.numero.toLowerCase() &&
+    form.complemento.trim().toLowerCase() === (e.complemento ?? "").toLowerCase();
 
   // Itens que saíram do cardápio (ou mudaram de preço/opções) desde que foram para o carrinho.
   const situacoes = useMemo(
@@ -235,7 +267,44 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
         <h2 id="titulo-entrega" className="font-semibold">
           Entrega
         </h2>
-        {!editou && temDadosSalvos(form) ? (
+        {conta ? (
+          <p className="text-sm text-muted-foreground">
+            Pedindo como <strong className="text-foreground">{conta.nome}</strong>. O endereço fica salvo na sua conta.
+          </p>
+        ) : podeEntrar ? (
+          <p className="text-sm text-muted-foreground">
+            <Link
+              href={`/${restaurante.slug}/entrar?voltar=/${restaurante.slug}/carrinho`}
+              className="inline-flex min-h-11 items-center font-medium text-foreground underline underline-offset-4"
+            >
+              Entre com o celular
+            </Link>{" "}
+            para salvar seus dados e acompanhar os pedidos em qualquer aparelho (opcional).
+          </p>
+        ) : null}
+        {enderecosDaConta.length > 1 ? (
+          <div className="flex flex-col gap-1">
+            <span className="text-sm font-medium">Seus endereços</span>
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Endereços usados">
+              {enderecosDaConta.map((e) => (
+                <Button
+                  key={e.id}
+                  type="button"
+                  variant={enderecoAtual(e) ? "default" : "outline"}
+                  aria-pressed={enderecoAtual(e)}
+                  className="h-auto min-h-11 max-w-full justify-start whitespace-normal text-left"
+                  onClick={() => {
+                    setEditou(true);
+                    setForm((f) => ({ ...f, ...camposDoEndereco(e) }));
+                  }}
+                >
+                  {[`${e.rua}, ${e.numero}`, e.complemento].filter(Boolean).join(" · ")}
+                </Button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+        {!conta && !editou && temDadosSalvos(form) ? (
           <p className="flex flex-wrap items-center gap-x-2 rounded-lg bg-muted p-2 text-sm text-muted-foreground">
             Preenchido com os dados salvos neste aparelho.
             <button
@@ -387,4 +456,14 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
       </div>
     </form>
   );
+}
+
+function camposDoEndereco(e: EnderecoSalvo) {
+  return {
+    bairroId: e.bairroId,
+    rua: e.rua,
+    numero: e.numero,
+    complemento: e.complemento ?? "",
+    referencia: e.referencia ?? "",
+  };
 }

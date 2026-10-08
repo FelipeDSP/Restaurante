@@ -2,7 +2,7 @@
 
 import { ChevronRight, Smartphone } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { formatarBRL } from "@/lib/dinheiro";
@@ -11,12 +11,15 @@ import { dataHoraLocal } from "@/lib/tempo";
 import { cn } from "@/lib/utils";
 
 import { temDadosSalvos, useDadosCliente } from "../carrinho/dados-cliente";
+import type { PedidoDaConta } from "../conta";
 import type { PedidoPublico } from "../dados";
 import { useMeusPedidos } from "../meus-pedidos";
 
 type Props = {
   restaurante: { id: string; slug: string; fusoHorario: string };
   bairros: { id: string; nome: string }[];
+  // Pedidos da conta (quem entrou com o telefone); null = sem conta neste navegador.
+  pedidosConta: PedidoDaConta[] | null;
 };
 
 type Situacao = Pick<PedidoPublico, "status" | "total"> | "carregando" | "sem_conexao";
@@ -24,16 +27,19 @@ type Situacao = Pick<PedidoPublico, "status" | "total"> | "carregando" | "sem_co
 // Para o cliente, "recebido" (no caixa é "Novo").
 const rotuloStatus = (status: PedidoPublico["status"]) => (status === "recebido" ? "Recebido" : nomeStatusPedido(status));
 
-export function ListaMeusPedidos({ restaurante, bairros }: Props) {
-  const { pedidos, esquecer, limpar: limparPedidos } = useMeusPedidos(restaurante.id);
+export function ListaMeusPedidos({ restaurante, bairros, pedidosConta }: Props) {
+  const { pedidos: doAparelho, esquecer, limpar: limparPedidos } = useMeusPedidos(restaurante.id);
   const [dados, , limparDados] = useDadosCliente(restaurante.id);
   const [situacoes, setSituacoes] = useState<Record<string, Situacao>>({});
   const [confirmando, setConfirmando] = useState(false);
 
-  // Status de agora de cada pedido guardado (a lista no aparelho só tem id, número e data).
+  // Os da conta já vêm com status; os do aparelho que não estão na conta são consultados aqui.
+  const daConta = useMemo(() => new Set((pedidosConta ?? []).map((p) => p.id)), [pedidosConta]);
+  const soDoAparelho = useMemo(() => doAparelho.filter((p) => !daConta.has(p.id)), [doAparelho, daConta]);
+
   useEffect(() => {
     let cancelado = false;
-    for (const { id } of pedidos) {
+    for (const { id } of soDoAparelho) {
       fetch(`/api/pedidos/${id}`, { cache: "no-store" })
         .then(async (r) => {
           if (cancelado) return;
@@ -52,7 +58,17 @@ export function ListaMeusPedidos({ restaurante, bairros }: Props) {
     return () => {
       cancelado = true;
     };
-  }, [pedidos, esquecer]);
+  }, [soDoAparelho, esquecer]);
+
+  const lista = [
+    ...(pedidosConta ?? []).map((p) => ({
+      id: p.id,
+      numero: p.numero,
+      criadoEm: p.criado_em,
+      situacao: { status: p.status, total: p.total } as Situacao,
+    })),
+    ...soDoAparelho.map((p) => ({ ...p, situacao: situacoes[p.id] ?? ("carregando" as Situacao) })),
+  ].sort((a, b) => b.criadoEm.localeCompare(a.criadoEm));
 
   const bairro = bairros.find((b) => b.id === dados.bairroId)?.nome;
   const endereco = [[dados.rua, dados.numero].filter(Boolean).join(", "), dados.complemento, bairro].filter(Boolean).join(" · ");
@@ -60,17 +76,17 @@ export function ListaMeusPedidos({ restaurante, bairros }: Props) {
 
   return (
     <>
-      {pedidos.length === 0 ? (
+      {lista.length === 0 ? (
         <section className="flex flex-col items-center gap-4 rounded-xl bg-background p-6 text-center shadow-sm">
-          <p className="text-muted-foreground">Nenhum pedido feito neste aparelho ainda.</p>
+          <p className="text-muted-foreground">Nenhum pedido ainda.</p>
           <Button nativeButton={false} render={<Link href={`/${restaurante.slug}`} />}>
             Ver cardápio
           </Button>
         </section>
       ) : (
-        <ul className="flex flex-col gap-2" aria-label="Pedidos feitos neste aparelho">
-          {pedidos.map((p) => {
-            const situacao = situacoes[p.id] ?? "carregando";
+        <ul className="flex flex-col gap-2" aria-label="Pedidos">
+          {lista.map((p) => {
+            const { situacao } = p;
             const andamento = typeof situacao === "object" && situacao.status !== "entregue" && situacao.status !== "cancelado";
             return (
               <li key={p.id}>
@@ -111,7 +127,7 @@ export function ListaMeusPedidos({ restaurante, bairros }: Props) {
         </ul>
       )}
 
-      {temDados || pedidos.length > 0 ? (
+      {temDados || doAparelho.length > 0 ? (
         <section aria-labelledby="titulo-aparelho" className="flex flex-col gap-2 rounded-xl bg-background p-4 shadow-sm">
           <h2 id="titulo-aparelho" className="flex items-center gap-2 font-semibold">
             <Smartphone className="size-4" aria-hidden />
@@ -125,8 +141,7 @@ export function ListaMeusPedidos({ restaurante, bairros }: Props) {
             </div>
           ) : null}
           <p className="text-sm text-muted-foreground">
-            Seus dados e a lista de pedidos ficam só neste celular, para preencher o próximo pedido. Em outro aparelho, guarde o link do
-            pedido.
+            Os dados do último pedido e a lista de pedidos ficam neste celular, para preencher o próximo pedido.
           </p>
           {confirmando ? (
             <div className="flex flex-col gap-2 rounded-lg bg-muted p-3" role="alert">

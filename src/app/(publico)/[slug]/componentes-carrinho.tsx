@@ -11,7 +11,6 @@ import { chaveDaEscolha } from "@/lib/adicionais";
 import { formatarBRL } from "@/lib/dinheiro";
 
 import { useCarrinho } from "./carrinho-store";
-import { useMeusPedidos } from "./meus-pedidos";
 
 export function AdicionarProduto({ restauranteId, produto }: { restauranteId: string; produto: ProdutoComOpcoes }) {
   const { itens, adicionar, alterarQuantidade } = useCarrinho(restauranteId);
@@ -130,10 +129,8 @@ export function IconeCarrinho({ restauranteId, slug }: { restauranteId: string; 
   );
 }
 
-// Atalho para "Meus pedidos" no topo, só depois do primeiro pedido feito neste aparelho.
-export function IconeMeusPedidos({ restauranteId, slug }: { restauranteId: string; slug: string }) {
-  const { pedidos } = useMeusPedidos(restauranteId);
-  if (pedidos.length === 0) return null;
+// Atalho para "Meus pedidos" no topo (pedidos do aparelho e da conta; entrar com o celular).
+export function IconeMeusPedidos({ slug }: { slug: string }) {
   return (
     <Link
       href={`/${slug}/pedidos`}

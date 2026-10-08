@@ -897,7 +897,7 @@ begin
   -- Entregar exige o aceite antes (o status não pula etapas).
   update public.pedidos set status = 'em_preparo' where restaurante_id = a and origem = 'delivery' and status = 'recebido';
   perform public.entregar_pedido_delivery(p.id, 'dinheiro')
-  from public.pedidos p where p.restaurante_id = a and p.origem = 'delivery' and p.status <> 'entregue';
+  from public.pedidos p where p.restaurante_id = a and p.origem = 'delivery' and p.status not in ('entregue', 'cancelado');
   select count(*) into n from public.pedidos p
   where p.restaurante_id = a and p.origem = 'delivery' and p.status = 'entregue'
     and p.total = (select sum(valor) from public.pagamentos where pedido_id = p.id and estornado_em is null);
@@ -1008,6 +1008,154 @@ begin
   select count(*) into n from public.assinaturas;
   perform pg_temp.ok(n = 1, 'dono de B só vê a assinatura de B');
 
+  perform pg_temp.admin();
+end;
+$$;
+
+-- ======================================================================
+-- Conta do cliente do delivery (telefone confirmado)
+-- ======================================================================
+do $$
+declare
+  a constant uuid := md5('brasa-espetinhos')::uuid;
+  b constant uuid := md5('burger-do-ze')::uuid;
+  v_cli constant uuid := md5('cliente.telefone')::uuid;
+  v_outro constant uuid := md5('cliente.outro')::uuid;
+  v_sem constant uuid := md5('cliente.sem.confirmar')::uuid;
+  v_produto_a uuid := md5('brasa-espetinhos/Burgers/Burger artesanal')::uuid;
+  v_bairro_a uuid;
+  v_cliente_a uuid;
+  v_json jsonb;
+  v_pedido uuid;
+  n integer;
+begin
+  perform pg_temp.admin();
+  insert into auth.users (instance_id, id, aud, role, phone, phone_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+  values
+    ('00000000-0000-0000-0000-000000000000', v_cli, 'authenticated', 'authenticated', '5569999990001', now(), '{"provider": "phone"}', '{}', now(), now()),
+    ('00000000-0000-0000-0000-000000000000', v_outro, 'authenticated', 'authenticated', '5569999990002', now(), '{"provider": "phone"}', '{}', now(), now()),
+    ('00000000-0000-0000-0000-000000000000', v_sem, 'authenticated', 'authenticated', '5569999990003', null, '{"provider": "phone"}', '{}', now(), now());
+  update public.restaurantes set horarios = (
+    select jsonb_object_agg(d, '[{"abre": "00:00", "fecha": "00:00"}]'::jsonb)
+    from unnest(array['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab']) d
+  ) where id = a;
+  select id into v_bairro_a from public.bairros_entrega where restaurante_id = a and ativo limit 1;
+
+  perform pg_temp.entrar('caixa.brasa@exemplo.com');
+  if not exists (select 1 from public.caixa_sessoes where restaurante_id = a and fechada_em is null) then
+    insert into public.caixa_sessoes (restaurante_id, valor_inicial) values (a, 0);
+  end if;
+
+  -- Sem telefone confirmado não vira cliente.
+  perform set_config('request.jwt.claims', json_build_object('sub', v_sem, 'role', 'authenticated')::text, true);
+  begin
+    perform public.entrar_como_cliente(a, 'Sem Código');
+    perform pg_temp.ok(false, 'cliente: exige telefone confirmado');
+  exception when others then
+    perform pg_temp.ok(sqlerrm like 'Confirme o seu telefone%', 'cliente: exige telefone confirmado');
+  end;
+
+  perform set_config('request.jwt.claims', json_build_object('sub', v_cli, 'role', 'authenticated')::text, true);
+  v_cliente_a := public.entrar_como_cliente(a, '  Carla Cliente ');
+  perform pg_temp.ok(public.entrar_como_cliente(a, 'Carla C.') = v_cliente_a, 'cliente: entrar de novo reaproveita o cadastro');
+  select count(*) into n from public.clientes where id = v_cliente_a and nome = 'Carla C.' and telefone = '5569999990001';
+  perform pg_temp.ok(n = 1, 'cliente: telefone vem do Auth, nome atualizado');
+  begin
+    insert into public.clientes (restaurante_id, user_id, nome, telefone) values (a, v_cli, 'Direto', '5569999990001');
+    perform pg_temp.ok(false, 'cliente: não insere cadastro direto');
+  exception when insufficient_privilege then
+    perform pg_temp.ok(true, 'cliente: não insere cadastro direto');
+  end;
+  begin
+    update public.clientes set telefone = '5511111111111' where id = v_cliente_a;
+    perform pg_temp.ok(false, 'cliente: não troca o telefone confirmado');
+  exception when insufficient_privilege then
+    perform pg_temp.ok(true, 'cliente: não troca o telefone confirmado');
+  end;
+
+  -- Pedido com a conta: o vínculo e o endereço vêm do banco.
+  v_json := public.criar_pedido_delivery(a, 'Carla', '69999990001', v_bairro_a,
+    '{"rua": "Rua das Flores", "numero": "12", "complemento": "Casa 2"}', 'pix',
+    jsonb_build_array(jsonb_build_object('produto_id', v_produto_a, 'quantidade', 1)));
+  v_pedido := (v_json ->> 'id')::uuid;
+  perform pg_temp.admin();
+  select count(*) into n from public.pedidos where id = v_pedido and cliente_id = v_cliente_a;
+  perform pg_temp.ok(n = 1, 'cliente: pedido com a conta fica ligado ao cliente');
+
+  perform set_config('request.jwt.claims', json_build_object('sub', v_cli, 'role', 'authenticated')::text, true);
+  perform set_config('role', 'authenticated', true);
+  perform public.criar_pedido_delivery(a, 'Carla', '69999990001', v_bairro_a,
+    '{"rua": "rua das flores", "numero": "12", "complemento": "casa 2", "referencia": "portão azul"}', 'pix',
+    jsonb_build_array(jsonb_build_object('produto_id', v_produto_a, 'quantidade', 1)));
+  select count(*) into n from public.clientes_enderecos where cliente_id = v_cliente_a;
+  perform pg_temp.ok(n = 1, 'cliente: mesmo endereço não duplica');
+  select count(*) into n from public.clientes_enderecos where cliente_id = v_cliente_a and referencia = 'portão azul';
+  perform pg_temp.ok(n = 1, 'cliente: endereço guardado com a referência mais recente');
+  v_json := public.meus_pedidos_cliente(a);
+  perform pg_temp.ok(jsonb_array_length(v_json) = 2, 'cliente: lista os próprios pedidos');
+  perform pg_temp.ok(jsonb_array_length(public.meus_pedidos_cliente(b)) = 0, 'cliente: nada em outro restaurante');
+  begin
+    select count(*) into n from public.pedidos where cliente_id = v_cliente_a;
+    perform pg_temp.ok(n = 0, 'cliente: não lê a tabela de pedidos');
+  exception when insufficient_privilege then
+    perform pg_temp.ok(true, 'cliente: não lê a tabela de pedidos');
+  end;
+
+  -- Outro cliente não vê nada da Carla.
+  perform set_config('request.jwt.claims', json_build_object('sub', v_outro, 'role', 'authenticated')::text, true);
+  perform public.entrar_como_cliente(a, 'Outro');
+  select count(*) into n from public.clientes where id = v_cliente_a;
+  perform pg_temp.ok(n = 0, 'cliente: não lê o cadastro de outro cliente');
+  select count(*) into n from public.clientes_enderecos where cliente_id = v_cliente_a;
+  perform pg_temp.ok(n = 0, 'cliente: não lê endereços de outro cliente');
+  perform pg_temp.ok(jsonb_array_length(public.meus_pedidos_cliente(a)) = 0, 'cliente: não lista pedidos de outro cliente');
+  delete from public.clientes where id = v_cliente_a;
+  perform pg_temp.admin();
+  select count(*) into n from public.clientes where id = v_cliente_a;
+  perform pg_temp.ok(n = 1, 'cliente: não exclui a conta de outro');
+
+  -- Equipe: dono e caixa de A veem os clientes de A; garçom e outro restaurante não.
+  perform pg_temp.entrar('caixa.brasa@exemplo.com');
+  select count(*) into n from public.clientes where restaurante_id = a;
+  perform pg_temp.ok(n = 2, 'cliente: caixa de A lê os clientes de A');
+  update public.pedidos set cliente_id = (select id from public.clientes where user_id = v_outro and restaurante_id = a)
+  where id = v_pedido;
+  select count(*) into n from public.pedidos where id = v_pedido and cliente_id = v_cliente_a;
+  perform pg_temp.ok(n = 1, 'cliente: equipe não troca o cliente do pedido');
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  select count(*) into n from public.clientes;
+  perform pg_temp.ok(n = 0, 'cliente: garçom não lê clientes');
+  perform pg_temp.entrar('caixa.burger@exemplo.com');
+  select count(*) into n from public.clientes;
+  perform pg_temp.ok(n = 0, 'cliente: caixa de B não lê clientes de A');
+
+  -- Pedido sem conta (anônimo) não tem cliente.
+  perform pg_temp.anonimo();
+  v_json := public.criar_pedido_delivery(a, 'Anônimo', '69999990009', v_bairro_a, '{"rua": "R", "numero": "1"}', 'pix',
+    jsonb_build_array(jsonb_build_object('produto_id', v_produto_a, 'quantidade', 1)));
+  perform pg_temp.admin();
+  select count(*) into n from public.pedidos where id = (v_json ->> 'id')::uuid and cliente_id is null;
+  perform pg_temp.ok(n = 1, 'cliente: pedido sem conta não tem cliente');
+
+  -- Excluir a conta: some o cadastro e os endereços, o pedido fica sem vínculo.
+  perform set_config('request.jwt.claims', json_build_object('sub', v_cli, 'role', 'authenticated')::text, true);
+  perform set_config('role', 'authenticated', true);
+  delete from public.clientes where restaurante_id = a and user_id = v_cli;
+  perform pg_temp.admin();
+  select count(*) into n from public.clientes_enderecos where cliente_id = v_cliente_a;
+  perform pg_temp.ok(n = 0, 'cliente: excluir a conta apaga os endereços');
+  select count(*) into n from public.pedidos where id = v_pedido and cliente_id is null and cliente_nome = 'Carla';
+  perform pg_temp.ok(n = 1, 'cliente: pedido continua, sem vínculo, após excluir a conta');
+
+  -- Conta só com telefone não cria restaurante.
+  perform set_config('request.jwt.claims', json_build_object('sub', v_outro, 'role', 'authenticated')::text, true);
+  perform set_config('role', 'authenticated', true);
+  begin
+    perform public.criar_meu_restaurante('Do Cliente', 'do-cliente-1', 'Cliente', 'America/Sao_Paulo');
+    perform pg_temp.ok(false, 'cliente: conta sem e-mail não cria restaurante');
+  exception when others then
+    perform pg_temp.ok(sqlerrm like 'Crie a conta do restaurante com um e-mail%', 'cliente: conta sem e-mail não cria restaurante');
+  end;
   perform pg_temp.admin();
 end;
 $$;

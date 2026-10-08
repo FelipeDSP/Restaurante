@@ -145,6 +145,17 @@ Já existe (adicionais e opções):
 - Quem lança manda só os ids das opções (`"adicionais": [uuid, ...]` no item das RPCs `lancar_itens_comanda` e `criar_pedido_delivery`); o trigger valida (opção do produto, disponível, mínimo/máximo de cada grupo ativo) e monta o retrato. As opções não mudam depois de lançadas: cancela e lança de novo.
 - Interface: tipos e regras em `src/lib/adicionais.ts`, carga em `src/lib/adicionais-dados.ts`, seletor `<EscolherOpcoes>` em `src/components/adicionais/` (site e garçom).
 
+Já existe (conta do cliente do delivery, opcional):
+- O cliente entra com o celular + código (OTP de telefone do Supabase Auth). Pedir sem conta continua igual.
+- `clientes` (restaurante_id, user_id, nome, telefone confirmado copiado do Auth; único por restaurante e usuário), criado só pela RPC `entrar_como_cliente(restaurante_id, nome)`; o cliente lê, muda o nome e exclui o próprio; dono e caixa leem os do restaurante.
+- `clientes_enderecos`: guardados pelo banco a cada pedido (trigger em `pedidos`, até 5, sem duplicar); o cliente lê e apaga.
+- `pedidos.cliente_id`: só o banco define (trigger `t11_cliente`, pela sessão de quem pediu, só no delivery; ninguém troca depois). Por isso `enviarPedido` chama a RPC com a sessão do navegador (`createClient()`), não com o cliente anônimo.
+- `meus_pedidos_cliente(restaurante_id)` lista os pedidos da conta. Excluir a conta (LGPD) apaga cadastro e endereços; os pedidos ficam sem vínculo; se a pessoa não for cliente de outro restaurante nem da equipe, o login (telefone) também é apagado (chave secreta, só para a própria pessoa).
+- Conta só com telefone não cria restaurante (`criar_meu_restaurante` exige e-mail) e não entra na área de staff (sem `membros`). Navegador logado como equipe não vira cliente (o "Entrar" recusa).
+- Envio do código: gancho "Send SMS" do Supabase → `/api/auth/enviar-codigo` (assinado com `SEND_SMS_HOOK_SECRET`) → `src/lib/mensagens.ts`, que escolhe o provedor por `MENSAGENS_PROVEDOR` (`console` em desenvolvimento: o código aparece no terminal do `npm run dev`). Sem provedor/segredo, o site esconde o "Entrar" (`loginClienteDisponivel()`). Mensagem sem a marca da plataforma.
+- Telas: `/[slug]/entrar` (celular → código → nome), cartão "Minha conta" em `/[slug]/pedidos` (nome, endereços, sair, excluir) e checkout preenchido pela conta (endereços usados viram botões). Sessão e dados em `src/app/(publico)/[slug]/conta.ts`; telefone em `src/lib/telefone.ts`.
+- Local: `supabase/config.toml` liga o login por telefone (`[auth.sms]`, Twilio de mentira só para habilitar) e o gancho em `http://host.docker.internal:3000`; o segredo fica em `supabase/.env` e `.env.local` (fora do git).
+
 ## Acesso público (anon)
 
 - Leitura de `restaurantes` (apenas colunas públicas, via view `restaurantes_publicos`), `categorias` ativas, `produtos` disponíveis para delivery e `bairros_entrega` ativos, somente de restaurantes ativos.
