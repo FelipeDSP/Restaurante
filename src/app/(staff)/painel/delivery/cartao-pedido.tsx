@@ -1,6 +1,6 @@
 "use client";
 
-import { MapPin, MessageCircle, Phone } from "lucide-react";
+import { ChevronDown, GripVertical, MapPin, MessageCircle, Phone } from "lucide-react";
 import { useState } from "react";
 
 import { useAcao } from "@/components/staff/acoes-cliente";
@@ -51,9 +51,27 @@ function telefoneFormatado(telefone: string) {
   return telefone;
 }
 
-export function CartaoPedido({ pedido }: { pedido: PedidoDelivery }) {
+type Modo = "normal" | "cancelar" | "entregar";
+
+type Props = {
+  pedido: PedidoDelivery;
+  // Solto na coluna "Finalizados": abre direto na confirmação do pagamento.
+  modoInicial?: Modo;
+  aoSairDoModo?: () => void;
+  // Quadro: o cartão pode ser arrastado para outra coluna (no computador).
+  arrastavel?: boolean;
+  aoArrastar?: (ativo: boolean) => void;
+};
+
+export function CartaoPedido({ pedido, modoInicial = "normal", aoSairDoModo, arrastavel, aoArrastar }: Props) {
   const { pendente, executar } = useAcao();
-  const [modo, setModo] = useState<"normal" | "cancelar" | "entregar">("normal");
+  const [modo, setModoInterno] = useState<Modo>(modoInicial);
+  const setModo = (novo: Modo) => {
+    setModoInterno(novo);
+    if (novo === "normal") aoSairDoModo?.();
+  };
+  // Telefone e endereço completo ficam recolhidos (o resumo do endereço aparece no cartão).
+  const [detalhes, setDetalhes] = useState(false);
   const [motivo, setMotivo] = useState("");
   const [forma, setForma] = useState(pedido.formaPrevista ?? "dinheiro");
 
@@ -64,60 +82,131 @@ export function CartaoPedido({ pedido }: { pedido: PedidoDelivery }) {
   const naCozinha = pedido.status === "em_preparo" && pedido.pracasPendentes > 0;
   const proximo = naCozinha ? undefined : PROXIMO[pedido.status];
 
+  const resumoEndereco = [[e.rua, e.numero].filter(Boolean).join(", "), pedido.bairro].filter(Boolean).join(" · ");
+
+  if (!ativo) {
+    // Finalizado: uma linha; toque para ver o resto.
+    return (
+      <article
+        id={`pedido-${pedido.id}`}
+        aria-label={`Pedido ${pedido.numero}`}
+        className="flex flex-col gap-1 rounded-lg border bg-background p-3 text-sm"
+      >
+        <button
+          type="button"
+          className="flex min-h-11 items-center justify-between gap-2 text-left"
+          aria-expanded={detalhes}
+          onClick={() => setDetalhes((d) => !d)}
+        >
+          <span className="flex flex-col">
+            <span className="font-semibold">
+              Nº {pedido.numero} · {pedido.clienteNome}
+            </span>
+            <span className={cn("text-xs", pedido.status === "cancelado" ? "text-destructive" : "text-green-700")}>
+              {pedido.status === "cancelado" ? `Cancelado${pedido.motivoCancelamento ? `: ${pedido.motivoCancelamento}` : ""}` : `Entregue · pago ${formatarBRL(pedido.pago)}`}
+            </span>
+          </span>
+          <span className="flex items-center gap-1 font-semibold tabular-nums">
+            {formatarBRL(pedido.total)}
+            <ChevronDown className={cn("size-4 transition-transform", detalhes && "rotate-180")} aria-hidden />
+          </span>
+        </button>
+        {detalhes ? (
+          <ul className="flex flex-col gap-0.5 border-t pt-2 text-muted-foreground">
+            {pedido.itens.map((item) => (
+              <li key={item.id}>
+                {item.quantidade}× {item.nome}
+              </li>
+            ))}
+            <li>{pedido.hora} · {resumoEndereco}</li>
+          </ul>
+        ) : null}
+      </article>
+    );
+  }
+
   return (
     <article
+      id={`pedido-${pedido.id}`}
       aria-label={`Pedido ${pedido.numero}`}
+      draggable={arrastavel && modo === "normal"}
+      onDragStart={(ev) => {
+        ev.dataTransfer.effectAllowed = "move";
+        ev.dataTransfer.setData("text/plain", pedido.id);
+        aoArrastar?.(true);
+      }}
+      onDragEnd={() => aoArrastar?.(false)}
       className={cn(
-        "flex flex-col gap-3 rounded-xl border-2 bg-background p-4",
+        "flex flex-col gap-2 rounded-xl border-2 bg-background p-3 shadow-sm",
         pedido.status === "recebido" && "border-[var(--cor-primaria)] shadow-md",
-        pedido.status === "pronto" && "border-green-600 shadow-md",
-        !ativo && "opacity-70",
+        pedido.status === "pronto" && "border-green-600",
+        arrastavel && modo === "normal" && "lg:cursor-grab lg:active:cursor-grabbing",
       )}
     >
       <header className="flex items-start justify-between gap-2">
-        <div>
-          <h3 className="flex flex-wrap items-center gap-2 text-lg font-bold">
-            Nº {pedido.numero}
-            {pedido.status === "pronto" ? (
-              <span className="rounded-full bg-green-700 px-2.5 py-0.5 text-xs font-bold tracking-wide whitespace-nowrap text-white uppercase">
-                Pronto
-              </span>
-            ) : null}
-          </h3>
-          <p className="text-xs text-muted-foreground">
-            {pedido.hora} · {pedido.tempo}
-          </p>
+        <div className="flex items-start gap-1">
+          {arrastavel ? <GripVertical className="mt-1 hidden size-4 shrink-0 text-muted-foreground lg:block" aria-hidden /> : null}
+          <div>
+            <h3 className="flex flex-wrap items-center gap-2 text-lg font-bold">
+              Nº {pedido.numero}
+              {pedido.status === "pronto" ? (
+                <span className="rounded-full bg-green-700 px-2.5 py-0.5 text-xs font-bold tracking-wide whitespace-nowrap text-white uppercase">
+                  Pronto
+                </span>
+              ) : null}
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              {pedido.hora} · {pedido.tempo}
+            </p>
+          </div>
         </div>
         <span className="text-lg font-bold tabular-nums">{formatarBRL(pedido.total)}</span>
       </header>
 
-      <div className="flex flex-col gap-1 text-sm">
-        <span className="font-semibold">{pedido.clienteNome}</span>
-        <span className="flex flex-wrap items-center gap-3">
-          <a href={`tel:${telefone}`} className="flex items-center gap-1 underline-offset-4 hover:underline">
-            <Phone className="size-3.5" aria-hidden />
-            {telefoneFormatado(pedido.clienteTelefone)}
-          </a>
-          <a
-            href={`https://wa.me/${whatsapp}?text=${encodeURIComponent(`Olá, ${pedido.clienteNome}! Sobre seu pedido nº ${pedido.numero}:`)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1 text-green-700 underline-offset-4 hover:underline"
-          >
-            <MessageCircle className="size-3.5" aria-hidden />
-            WhatsApp
-          </a>
+      <button
+        type="button"
+        className="-mx-1 flex min-h-11 items-center justify-between gap-2 rounded-md px-1 text-left text-sm hover:bg-muted/60"
+        aria-expanded={detalhes}
+        onClick={() => setDetalhes((d) => !d)}
+      >
+        <span className="flex min-w-0 flex-col">
+          <span className="truncate font-semibold">{pedido.clienteNome}</span>
+          {!detalhes && resumoEndereco ? <span className="truncate text-xs text-muted-foreground">{resumoEndereco}</span> : null}
         </span>
-        <span className="flex items-start gap-1 text-muted-foreground">
-          <MapPin className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-          <span>
-            {[e.rua, e.numero].filter(Boolean).join(", ")}
-            {e.complemento ? ` · ${e.complemento}` : ""}
-            {pedido.bairro ? ` · ${pedido.bairro}` : ""}
-            {e.referencia ? <span className="block">Ref.: {e.referencia}</span> : null}
+        <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+          Detalhes
+          <ChevronDown className={cn("size-4 transition-transform", detalhes && "rotate-180")} aria-hidden />
+        </span>
+      </button>
+
+      {detalhes ? (
+        <div className="flex flex-col gap-1 text-sm">
+          <span className="flex flex-wrap items-center gap-3">
+            <a href={`tel:${telefone}`} className="flex min-h-9 items-center gap-1 underline-offset-4 hover:underline">
+              <Phone className="size-3.5" aria-hidden />
+              {telefoneFormatado(pedido.clienteTelefone)}
+            </a>
+            <a
+              href={`https://wa.me/${whatsapp}?text=${encodeURIComponent(`Olá, ${pedido.clienteNome}! Sobre seu pedido nº ${pedido.numero}:`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex min-h-9 items-center gap-1 text-green-700 underline-offset-4 hover:underline"
+            >
+              <MessageCircle className="size-3.5" aria-hidden />
+              WhatsApp
+            </a>
           </span>
-        </span>
-      </div>
+          <span className="flex items-start gap-1 text-muted-foreground">
+            <MapPin className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+            <span>
+              {[e.rua, e.numero].filter(Boolean).join(", ")}
+              {e.complemento ? ` · ${e.complemento}` : ""}
+              {pedido.bairro ? ` · ${pedido.bairro}` : ""}
+              {e.referencia ? <span className="block">Ref.: {e.referencia}</span> : null}
+            </span>
+          </span>
+        </div>
+      ) : null}
 
       <ul className="flex flex-col gap-1 border-y py-2 text-sm">
         {pedido.itens.map((item) => (
@@ -140,6 +229,7 @@ export function CartaoPedido({ pedido }: { pedido: PedidoDelivery }) {
         ) : null}
       </ul>
 
+      {/* A observação do pedido aparece sempre: costuma mudar o preparo ou a entrega. */}
       {pedido.observacao ? (
         <p className="rounded-md bg-amber-50 p-2 text-sm text-amber-900">Obs.: {pedido.observacao}</p>
       ) : null}
@@ -152,14 +242,9 @@ export function CartaoPedido({ pedido }: { pedido: PedidoDelivery }) {
             · troco para {formatarBRL(pedido.trocoPara)} (<strong>levar {formatarBRL(pedido.trocoPara - pedido.total)}</strong>)
           </>
         ) : null}
-        {pedido.status === "entregue" ? <span className="text-green-700"> · pago {formatarBRL(pedido.pago)}</span> : null}
       </p>
 
-      {pedido.status === "cancelado" && pedido.motivoCancelamento ? (
-        <p className="text-sm text-destructive">Cancelado: {pedido.motivoCancelamento}</p>
-      ) : null}
-
-      {ativo && modo === "normal" ? (
+      {modo === "normal" ? (
         <div className="flex flex-wrap gap-2">
           {naCozinha ? (
             <p className="basis-full rounded-md bg-muted px-3 py-2 text-sm font-medium">
@@ -194,10 +279,10 @@ export function CartaoPedido({ pedido }: { pedido: PedidoDelivery }) {
         </div>
       ) : null}
 
-      {ativo && modo === "entregar" ? (
+      {modo === "entregar" ? (
         <div className="flex flex-col gap-2 rounded-lg bg-muted/60 p-3">
           <span className="text-sm font-medium">Como o cliente pagou {formatarBRL(pedido.total - pedido.pago)}?</span>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             {FORMAS_PAGAMENTO.map((f) => (
               <Button
                 key={f.valor}
@@ -211,7 +296,7 @@ export function CartaoPedido({ pedido }: { pedido: PedidoDelivery }) {
               </Button>
             ))}
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               type="button"
               className="h-11 flex-1 bg-green-700 text-white hover:bg-green-800"
@@ -227,7 +312,7 @@ export function CartaoPedido({ pedido }: { pedido: PedidoDelivery }) {
         </div>
       ) : null}
 
-      {ativo && modo === "cancelar" ? (
+      {modo === "cancelar" ? (
         <div className="flex flex-col gap-2 rounded-lg bg-muted/60 p-3">
           <span className="text-sm font-medium">Motivo do cancelamento</span>
           <div className="flex flex-wrap gap-2">
@@ -244,7 +329,7 @@ export function CartaoPedido({ pedido }: { pedido: PedidoDelivery }) {
             className="h-10 bg-background"
             aria-label="Outro motivo"
           />
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               type="button"
               variant="destructive"

@@ -7,16 +7,10 @@ import { createClient } from "@/lib/supabase/server";
 import { horaLocal, tempoDesde } from "@/lib/tempo";
 
 import { carregarSessaoAberta } from "../caixa/dados";
-import { CartaoPedido, type PedidoDelivery } from "./cartao-pedido";
+import type { PedidoDelivery } from "./cartao-pedido";
+import { QuadroDelivery } from "./quadro-delivery";
 
 export const metadata: Metadata = { title: "Delivery" };
-
-const COLUNAS: { titulo: string; status: PedidoDelivery["status"][]; vazio: string }[] = [
-  { titulo: "Novos", status: ["recebido"], vazio: "Nenhum pedido novo." },
-  { titulo: "Em preparo", status: ["em_preparo", "pronto"], vazio: "Nada em preparo." },
-  { titulo: "Em entrega", status: ["saiu_entrega"], vazio: "Nada em entrega." },
-  { titulo: "Finalizados", status: ["entregue", "cancelado"], vazio: "Nenhum pedido finalizado nesta sessão." },
-];
 
 export default async function DeliveryPage() {
   const acesso = await exigirAcesso("painel");
@@ -80,38 +74,17 @@ export default async function DeliveryPage() {
   }));
 
   return (
-    <main className="flex flex-col gap-4 p-4 md:p-6">
+    <main className="flex min-h-0 flex-1 flex-col gap-3 p-4 md:p-6">
       <AtualizarEmTempoReal restauranteId={acesso.restaurante.id} tabelas={["pedidos", "pagamentos", "tarefas_producao"]} />
       <div>
         <h1 className="text-2xl font-semibold">Delivery</h1>
-        <p className="text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           {sessao
-            ? "Novos pedidos chegam aqui sozinhos, com aviso sonoro (toque no sino no topo para ativar o som)."
+            ? "Novos pedidos chegam sozinhos, com aviso sonoro (toque no sino no topo para ativar o som). No computador, arraste o cartão para a próxima coluna."
             : "Caixa fechado: o site não recebe pedidos até o caixa ser aberto."}
         </p>
       </div>
-      <div className="grid gap-4 lg:grid-cols-4">
-        {COLUNAS.map((coluna) => {
-          const lista = pedidos.filter((p) => coluna.status.includes(p.status));
-          // Finalizados: mais recentes primeiro.
-          if (coluna.titulo === "Finalizados") lista.reverse();
-          // Em preparo: os prontos (esperando o entregador) primeiro.
-          if (coluna.titulo === "Em preparo") lista.sort((x, y) => Number(y.status === "pronto") - Number(x.status === "pronto"));
-          return (
-            <section key={coluna.titulo} aria-labelledby={`coluna-${coluna.titulo}`} className="flex flex-col gap-3">
-              <h2 id={`coluna-${coluna.titulo}`} className="flex items-center justify-between font-semibold">
-                {coluna.titulo}
-                <span className="rounded-full bg-muted px-2 text-sm">{lista.length}</span>
-              </h2>
-              {lista.length === 0 ? (
-                <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">{coluna.vazio}</p>
-              ) : (
-                lista.map((pedido) => <CartaoPedido key={pedido.id} pedido={pedido} />)
-              )}
-            </section>
-          );
-        })}
-      </div>
+      <QuadroDelivery pedidos={pedidos} />
     </main>
   );
 }
