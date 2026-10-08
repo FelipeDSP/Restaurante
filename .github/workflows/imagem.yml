@@ -1,0 +1,69 @@
+# Monta a imagem Docker do app no GitHub e publica no GitHub Container Registry.
+# A VPS (pequena) não compila mais: o Coolify só baixa a imagem pronta e reinicia.
+#
+# Variáveis do repositório (Settings > Secrets and variables > Actions > Variables):
+#   NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, NEXT_PUBLIC_SITE_URL
+# (vão para o código do navegador; não são segredos). A SUPABASE_SECRET_KEY nunca entra aqui:
+# fica só no Coolify, em tempo de execução.
+name: Imagem
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "agente/**"
+      - "docs/**"
+      - "**/*.md"
+      - "supabase/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: imagem
+  cancel-in-progress: true
+
+jobs:
+  imagem:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confere as variáveis do repositório
+        run: |
+          faltando=""
+          [ -n "${{ vars.NEXT_PUBLIC_SUPABASE_URL }}" ] || faltando="$faltando NEXT_PUBLIC_SUPABASE_URL"
+          [ -n "${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}" ] || faltando="$faltando NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
+          [ -n "${{ vars.NEXT_PUBLIC_SITE_URL }}" ] || faltando="$faltando NEXT_PUBLIC_SITE_URL"
+          if [ -n "$faltando" ]; then
+            echo "::error::Configure em Settings > Secrets and variables > Actions > Variables:$faltando"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Nome da imagem em minúsculas
+        id: nome
+        run: echo "imagem=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.nome.outputs.imagem }}:latest
+            ${{ steps.nome.outputs.imagem }}:${{ github.sha }}
+          build-args: |
+            NEXT_PUBLIC_SUPABASE_URL=${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+            NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+            NEXT_PUBLIC_SITE_URL=${{ vars.NEXT_PUBLIC_SITE_URL }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
