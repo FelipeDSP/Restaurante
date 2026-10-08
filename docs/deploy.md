@@ -9,6 +9,16 @@ Banco, login, tempo real e imagens ficam no Supabase (não rodam na VPS).
 - Um **domínio ou subdomínio** apontando para a VPS (registro `A` com o IP da VPS). O app do garçom (PWA) só instala com **HTTPS**, que o Coolify gera sozinho (Let's Encrypt).
 - No Supabase, em *Project Settings → API Keys*: a URL do projeto, a chave **publicável** (`sb_publishable_...`) e a chave **secreta** (`sb_secret_...`).
 
+## 1.1 Imagem montada no GitHub (recomendado para VPS pequena)
+
+Compilar o Next.js na própria VPS (1 vCPU) trava o servidor. O workflow `.github/workflows/imagem.yml` monta a imagem no GitHub a cada push no `main` e publica em `ghcr.io/felipedsp/restaurante` (`:latest` e `:<commit>`).
+
+- Variáveis do repositório (Settings → Secrets and variables → Actions → **Variables**): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SITE_URL`.
+- No Coolify, o app é do tipo **Docker Image** (`ghcr.io/felipedsp/restaurante`, tag `latest`), porta 3000, healthcheck `127.0.0.1:3000/api/saude` (com `localhost` falha: no Alpine resolve para IPv6), variável `SUPABASE_SECRET_KEY` e a pasta `/app/downloads`.
+- Publicar: push no `main` → esperar o workflow "Imagem" terminar (~5 min) → **Deploy** no Coolify (só baixa a imagem, menos de 1 minuto).
+
+As seções abaixo descrevem o modo antigo (Dockerfile compilado no Coolify), que serve para servidores maiores.
+
 ## 2. Criar o app no Coolify
 
 1. *Projects → (seu projeto) → + New → Application → Public/Private Repository (GitHub)* e escolha o repositório, branch `main`.
