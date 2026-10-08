@@ -151,6 +151,7 @@ Já existe (painel da plataforma, super admin):
 - `exigirAdmin()` (`src/app/(site)/admin/dados.ts`): sem login vai para `/login?next=/admin`; logado sem ser admin recebe 404 (o título também não cita o admin).
 - Tornar admin: `insert into rest_privado.administradores (user_id) select id from auth.users where email = '...';` no SQL do Supabase.
 - Desativar (`restaurantes.ativo = false`) tira só o site público do ar; a equipe continua no painel.
+- Atalho: `ehAdminPlataforma()` (`src/lib/auth/dal.ts`) mostra o botão "Admin" no topo do painel e "Painel da plataforma" no menu do usuário só para admins (sem citar a marca); no /admin, "Meu restaurante" volta para /inicio.
 
 Já existe (relatórios do dono):
 - `/painel/relatorios` (só dono): período por atalhos (7/30 dias, este mês, mês passado) ou datas; a noite entra pelo dia em que o caixa abriu (fuso do restaurante).

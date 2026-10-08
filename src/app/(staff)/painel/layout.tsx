@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ShieldCheck } from "lucide-react";
 import Link from "next/link";
 
 import { AlertaPedidos } from "@/components/staff/alerta-pedidos";
@@ -6,7 +7,7 @@ import { FaixaConexao } from "@/components/staff/faixa-conexao";
 import { MarcaRestaurante } from "@/components/staff/marca-restaurante";
 import { MenuUsuario } from "@/components/staff/menu-usuario";
 import { carregarAssinatura } from "@/lib/assinatura";
-import { exigirAcesso } from "@/lib/auth/dal";
+import { ehAdminPlataforma, exigirAcesso } from "@/lib/auth/dal";
 import { NOME_PAPEL } from "@/lib/auth/papeis";
 import { estiloMarca } from "@/lib/cores";
 import { urlIcone } from "@/lib/icone";
@@ -39,9 +40,10 @@ async function contarPedidosNovos(restauranteId: string): Promise<number> {
 export default async function PainelLayout({ children }: LayoutProps<"/painel">) {
   const acesso = await exigirAcesso("painel");
   const itens = NAVEGACAO.filter((item) => item.papeis.includes(acesso.papel));
-  const [novos, assinatura] = await Promise.all([
+  const [novos, assinatura, adminPlataforma] = await Promise.all([
     contarPedidosNovos(acesso.restaurante.id),
     acesso.papel === "dono" ? carregarAssinatura(acesso.restaurante.id) : null,
+    ehAdminPlataforma(),
   ]);
   return (
     <div className="flex min-h-full flex-1 flex-col" style={estiloMarca(acesso.restaurante)}>
@@ -51,12 +53,23 @@ export default async function PainelLayout({ children }: LayoutProps<"/painel">)
             <MarcaRestaurante restaurante={acesso.restaurante} />
           </Link>
           <div className="flex shrink-0 items-center gap-1">
+            {adminPlataforma ? (
+              <Link
+                href="/admin"
+                aria-label="Painel da plataforma"
+                className="flex h-11 items-center gap-1.5 rounded-full border border-[var(--cor-primaria-contraste)]/30 px-3 text-sm font-semibold hover:bg-black/10"
+              >
+                <ShieldCheck className="size-4" aria-hidden />
+                <span className="hidden sm:inline">Admin</span>
+              </Link>
+            ) : null}
             <AlertaPedidos restauranteId={acesso.restaurante.id} />
             <MenuUsuario
               nome={acesso.nome}
               papel={NOME_PAPEL[acesso.papel]}
               podeTrocarRestaurante={acesso.vinculos.length > 1}
               outraArea={{ href: "/garcom", rotulo: "Abrir área do garçom" }}
+              adminPlataforma={adminPlataforma}
             />
           </div>
         </div>

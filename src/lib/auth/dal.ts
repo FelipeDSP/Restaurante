@@ -118,6 +118,15 @@ export const exigirAcesso = cache(async (area: Area): Promise<Acesso> => {
   return { ...ativo, usuario, vinculos };
 });
 
+// Dono da plataforma (super admin): mostra o atalho para /admin. Quem decide é o banco
+// (rest_privado.administradores); /admin confere de novo.
+export const ehAdminPlataforma = cache(async (): Promise<boolean> => {
+  if (!(await obterUsuario())) return false;
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("admin_sou_admin");
+  return data === true;
+});
+
 // Cadastros e configurações do restaurante: só o dono.
 export const exigirDono = cache(async (): Promise<Acesso> => {
   const acesso = await exigirAcesso("painel");

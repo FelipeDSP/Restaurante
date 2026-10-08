@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeftRight, LogOut, UserRound } from "lucide-react";
+import { ArrowLeftRight, LogOut, ShieldCheck, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useTransition } from "react";
 
@@ -20,9 +20,11 @@ type Props = {
   papel: string;
   podeTrocarRestaurante: boolean;
   outraArea?: { href: string; rotulo: string };
+  // Só para o dono da plataforma (super admin).
+  adminPlataforma?: boolean;
 };
 
-export function MenuUsuario({ nome, papel, podeTrocarRestaurante, outraArea }: Props) {
+export function MenuUsuario({ nome, papel, podeTrocarRestaurante, outraArea, adminPlataforma }: Props) {
   const [saindo, iniciar] = useTransition();
 
   return (
@@ -44,6 +46,12 @@ export function MenuUsuario({ nome, papel, podeTrocarRestaurante, outraArea }: P
         {outraArea ? (
           <DropdownMenuItem className="h-10" render={<Link href={outraArea.href} />}>
             {outraArea.rotulo}
+          </DropdownMenuItem>
+        ) : null}
+        {adminPlataforma ? (
+          <DropdownMenuItem className="h-10" render={<Link href="/admin" />}>
+            <ShieldCheck />
+            Painel da plataforma
           </DropdownMenuItem>
         ) : null}
         {podeTrocarRestaurante ? (
