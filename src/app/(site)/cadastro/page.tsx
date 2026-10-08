@@ -2,12 +2,12 @@ import { Check } from "lucide-react";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import { obterUsuario } from "@/lib/auth/dal";
 import { DIAS_TESTE_GRATIS } from "@/lib/planos";
 
 import { LinhasVelocidade, Ticket } from "../_componentes/marca";
+import { sairParaCriarConta } from "./actions";
 import { FormCadastro } from "./form-cadastro";
 
 export const metadata: Metadata = {
@@ -16,7 +16,9 @@ export const metadata: Metadata = {
 };
 
 export default async function Cadastro() {
-  if (await obterUsuario()) redirect("/comecar");
+  // Já conectado: antes ia direto para "criar restaurante", e a pessoa acabava criando o
+  // restaurante na conta que estava aberta (ex.: a do caixa). Agora mostra qual conta é.
+  const usuario = await obterUsuario();
 
   return (
     <div className="grid flex-1 lg:grid-cols-[1.1fr_1fr]">
@@ -35,7 +37,28 @@ export default async function Cadastro() {
             </h1>
             <p className="text-lg text-uau-marrom-claro">Crie a conta e, no próximo passo, escolha o nome, o endereço e as cores.</p>
           </div>
-          <FormCadastro />
+          {usuario ? (
+            <div className="flex flex-col gap-4 rounded-2xl border border-uau-borda bg-uau-papel p-5">
+              <p className="text-lg">
+                Este navegador já está conectado como <strong className="break-all">{usuario.email ?? "outra conta"}</strong>.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <form action={sairParaCriarConta}>
+                  <button type="submit" className="min-h-12 rounded-full bg-uau-marrom px-6 font-extrabold text-uau-creme">
+                    Sair e criar outra conta
+                  </button>
+                </form>
+                <Link
+                  href="/comecar"
+                  className="flex min-h-12 items-center rounded-full border border-uau-borda px-6 font-extrabold hover:bg-uau-marrom/5"
+                >
+                  Usar esta conta
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <FormCadastro />
+          )}
         </div>
       </main>
 

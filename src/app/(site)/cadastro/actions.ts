@@ -1,9 +1,11 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { falha, falhaValidacao, type ResultadoAcao } from "@/lib/acoes";
+import { COOKIE_RESTAURANTE } from "@/lib/auth/dal";
 import { consumirLimite, ipDoCliente } from "@/lib/limite-taxa";
 import { createClient } from "@/lib/supabase/server";
 import { origemDoSite } from "@/lib/url";
@@ -61,4 +63,12 @@ export async function criarConta(_estado: EstadoCadastro, formData: FormData): P
   // Com confirmação: o link do e-mail leva a /auth/confirmar -> /comecar.
   // (Se o e-mail já existia, o Supabase responde igual, sem revelar a conta.)
   return { ok: true, chave: Date.now(), emailEnviado: dados.data.email };
+}
+
+// Navegador já conectado (ex.: conta da equipe de um restaurante): sai para criar outra conta.
+export async function sairParaCriarConta(): Promise<void> {
+  const supabase = await createClient();
+  await supabase.auth.signOut({ scope: "local" });
+  (await cookies()).delete(COOKIE_RESTAURANTE);
+  redirect("/cadastro");
 }

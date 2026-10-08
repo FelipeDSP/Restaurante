@@ -15,7 +15,8 @@ export const metadata: Metadata = { title: "Cadastre o seu restaurante" };
 
 // Primeiro passo depois de criar a conta (ou para quem já tem conta e quer mais um restaurante).
 export default async function Comecar() {
-  if (!(await obterUsuario())) redirect("/login?next=/comecar");
+  const usuario = await obterUsuario();
+  if (!usuario) redirect("/login?next=/comecar");
 
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
@@ -49,6 +50,12 @@ export default async function Comecar() {
             endereço.
           </p>
         </div>
+        <p className="-mt-6 text-sm text-uau-marrom-claro">
+          O restaurante fica na conta <strong className="break-all text-uau-marrom">{usuario.email ?? "conectada"}</strong>.{" "}
+          <Link href="/cadastro" className="font-extrabold underline underline-offset-4">
+            Não é você?
+          </Link>
+        </p>
         <FormComecar
           dominio={await dominioDoSite()}
           nomeInicial={texto(meta.restaurante)}
