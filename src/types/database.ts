@@ -919,6 +919,9 @@ isOneToOne: false
 "reimprimir":
 { Args: { "p_fila_id": string }; Returns: undefined
                            },
+"relatorio_vendas":
+{ Args: { "p_ate": string,"p_de": string,"p_restaurante_id": string }; Returns: Json
+                           },
 "resumo_caixa_sessao":
 { Args: { "p_sessao_id": string }; Returns: Json
                            },

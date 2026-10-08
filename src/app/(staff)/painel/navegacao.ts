@@ -12,6 +12,7 @@ export const NAVEGACAO: ItemNavegacao[] = [
   { href: "/painel/delivery", rotulo: "Delivery", grupo: "Operação", papeis: ["dono", "caixa"] },
   { href: "/painel/comandas", rotulo: "Comandas", grupo: "Operação", papeis: ["dono", "caixa"] },
   { href: "/painel/caixa", rotulo: "Caixa", grupo: "Operação", papeis: ["dono", "caixa"] },
+  { href: "/painel/relatorios", rotulo: "Relatórios", grupo: "Operação", papeis: ["dono"] },
   { href: "/cozinha", rotulo: "Tela da cozinha", grupo: "Operação", papeis: ["dono", "caixa"] },
   { href: "/painel/produtos", rotulo: "Produtos", grupo: "Cardápio", papeis: ["dono"], descricao: "Cardápio, preços, fotos e disponibilidade" },
   { href: "/painel/categorias", rotulo: "Categorias", grupo: "Cardápio", papeis: ["dono"], descricao: "Seções e ordem do cardápio" },

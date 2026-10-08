@@ -32,7 +32,13 @@ export async function UltimasNoites({ restauranteId, fuso }: { restauranteId: st
     <Card>
       <CardHeader>
         <CardTitle>Últimas noites</CardTitle>
-        <CardDescription>Por sessão de caixa fechada. Toque numa noite para ver o resumo completo.</CardDescription>
+        <CardDescription>
+          Por sessão de caixa fechada. Toque numa noite para ver o resumo completo ou veja{" "}
+          <Link href="/painel/relatorios" className="font-medium text-foreground underline underline-offset-4">
+            os relatórios
+          </Link>
+          .
+        </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-6 lg:grid-cols-[2fr_1fr]">
         <table className="w-full text-sm">

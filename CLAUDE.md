@@ -145,6 +145,11 @@ Já existe (adicionais e opções):
 - Quem lança manda só os ids das opções (`"adicionais": [uuid, ...]` no item das RPCs `lancar_itens_comanda` e `criar_pedido_delivery`); o trigger valida (opção do produto, disponível, mínimo/máximo de cada grupo ativo) e monta o retrato. As opções não mudam depois de lançadas: cancela e lança de novo.
 - Interface: tipos e regras em `src/lib/adicionais.ts`, carga em `src/lib/adicionais-dados.ts`, seletor `<EscolherOpcoes>` em `src/components/adicionais/` (site e garçom).
 
+Já existe (relatórios do dono):
+- `/painel/relatorios` (só dono): período por atalhos (7/30 dias, este mês, mês passado) ou datas; a noite entra pelo dia em que o caixa abriu (fuso do restaurante).
+- RPC `relatorio_vendas(restaurante_id, de, ate)` (security invoker; recusa quem não é dono; até 400 dias) com as mesmas definições do `resumo_caixa_sessao` (vendido = itens não cancelados de pedidos não cancelados + taxa; recebido = pagamentos não estornados; contas = comandas fechadas + pedidos fora de mesa). Traz por noite, dia da semana, horário, origem, forma de pagamento, produtos, bairros e garçons.
+- Gráficos são barras em CSS (sem biblioteca); produtos baixam em CSV (`;` e vírgula decimal, para o Excel em português).
+
 Já existe (conta do cliente do delivery, opcional):
 - O cliente entra com o celular + código (OTP de telefone do Supabase Auth). Pedir sem conta continua igual.
 - `clientes` (restaurante_id, user_id, nome, telefone confirmado copiado do Auth; único por restaurante e usuário), criado só pela RPC `entrar_como_cliente(restaurante_id, nome)`; o cliente lê, muda o nome e exclui o próprio; dono e caixa leem os do restaurante.

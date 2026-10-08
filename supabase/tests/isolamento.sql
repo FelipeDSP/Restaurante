@@ -899,7 +899,7 @@ begin
   perform public.entregar_pedido_delivery(p.id, 'dinheiro')
   from public.pedidos p where p.restaurante_id = a and p.origem = 'delivery' and p.status not in ('entregue', 'cancelado');
   select count(*) into n from public.pedidos p
-  where p.restaurante_id = a and p.origem = 'delivery' and p.status = 'entregue'
+  where p.restaurante_id = a and p.caixa_sessao_id = v_caixa_a and p.origem = 'delivery' and p.status = 'entregue'
     and p.total = (select sum(valor) from public.pagamentos where pedido_id = p.id and estornado_em is null);
   perform pg_temp.ok(n = 1, 'entrega registra o pagamento do total e marca entregue');
   update public.caixa_sessoes set fechada_em = now(), valor_contado = 13200 where id = v_caixa_a;
@@ -1155,6 +1155,61 @@ begin
     perform pg_temp.ok(false, 'cliente: conta sem e-mail não cria restaurante');
   exception when others then
     perform pg_temp.ok(sqlerrm like 'Crie a conta do restaurante com um e-mail%', 'cliente: conta sem e-mail não cria restaurante');
+  end;
+  perform pg_temp.admin();
+end;
+$$;
+
+-- ======================================================================
+-- Relatórios do dono
+-- ======================================================================
+do $$
+declare
+  a constant uuid := md5('brasa-espetinhos')::uuid;
+  b constant uuid := md5('burger-do-ze')::uuid;
+  v_json jsonb;
+  v_vendido bigint;
+  v_produtos bigint;
+begin
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  v_json := public.relatorio_vendas(a, (now() - interval '2 days')::date, (now() + interval '1 day')::date);
+  perform pg_temp.ok((v_json ->> 'sessoes')::int >= 1, 'relatório: dono vê as sessões do período');
+  select coalesce(sum((s ->> 'vendido')::bigint), 0) into v_vendido from jsonb_array_elements(v_json -> 'por_sessao') s;
+  perform pg_temp.ok(v_vendido = (v_json ->> 'vendido')::bigint, 'relatório: soma das noites = total vendido');
+  select coalesce(sum((p ->> 'vendido')::bigint), 0) into v_vendido from jsonb_array_elements(v_json -> 'por_origem') p;
+  perform pg_temp.ok(v_vendido = (v_json ->> 'vendido')::bigint, 'relatório: soma por origem = total vendido');
+  select coalesce(sum((p ->> 'total')::bigint), 0) into v_produtos from jsonb_array_elements(v_json -> 'produtos') p;
+  perform pg_temp.ok(v_produtos + (v_json ->> 'taxas_entrega')::bigint = (v_json ->> 'vendido')::bigint,
+                     'relatório: produtos + taxas = total vendido');
+
+  begin
+    perform public.relatorio_vendas(b, (now() - interval '2 days')::date, now()::date);
+    perform pg_temp.ok(false, 'relatório: dono de A não vê o relatório de B');
+  exception when others then
+    perform pg_temp.ok(sqlerrm like 'Só o dono%', 'relatório: dono de A não vê o relatório de B');
+  end;
+
+  begin
+    perform public.relatorio_vendas(a, '2020-01-01', '2026-12-31');
+    perform pg_temp.ok(false, 'relatório: período limitado');
+  exception when others then
+    perform pg_temp.ok(sqlerrm like 'Escolha um período%', 'relatório: período limitado');
+  end;
+
+  perform pg_temp.entrar('caixa.brasa@exemplo.com');
+  begin
+    perform public.relatorio_vendas(a, now()::date, now()::date);
+    perform pg_temp.ok(false, 'relatório: caixa não vê os relatórios');
+  exception when others then
+    perform pg_temp.ok(sqlerrm like 'Só o dono%', 'relatório: caixa não vê os relatórios');
+  end;
+
+  perform pg_temp.anonimo();
+  begin
+    perform public.relatorio_vendas(a, now()::date, now()::date);
+    perform pg_temp.ok(false, 'relatório: anônimo não chama');
+  exception when insufficient_privilege then
+    perform pg_temp.ok(true, 'relatório: anônimo não chama');
   end;
   perform pg_temp.admin();
 end;
