@@ -31,7 +31,8 @@ export async function GET(request: Request) {
         await admin.rpc("agente_concluir", { p_agente_id: agente.id, p_fila_id: t.id, p_ok: true });
         continue;
       }
-      const largura = imp.largura === 58 ? 58 : 80;
+      // 58/80 mm = bobina; 210 = folha A4 (só no modo driver).
+      const largura = imp.largura === 58 ? 58 : imp.largura === 210 ? 210 : 80;
       const impressora = { id: imp.id, nome: imp.nome, conexao: imp.conexao, endereco: imp.endereco, porta: imp.porta, modo: imp.modo, largura };
       // Modo driver: o app desenha o documento e imprime pelo Windows; senão, bytes ESC/POS prontos.
       saida.push(
@@ -41,7 +42,7 @@ export async function GET(request: Request) {
               id: t.id,
               tipo: t.tipo,
               impressora,
-              dados: Buffer.from(paraEscPos(doc, { largura, codificacao: imp.codificacao as Codificacao })).toString("base64"),
+              dados: Buffer.from(paraEscPos(doc, { largura: largura === 58 ? 58 : 80, codificacao: imp.codificacao as Codificacao })).toString("base64"),
             },
       );
     } catch (e) {

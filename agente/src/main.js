@@ -4,7 +4,7 @@ const { app, BrowserWindow, Menu, Tray, ipcMain, nativeImage, safeStorage } = re
 const { appendFileSync, existsSync, readFileSync, statSync, writeFileSync, renameSync } = require("node:fs");
 const { join } = require("node:path");
 
-const { documentoParaHtml } = require("./documento-html");
+const { A4, documentoParaHtml } = require("./documento-html");
 const { Nucleo } = require("./nucleo");
 const { imprimirRaw } = require("./windows");
 
@@ -103,8 +103,13 @@ async function imprimirDriver(impressora, documento, largura) {
   const janela = new BrowserWindow({ show: false, webPreferences: { javascript: true } });
   try {
     await janela.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(documentoParaHtml(documento, largura))}`);
-    const alturaPx = await janela.webContents.executeJavaScript("document.body.scrollHeight");
-    const alturaMicrons = Math.max(50_000, Math.ceil((alturaPx * 25_400) / 96));
+    // Bobina: página do tamanho do ticket. Folha A4: página A4 (o driver quebra em folhas).
+    let pageSize = "A4";
+    if (largura !== A4) {
+      const alturaPx = await janela.webContents.executeJavaScript("document.body.scrollHeight");
+      const alturaMicrons = Math.max(50_000, Math.ceil((alturaPx * 25_400) / 96));
+      pageSize = { width: largura * 1000, height: alturaMicrons };
+    }
     await new Promise((resolver, rejeitar) =>
       janela.webContents.print(
         {
@@ -112,7 +117,7 @@ async function imprimirDriver(impressora, documento, largura) {
           deviceName: impressora,
           printBackground: false,
           margins: { marginType: "none" },
-          pageSize: { width: largura * 1000, height: alturaMicrons },
+          pageSize,
         },
         (ok, motivo) => (ok ? resolver() : rejeitar(new Error(`O Windows não imprimiu: ${motivo || "erro desconhecido"}`))),
       ),

@@ -1,7 +1,7 @@
 {
   "name": "impressao-restaurante",
   "productName": "Impressao",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Imprime os pedidos do restaurante nas impressoras da cozinha e do caixa.",
   "main": "src/main.js",
   "private": true,

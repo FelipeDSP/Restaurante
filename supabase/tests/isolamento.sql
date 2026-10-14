@@ -1298,6 +1298,30 @@ begin
 end;
 $$;
 
+-- ======================================================================
+-- Impressora comum: papel Folha A4 só pelo driver do Windows
+-- ======================================================================
+do $$
+declare
+  a constant uuid := md5('brasa-espetinhos')::uuid;
+  n integer;
+begin
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  insert into public.impressoras (restaurante_id, nome, conexao, endereco, modo, largura)
+  values (a, 'Teste A4 driver', 'windows', 'HP qualquer', 'driver', 210);
+  select count(*) into n from public.impressoras where restaurante_id = a and nome = 'Teste A4 driver' and largura = 210;
+  perform pg_temp.ok(n = 1, 'impressão: Folha A4 pelo driver é aceita');
+  begin
+    insert into public.impressoras (restaurante_id, nome, conexao, endereco, modo, largura)
+    values (a, 'Teste A4 térmica', 'windows', 'Térmica qualquer', 'escpos', 210);
+    perform pg_temp.ok(false, 'impressão: Folha A4 não vale no modo térmico');
+  exception when check_violation then
+    perform pg_temp.ok(true, 'impressão: Folha A4 não vale no modo térmico');
+  end;
+  perform pg_temp.admin();
+end;
+$$;
+
 select n, ok, teste from resultado order by n;
 select count(*) filter (where not ok) as falhas, count(*) as total from resultado;
 

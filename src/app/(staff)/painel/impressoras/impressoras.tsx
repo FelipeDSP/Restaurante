@@ -57,8 +57,8 @@ function FormImpressora({
       </Campo>
       <Campo rotulo="Conexão" htmlFor={`${prefixo}-conexao`}>
         <Selecao id={`${prefixo}-conexao`} name="conexao" value={conexao} onChange={(e) => setConexao(e.target.value as Impressora["conexao"])} className="h-11">
-          <option value="rede">Rede (cabo ou Wi-Fi)</option>
-          <option value="windows">USB (impressora instalada no Windows)</option>
+          <option value="rede">Térmica pelo IP (rede, porta 9100)</option>
+          <option value="windows">Instalada no Windows (USB, rede ou Wi-Fi)</option>
         </Selecao>
       </Campo>
       {conexao === "rede" ? (
@@ -117,11 +117,13 @@ function FormImpressora({
           </Selecao>
         </Campo>
       ) : null}
-      <Campo rotulo="Papel" htmlFor={`${prefixo}-largura`}>
+      <Campo rotulo="Papel" htmlFor={`${prefixo}-largura`} dica="Impressora comum (jato de tinta, laser): Folha A4, no modo pelo driver do Windows.">
         <Selecao id={`${prefixo}-largura`} name="largura" defaultValue={valorCampo(estado, "largura", impressora?.largura ?? 80)} className="h-11">
-          <option value="80">80 mm (padrão)</option>
-          <option value="58">58 mm (estreito)</option>
+          <option value="80">Bobina 80 mm (padrão)</option>
+          <option value="58">Bobina 58 mm (estreita)</option>
+          <option value="210">Folha A4 (impressora comum)</option>
         </Selecao>
+        <ErroCampo estado={estado} campo="largura" />
       </Campo>
       <Campo rotulo="Acentos" htmlFor={`${prefixo}-codificacao`} dica="Se os acentos saírem errados no teste, troque aqui.">
         <Selecao id={`${prefixo}-codificacao`} name="codificacao" defaultValue={valorCampo(estado, "codificacao", impressora?.codificacao ?? "cp850")} className="h-11">
@@ -234,7 +236,7 @@ function LinhaImpressora({
         <span className="font-medium">{impressora.nome}</span>
         {!impressora.ativa ? <Badge variant="secondary">Inativa</Badge> : null}
         <span className="text-sm text-muted-foreground">
-          {impressora.conexao === "rede" ? `Rede · ${impressora.endereco}:${impressora.porta}` : `USB · ${impressora.endereco}`} · {impressora.largura} mm
+          {impressora.conexao === "rede" ? `Rede · ${impressora.endereco}:${impressora.porta}` : `Windows · ${impressora.endereco}`} · {impressora.largura === 210 ? "Folha A4" : `${impressora.largura} mm`}
           {impressora.modo === "driver" ? " · pelo driver" : ""}
         </span>
         <div className="ml-auto flex gap-1">

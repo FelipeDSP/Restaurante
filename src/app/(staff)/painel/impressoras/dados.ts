@@ -18,7 +18,8 @@ export type Impressora = {
   conexao: "rede" | "windows";
   endereco: string;
   porta: number;
-  largura: 58 | 80;
+  // 58/80 mm = bobina térmica; 210 = folha A4 (impressora comum, modo driver).
+  largura: 58 | 80 | 210;
   codificacao: "cp850" | "cp1252" | "sem_acentos";
   modo: "escpos" | "driver";
   agenteId: string | null;
@@ -96,7 +97,7 @@ export async function carregarImpressao(restauranteId: string) {
         conexao: i.conexao as Impressora["conexao"],
         endereco: i.endereco,
         porta: i.porta,
-        largura: i.largura === 58 ? 58 : 80,
+        largura: i.largura === 58 ? 58 : i.largura === 210 ? 210 : 80,
         codificacao: i.codificacao as Impressora["codificacao"],
         modo: i.modo as Impressora["modo"],
         agenteId: i.agente_id,

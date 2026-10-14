@@ -78,7 +78,7 @@ const impressoraSchema = z
     conexao: z.enum(["rede", "windows"], { error: "Escolha a conexão." }),
     endereco: textoObrigatorio("o endereço", 200),
     porta: z.coerce.number().int().min(1).max(65535).default(9100),
-    largura: z.coerce.number().pipe(z.union([z.literal(58), z.literal(80)], { error: "Papel de 58 ou 80 mm." })),
+    largura: z.coerce.number().pipe(z.union([z.literal(58), z.literal(80), z.literal(210)], { error: "Escolha o papel." })),
     codificacao: z.enum(["cp850", "cp1252", "sem_acentos"]),
     modo: z.enum(["escpos", "driver"]).default("escpos"),
     agente_id: z.preprocess((v) => (v === "" || v === undefined ? null : v), id.nullable()),
@@ -88,6 +88,10 @@ const impressoraSchema = z
   })
   // Pela rede só existe o modo de comandos; o driver é do Windows.
   .transform((d) => (d.conexao === "rede" ? { ...d, modo: "escpos" as const } : d))
+  .refine((d) => d.largura !== 210 || d.modo === "driver", {
+    path: ["largura"],
+    message: "Folha A4 só no modo \"pelo driver do Windows\" (impressora comum).",
+  })
   .refine((d) => d.conexao !== "rede" || /^[\w.-]+$/.test(d.endereco), {
     path: ["endereco"],
     message: "Use o IP da impressora (ex.: 192.168.0.50).",

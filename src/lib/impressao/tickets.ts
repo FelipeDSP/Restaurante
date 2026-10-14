@@ -204,7 +204,7 @@ async function documentoTeste(supabase: Cliente, trabalho: Trabalho, r: Restaura
       { tipo: "texto", texto: dataHoraLocal(new Date().toISOString(), r.fuso), alinhar: "centro" },
       { tipo: "separador" },
       { tipo: "colunas", esquerda: "Impressora", direita: imp?.nome ?? "" },
-      { tipo: "colunas", esquerda: "Papel", direita: `${imp?.largura ?? 80} mm` },
+      { tipo: "colunas", esquerda: "Papel", direita: imp?.largura === 210 ? "Folha A4" : `${imp?.largura ?? 80} mm` },
       { tipo: "texto", texto: `Imprime: ${funcoes.length > 0 ? funcoes.join(", ") : "nada configurado ainda"}` },
       { tipo: "separador" },
       { tipo: "texto", texto: "Acentos: ação, pão, café, açaí, Ç Ã É", alinhar: "centro" },
