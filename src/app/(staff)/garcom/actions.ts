@@ -229,3 +229,24 @@ export async function cancelarComanda(comandaId: string): Promise<ResultadoAcao>
   refresh();
   return sucesso("Comanda cancelada. Mesa liberada.");
 }
+
+// Cozinha e churrasqueira não têm tela (gordura): quem retira o prato marca a praça como pronta
+// pelo app do garçom. Mesmo efeito da tela da cozinha: libera a próxima praça, avisa o garçom da
+// mesa e, no delivery, a última praça pronta deixa o pedido "pronto". Quem e quando vêm do banco.
+export async function marcarTicketPraca(tarefaId: string, status: "pronto" | "pendente"): Promise<ResultadoAcao> {
+  const acesso = await exigirAcesso("garcom");
+  if (!id.safeParse(tarefaId).success || (status !== "pronto" && status !== "pendente")) return falha("Ticket inválido.");
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("tarefas_producao")
+    .update({ status })
+    .eq("id", tarefaId)
+    .eq("restaurante_id", acesso.restaurante.id)
+    .select("id");
+  if (error) return falha(mensagemErroBanco(error));
+  if (!data.length) return falha("Ticket não encontrado.");
+
+  refresh();
+  return status === "pronto" ? sucesso("Marcado como pronto.") : sucesso("Voltou para preparo.");
+}

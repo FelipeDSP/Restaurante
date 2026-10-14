@@ -55,7 +55,7 @@ export default async function GarcomPage() {
   const ocupadas = mesas.filter((m) => m.status !== "livre").length;
 
   return (
-    <main className="flex flex-col gap-4 p-4">
+    <main className="flex flex-col gap-4 p-4 pb-24">
       <AtualizarEmTempoReal restauranteId={acesso.restaurante.id} tabelas={["comandas", "tarefas_producao", "caixa_sessoes"]} />
       <div className="flex items-baseline justify-between">
         <h1 className="text-2xl font-semibold">Mesas</h1>

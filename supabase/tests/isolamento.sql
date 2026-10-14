@@ -1350,6 +1350,57 @@ begin
 end;
 $$;
 
+-- ======================================================================
+-- Garçom marca a praça; comanda fechada encerra os tickets
+-- ======================================================================
+do $$
+declare
+  a constant uuid := md5('brasa-espetinhos')::uuid;
+  v_comanda uuid;
+  v_tarefa uuid;
+  v_total integer;
+  n integer;
+begin
+  perform pg_temp.entrar('caixa.brasa@exemplo.com');
+  if not exists (select 1 from public.caixa_sessoes where restaurante_id = a and fechada_em is null) then
+    insert into public.caixa_sessoes (restaurante_id, valor_inicial) values (a, 0);
+  end if;
+
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  insert into public.comandas (restaurante_id, mesa_id, pessoas)
+  select a, m.id, 2 from public.mesas m
+  where m.restaurante_id = a and m.ativa
+    and not exists (select 1 from public.comandas c where c.mesa_id = m.id and c.status in ('aberta', 'conta_pedida'))
+  order by m.ordem limit 1
+  returning id into v_comanda;
+  perform public.lancar_itens_comanda(v_comanda, jsonb_build_array(
+    jsonb_build_object('produto_id', md5('brasa-espetinhos/Espetos/Espeto de carne')::uuid, 'quantidade', 1),
+    jsonb_build_object('produto_id', md5('brasa-espetinhos/Burgers/Burger artesanal')::uuid, 'quantidade', 1)));
+  select count(*) into n from public.tarefas_producao t join public.pedidos p on p.id = t.pedido_id
+  where p.comanda_id = v_comanda and t.status = 'pendente';
+  perform pg_temp.ok(n = 2, 'praças: itens da mesa geram um ticket por praça');
+
+  -- O garçom (sem tela de cozinha) marca a praça como pronta.
+  select t.id into v_tarefa from public.tarefas_producao t join public.pedidos p on p.id = t.pedido_id
+  where p.comanda_id = v_comanda limit 1;
+  update public.tarefas_producao set status = 'pronto' where id = v_tarefa;
+  perform pg_temp.admin();
+  select count(*) into n from public.tarefas_producao
+  where id = v_tarefa and status = 'pronto' and pronto_por = (select id from public.membros where user_id = md5('garcom1.brasa@exemplo.com')::uuid and restaurante_id = a);
+  perform pg_temp.ok(n = 1, 'praças: garçom marca o ticket como pronto (quem marcou vem do banco)');
+
+  -- Fechar a comanda encerra o ticket que ficou pendente.
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  select total into v_total from public.comandas where id = v_comanda;
+  insert into public.pagamentos (restaurante_id, comanda_id, valor, forma) values (a, v_comanda, v_total, 'pix');
+  update public.comandas set status = 'fechada' where id = v_comanda;
+  perform pg_temp.admin();
+  select count(*) into n from public.tarefas_producao t join public.pedidos p on p.id = t.pedido_id
+  where p.comanda_id = v_comanda and t.status = 'pendente';
+  perform pg_temp.ok(n = 0, 'praças: comanda fechada encerra os tickets pendentes');
+end;
+$$;
+
 select n, ok, teste from resultado order by n;
 select count(*) filter (where not ok) as falhas, count(*) as total from resultado;
 

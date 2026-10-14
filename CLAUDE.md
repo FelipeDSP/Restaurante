@@ -86,6 +86,8 @@ Já existe (cozinha, fase 1 da impressão):
 - `tarefas_producao`: uma por pedido e praça (o "ticket" da praça), criada por trigger para cada praça da rota do item; na tela, o item que depende de praça anterior aparece "aguardando" e o Pronto só libera quando ela termina; a equipe só muda `status` (`pendente`|`pronto`), quem e quando vêm do banco. No delivery, a última praça pronta leva o pedido de `em_preparo` para `pronto`.
 - Papel `cozinha` (área `/cozinha`, também aberta a dono e caixa). Tela da cozinha em tempo real, com filtro por praça (`/cozinha?praca=<id>`), som, "pronto/voltar" e impressão pelo navegador (manual ou automática por aparelho).
 - Delivery só aparece na cozinha depois que o caixa aceita (status diferente de `recebido`).
+- Praças sem tela (gordura): o ticket sai no papel e o **garçom** marca a praça como pronta ao retirar o prato, na aba **Praças** do app do garçom (`/garcom/pracas`, abas Mesas/Praças no rodapé). Mesmo efeito da tela da cozinha (`marcarTicketPraca` em `garcom/actions.ts`; a RLS já deixa qualquer membro mudar o `status`). Mesas do próprio garçom primeiro (`Ticket.pedido.garcomId`), praça escolhida lembrada no aparelho, "Desfazer" nos prontos recentes. Sem QR code por enquanto (decisão do cliente).
+- Comanda fechada ou cancelada encerra os tickets pendentes dela (trigger `t25_encerrar_tarefas` em `comandas`), como o delivery já faz; assim nada fica "pendente" para sempre quando ninguém marca.
 
 Já existe (impressão, fase 2):
 - `impressoras` (rede: IP + porta 9100; windows: nome da impressora USB no Windows; papel 58/80; acentos cp850/cp1252/sem), `estacoes.impressora_id` (praça -> impressora), `imprime_conta` e `imprime_via_delivery`.
