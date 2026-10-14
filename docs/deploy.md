@@ -48,6 +48,7 @@ O painel (Impressoras) tem o link "Baixar o app de impressão", e o app instalad
 
 1. No Coolify: *Persistent Storage → + Add → Volume*, destino `/app/downloads`.
 2. No seu computador (Windows), em `agente/`: suba `version` no `package.json` e rode `npm install` (primeira vez) e `npm run dist`.
+Neste servidor (Coolify): o volume é `/data/coolify/applications/b12s9448i2hypmkl81vzld0g/downloads` (montado em `/app/downloads`). Acesso pela chave SSH `~/.ssh/restaurante_vps` do computador de desenvolvimento: `scp -i ~/.ssh/restaurante_vps agente/dist/{Impressao-Setup-<versão>.exe,Impressao-Setup-<versão>.exe.blockmap} root@72.60.10.10:<volume>/impressao/` e depois o `latest.yml`.
 3. Copie para o volume, na pasta `impressao/`, os arquivos de `agente/dist/`: `Impressao-Setup-<versão>.exe`, `Impressao-Setup-<versão>.exe.blockmap` e `latest.yml` (por último). Ex.: `scp agente/dist/{*.exe,*.blockmap,latest.yml} root@vps:/caminho/do/volume/impressao/` (o caminho real do volume aparece no Coolify; o usuário do container, uid 1001, precisa conseguir ler).
 4. Confira `https://seu-dominio.com.br/downloads/impressao/instalador` (baixa o .exe). Os apps já instalados se atualizam sozinhos em até 6 h, ou ao reabrir, quando não estiverem imprimindo.
 

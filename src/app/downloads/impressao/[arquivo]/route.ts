@@ -19,14 +19,15 @@ const TIPOS: Record<string, string> = {
 
 const naoEncontrado = () => new Response("Arquivo não encontrado.", { status: 404 });
 
-export async function GET(request: Request, ctx: RouteContext<"/downloads/impressao/[arquivo]">) {
+export async function GET(_request: Request, ctx: RouteContext<"/downloads/impressao/[arquivo]">) {
   const { arquivo } = await ctx.params;
 
   if (arquivo === "instalador") {
     const latest = await readFile(join(pasta(), "latest.yml"), "utf8").catch(() => null);
     const caminho = latest?.match(/^path:\s*(.+)$/m)?.[1]?.trim();
     if (!caminho || !NOME_VALIDO.test(caminho)) return naoEncontrado();
-    return Response.redirect(new URL(`/downloads/impressao/${caminho}`, request.url), 302);
+    // Endereço relativo: atrás do proxy, request.url é o endereço interno do container (0.0.0.0:3000).
+    return new Response(null, { status: 302, headers: { Location: `/downloads/impressao/${caminho}` } });
   }
 
   const extensao = arquivo.split(".").pop() ?? "";
