@@ -1401,6 +1401,93 @@ begin
 end;
 $$;
 
+-- ======================================================================
+-- Taxa de entrega fixa (CEP + bairro digitado)
+-- ======================================================================
+do $$
+declare
+  a constant uuid := md5('brasa-espetinhos')::uuid;
+  v_cli constant uuid := md5('cliente.taxa.fixa')::uuid;
+  v_json jsonb;
+  v_pedido uuid;
+  n integer;
+begin
+  perform pg_temp.admin();
+  update public.restaurantes set horarios = (
+    select jsonb_object_agg(d, '[{"abre": "00:00", "fecha": "00:00"}]'::jsonb)
+    from unnest(array['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab']) d
+  ), ativo = true where id = a;  -- o teste do admin desativa A antes
+  insert into auth.users (instance_id, id, aud, role, phone, phone_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+  values ('00000000-0000-0000-0000-000000000000', v_cli, 'authenticated', 'authenticated', '5569999990077', now(), '{"provider": "phone"}', '{}', now(), now());
+
+  perform pg_temp.entrar('caixa.brasa@exemplo.com');
+  if not exists (select 1 from public.caixa_sessoes where restaurante_id = a and fechada_em is null) then
+    insert into public.caixa_sessoes (restaurante_id, valor_inicial) values (a, 0);
+  end if;
+
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  update public.restaurantes set taxa_entrega_modo = 'fixa', taxa_entrega_fixa = 700 where id = a;
+
+  perform pg_temp.anonimo();
+  select count(*) into n from public.restaurantes_publicos where id = a and taxa_entrega_modo = 'fixa' and taxa_entrega_fixa = 700;
+  perform pg_temp.ok(n = 1, 'taxa fixa: site público lê o modo e o valor');
+
+  begin
+    perform public.criar_pedido_delivery(a, 'Sem Bairro', '69999990066', null, '{"rua": "R", "numero": "1"}', 'pix',
+      jsonb_build_array(jsonb_build_object('produto_id', md5('brasa-espetinhos/Burgers/Burger artesanal')::uuid, 'quantidade', 1)));
+    perform pg_temp.ok(false, 'taxa fixa: exige o bairro digitado');
+  exception when others then
+    perform pg_temp.ok(sqlerrm like 'Informe o bairro%', 'taxa fixa: exige o bairro digitado');
+  end;
+
+  -- Bairro qualquer (até um id de bairro cadastrado é ignorado): taxa fixa, sem vínculo com a lista.
+  v_json := public.criar_pedido_delivery(a, 'Fixa', '69999990066', (select id from public.bairros_entrega where restaurante_id = a limit 1),
+    '{"rua": "Rua Nova", "numero": "10", "bairro": "Jardim Novo", "cep": "76870-000", "cidade": "Ariquemes", "uf": "RO"}', 'pix',
+    jsonb_build_array(jsonb_build_object('produto_id', md5('brasa-espetinhos/Burgers/Burger artesanal')::uuid, 'quantidade', 1)));
+  v_pedido := (v_json ->> 'id')::uuid;
+  perform pg_temp.admin();
+  select count(*) into n from public.pedidos
+  where id = v_pedido and taxa_entrega = 700 and bairro_id is null and endereco ->> 'bairro' = 'Jardim Novo' and total = 3200 + 700;
+  perform pg_temp.ok(n = 1, 'taxa fixa: cobra o valor fixo e guarda o bairro digitado');
+
+  -- Conta do cliente guarda o endereço com bairro digitado e CEP.
+  perform set_config('request.jwt.claims', json_build_object('sub', v_cli, 'role', 'authenticated')::text, true);
+  perform set_config('role', 'authenticated', true);
+  perform public.entrar_como_cliente(a, 'Cliente Fixa');
+  perform public.criar_pedido_delivery(a, 'Cliente Fixa', '69999990077', null,
+    '{"rua": "Rua Nova", "numero": "10", "bairro": "Jardim Novo", "cep": "76870-000", "cidade": "Ariquemes", "uf": "RO"}', 'pix',
+    jsonb_build_array(jsonb_build_object('produto_id', md5('brasa-espetinhos/Burgers/Burger artesanal')::uuid, 'quantidade', 1)));
+  perform public.criar_pedido_delivery(a, 'Cliente Fixa', '69999990077', null,
+    '{"rua": "rua nova", "numero": "10", "bairro": "jardim novo", "cep": "76870000"}', 'pix',
+    jsonb_build_array(jsonb_build_object('produto_id', md5('brasa-espetinhos/Burgers/Burger artesanal')::uuid, 'quantidade', 1)));
+  select count(*) into n from public.clientes_enderecos e join public.clientes c on c.id = e.cliente_id
+  where c.user_id = v_cli and e.bairro_id is null and e.bairro = 'Jardim Novo' and e.cep = '76870000';
+  perform pg_temp.ok(n = 1, 'taxa fixa: endereço salvo com bairro e CEP, sem duplicar');
+
+  -- Voltar para "por bairro" exige um bairro da lista de novo.
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  update public.restaurantes set taxa_entrega_modo = 'bairro' where id = a;
+  perform pg_temp.anonimo();
+  begin
+    perform public.criar_pedido_delivery(a, 'Bairro', '69999990066', null, '{"rua": "R", "numero": "1", "bairro": "Qualquer"}', 'pix',
+      jsonb_build_array(jsonb_build_object('produto_id', md5('brasa-espetinhos/Burgers/Burger artesanal')::uuid, 'quantidade', 1)));
+    perform pg_temp.ok(false, 'por bairro: exige bairro da lista');
+  exception when others then
+    perform pg_temp.ok(sqlerrm like 'Bairro não atendido%', 'por bairro: exige bairro da lista');
+  end;
+
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  begin
+    update public.restaurantes set taxa_entrega_fixa = 1 where id = a;
+    select count(*) into n from public.restaurantes where id = a and taxa_entrega_fixa = 1;
+    perform pg_temp.ok(n = 0, 'taxa fixa: garçom não muda a taxa');
+  exception when insufficient_privilege then
+    perform pg_temp.ok(true, 'taxa fixa: garçom não muda a taxa');
+  end;
+  perform pg_temp.admin();
+end;
+$$;
+
 select n, ok, teste from resultado order by n;
 select count(*) filter (where not ok) as falhas, count(*) as total from resultado;
 

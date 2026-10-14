@@ -22,6 +22,9 @@ export type RestaurantePublico = {
   aceitaDelivery: boolean;
   pedidoMinimo: number;
   tempoEstimadoMin: number | null;
+  // fixa: um valor para qualquer endereço (o cliente informa CEP e bairro); bairro: lista de bairros.
+  taxaEntregaModo: "fixa" | "bairro";
+  taxaEntregaFixa: number;
 };
 
 // Restaurante pelo slug da URL. Toda a lógica usa o restaurante resolvido, nunca o formato da URL
@@ -32,7 +35,7 @@ export const buscarRestaurantePorSlug = cache(async (slug: string): Promise<Rest
   const { data } = await supabase
     .from("restaurantes_publicos")
     .select(
-      "id, slug, nome, logo_url, cor_primaria, cor_secundaria, telefone, whatsapp, endereco, fuso_horario, horarios, aceita_delivery, pedido_minimo, tempo_estimado_entrega_min",
+      "id, slug, nome, logo_url, cor_primaria, cor_secundaria, telefone, whatsapp, endereco, fuso_horario, horarios, aceita_delivery, pedido_minimo, tempo_estimado_entrega_min, taxa_entrega_modo, taxa_entrega_fixa",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -56,6 +59,8 @@ export const buscarRestaurantePorSlug = cache(async (slug: string): Promise<Rest
     aceitaDelivery: data.aceita_delivery ?? false,
     pedidoMinimo: data.pedido_minimo ?? 0,
     tempoEstimadoMin: data.tempo_estimado_entrega_min,
+    taxaEntregaModo: data.taxa_entrega_modo === "bairro" ? "bairro" : "fixa",
+    taxaEntregaFixa: data.taxa_entrega_fixa ?? 0,
   };
 });
 

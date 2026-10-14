@@ -70,7 +70,7 @@ export function ListaMeusPedidos({ restaurante, bairros, pedidosConta }: Props) 
     ...soDoAparelho.map((p) => ({ ...p, situacao: situacoes[p.id] ?? ("carregando" as Situacao) })),
   ].sort((a, b) => b.criadoEm.localeCompare(a.criadoEm));
 
-  const bairro = bairros.find((b) => b.id === dados.bairroId)?.nome;
+  const bairro = bairros.find((b) => b.id === dados.bairroId)?.nome ?? (dados.bairroTexto || undefined);
   const endereco = [[dados.rua, dados.numero].filter(Boolean).join(", "), dados.complemento, bairro].filter(Boolean).join(" · ");
   const temDados = temDadosSalvos(dados);
 

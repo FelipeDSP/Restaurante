@@ -52,6 +52,8 @@ export async function salvarRestaurante(_estado: ResultadoAcao, formData: FormDa
     fuso_horario: fusoSchema,
     aceita_delivery: checkbox,
     pedido_minimo: dinheiro("Pedido mínimo"),
+    taxa_entrega_modo: z.enum(["fixa", "bairro"]),
+    taxa_entrega_fixa: dinheiro("Taxa de entrega"),
     tempo_estimado_entrega_min: inteiroOpcional,
   });
 

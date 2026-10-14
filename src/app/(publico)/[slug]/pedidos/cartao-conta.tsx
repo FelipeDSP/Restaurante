@@ -103,7 +103,7 @@ export function CartaoConta({ slug, conta, bairros }: Props) {
               <li key={e.id} className="flex items-center gap-2 py-1">
                 <MapPin className="size-4 shrink-0 text-muted-foreground" aria-hidden />
                 <span className="flex-1 text-sm">
-                  {[`${e.rua}, ${e.numero}`, e.complemento, nomeBairro(e.bairroId)].filter(Boolean).join(" · ")}
+                  {[`${e.rua}, ${e.numero}`, e.complemento, e.bairro ?? (e.bairroId ? nomeBairro(e.bairroId) : null)].filter(Boolean).join(" · ")}
                 </span>
                 <Button
                   type="button"

@@ -51,7 +51,11 @@ export default async function DeliveryPage() {
       p.endereco && typeof p.endereco === "object" && !Array.isArray(p.endereco)
         ? (p.endereco as Record<string, string | null>)
         : {},
-    bairro: p.bairro?.nome ?? null,
+    bairro:
+      p.bairro?.nome ??
+      (p.endereco && typeof p.endereco === "object" && !Array.isArray(p.endereco)
+        ? ((p.endereco as Record<string, string | null>).bairro ?? null)
+        : null),
     formaPrevista: p.forma_pagamento_prevista,
     trocoPara: p.troco_para,
     observacao: p.observacao,

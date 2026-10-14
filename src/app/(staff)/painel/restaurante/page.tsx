@@ -15,7 +15,7 @@ export default async function RestaurantePage() {
   const { data: r, error } = await supabase
     .from("restaurantes")
     .select(
-      "id, slug, nome, telefone, whatsapp, endereco, cor_primaria, cor_secundaria, logo_url, fuso_horario, horarios, aceita_delivery, pedido_minimo, tempo_estimado_entrega_min",
+      "id, slug, nome, telefone, whatsapp, endereco, cor_primaria, cor_secundaria, logo_url, fuso_horario, horarios, aceita_delivery, pedido_minimo, tempo_estimado_entrega_min, taxa_entrega_modo, taxa_entrega_fixa",
     )
     .eq("id", acesso.restaurante.id)
     .single();
@@ -29,7 +29,14 @@ export default async function RestaurantePage() {
   return (
     <main className="flex flex-col gap-6 p-4 md:p-6">
       <h1 className="text-2xl font-semibold">Dados e marca</h1>
-      <FormRestaurante restaurante={{ ...r, endereco, horarios: lerHorarios(r.horarios) }} />
+      <FormRestaurante
+        restaurante={{
+          ...r,
+          endereco,
+          horarios: lerHorarios(r.horarios),
+          taxa_entrega_modo: r.taxa_entrega_modo === "bairro" ? "bairro" : "fixa",
+        }}
+      />
     </main>
   );
 }

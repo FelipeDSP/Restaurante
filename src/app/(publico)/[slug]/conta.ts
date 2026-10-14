@@ -7,7 +7,12 @@ import { createClient } from "@/lib/supabase/server";
 
 export type EnderecoSalvo = {
   id: string;
-  bairroId: string;
+  // Por bairro: o bairro da lista. Taxa fixa: bairroId vazio e o bairro digitado em `bairro`.
+  bairroId: string | null;
+  bairro: string | null;
+  cep: string | null;
+  cidade: string | null;
+  uf: string | null;
   rua: string;
   numero: string;
   complemento: string | null;
@@ -43,7 +48,7 @@ export async function obterConta(restauranteId: string): Promise<ContaCliente | 
   if (!usuario) return null;
   const { data } = await usuario.supabase
     .from("clientes")
-    .select("id, nome, telefone, clientes_enderecos(id, bairro_id, rua, numero, complemento, referencia, usado_em)")
+    .select("id, nome, telefone, clientes_enderecos(id, bairro_id, bairro, cep, cidade, uf, rua, numero, complemento, referencia, usado_em)")
     .eq("restaurante_id", restauranteId)
     .eq("user_id", usuario.userId)
     .maybeSingle();
@@ -57,6 +62,10 @@ export async function obterConta(restauranteId: string): Promise<ContaCliente | 
       .map((e) => ({
         id: e.id,
         bairroId: e.bairro_id,
+        bairro: e.bairro,
+        cep: e.cep,
+        cidade: e.cidade,
+        uf: e.uf,
         rua: e.rua,
         numero: e.numero,
         complemento: e.complemento,

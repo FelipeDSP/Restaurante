@@ -3,7 +3,7 @@
 import { Minus, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -18,10 +18,13 @@ import { cn } from "@/lib/utils";
 import { type ItemCarrinho, precoUnitario, useCarrinho } from "../carrinho-store";
 import type { ContaCliente, EnderecoSalvo } from "../conta";
 import { enviarPedido } from "./actions";
-import { FORM_VAZIO, FORMAS, temDadosSalvos, useDadosCliente } from "./dados-cliente";
+import type { EnderecoCep } from "@/app/api/cep/[cep]/route";
+
+import { FORM_VAZIO, FORMAS, type FormCheckout, temDadosSalvos, useDadosCliente } from "./dados-cliente";
 
 type Props = {
-  restaurante: { id: string; slug: string; pedidoMinimo: number };
+  // taxaModo "fixa": um valor para qualquer endereço; o cliente informa CEP e bairro.
+  restaurante: { id: string; slug: string; pedidoMinimo: number; taxaModo: "fixa" | "bairro"; taxaFixa: number; cidade: string | null };
   aberto: boolean;
   mensagemFechado: string | null;
   bairros: { id: string; nome: string; taxa: number }[];
@@ -77,6 +80,12 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
   // Enquanto o cliente não mexe, o que está nos campos veio de um pedido anterior
   // (aparelho emprestado: "Não é você?"). O aparelho só é lido depois da hidratação.
   const [editou, setEditou] = useState(false);
+  const fixa = restaurante.taxaModo === "fixa";
+  // Endereço salvo que ainda serve: na taxa fixa, todos; por bairro, só os de bairros atendidos.
+  const enderecoServe = useCallback(
+    (e: EnderecoSalvo) => (fixa ? Boolean(e.bairro || e.bairroId) : bairros.some((b) => b.id === e.bairroId)),
+    [fixa, bairros],
+  );
 
   // Com a conta: nome, telefone e o último endereço usado vêm da conta (o aparelho pode ter os
   // dados de outra pessoa). Uma vez por aba, para não desfazer o que o cliente mudar depois.
@@ -89,17 +98,17 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
     } catch {
       // Sem armazenamento: aplica a cada carregamento.
     }
-    const endereco = conta.enderecos.find((e) => bairros.some((b) => b.id === e.bairroId));
+    const endereco = conta.enderecos.find(enderecoServe);
     setForm((f) => ({
       ...f,
       nome: conta.nome,
       telefone: formatarTelefone(conta.telefone),
       ...(endereco ? camposDoEndereco(endereco) : {}),
     }));
-  }, [conta, bairros, setForm, restaurante.id]);
-  const enderecosDaConta = (conta?.enderecos ?? []).filter((e) => bairros.some((b) => b.id === e.bairroId));
+  }, [conta, enderecoServe, setForm, restaurante.id]);
+  const enderecosDaConta = (conta?.enderecos ?? []).filter(enderecoServe);
   const enderecoAtual = (e: EnderecoSalvo) =>
-    form.bairroId === e.bairroId &&
+    (fixa ? form.bairroTexto.trim().toLowerCase() === (e.bairro ?? "").toLowerCase() : form.bairroId === e.bairroId) &&
     form.rua.trim().toLowerCase() === e.rua.toLowerCase() &&
     form.numero.trim().toLowerCase() === e.numero.toLowerCase() &&
     form.complemento.trim().toLowerCase() === (e.complemento ?? "").toLowerCase();
@@ -124,7 +133,11 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
 
   const subtotal = validos.reduce((soma, i) => soma + precoUnitario(i) * i.quantidade, 0);
   const bairro = bairros.find((b) => b.id === form.bairroId);
-  const taxa = bairro?.taxa ?? 0;
+  const taxa = fixa ? restaurante.taxaFixa : (bairro?.taxa ?? 0);
+  const taxaDefinida = fixa || Boolean(bairro);
+  // Endereço de outra cidade (o CEP diz qual): avisa, sem bloquear (o restaurante confirma).
+  const outraCidade =
+    fixa && restaurante.cidade && form.cidade && normalizarCidade(form.cidade) !== normalizarCidade(restaurante.cidade) ? form.cidade : null;
   const total = subtotal + taxa;
   const faltaMinimo = Math.max(0, restaurante.pedidoMinimo - subtotal);
   const troco = form.forma === "dinheiro" && form.trocoPara ? centavosDeTexto(form.trocoPara) : null;
@@ -335,6 +348,28 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
           />
           <Erro texto={erros.telefone} />
         </label>
+        {fixa ? (
+          <CampoCep
+            form={form}
+            erro={erros.cep}
+            aoMudar={(cep) => {
+              setEditou(true);
+              setForm((f) => ({ ...f, cep }));
+            }}
+            aoEncontrar={(e) => {
+              setEditou(true);
+              setForm((f) => ({
+                ...f,
+                cep: e.cep,
+                rua: e.rua || f.rua,
+                bairroTexto: e.bairro || f.bairroTexto,
+                cidade: e.cidade,
+                uf: e.uf,
+              }));
+            }}
+          />
+        ) : null}
+        {fixa ? null : (
         <label className="flex flex-col gap-1 text-sm font-medium">
           Bairro
           <select
@@ -352,6 +387,7 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
           </select>
           <Erro texto={erros.bairroId} />
         </label>
+        )}
         <div className="grid grid-cols-[1fr_6rem] gap-2">
           <label className="flex flex-col gap-1 text-sm font-medium">
             Rua
@@ -364,6 +400,24 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
             <Erro texto={erros.numero} />
           </label>
         </div>
+        {fixa ? (
+          <div className="grid grid-cols-[1fr_8rem] gap-2">
+            <label className="flex flex-col gap-1 text-sm font-medium">
+              Bairro
+              <Input value={form.bairroTexto} onChange={alterar("bairroTexto")} className="h-11" aria-invalid={!!erros.bairroTexto} />
+              <Erro texto={erros.bairroTexto} />
+            </label>
+            <label className="flex flex-col gap-1 text-sm font-medium">
+              Cidade
+              <Input value={form.cidade} onChange={alterar("cidade")} autoComplete="address-level2" className="h-11" />
+            </label>
+          </div>
+        ) : null}
+        {outraCidade ? (
+          <p role="status" className="rounded-lg bg-amber-50 p-2 text-sm text-amber-900">
+            Esse endereço é em {outraCidade}. Confira se entregamos aí antes de pedir.
+          </p>
+        ) : null}
         <label className="flex flex-col gap-1 text-sm font-medium">
           Complemento
           <Input value={form.complemento} onChange={alterar("complemento")} autoComplete="address-line2" placeholder="Apto, bloco, casa…" className="h-11" />
@@ -423,7 +477,7 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
         </div>
         <div className="flex justify-between text-sm">
           <span>Taxa de entrega</span>
-          <span className="tabular-nums">{bairro ? formatarBRL(taxa) : "escolha o bairro"}</span>
+          <span className="tabular-nums">{taxaDefinida ? (taxa === 0 ? "Grátis" : formatarBRL(taxa)) : "escolha o bairro"}</span>
         </div>
         <div className="flex justify-between text-lg font-bold">
           <span>Total</span>
@@ -460,10 +514,88 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
 
 function camposDoEndereco(e: EnderecoSalvo) {
   return {
-    bairroId: e.bairroId,
+    bairroId: e.bairroId ?? "",
+    bairroTexto: e.bairro ?? "",
+    cep: e.cep ? `${e.cep.slice(0, 5)}-${e.cep.slice(5)}` : "",
+    cidade: e.cidade ?? "",
+    uf: e.uf ?? "",
     rua: e.rua,
     numero: e.numero,
     complemento: e.complemento ?? "",
     referencia: e.referencia ?? "",
   };
+}
+
+const normalizarCidade = (c: string) =>
+  c
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+
+// CEP com busca automática ao completar 8 números. Se o serviço falhar ou não achar, o cliente
+// preenche à mão (os campos continuam editáveis); quem não sabe o CEP pode deixar em branco.
+function CampoCep({
+  form,
+  erro,
+  aoMudar,
+  aoEncontrar,
+}: {
+  form: FormCheckout;
+  erro?: string;
+  aoMudar: (cep: string) => void;
+  aoEncontrar: (e: EnderecoCep) => void;
+}) {
+  const [situacao, setSituacao] = useState<"parado" | "buscando" | "achou" | "nao_achou" | "falhou">("parado");
+  const ultimo = useRef("");
+
+  async function buscar(digitos: string) {
+    if (digitos.length !== 8 || ultimo.current === digitos) return;
+    ultimo.current = digitos;
+    setSituacao("buscando");
+    try {
+      const r = await fetch(`/api/cep/${digitos}`);
+      if (r.status === 404) {
+        setSituacao("nao_achou");
+        return;
+      }
+      if (!r.ok) throw new Error(String(r.status));
+      aoEncontrar((await r.json()) as EnderecoCep);
+      setSituacao("achou");
+    } catch {
+      setSituacao("falhou");
+    }
+  }
+
+  return (
+    <label className="flex flex-col gap-1 text-sm font-medium">
+      CEP
+      <Input
+        value={form.cep}
+        onChange={(e) => {
+          const d = e.target.value.replace(/\D/g, "").slice(0, 8);
+          aoMudar(d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d);
+          if (d.length < 8) ultimo.current = "";
+          void buscar(d);
+        }}
+        inputMode="numeric"
+        autoComplete="postal-code"
+        placeholder="00000-000"
+        className="h-11 max-w-40"
+        aria-invalid={!!erro}
+      />
+      <span className="text-xs font-normal text-muted-foreground" role="status">
+        {situacao === "buscando"
+          ? "Buscando o endereço…"
+          : situacao === "achou"
+            ? "Endereço encontrado. Confira e complete o número."
+            : situacao === "nao_achou"
+              ? "CEP não encontrado. Preencha o endereço abaixo."
+              : situacao === "falhou"
+                ? "Não deu para buscar agora. Preencha o endereço abaixo."
+                : "Digite o CEP para preencher a rua e o bairro. Não sabe? Preencha abaixo."}
+      </span>
+      <Erro texto={erro} />
+    </label>
+  );
 }

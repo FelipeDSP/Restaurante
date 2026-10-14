@@ -200,13 +200,13 @@ isOneToOne: false
                   ]
                 },"clientes_enderecos": {
                   Row: {
-                    "bairro_id": string,"cliente_id": string,"complemento": string | null,"criado_em": string,"id": string,"numero": string,"referencia": string | null,"restaurante_id": string,"rua": string,"usado_em": string
+                    "bairro": string | null,"bairro_id": string | null,"cep": string | null,"cidade": string | null,"cliente_id": string,"complemento": string | null,"criado_em": string,"id": string,"numero": string,"referencia": string | null,"restaurante_id": string,"rua": string,"uf": string | null,"usado_em": string
                   }
                   Insert: {
-                    "bairro_id": string,"cliente_id": string,"complemento"?: string | null,"criado_em"?: string,"id"?: string,"numero": string,"referencia"?: string | null,"restaurante_id": string,"rua": string,"usado_em"?: string
+                    "bairro"?: string | null,"bairro_id"?: string | null,"cep"?: string | null,"cidade"?: string | null,"cliente_id": string,"complemento"?: string | null,"criado_em"?: string,"id"?: string,"numero": string,"referencia"?: string | null,"restaurante_id": string,"rua": string,"uf"?: string | null,"usado_em"?: string
                   }
                   Update: {
-                    "bairro_id"?: string,"cliente_id"?: string,"complemento"?: string | null,"criado_em"?: string,"id"?: string,"numero"?: string,"referencia"?: string | null,"restaurante_id"?: string,"rua"?: string,"usado_em"?: string
+                    "bairro"?: string | null,"bairro_id"?: string | null,"cep"?: string | null,"cidade"?: string | null,"cliente_id"?: string,"complemento"?: string | null,"criado_em"?: string,"id"?: string,"numero"?: string,"referencia"?: string | null,"restaurante_id"?: string,"rua"?: string,"uf"?: string | null,"usado_em"?: string
                   }
                   Relationships: [
                     {
@@ -779,13 +779,13 @@ isOneToOne: false
                   ]
                 },"restaurantes": {
                   Row: {
-                    "aceita_delivery": boolean,"ativo": boolean,"cor_primaria": string,"cor_secundaria": string,"criado_em": string,"endereco": NonNullable<Json>,"excluido_em": string | null,"fuso_horario": string,"horarios": NonNullable<Json>,"id": string,"logo_url": string | null,"nome": string,"pedido_minimo": number,"slug": string,"telefone": string | null,"tempo_estimado_entrega_min": number | null,"whatsapp": string | null
+                    "aceita_delivery": boolean,"ativo": boolean,"cor_primaria": string,"cor_secundaria": string,"criado_em": string,"endereco": NonNullable<Json>,"excluido_em": string | null,"fuso_horario": string,"horarios": NonNullable<Json>,"id": string,"logo_url": string | null,"nome": string,"pedido_minimo": number,"slug": string,"taxa_entrega_fixa": number,"taxa_entrega_modo": string,"telefone": string | null,"tempo_estimado_entrega_min": number | null,"whatsapp": string | null
                   }
                   Insert: {
-                    "aceita_delivery"?: boolean,"ativo"?: boolean,"cor_primaria"?: string,"cor_secundaria"?: string,"criado_em"?: string,"endereco"?: NonNullable<Json>,"excluido_em"?: string | null,"fuso_horario"?: string,"horarios"?: NonNullable<Json>,"id"?: string,"logo_url"?: string | null,"nome": string,"pedido_minimo"?: number,"slug": string,"telefone"?: string | null,"tempo_estimado_entrega_min"?: number | null,"whatsapp"?: string | null
+                    "aceita_delivery"?: boolean,"ativo"?: boolean,"cor_primaria"?: string,"cor_secundaria"?: string,"criado_em"?: string,"endereco"?: NonNullable<Json>,"excluido_em"?: string | null,"fuso_horario"?: string,"horarios"?: NonNullable<Json>,"id"?: string,"logo_url"?: string | null,"nome": string,"pedido_minimo"?: number,"slug": string,"taxa_entrega_fixa"?: number,"taxa_entrega_modo"?: string,"telefone"?: string | null,"tempo_estimado_entrega_min"?: number | null,"whatsapp"?: string | null
                   }
                   Update: {
-                    "aceita_delivery"?: boolean,"ativo"?: boolean,"cor_primaria"?: string,"cor_secundaria"?: string,"criado_em"?: string,"endereco"?: NonNullable<Json>,"excluido_em"?: string | null,"fuso_horario"?: string,"horarios"?: NonNullable<Json>,"id"?: string,"logo_url"?: string | null,"nome"?: string,"pedido_minimo"?: number,"slug"?: string,"telefone"?: string | null,"tempo_estimado_entrega_min"?: number | null,"whatsapp"?: string | null
+                    "aceita_delivery"?: boolean,"ativo"?: boolean,"cor_primaria"?: string,"cor_secundaria"?: string,"criado_em"?: string,"endereco"?: NonNullable<Json>,"excluido_em"?: string | null,"fuso_horario"?: string,"horarios"?: NonNullable<Json>,"id"?: string,"logo_url"?: string | null,"nome"?: string,"pedido_minimo"?: number,"slug"?: string,"taxa_entrega_fixa"?: number,"taxa_entrega_modo"?: string,"telefone"?: string | null,"tempo_estimado_entrega_min"?: number | null,"whatsapp"?: string | null
                   }
                   Relationships: [
                     
@@ -838,13 +838,13 @@ isOneToOne: false
           Views: {
             "restaurantes_publicos": {
                   Row: {
-                    "aceita_delivery": boolean | null,"cor_primaria": string | null,"cor_secundaria": string | null,"endereco": Json | null,"fuso_horario": string | null,"horarios": Json | null,"id": string | null,"logo_url": string | null,"nome": string | null,"pedido_minimo": number | null,"slug": string | null,"telefone": string | null,"tempo_estimado_entrega_min": number | null,"whatsapp": string | null
+                    "aceita_delivery": boolean | null,"cor_primaria": string | null,"cor_secundaria": string | null,"endereco": Json | null,"fuso_horario": string | null,"horarios": Json | null,"id": string | null,"logo_url": string | null,"nome": string | null,"pedido_minimo": number | null,"slug": string | null,"taxa_entrega_fixa": number | null,"taxa_entrega_modo": string | null,"telefone": string | null,"tempo_estimado_entrega_min": number | null,"whatsapp": string | null
                   }
                   Insert: {
-                           "aceita_delivery"?: boolean | null,"cor_primaria"?: string | null,"cor_secundaria"?: string | null,"endereco"?: Json | null,"fuso_horario"?: string | null,"horarios"?: Json | null,"id"?: string | null,"logo_url"?: string | null,"nome"?: string | null,"pedido_minimo"?: number | null,"slug"?: string | null,"telefone"?: string | null,"tempo_estimado_entrega_min"?: number | null,"whatsapp"?: string | null
+                           "aceita_delivery"?: boolean | null,"cor_primaria"?: string | null,"cor_secundaria"?: string | null,"endereco"?: Json | null,"fuso_horario"?: string | null,"horarios"?: Json | null,"id"?: string | null,"logo_url"?: string | null,"nome"?: string | null,"pedido_minimo"?: number | null,"slug"?: string | null,"taxa_entrega_fixa"?: number | null,"taxa_entrega_modo"?: string | null,"telefone"?: string | null,"tempo_estimado_entrega_min"?: number | null,"whatsapp"?: string | null
                          }
                         Update: {
-                           "aceita_delivery"?: boolean | null,"cor_primaria"?: string | null,"cor_secundaria"?: string | null,"endereco"?: Json | null,"fuso_horario"?: string | null,"horarios"?: Json | null,"id"?: string | null,"logo_url"?: string | null,"nome"?: string | null,"pedido_minimo"?: number | null,"slug"?: string | null,"telefone"?: string | null,"tempo_estimado_entrega_min"?: number | null,"whatsapp"?: string | null
+                           "aceita_delivery"?: boolean | null,"cor_primaria"?: string | null,"cor_secundaria"?: string | null,"endereco"?: Json | null,"fuso_horario"?: string | null,"horarios"?: Json | null,"id"?: string | null,"logo_url"?: string | null,"nome"?: string | null,"pedido_minimo"?: number | null,"slug"?: string | null,"taxa_entrega_fixa"?: number | null,"taxa_entrega_modo"?: string | null,"telefone"?: string | null,"tempo_estimado_entrega_min"?: number | null,"whatsapp"?: string | null
                          }
                         Relationships: [
                     

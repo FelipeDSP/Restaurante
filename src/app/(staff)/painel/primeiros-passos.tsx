@@ -27,7 +27,7 @@ export async function PrimeirosPassos({ acesso }: { acesso: Acesso }) {
     contar("bairros_entrega", id),
     contar("membros", id),
     contar("caixa_sessoes", id),
-    supabase.from("restaurantes").select("aceita_delivery").eq("id", id).maybeSingle(),
+    supabase.from("restaurantes").select("aceita_delivery, taxa_entrega_modo").eq("id", id).maybeSingle(),
   ]);
 
   const passos: Passo[] = [
@@ -51,9 +51,9 @@ export async function PrimeirosPassos({ acesso }: { acesso: Acesso }) {
     },
     {
       titulo: "Ligue o delivery",
-      descricao: "Bairros com taxa, horários e pedido mínimo.",
-      href: bairros > 0 ? "/painel/restaurante" : "/painel/bairros",
-      feito: bairros > 0 && Boolean(restaurante?.aceita_delivery),
+      descricao: "Taxa de entrega, horários e pedido mínimo.",
+      href: restaurante?.taxa_entrega_modo === "bairro" && bairros === 0 ? "/painel/bairros" : "/painel/restaurante",
+      feito: Boolean(restaurante?.aceita_delivery) && (restaurante?.taxa_entrega_modo !== "bairro" || bairros > 0),
     },
     {
       titulo: "Chame a equipe",

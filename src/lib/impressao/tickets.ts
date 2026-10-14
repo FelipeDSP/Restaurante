@@ -163,7 +163,10 @@ async function documentoDelivery(supabase: Cliente, pedidoId: string, r: Restaur
     { tipo: "texto", texto: [e.rua, e.numero].filter(Boolean).join(", ") },
   ];
   if (e.complemento) linhas.push({ tipo: "texto", texto: e.complemento });
-  if (p.bairro?.nome) linhas.push({ tipo: "texto", texto: `Bairro: ${p.bairro.nome}`, negrito: true });
+  const bairro = p.bairro?.nome ?? e.bairro;
+  if (bairro) linhas.push({ tipo: "texto", texto: `Bairro: ${bairro}`, negrito: true });
+  const cidade = [e.cidade && e.uf ? `${e.cidade}/${e.uf}` : e.cidade, e.cep ? `CEP ${e.cep}` : null].filter(Boolean).join(" · ");
+  if (cidade) linhas.push({ tipo: "texto", texto: cidade });
   if (e.referencia) linhas.push({ tipo: "texto", texto: `Ref.: ${e.referencia}` });
   linhas.push({ tipo: "separador" });
   for (const i of p.itens_pedido.filter((x) => !x.cancelado_em).sort((a, b) => a.criado_em.localeCompare(b.criado_em))) {

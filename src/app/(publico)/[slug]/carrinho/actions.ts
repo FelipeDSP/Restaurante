@@ -31,7 +31,16 @@ const pedidoSchema = z.object({
     .string()
     .transform((v) => v.replace(/\D/g, ""))
     .pipe(z.string().min(10, "Informe o telefone com DDD.").max(13, "Telefone inválido.")),
-  bairroId: z.string().min(1, "Escolha o bairro.").pipe(id),
+  // Por bairro: o bairro da lista. Taxa fixa: o bairro digitado (com a ajuda do CEP).
+  bairroId: z.string().default(""),
+  bairroTexto: z.string().trim().max(80).default(""),
+  cep: z
+    .string()
+    .default("")
+    .transform((v) => v.replace(/\D/g, ""))
+    .pipe(z.string().refine((v) => v === "" || v.length === 8, "CEP com 8 números.")),
+  cidade: z.string().trim().max(80).default(""),
+  uf: z.string().trim().max(2).default(""),
   rua: z.string().trim().min(2, "Informe a rua.").max(120),
   numero: z.string().trim().min(1, "Informe o número.").max(20),
   complemento: z.string().trim().max(120),
@@ -66,6 +75,14 @@ export async function enviarPedido(slug: string, entrada: DadosPedido): Promise<
   }
   const d = dados.data;
 
+  const fixa = restaurante.taxaEntregaModo === "fixa";
+  if (fixa && d.bairroTexto.length < 2) {
+    return { ok: false, mensagem: "Confira os dados do pedido.", erros: { bairroTexto: "Informe o bairro." } };
+  }
+  if (!fixa && !id.safeParse(d.bairroId).success) {
+    return { ok: false, mensagem: "Confira os dados do pedido.", erros: { bairroId: "Escolha o bairro." } };
+  }
+
   let trocoPara: number | null = null;
   if (d.forma === "dinheiro" && d.trocoPara) {
     trocoPara = centavosDeTexto(d.trocoPara);
@@ -93,12 +110,21 @@ export async function enviarPedido(slug: string, entrada: DadosPedido): Promise<
     p_restaurante_id: restaurante.id,
     p_cliente_nome: d.nome,
     p_cliente_telefone: d.telefone,
-    p_bairro_id: d.bairroId,
+    // Na taxa fixa o bairro vai no endereço; os tipos gerados não marcam o id como opcional.
+    p_bairro_id: (fixa ? null : d.bairroId) as string,
     p_endereco: {
       rua: d.rua,
       numero: d.numero,
       complemento: d.complemento || null,
       referencia: d.referencia || null,
+      ...(fixa
+        ? {
+            bairro: d.bairroTexto,
+            cep: d.cep ? `${d.cep.slice(0, 5)}-${d.cep.slice(5)}` : null,
+            cidade: d.cidade || null,
+            uf: d.uf.toUpperCase() || null,
+          }
+        : {}),
     },
     p_forma_pagamento: d.forma,
     p_itens: d.itens.map((i) => ({

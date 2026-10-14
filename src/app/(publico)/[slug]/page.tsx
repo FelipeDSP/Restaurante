@@ -50,6 +50,11 @@ export default async function CardapioPage(props: PageProps<"/[slug]">) {
               Entrega em ~{restaurante.tempoEstimadoMin} min
             </span>
           ) : null}
+          {restaurante.taxaEntregaModo === "fixa" ? (
+            <span className="text-sm text-muted-foreground">
+              {restaurante.taxaEntregaFixa > 0 ? `Entrega ${formatarBRL(restaurante.taxaEntregaFixa)}` : "Entrega grátis"}
+            </span>
+          ) : null}
           {restaurante.pedidoMinimo > 0 ? (
             <span className="text-sm text-muted-foreground">Pedido mínimo {formatarBRL(restaurante.pedidoMinimo)}</span>
           ) : null}

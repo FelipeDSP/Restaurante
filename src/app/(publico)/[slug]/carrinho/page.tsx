@@ -36,7 +36,14 @@ export default async function CarrinhoPage(props: PageProps<"/[slug]/carrinho">)
     <main className="flex flex-col">
       <h1 className="px-4 pt-4 text-2xl font-bold">Carrinho</h1>
       <Checkout
-        restaurante={{ id: restaurante.id, slug: restaurante.slug, pedidoMinimo: restaurante.pedidoMinimo }}
+        restaurante={{
+          id: restaurante.id,
+          slug: restaurante.slug,
+          pedidoMinimo: restaurante.pedidoMinimo,
+          taxaModo: restaurante.taxaEntregaModo,
+          taxaFixa: restaurante.taxaEntregaFixa,
+          cidade: restaurante.endereco.cidade ?? null,
+        }}
         aberto={disponibilidade.aberto}
         mensagemFechado={disponibilidade.motivo ? MENSAGEM_FECHADO[disponibilidade.motivo] : null}
         bairros={bairros}
