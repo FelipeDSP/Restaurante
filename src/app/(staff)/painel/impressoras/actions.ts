@@ -50,6 +50,23 @@ export async function gerarNovoCodigo(agenteId: string): Promise<ResultadoCodigo
   return { ok: true, chave: Date.now(), codigo, expiraEm };
 }
 
+// Computador criado por engano ou que não existe mais. Nada da fila é apagado (só perde o vínculo).
+export async function excluirComputador(agenteId: string): Promise<ResultadoAcao> {
+  const acesso = await exigirDono();
+  if (!id.safeParse(agenteId).success) return falha("Computador inválido.");
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("agentes_impressao")
+    .delete()
+    .eq("id", agenteId)
+    .eq("restaurante_id", acesso.restaurante.id)
+    .select("id");
+  if (error) return falha(mensagemErroBanco(error));
+  if (!data.length) return falha("Computador não encontrado.");
+  refresh();
+  return sucesso("Computador excluído.");
+}
+
 export async function desconectarComputador(agenteId: string): Promise<ResultadoAcao> {
   const acesso = await exigirDono();
   if (!id.safeParse(agenteId).success) return falha("Computador inválido.");

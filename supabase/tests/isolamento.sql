@@ -1322,6 +1322,34 @@ begin
 end;
 $$;
 
+-- ======================================================================
+-- Excluir computador pareado
+-- ======================================================================
+do $$
+declare
+  a constant uuid := md5('brasa-espetinhos')::uuid;
+  v_pc uuid;
+  n integer;
+begin
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  insert into public.agentes_impressao (restaurante_id, nome) values (a, 'PC criado por engano') returning id into v_pc;
+
+  perform pg_temp.entrar('caixa.brasa@exemplo.com');
+  delete from public.agentes_impressao where id = v_pc;
+  perform pg_temp.entrar('dono.burger@exemplo.com');
+  delete from public.agentes_impressao where id = v_pc;
+  perform pg_temp.admin();
+  select count(*) into n from public.agentes_impressao where id = v_pc;
+  perform pg_temp.ok(n = 1, 'computador: caixa e dono de outro restaurante não excluem');
+
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  delete from public.agentes_impressao where id = v_pc;
+  perform pg_temp.admin();
+  select count(*) into n from public.agentes_impressao where id = v_pc;
+  perform pg_temp.ok(n = 0, 'computador: dono exclui o computador');
+end;
+$$;
+
 select n, ok, teste from resultado order by n;
 select count(*) filter (where not ok) as falhas, count(*) as total from resultado;
 

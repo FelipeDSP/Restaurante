@@ -4,6 +4,7 @@ import { Download, Laptop } from "lucide-react";
 import { useActionState, useState } from "react";
 
 import { useAcao } from "@/components/staff/acoes-cliente";
+import { BotaoConfirmar } from "@/components/staff/botao-confirmar";
 import { BotaoEnviar, ErroCampo, useAvisoResultado, valorCampo } from "@/components/staff/formulario";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -13,7 +14,7 @@ import { VALIDADE_CODIGO_MIN } from "@/lib/impressao/constantes";
 import { horaLocal, tempoDesde } from "@/lib/tempo";
 import { cn } from "@/lib/utils";
 
-import { conectarComputador, desconectarComputador, gerarNovoCodigo, type ResultadoCodigo } from "./actions";
+import { conectarComputador, desconectarComputador, excluirComputador, gerarNovoCodigo, type ResultadoCodigo } from "./actions";
 import type { Computador } from "./dados";
 
 const SITUACAO: Record<Computador["situacao"], { rotulo: string; classe: string }> = {
@@ -76,10 +77,21 @@ function LinhaComputador({ computador, fuso, dono }: { computador: Computador; f
               {computador.situacao === "aguardando" ? "Gerar código" : "Parear de novo"}
             </Button>
             {computador.situacao !== "desconectado" ? (
-              <Button type="button" variant="ghost" size="sm" disabled={pendente} onClick={() => executar(() => desconectarComputador(computador.id))}>
+              <BotaoConfirmar
+                rotulo={`Desconectar ${computador.nome}`}
+                confirmar="Confirmar: desconectar"
+                icone={false}
+                desabilitado={pendente}
+                aoConfirmar={() => executar(() => desconectarComputador(computador.id))}
+              >
                 Desconectar
-              </Button>
+              </BotaoConfirmar>
             ) : null}
+            <BotaoConfirmar
+              rotulo={`Excluir ${computador.nome}`}
+              desabilitado={pendente}
+              aoConfirmar={() => executar(() => excluirComputador(computador.id))}
+            />
           </div>
         ) : null}
       </div>
