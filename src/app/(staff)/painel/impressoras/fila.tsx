@@ -4,7 +4,7 @@ import { RotateCcw } from "lucide-react";
 
 import { useAcao } from "@/components/staff/acoes-cliente";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { horaLocal } from "@/lib/tempo";
 import { cn } from "@/lib/utils";
 
@@ -32,7 +32,6 @@ export function Fila({ fila, fuso }: { fila: Impressao[]; fuso: string }) {
     <Card>
       <CardHeader>
         <CardTitle>Últimas impressões</CardTitle>
-        <CardDescription>Atualiza sozinho. Algo não saiu? Reimprima daqui.</CardDescription>
       </CardHeader>
       <CardContent>
         {fila.length === 0 ? (

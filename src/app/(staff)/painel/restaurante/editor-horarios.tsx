@@ -20,14 +20,29 @@ export function EditorHorarios({ inicial }: { inicial: Horarios }) {
     });
   }
 
+  // Primeiro dia aberto: base do "mesmo horário todos os dias".
+  const modelo = DIAS.map((d) => horarios[d]).find((h) => h && h.length > 0);
+
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col">
       <input type="hidden" name="horarios" value={JSON.stringify(horarios)} />
+      {modelo ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="mb-2 self-start"
+          onClick={() => setHorarios(Object.fromEntries(DIAS.map((d) => [d, modelo.map((x) => ({ ...x }))])))}
+        >
+          <Copy />
+          Mesmo horário todos os dias
+        </Button>
+      ) : null}
       {DIAS.map((dia) => {
         const intervalos = horarios[dia] ?? [];
         const aberto = intervalos.length > 0;
         return (
-          <div key={dia} className="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-start">
+          <div key={dia} className="flex flex-col gap-2 border-b py-2 last:border-b-0 sm:flex-row sm:items-start">
             <label className="flex w-32 shrink-0 items-center gap-2 pt-2 text-sm font-medium">
               <input
                 type="checkbox"
@@ -60,39 +75,35 @@ export function EditorHorarios({ inicial }: { inicial: Horarios }) {
                       }
                       className="h-10 w-32"
                     />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      aria-label="Remover intervalo"
-                      onClick={() => alterar(dia, intervalos.filter((_, j) => j !== i))}
-                    >
-                      <X />
-                    </Button>
+                    {intervalo.fecha <= intervalo.abre ? (
+                      <span className="text-xs text-muted-foreground">{intervalo.fecha === intervalo.abre ? "(24 horas)" : "(dia seguinte)"}</span>
+                    ) : null}
+                    {intervalos.length > 1 ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Remover este horário"
+                        title="Remover este horário"
+                        onClick={() => alterar(dia, intervalos.filter((_, j) => j !== i))}
+                      >
+                        <X />
+                      </Button>
+                    ) : null}
+                    {i === intervalos.length - 1 && intervalos.length < 3 ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Abrir mais uma vez na ${NOME_DIA[dia]}`}
+                        title="Mais um horário neste dia (ex.: almoço e noite)"
+                        onClick={() => alterar(dia, [...intervalos, { abre: "11:00", fecha: "14:00" }])}
+                      >
+                        <Plus />
+                      </Button>
+                    ) : null}
                   </div>
                 ))}
-                <div className="flex flex-wrap gap-1">
-                  {intervalos.length < 3 ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => alterar(dia, [...intervalos, { abre: "11:00", fecha: "14:00" }])}
-                    >
-                      <Plus />
-                      Adicionar intervalo
-                    </Button>
-                  ) : null}
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setHorarios(Object.fromEntries(DIAS.map((d) => [d, intervalos.map((x) => ({ ...x }))])))}
-                  >
-                    <Copy />
-                    Copiar para todos os dias
-                  </Button>
-                </div>
               </div>
             ) : (
               <span className="pt-2 text-sm text-muted-foreground">Fechado</span>
@@ -100,10 +111,6 @@ export function EditorHorarios({ inicial }: { inicial: Horarios }) {
           </div>
         );
       })}
-      <p className="text-xs text-muted-foreground">
-        Se o horário de fechamento for menor que o de abertura (ex.: 18:00 até 02:00), conta como
-        fechando depois da meia-noite.
-      </p>
     </div>
   );
 }

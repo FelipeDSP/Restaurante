@@ -51,12 +51,7 @@ export default async function EquipePage() {
 
   return (
     <main className="flex flex-col gap-6 p-4 md:p-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Equipe</h1>
-        <p className="text-muted-foreground">
-          Dono: tudo. Caixa: painel, pagamentos e delivery. Garçom: app de mesas. Cozinha: só a tela da cozinha.
-        </p>
-      </div>
+      <h1 className="text-2xl font-semibold">Equipe</h1>
       {!admin ? (
         <p role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
           Cadastrar pessoas e trocar senhas ainda não está disponível neste servidor. Fale com o suporte. Editar

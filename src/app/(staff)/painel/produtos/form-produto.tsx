@@ -167,7 +167,7 @@ export function FormProduto({
               defaultChecked={marcadoCampo(estado, "disponivel", produto?.disponivel ?? true)}
               className="size-5 accent-[var(--cor-primaria-texto)]"
             />
-            Disponível (desmarque quando esgotar: some do salão e do delivery)
+            Disponível
           </label>
           <label className="flex items-center gap-3 text-sm font-medium">
             <input
@@ -176,7 +176,7 @@ export function FormProduto({
               defaultChecked={marcadoCampo(estado, "disponivel_delivery", produto?.disponivel_delivery ?? true)}
               className="size-5 accent-[var(--cor-primaria-texto)]"
             />
-            Também vende no delivery
+            Aparece no delivery
           </label>
         </CardContent>
       </Card>
@@ -184,30 +184,22 @@ export function FormProduto({
       <Card>
         <CardContent className="flex flex-col gap-3">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="font-semibold">Preparo na cozinha</h2>
+            <h2 className="font-semibold">Onde é preparado</h2>
             <Link href="/painel/pracas" className="text-sm underline underline-offset-4">
-              Gerenciar praças
+              Editar setores
             </Link>
           </div>
-          <p className="text-sm text-muted-foreground">
-            Por quais praças o produto passa. Ex.: espeto só na churrasqueira; picanha na churrasqueira e depois na cozinha.
-          </p>
           <input type="hidden" name="etapas" value={JSON.stringify(etapasParaBanco(etapas))} />
           <EditorRota pracas={pracas} etapas={etapas} aoMudar={setEtapas} />
           <ErroCampo estado={estado} campo="etapas" />
-          <label className="mt-2 flex items-start gap-3 text-sm font-medium">
+          <label className="mt-2 flex items-center gap-3 text-sm font-medium">
             <input
               type="checkbox"
               name="para_viagem"
               defaultChecked={marcadoCampo(estado, "para_viagem", produto?.para_viagem ?? false)}
-              className="mt-0.5 size-5 accent-[var(--cor-primaria-texto)]"
+              className="size-5 accent-[var(--cor-primaria-texto)]"
             />
-            <span>
-              Sempre sai pra viagem
-              <span className="block font-normal text-muted-foreground">
-                Ex.: marmita ou açaí no copo. O garçom ainda pode mudar na hora; delivery é sempre pra viagem.
-              </span>
-            </span>
+            Sempre sai pra viagem
           </label>
         </CardContent>
       </Card>
@@ -217,18 +209,12 @@ export function FormProduto({
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="font-semibold">Adicionais e opções</h2>
             <Link href="/painel/adicionais" className="text-sm underline underline-offset-4">
-              Gerenciar grupos
+              Editar adicionais
             </Link>
           </div>
           <input type="hidden" name="grupos" value={JSON.stringify(gruposEscolhidos)} />
           {grupos.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Nenhum grupo cadastrado. Crie em{" "}
-              <Link href="/painel/adicionais" className="underline underline-offset-4">
-                Adicionais
-              </Link>{" "}
-              (ex.: ponto da carne, adicionais com preço) e volte aqui para ligar ao produto.
-            </p>
+            <p className="text-sm text-muted-foreground">Nenhum adicional cadastrado.</p>
           ) : (
             <ul className="grid gap-2 sm:grid-cols-2">
               {grupos.map((g) => {

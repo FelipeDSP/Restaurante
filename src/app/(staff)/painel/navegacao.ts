@@ -1,12 +1,14 @@
 import type { Papel } from "@/lib/auth/papeis";
 
-export type GrupoNavegacao = "Operação" | "Cardápio" | "Configurações" | "Conta";
+export type GrupoNavegacao = "Operação" | "Cadastros" | "Ajustes";
 
-export type ItemNavegacao = { href: string; rotulo: string; grupo: GrupoNavegacao; papeis: Papel[]; descricao?: string };
+export type Secao = { href: string; rotulo: string };
 
-export const GRUPOS: GrupoNavegacao[] = ["Operação", "Cardápio", "Configurações", "Conta"];
+// "secoes": páginas que ficam dentro do mesmo item do menu, mostradas como abas no topo.
+export type ItemNavegacao = { href: string; rotulo: string; grupo: GrupoNavegacao; papeis: Papel[]; secoes?: Secao[] };
 
-// Itens do menu do painel, agrupados; "descricao" vira atalho na página inicial.
+export const GRUPOS: GrupoNavegacao[] = ["Operação", "Cadastros", "Ajustes"];
+
 export const NAVEGACAO: ItemNavegacao[] = [
   { href: "/painel", rotulo: "Início", grupo: "Operação", papeis: ["dono", "caixa"] },
   { href: "/painel/delivery", rotulo: "Delivery", grupo: "Operação", papeis: ["dono", "caixa"] },
@@ -14,20 +16,58 @@ export const NAVEGACAO: ItemNavegacao[] = [
   { href: "/painel/caixa", rotulo: "Caixa", grupo: "Operação", papeis: ["dono", "caixa"] },
   { href: "/painel/relatorios", rotulo: "Relatórios", grupo: "Operação", papeis: ["dono"] },
   { href: "/cozinha", rotulo: "Tela da cozinha", grupo: "Operação", papeis: ["dono", "caixa"] },
-  { href: "/painel/produtos", rotulo: "Produtos", grupo: "Cardápio", papeis: ["dono"], descricao: "Cardápio, preços, fotos e disponibilidade" },
-  { href: "/painel/categorias", rotulo: "Categorias", grupo: "Cardápio", papeis: ["dono"], descricao: "Seções e ordem do cardápio" },
-  { href: "/painel/adicionais", rotulo: "Adicionais", grupo: "Cardápio", papeis: ["dono"], descricao: "Ponto da carne, sabores e adicionais com preço" },
-  { href: "/painel/restaurante", rotulo: "Restaurante", grupo: "Configurações", papeis: ["dono"], descricao: "Marca, horários e delivery" },
-  { href: "/painel/mesas", rotulo: "Mesas", grupo: "Configurações", papeis: ["dono"], descricao: "Mesas do salão" },
-  { href: "/painel/bairros", rotulo: "Bairros de entrega", grupo: "Configurações", papeis: ["dono"], descricao: "Áreas e taxas de entrega" },
-  { href: "/painel/equipe", rotulo: "Equipe", grupo: "Configurações", papeis: ["dono"], descricao: "Pessoas, papéis e senhas" },
-  { href: "/painel/pracas", rotulo: "Setores da cozinha", grupo: "Configurações", papeis: ["dono"], descricao: "Churrasqueira, chapa, bar: para onde vai cada pedido" },
-  { href: "/painel/impressoras", rotulo: "Impressoras", grupo: "Configurações", papeis: ["dono", "caixa"], descricao: "Computador do caixa, impressoras e o que sai em cada uma" },
-  { href: "/painel/assinatura", rotulo: "Assinatura", grupo: "Conta", papeis: ["dono"], descricao: "Plano, teste grátis e pagamento" },
+  {
+    href: "/painel/produtos",
+    rotulo: "Cardápio",
+    grupo: "Cadastros",
+    papeis: ["dono"],
+    secoes: [
+      { href: "/painel/produtos", rotulo: "Produtos" },
+      { href: "/painel/categorias", rotulo: "Categorias" },
+      { href: "/painel/adicionais", rotulo: "Adicionais" },
+    ],
+  },
+  { href: "/painel/mesas", rotulo: "Mesas", grupo: "Cadastros", papeis: ["dono"] },
+  { href: "/painel/equipe", rotulo: "Equipe", grupo: "Cadastros", papeis: ["dono"] },
+  {
+    href: "/painel/restaurante",
+    rotulo: "Restaurante",
+    grupo: "Ajustes",
+    papeis: ["dono"],
+    secoes: [
+      { href: "/painel/restaurante", rotulo: "Dados e delivery" },
+      { href: "/painel/bairros", rotulo: "Bairros" },
+    ],
+  },
+  {
+    href: "/painel/pracas",
+    rotulo: "Cozinha e impressão",
+    grupo: "Ajustes",
+    papeis: ["dono"],
+    secoes: [
+      { href: "/painel/pracas", rotulo: "Setores" },
+      { href: "/painel/impressoras", rotulo: "Impressoras" },
+    ],
+  },
+  // O caixa só cuida das impressoras (sem os setores).
+  { href: "/painel/impressoras", rotulo: "Impressoras", grupo: "Ajustes", papeis: ["caixa"] },
 ];
 
-// Item ativo: o mais específico que casa com o caminho (Início só na própria página).
+function casa(href: string, caminho: string) {
+  return href === "/painel" ? caminho === "/painel" : caminho === href || caminho.startsWith(`${href}/`);
+}
+
+// Item do menu que contém a página atual (pelo próprio endereço ou por uma das abas).
+export function itemDaPagina(itens: ItemNavegacao[], caminho: string): ItemNavegacao | null {
+  let melhor: { item: ItemNavegacao; tamanho: number } | null = null;
+  for (const item of itens) {
+    for (const href of [item.href, ...(item.secoes?.map((s) => s.href) ?? [])]) {
+      if (casa(href, caminho) && (!melhor || href.length > melhor.tamanho)) melhor = { item, tamanho: href.length };
+    }
+  }
+  return melhor?.item ?? null;
+}
+
 export function itemAtivo(itens: ItemNavegacao[], caminho: string): string | null {
-  const candidatos = itens.filter((i) => (i.href === "/painel" ? caminho === "/painel" : caminho === i.href || caminho.startsWith(`${i.href}/`)));
-  return candidatos.sort((a, b) => b.href.length - a.href.length)[0]?.href ?? null;
+  return itemDaPagina(itens, caminho)?.href ?? null;
 }

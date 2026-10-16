@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatarBRL } from "@/lib/dinheiro";
 import { diaLocal } from "@/lib/tempo";
 
@@ -30,15 +30,11 @@ export async function UltimasNoites({ restauranteId, fuso }: { restauranteId: st
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between gap-3">
         <CardTitle>Últimas noites</CardTitle>
-        <CardDescription>
-          Por sessão de caixa fechada. Toque numa noite para ver o resumo completo ou veja{" "}
-          <Link href="/painel/relatorios" className="font-medium text-foreground underline underline-offset-4">
-            os relatórios
-          </Link>
-          .
-        </CardDescription>
+        <Link href="/painel/relatorios" className="text-sm font-medium underline underline-offset-4">
+          Relatórios
+        </Link>
       </CardHeader>
       <CardContent className="grid gap-6 lg:grid-cols-[2fr_1fr]">
         <table className="w-full text-sm">

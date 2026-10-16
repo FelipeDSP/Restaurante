@@ -14,7 +14,7 @@ import { urlIcone } from "@/lib/icone";
 import { createClient } from "@/lib/supabase/server";
 
 import { AvisoAssinatura } from "./aviso-assinatura";
-import { MenuCelular, MenuLateral } from "./menu-painel";
+import { AbasSecao, MenuCelular, MenuLateral } from "./menu-painel";
 import { NAVEGACAO } from "./navegacao";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -70,6 +70,7 @@ export default async function PainelLayout({ children }: LayoutProps<"/painel">)
               podeTrocarRestaurante={acesso.vinculos.length > 1}
               outraArea={{ href: "/garcom", rotulo: "Abrir área do garçom" }}
               adminPlataforma={adminPlataforma}
+              assinatura={acesso.papel === "dono"}
             />
           </div>
         </div>
@@ -80,7 +81,10 @@ export default async function PainelLayout({ children }: LayoutProps<"/painel">)
         <MenuLateral itens={itens} novos={novos} />
         <div className="flex min-w-0 flex-1 flex-col">
           <AvisoAssinatura assinatura={assinatura} />
-          <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col">{children}</div>
+          <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col">
+            <AbasSecao itens={itens} />
+            {children}
+          </div>
         </div>
       </div>
     </div>

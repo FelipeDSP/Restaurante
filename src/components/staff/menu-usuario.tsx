@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeftRight, LogOut, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowLeftRight, CreditCard, LogOut, ShieldCheck, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useTransition } from "react";
 
@@ -22,9 +22,11 @@ type Props = {
   outraArea?: { href: string; rotulo: string };
   // Só para o dono da plataforma (super admin).
   adminPlataforma?: boolean;
+  // Dono: plano e pagamento ficam aqui, fora do menu do dia a dia.
+  assinatura?: boolean;
 };
 
-export function MenuUsuario({ nome, papel, podeTrocarRestaurante, outraArea, adminPlataforma }: Props) {
+export function MenuUsuario({ nome, papel, podeTrocarRestaurante, outraArea, adminPlataforma, assinatura }: Props) {
   const [saindo, iniciar] = useTransition();
 
   return (
@@ -46,6 +48,12 @@ export function MenuUsuario({ nome, papel, podeTrocarRestaurante, outraArea, adm
         {outraArea ? (
           <DropdownMenuItem className="h-10" render={<Link href={outraArea.href} />}>
             {outraArea.rotulo}
+          </DropdownMenuItem>
+        ) : null}
+        {assinatura ? (
+          <DropdownMenuItem className="h-10" render={<Link href="/painel/assinatura" />}>
+            <CreditCard />
+            Assinatura
           </DropdownMenuItem>
         ) : null}
         {adminPlataforma ? (

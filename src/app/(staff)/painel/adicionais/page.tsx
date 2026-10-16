@@ -45,13 +45,7 @@ export default async function AdicionaisPage() {
 
   return (
     <main className="flex flex-col gap-6 p-4 md:p-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Adicionais e opções</h1>
-        <p className="text-muted-foreground">
-          Crie grupos (ex.: ponto da carne, adicionais com preço) e ligue cada grupo aos produtos na tela do produto. O mesmo
-          grupo pode ser usado em vários produtos.
-        </p>
-      </div>
+      <h1 className="sr-only">Adicionais e opções</h1>
       <NovoGrupo />
       <ListaGrupos grupos={lista} />
     </main>

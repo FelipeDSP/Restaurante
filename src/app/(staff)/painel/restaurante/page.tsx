@@ -28,7 +28,7 @@ export default async function RestaurantePage() {
 
   return (
     <main className="flex flex-col gap-6 p-4 md:p-6">
-      <h1 className="text-2xl font-semibold">Dados e marca</h1>
+      <h1 className="sr-only">Dados e delivery</h1>
       <FormRestaurante
         restaurante={{
           ...r,

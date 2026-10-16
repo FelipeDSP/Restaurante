@@ -8,7 +8,7 @@ import { BotaoConfirmar } from "@/components/staff/botao-confirmar";
 import { BotaoEnviar, Campo, ErroCampo, marcadoCampo, Selecao, useAvisoResultado, valorCampo } from "@/components/staff/formulario";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { tempoDesde } from "@/lib/tempo";
 import { cn } from "@/lib/utils";
@@ -186,7 +186,7 @@ function FormImpressora({
             Via do delivery (motoboy)
           </label>
         </div>
-        {pracas.length === 0 ? <p className="text-sm text-muted-foreground">Cadastre as praças em Painel &gt; Praças.</p> : null}
+        {pracas.length === 0 ? <p className="text-sm text-muted-foreground">Nenhum setor da cozinha cadastrado.</p> : null}
       </fieldset>
       <label className="flex items-center gap-2 text-sm font-medium">
         <input
@@ -296,7 +296,6 @@ export function Impressoras({
     <Card>
       <CardHeader>
         <CardTitle>Impressoras</CardTitle>
-        <CardDescription>Cada praça imprime numa impressora; a mesma impressora pode atender várias praças, a conta e o delivery.</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         {impressoras.length > 0 ? (

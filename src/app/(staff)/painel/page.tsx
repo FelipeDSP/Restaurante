@@ -4,12 +4,10 @@ import { AtualizarEmTempoReal } from "@/components/staff/atualizar-em-tempo-real
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { exigirAcesso } from "@/lib/auth/dal";
-import { NOME_PAPEL } from "@/lib/auth/papeis";
 import { formatarBRL } from "@/lib/dinheiro";
 import { dataHoraLocal } from "@/lib/tempo";
 
 import { carregarResumo, carregarSessaoAberta } from "./caixa/dados";
-import { NAVEGACAO } from "./navegacao";
 import { PrimeirosPassos } from "./primeiros-passos";
 import { UltimasNoites } from "./ultimas-noites";
 
@@ -22,9 +20,6 @@ async function StatusCaixa({ restauranteId, fuso }: { restauranteId: string; fus
       <Card className="border-amber-300 bg-amber-50">
         <CardHeader>
           <CardTitle>Caixa fechado</CardTitle>
-          <CardDescription className="text-amber-900">
-            Abra o caixa para liberar comandas, pagamentos e pedidos de delivery.
-          </CardDescription>
         </CardHeader>
         <CardContent>
           <Button className="h-11" nativeButton={false} render={<Link href="/painel/caixa" />}>
@@ -73,44 +68,14 @@ async function StatusCaixa({ restauranteId, fuso }: { restauranteId: string; fus
 
 export default async function PainelPage() {
   const acesso = await exigirAcesso("painel");
-  const atalhos = NAVEGACAO.filter((item) => item.descricao && item.papeis.includes(acesso.papel));
 
   return (
     <main className="flex flex-col gap-6 p-4 md:p-6">
       <AtualizarEmTempoReal restauranteId={acesso.restaurante.id} tabelas={["comandas", "pagamentos"]} />
-      <div>
-        <h1 className="text-2xl font-semibold">Olá, {acesso.nome}</h1>
-        <p className="text-muted-foreground">
-          {acesso.restaurante.nome} · {NOME_PAPEL[acesso.papel]}
-        </p>
-      </div>
+      <h1 className="text-2xl font-semibold">Olá, {acesso.nome}</h1>
       {acesso.papel === "dono" ? <PrimeirosPassos acesso={acesso} /> : null}
       <StatusCaixa restauranteId={acesso.restaurante.id} fuso={acesso.restaurante.fusoHorario} />
       {acesso.papel === "dono" ? <UltimasNoites restauranteId={acesso.restaurante.id} fuso={acesso.restaurante.fusoHorario} /> : null}
-      {atalhos.length > 0 ? (
-        <section aria-labelledby="titulo-cadastros" className="flex flex-col gap-3">
-          <h2 id="titulo-cadastros" className="text-lg font-semibold">
-            Cadastros
-          </h2>
-          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {atalhos.map((item) => (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className="block h-full rounded-xl focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
-                >
-                  <Card className="h-full transition-colors hover:bg-muted/50">
-                    <CardHeader>
-                      <CardTitle>{item.rotulo}</CardTitle>
-                      <CardDescription>{item.descricao}</CardDescription>
-                    </CardHeader>
-                  </Card>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
     </main>
   );
 }

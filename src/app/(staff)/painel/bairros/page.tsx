@@ -21,18 +21,13 @@ export default async function BairrosPage() {
 
   return (
     <main className="flex flex-col gap-6 p-4 md:p-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Bairros de entrega</h1>
-        <p className="text-muted-foreground">Só bairros ativos aparecem no checkout do delivery.</p>
-      </div>
+      <h1 className="sr-only">Bairros de entrega</h1>
       {fixa ? (
         <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
-          Seu delivery está com <strong>taxa fixa</strong>: o cliente informa o CEP e paga o mesmo valor em qualquer bairro. Esta lista
-          só vale se você mudar para <strong>Por bairro</strong> em{" "}
-          <Link href="/painel/restaurante" className="font-semibold underline underline-offset-4">
-            Restaurante › Delivery
+          Você usa <strong>taxa fixa</strong>, então esta lista não está valendo.{" "}
+          <Link href="/painel/restaurante#delivery" className="font-semibold underline underline-offset-4">
+            Mudar para taxa por bairro
           </Link>
-          .
         </p>
       ) : null}
       <NovoBairro />

@@ -1,5 +1,6 @@
 "use client";
 
+import { ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { useActionState, useState } from "react";
 
@@ -58,30 +59,49 @@ export function FormRestaurante({ restaurante }: { restaurante: DadosRestaurante
     <form key={estado?.chave} action={acao} className="flex flex-col gap-6">
       <Card>
         <CardHeader>
-          <CardTitle>Identificação</CardTitle>
+          <CardTitle>Dados</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
-          <Campo rotulo="Nome do restaurante" htmlFor="nome" className="sm:col-span-2">
+        <CardContent className="grid gap-4 sm:grid-cols-6">
+          <Campo rotulo="Nome do restaurante" htmlFor="nome" className="sm:col-span-6">
             <Input id="nome" name="nome" defaultValue={valorCampo(estado, "nome", restaurante.nome)} required className="h-10" />
             <ErroCampo estado={estado} campo="nome" />
           </Campo>
-          <Campo rotulo="Telefone" htmlFor="telefone">
+          <Campo rotulo="Telefone" htmlFor="telefone" className="sm:col-span-3">
             <Input id="telefone" name="telefone" type="tel" defaultValue={valorCampo(estado, "telefone", restaurante.telefone)} className="h-10" />
             <ErroCampo estado={estado} campo="telefone" />
           </Campo>
-          <Campo rotulo="WhatsApp" htmlFor="whatsapp" dica="Com DDD, só números.">
-            <Input id="whatsapp" name="whatsapp" type="tel" defaultValue={valorCampo(estado, "whatsapp", restaurante.whatsapp)} className="h-10" />
+          <Campo rotulo="WhatsApp" htmlFor="whatsapp" className="sm:col-span-3">
+            <Input id="whatsapp" name="whatsapp" type="tel" placeholder="DDD + número" defaultValue={valorCampo(estado, "whatsapp", restaurante.whatsapp)} className="h-10" />
             <ErroCampo estado={estado} campo="whatsapp" />
           </Campo>
-          <p className="text-sm text-muted-foreground sm:col-span-2">
-            Endereço do site de delivery: <strong className="text-foreground">/{restaurante.slug}</strong>
-          </p>
+          <Campo rotulo="Endereço" htmlFor="rua" className="sm:col-span-4">
+            <Input id="rua" name="rua" defaultValue={valorCampo(estado, "rua", e.rua)} className="h-10" />
+          </Campo>
+          <Campo rotulo="Número" htmlFor="numero" className="sm:col-span-2">
+            <Input id="numero" name="numero" defaultValue={valorCampo(estado, "numero", e.numero)} className="h-10" />
+          </Campo>
+          <Campo rotulo="Bairro" htmlFor="bairro" className="sm:col-span-3">
+            <Input id="bairro" name="bairro" defaultValue={valorCampo(estado, "bairro", e.bairro)} className="h-10" />
+          </Campo>
+          <Campo rotulo="Complemento" htmlFor="complemento" className="sm:col-span-3">
+            <Input id="complemento" name="complemento" defaultValue={valorCampo(estado, "complemento", e.complemento)} className="h-10" />
+          </Campo>
+          <Campo rotulo="Cidade" htmlFor="cidade" className="sm:col-span-4">
+            <Input id="cidade" name="cidade" defaultValue={valorCampo(estado, "cidade", e.cidade)} className="h-10" />
+          </Campo>
+          <Campo rotulo="UF" htmlFor="uf" className="sm:col-span-2">
+            <Input id="uf" name="uf" maxLength={2} defaultValue={valorCampo(estado, "uf", e.uf)} className="h-10 uppercase" />
+          </Campo>
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-3">
           <CardTitle>Marca</CardTitle>
+          <Link href={`/${restaurante.slug}`} target="_blank" className="inline-flex items-center gap-1 text-sm font-medium underline underline-offset-4">
+            Ver meu site
+            <ExternalLink className="size-3.5" aria-hidden />
+          </Link>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
@@ -126,36 +146,11 @@ export function FormRestaurante({ restaurante }: { restaurante: DadosRestaurante
 
       <Card>
         <CardHeader>
-          <CardTitle>Endereço</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-6">
-          <Campo rotulo="Rua" htmlFor="rua" className="sm:col-span-4">
-            <Input id="rua" name="rua" defaultValue={valorCampo(estado, "rua", e.rua)} className="h-10" />
-          </Campo>
-          <Campo rotulo="Número" htmlFor="numero" className="sm:col-span-2">
-            <Input id="numero" name="numero" defaultValue={valorCampo(estado, "numero", e.numero)} className="h-10" />
-          </Campo>
-          <Campo rotulo="Bairro" htmlFor="bairro" className="sm:col-span-3">
-            <Input id="bairro" name="bairro" defaultValue={valorCampo(estado, "bairro", e.bairro)} className="h-10" />
-          </Campo>
-          <Campo rotulo="Complemento" htmlFor="complemento" className="sm:col-span-3">
-            <Input id="complemento" name="complemento" defaultValue={valorCampo(estado, "complemento", e.complemento)} className="h-10" />
-          </Campo>
-          <Campo rotulo="Cidade" htmlFor="cidade" className="sm:col-span-4">
-            <Input id="cidade" name="cidade" defaultValue={valorCampo(estado, "cidade", e.cidade)} className="h-10" />
-          </Campo>
-          <Campo rotulo="UF" htmlFor="uf" className="sm:col-span-2">
-            <Input id="uf" name="uf" maxLength={2} defaultValue={valorCampo(estado, "uf", e.uf)} className="h-10 uppercase" />
-          </Campo>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Funcionamento</CardTitle>
+          <CardTitle>Horários</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <Campo rotulo="Fuso horário" htmlFor="fuso_horario">
+          <EditorHorarios inicial={horariosEnviados(estado) ?? restaurante.horarios} />
+          <Campo rotulo="Fuso horário" htmlFor="fuso_horario" className="max-w-xs">
             <Selecao id="fuso_horario" name="fuso_horario" defaultValue={valorCampo(estado, "fuso_horario", restaurante.fuso_horario)}>
               {FUSOS.map((f) => (
                 <option key={f.valor} value={f.valor}>
@@ -164,11 +159,10 @@ export function FormRestaurante({ restaurante }: { restaurante: DadosRestaurante
               ))}
             </Selecao>
           </Campo>
-          <EditorHorarios inicial={horariosEnviados(estado) ?? restaurante.horarios} />
         </CardContent>
       </Card>
 
-      <Card>
+      <Card id="delivery" className="scroll-mt-20">
         <CardHeader>
           <CardTitle>Delivery</CardTitle>
         </CardHeader>
@@ -195,11 +189,11 @@ export function FormRestaurante({ restaurante }: { restaurante: DadosRestaurante
               />
               <span className="flex flex-col">
                 <span className="font-medium">Taxa fixa</span>
-                <span className="text-muted-foreground">Um valor só para qualquer endereço. O cliente informa o CEP e o endereço se preenche sozinho.</span>
+                <span className="text-muted-foreground">O mesmo valor para qualquer endereço</span>
               </span>
             </label>
             {modoTaxa === "fixa" ? (
-              <Campo rotulo="Valor da taxa (R$)" htmlFor="taxa_entrega_fixa" className="pl-11" dica="Use 0,00 para entrega grátis.">
+              <Campo rotulo="Valor da taxa (R$)" htmlFor="taxa_entrega_fixa" className="pl-11" dica="0,00 = entrega grátis">
                 <Input
                   id="taxa_entrega_fixa"
                   name="taxa_entrega_fixa"
@@ -224,15 +218,14 @@ export function FormRestaurante({ restaurante }: { restaurante: DadosRestaurante
               />
               <span className="flex flex-col">
                 <span className="font-medium">Por bairro</span>
-                <span className="text-muted-foreground">
-                  Cada bairro com a sua taxa; o cliente escolhe da lista e só entrega onde estiver cadastrado. Cadastre em{" "}
-                  <Link href="/painel/bairros" className="font-medium text-foreground underline underline-offset-4">
-                    Bairros de entrega
-                  </Link>
-                  .
-                </span>
+                <span className="text-muted-foreground">Cada bairro com a sua taxa</span>
               </span>
             </label>
+            {modoTaxa === "bairro" ? (
+              <Link href="/painel/bairros" className="pl-11 text-sm font-medium underline underline-offset-4">
+                Editar bairros e taxas
+              </Link>
+            ) : null}
           </fieldset>
           <Campo rotulo="Pedido mínimo (R$)" htmlFor="pedido_minimo">
             <Input
@@ -244,7 +237,7 @@ export function FormRestaurante({ restaurante }: { restaurante: DadosRestaurante
             />
             <ErroCampo estado={estado} campo="pedido_minimo" />
           </Campo>
-          <Campo rotulo="Tempo estimado de entrega (min)" htmlFor="tempo_estimado_entrega_min">
+          <Campo rotulo="Tempo de entrega (minutos)" htmlFor="tempo_estimado_entrega_min">
             <Input
               id="tempo_estimado_entrega_min"
               name="tempo_estimado_entrega_min"

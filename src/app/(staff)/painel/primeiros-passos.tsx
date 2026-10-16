@@ -79,7 +79,7 @@ export async function PrimeirosPassos({ acesso }: { acesso: Acesso }) {
           <div className="flex flex-col gap-1.5">
             <CardTitle className="text-lg">Primeiros passos</CardTitle>
             <CardDescription>
-              {feitos} de {passos.length} concluídos. Faça na ordem que preferir.
+              {feitos} de {passos.length} feitos
             </CardDescription>
           </div>
           <Link
@@ -123,7 +123,7 @@ export async function PrimeirosPassos({ acesso }: { acesso: Acesso }) {
                 </span>
                 <span className="flex min-w-0 flex-1 flex-col">
                   <span className={cn("font-medium", p.feito && "line-through")}>{p.titulo}</span>
-                  <span className="text-sm text-muted-foreground">{p.descricao}</span>
+                  {p.feito ? null : <span className="text-sm text-muted-foreground">{p.descricao}</span>}
                 </span>
                 <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
               </Link>

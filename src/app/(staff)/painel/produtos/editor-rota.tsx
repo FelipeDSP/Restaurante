@@ -50,14 +50,14 @@ export function EditorRota({
   }
 
   if (pracas.length === 0) {
-    return <p className="text-sm text-muted-foreground">Cadastre as praças em Painel &gt; Praças para montar a rota de preparo.</p>;
+    return <p className="text-sm text-muted-foreground">Nenhum setor da cozinha cadastrado.</p>;
   }
 
   return (
     <div className="flex flex-col gap-2">
       {etapas.length === 0 ? (
         <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
-          Não vai para a cozinha (ex.: bebidas). Adicione uma praça se precisar de preparo.
+          Não vai para a cozinha.
         </p>
       ) : (
         <ol className="flex flex-col gap-2">
@@ -77,7 +77,7 @@ export function EditorRota({
                 </Selecao>
               )}
               <Selecao
-                aria-label={`Praça da etapa ${i + 1}`}
+                aria-label={`Setor da etapa ${i + 1}`}
                 value={etapa.estacaoId}
                 onChange={(e) => mudar(i, { estacaoId: e.target.value })}
                 className="h-10 min-w-40 flex-1"
@@ -112,7 +112,7 @@ export function EditorRota({
             onClick={() => aoMudar([...etapas, { estacaoId: livres[0].id, junto: false }])}
           >
             <Plus />
-            {etapas.length === 0 ? "Adicionar praça" : "Adicionar outra praça"}
+            {etapas.length === 0 ? "Adicionar setor" : "Adicionar outro setor"}
           </Button>
         ) : null}
         {etapas.length > 1 ? (

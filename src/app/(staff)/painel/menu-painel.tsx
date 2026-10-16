@@ -8,7 +8,7 @@ import { useState } from "react";
 
 import { cn } from "@/lib/utils";
 
-import { GRUPOS, type ItemNavegacao, itemAtivo } from "./navegacao";
+import { GRUPOS, type ItemNavegacao, itemAtivo, itemDaPagina } from "./navegacao";
 
 type Props = { itens: ItemNavegacao[]; novos: number };
 
@@ -113,6 +113,33 @@ export function MenuCelular({ itens, novos }: Props) {
           </Dialog.Popup>
         </Dialog.Portal>
       </Dialog.Root>
+    </nav>
+  );
+}
+
+// Abas das páginas que ficam no mesmo item do menu (ex.: Cardápio → Produtos, Categorias, Adicionais).
+export function AbasSecao({ itens }: { itens: ItemNavegacao[] }) {
+  const caminho = usePathname();
+  const secoes = itemDaPagina(itens, caminho)?.secoes;
+  if (!secoes || !secoes.some((s) => s.href === caminho)) return null;
+  return (
+    <nav aria-label="Seções" className="flex gap-1 overflow-x-auto sem-barra-rolagem border-b px-4 pt-3 md:px-6 print:hidden">
+      {secoes.map((s) => {
+        const atual = s.href === caminho;
+        return (
+          <Link
+            key={s.href}
+            href={s.href}
+            aria-current={atual ? "page" : undefined}
+            className={cn(
+              "-mb-px flex min-h-11 shrink-0 items-center border-b-2 px-3 text-sm font-medium",
+              atual ? "border-[var(--cor-primaria)] text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {s.rotulo}
+          </Link>
+        );
+      })}
     </nav>
   );
 }

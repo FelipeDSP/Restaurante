@@ -1,6 +1,6 @@
 "use client";
 
-import { Copy, KeyRound, MessageCircle } from "lucide-react";
+import { Copy, KeyRound, MessageCircle, UserPlus } from "lucide-react";
 import { useActionState, useState } from "react";
 import { toast } from "sonner";
 
@@ -112,26 +112,46 @@ export function NovoMembro({
   useAvisoResultado(estado);
   const [senha, setSenha] = useState("");
   const [enviado, setEnviado] = useState<AcessoCriado | null>(null);
+  const [aberto, setAberto] = useState(false);
   const [chaveVista, setChaveVista] = useState(estado?.chave);
-  // Resultado novo: depois de adicionar, limpa a senha para o próximo cadastro.
+  // Resultado novo: depois de adicionar, fecha o formulário e mostra o acesso para enviar.
   if (estado?.chave !== chaveVista) {
     setChaveVista(estado?.chave);
-    if (estado?.ok) setSenha("");
+    if (estado?.ok) {
+      setSenha("");
+      setAberto(false);
+    }
   }
   // O cartão é do envio que acabou de dar certo (não de um resultado anterior).
   const criado = estado?.ok && enviado && estado.chave !== enviado.chaveAntes ? enviado : null;
 
+  if (criado) {
+    return <CartaoAcesso acesso={criado} enderecoLogin={enderecoLogin} restaurante={restaurante} aoFechar={() => setEnviado(null)} />;
+  }
+  if (!aberto) {
+    return (
+      <Button
+        type="button"
+        className="h-11 w-fit"
+        disabled={!habilitado}
+        onClick={() => {
+          // Já vem com uma senha pronta: o dono só confere e envia.
+          setSenha(gerarSenha());
+          setAberto(true);
+        }}
+      >
+        <UserPlus />
+        Adicionar pessoa
+      </Button>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Adicionar à equipe</CardTitle>
+        <CardTitle>Nova pessoa</CardTitle>
       </CardHeader>
       <CardContent>
-        {criado ? (
-          <div className="mb-4 grid">
-            <CartaoAcesso acesso={criado} enderecoLogin={enderecoLogin} restaurante={restaurante} aoFechar={() => setEnviado(null)} />
-          </div>
-        ) : null}
         <form
           key={estado?.chave}
           action={(dados) => {
@@ -160,11 +180,7 @@ export function NovoMembro({
                 <OpcoesPapel />
               </Selecao>
             </Campo>
-            <Campo
-              rotulo="Senha inicial"
-              htmlFor="membro-senha"
-              dica="Mínimo de 8 caracteres. Se a pessoa já tiver conta, a senha dela é mantida."
-            >
+            <Campo rotulo="Senha" htmlFor="membro-senha">
               <div className="flex gap-2">
                 <Input
                   id="membro-senha"
@@ -181,10 +197,13 @@ export function NovoMembro({
               </div>
               <ErroCampo estado={estado} campo="senha" />
             </Campo>
-            <div className="sm:col-span-2">
+            <div className="flex gap-2 sm:col-span-2">
               <BotaoEnviar className="h-11" pendente="Adicionando...">
                 Adicionar
               </BotaoEnviar>
+              <Button type="button" variant="ghost" className="h-11" onClick={() => setAberto(false)}>
+                Cancelar
+              </Button>
             </div>
           </fieldset>
         </form>
