@@ -2,10 +2,11 @@ import "server-only";
 
 import { headers } from "next/headers";
 
-// Origem pública do site (ex.: https://uaufoods.com.br), usada em links de e-mail.
-// Em produção, defina NEXT_PUBLIC_SITE_URL; sem ela, usa o host da requisição (atrás do proxy).
+// Origem pública do site (ex.: https://uau.estudyou.com), usada em links de e-mail.
+// Em produção, defina SITE_URL (lida em tempo de execução: trocar o domínio não exige build novo);
+// NEXT_PUBLIC_SITE_URL fica como alternativa antiga. Sem nenhuma, usa o host da requisição.
 export async function origemDoSite(): Promise<string> {
-  const configurada = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "");
+  const configurada = (process.env.SITE_URL || process.env.NEXT_PUBLIC_SITE_URL)?.replace(/\/+$/, "");
   if (configurada) return configurada;
 
   const h = await headers();

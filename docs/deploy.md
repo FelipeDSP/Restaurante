@@ -36,11 +36,11 @@ Em *Environment Variables* do app:
 | `NEXT_PUBLIC_SUPABASE_URL` | `https://<ref>.supabase.co` | **sim** (marcar *Build Variable*) | sim |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | `sb_publishable_...` | **sim** | sim |
 | `SUPABASE_SECRET_KEY` | `sb_secret_...` | não | sim |
-| `NEXT_PUBLIC_SITE_URL` | `https://seu-dominio.com.br` | **sim** | sim |
+| `SITE_URL` | `https://seu-dominio.com.br` | não | sim |
 
 - As `NEXT_PUBLIC_*` são embutidas no código do navegador **durante o build**: sem marcar como *Build Variable*, o site abre mas não conecta ao banco. Se mudar alguma delas, faça **redeploy** (rebuild).
 - `SUPABASE_SECRET_KEY` nunca vai para o navegador; é usada só no servidor (cadastro de equipe, troca de senha e as rotas `/api/agente` do app de impressão). **Não** marque como build variable. Sem ela, a impressão automática não funciona.
-- `NEXT_PUBLIC_SITE_URL` é a origem pública, usada no link de confirmação de e-mail do cadastro. Sem ela, o app usa o host da requisição.
+- `SITE_URL` é a origem pública, usada no link de confirmação de e-mail do cadastro e para redirecionar o endereço `*.sslip.io` do Coolify. Sem ela, o app usa o host da requisição (`NEXT_PUBLIC_SITE_URL`, se existir, serve de alternativa).
 
 ## 3.1 App de impressão (instalador e atualizações)
 
@@ -106,6 +106,7 @@ O projeto Supabase atual tem o **seed de desenvolvimento**: 3 restaurantes de ex
 
 ## Domínio atual
 
-- `https://uau.estudyou.com` (DNS A para a VPS 72.60.10.10), configurado no Coolify junto com o endereço sslip antigo (os dois respondem).
-- `NEXT_PUBLIC_SITE_URL` precisa ser `https://uau.estudyou.com` **no Coolify e na variável do repositório no GitHub** (ela é embutida no build; mudar só no Coolify não basta).
-- No Supabase (*Authentication → URL Configuration*): Site URL `https://uau.estudyou.com` e Redirect URL `https://uau.estudyou.com/auth/confirmar**`.
+- `https://uau.estudyou.com` (DNS A para a VPS 72.60.10.10). O endereço sslip antigo continua nos *Domains* do Coolify só para redirecionar: `src/proxy.ts` manda todo `*.sslip.io` para o domínio oficial com 308, mantendo o caminho (links antigos e apps de impressão pareados continuam valendo).
+- `SITE_URL=https://uau.estudyou.com` no Coolify (só runtime, não precisa de build): é o endereço oficial usado nos links de e-mail e no redirecionamento. Trocar de domínio = mudar essa variável e reiniciar.
+- `NEXT_PUBLIC_SITE_URL` (variável do repositório no GitHub) virou opcional: só é usada se `SITE_URL` faltar.
+- No Supabase (*Authentication → URL Configuration*): Site URL `https://uau.estudyou.com` e Redirect URL `https://uau.estudyou.com/**`.
