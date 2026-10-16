@@ -2,17 +2,24 @@ import { ImageResponse } from "next/og";
 import sharp from "sharp";
 
 import { corDeContraste } from "@/lib/cores";
+import { publicEnv } from "@/lib/env";
 import { buscarRestaurantePublico } from "@/lib/supabase/publico";
 import { id } from "@/lib/validacao";
 
 const TAMANHOS = new Set([180, 192, 512]);
+const LOGO_MAX_BYTES = 5 * 1024 * 1024;
 
 // O desenho do ImageResponse não lê WebP (formato dos uploads): converte o logo para PNG.
 async function logoEmPng(url: string, lado: number): Promise<string | null> {
+  // O endereço vem do banco: nunca buscar fora do bucket de logos (evita o servidor ser usado
+  // para acessar endereços internos).
+  if (!url.startsWith(`${publicEnv.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/rest-logos/`)) return null;
   try {
-    const resposta = await fetch(url);
-    if (!resposta.ok) return null;
-    const png = await sharp(Buffer.from(await resposta.arrayBuffer()))
+    const resposta = await fetch(url, { signal: AbortSignal.timeout(5000), redirect: "error" });
+    if (!resposta.ok || Number(resposta.headers.get("content-length") ?? 0) > LOGO_MAX_BYTES) return null;
+    const dados = await resposta.arrayBuffer();
+    if (dados.byteLength > LOGO_MAX_BYTES) return null;
+    const png = await sharp(Buffer.from(dados))
       .resize(lado, lado, { fit: "contain", background: { r: 255, g: 255, b: 255, alpha: 0 } })
       .png()
       .toBuffer();

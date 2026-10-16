@@ -74,7 +74,11 @@ class Nucleo extends EventEmitter {
   // Troca o código de 6 dígitos do painel pela chave deste computador.
   async parear(servidor, codigo) {
     const endereco = servidor.trim().replace(/\/+$/, "");
-    if (!/^https?:\/\/\S+$/.test(endereco)) throw new Error("Endereço do sistema inválido (ex.: https://seusistema.com.br).");
+    // Só https (a chave e os pedidos viajam por aqui, e as atualizações do app vêm do mesmo endereço);
+    // http só no computador de teste (localhost).
+    if (!/^https:\/\/\S+$/.test(endereco) && !/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(endereco)) {
+      throw new Error("Endereço do sistema inválido: use o endereço com https:// (ex.: https://seusistema.com.br).");
+    }
     if (!/^\d{6}$/.test(codigo.replace(/\s/g, ""))) throw new Error("O código tem 6 números.");
     this.o.salvarConfig({ servidor: endereco, chave: null });
     const r = await this.api(

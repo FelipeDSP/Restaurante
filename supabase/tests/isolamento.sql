@@ -755,8 +755,16 @@ begin
     insert into public.impressoras (restaurante_id, nome, conexao, endereco, imprime_conta, imprime_via_delivery)
     values (a, 'Chapa', 'rede', '192.168.0.50', true, true) returning id into v_impressora;
     update public.estacoes set impressora_id = v_impressora where id = v_chapa_a;
-    insert into public.agentes_impressao (restaurante_id, nome, codigo_hash, codigo_expira_em)
-    values (a, 'Notebook do caixa', 'hash-do-codigo', now() + interval '10 minutes') returning id into v_agente;
+    insert into public.agentes_impressao (restaurante_id, nome)
+    values (a, 'Notebook do caixa') returning id into v_agente;
+    -- O código só entra pela função (validade curta, sem repetir).
+    perform public.definir_codigo_pareamento(v_agente, encode(sha256('123456'::bytea), 'hex'));
+    begin
+      update public.agentes_impressao set codigo_hash = 'outro', codigo_expira_em = now() + interval '1 year' where id = v_agente;
+      v_res := v_res || text 'false|dono não grava código de pareamento direto';
+    exception when insufficient_privilege then
+      v_res := v_res || text 'true|dono não grava código de pareamento direto';
+    end;
     begin
       perform codigo_hash from public.agentes_impressao where id = v_agente;
       v_res := v_res || text 'false|dono não lê o hash do código de pareamento';
@@ -1118,8 +1126,12 @@ begin
   perform pg_temp.entrar('caixa.brasa@exemplo.com');
   select count(*) into n from public.clientes where restaurante_id = a;
   perform pg_temp.ok(n = 2, 'cliente: caixa de A lê os clientes de A');
-  update public.pedidos set cliente_id = (select id from public.clientes where user_id = v_outro and restaurante_id = a)
-  where id = v_pedido;
+  begin
+    update public.pedidos set cliente_id = (select id from public.clientes where user_id = v_outro and restaurante_id = a)
+    where id = v_pedido;
+  exception when others then
+    null; -- recusado pelo banco (pedidos_campos_fixos)
+  end;
   select count(*) into n from public.pedidos where id = v_pedido and cliente_id = v_cliente_a;
   perform pg_temp.ok(n = 1, 'cliente: equipe não troca o cliente do pedido');
   perform pg_temp.entrar('garcom1.brasa@exemplo.com');
@@ -1537,6 +1549,66 @@ begin
   update public.comandas set status = 'fechada' where id = v_comanda;
   select count(*) into n from public.comandas where id = v_comanda and status = 'fechada';
   perform pg_temp.ok(n = 1, 'pagamento combinado: comanda quitada fecha');
+  perform pg_temp.admin();
+end;
+$$;
+
+-- ======================================================================
+-- Verificação de segurança (16/10): limites de cada papel
+-- ======================================================================
+do $$
+declare
+  a constant uuid := md5('brasa-espetinhos')::uuid;
+  v_pedido uuid;
+  v_sessao uuid;
+  n integer;
+begin
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  begin
+    insert into public.membros (restaurante_id, user_id, nome, papel)
+    select a, id, 'Intruso', 'dono' from auth.users where email = 'dono.burger@exemplo.com';
+    perform pg_temp.ok(false, 'equipe: dono não insere membro direto pela API');
+  exception when insufficient_privilege then
+    perform pg_temp.ok(true, 'equipe: dono não insere membro direto pela API');
+  end;
+
+  perform pg_temp.entrar('caixa.brasa@exemplo.com');
+  if not exists (select 1 from public.caixa_sessoes where restaurante_id = a and fechada_em is null) then
+    insert into public.caixa_sessoes (restaurante_id, valor_inicial) values (a, 0);
+  end if;
+  select id into v_sessao from public.caixa_sessoes where restaurante_id = a and fechada_em is null;
+  begin
+    update public.caixa_sessoes set ultimo_numero_pedido = 0 where id = v_sessao;
+    perform pg_temp.ok(false, 'caixa: contador de pedidos não é editável');
+  exception when insufficient_privilege then
+    perform pg_temp.ok(true, 'caixa: contador de pedidos não é editável');
+  end;
+
+  -- Pedido de delivery de teste (criado direto, como faria o site).
+  perform pg_temp.admin();
+  insert into public.pedidos (restaurante_id, origem, cliente_nome, cliente_telefone, endereco, taxa_entrega, forma_pagamento_prevista, status)
+  values (a, 'delivery', 'Teste', '69999990000', '{"rua":"A","numero":"1","bairro":"Centro"}', 700, 'pix', 'recebido')
+  returning id into v_pedido;
+
+  perform pg_temp.entrar('cozinha.brasa@exemplo.com');
+  begin
+    update public.pedidos set taxa_entrega = 0 where id = v_pedido;
+    perform pg_temp.ok(false, 'delivery: cozinha não muda a taxa');
+  exception when others then
+    perform pg_temp.ok(true, 'delivery: cozinha não muda a taxa');
+  end;
+  begin
+    update public.pedidos set status = 'cancelado', motivo_cancelamento = 'x' where id = v_pedido;
+    select count(*) into n from public.pedidos where id = v_pedido and status = 'cancelado';
+    perform pg_temp.ok(n = 0, 'delivery: cozinha não cancela');
+  exception when others then
+    perform pg_temp.ok(true, 'delivery: cozinha não cancela');
+  end;
+
+  perform pg_temp.entrar('caixa.brasa@exemplo.com');
+  update public.pedidos set status = 'cancelado', motivo_cancelamento = 'teste' where id = v_pedido;
+  select count(*) into n from public.pedidos where id = v_pedido and status = 'cancelado';
+  perform pg_temp.ok(n = 1, 'delivery: caixa cancela');
   perform pg_temp.admin();
 end;
 $$;

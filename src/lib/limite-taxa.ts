@@ -21,11 +21,13 @@ function limparAntigos(agora: number, janelaMs: number) {
   }
 }
 
-// IP do cliente atrás do proxy reverso (Traefik/Nginx definem X-Forwarded-For e X-Real-IP).
-// null quando o proxy não repassa o IP: quem chama decide (não juntar todo mundo num balde só).
+// IP do cliente atrás do proxy reverso (um só: o Traefik do Coolify). Usa o ÚLTIMO endereço do
+// X-Forwarded-For, o que o proxy acrescentou; os anteriores vêm do cliente e podem ser inventados
+// para fugir dos limites. null quando o proxy não repassa o IP: quem chama decide.
 export async function ipDoCliente(): Promise<string | null> {
   const h = await headers();
-  return h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || null;
+  const encaminhados = h.get("x-forwarded-for")?.split(",").map((ip) => ip.trim()).filter(Boolean) ?? [];
+  return encaminhados.at(-1) || h.get("x-real-ip") || null;
 }
 
 function recentesDe(chave: string, janelaMs: number, agora: number): number[] {

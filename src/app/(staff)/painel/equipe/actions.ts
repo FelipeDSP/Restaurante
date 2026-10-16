@@ -60,9 +60,9 @@ export async function adicionarMembro(_estado: ResultadoAcao, formData: FormData
     contaCriada = true;
   }
 
-  // Vínculo gravado com a sessão do dono: a RLS confere que ele é dono deste restaurante.
-  const supabase = await createClient();
-  const { error } = await supabase.from("membros").insert({
+  // Vínculo gravado pelo servidor (a API não deixa ninguém inserir membros direto): o restaurante é
+  // o do dono conferido por exigirDono(), nunca um id vindo do navegador.
+  const { error } = await admin.from("membros").insert({
     restaurante_id: acesso.restaurante.id,
     user_id: userId,
     nome: dados.data.nome,
@@ -138,11 +138,20 @@ export async function redefinirSenha(membroId: string, _estado: ResultadoAcao, f
   const supabase = await createClient();
   const { data: membro } = await supabase
     .from("membros")
-    .select("user_id")
+    .select("user_id, criado_em")
     .eq("id", dados.data.id)
     .eq("restaurante_id", acesso.restaurante.id)
     .maybeSingle();
   if (!membro) return falha("Membro não encontrado.");
+
+  // Só troca a senha de conta que nasceu aqui (criada no "Adicionar pessoa"). Conta que já existia
+  // e foi só vinculada pelo e-mail é da pessoa: senão qualquer dono tomaria a conta de alguém
+  // só cadastrando o e-mail dela na equipe.
+  const { data: conta } = await admin.auth.admin.getUserById(membro.user_id);
+  const criadaEm = conta.user ? new Date(conta.user.created_at).getTime() : 0;
+  if (!criadaEm || criadaEm < new Date(membro.criado_em).getTime() - 2 * 60_000) {
+    return falha("Esta pessoa já tinha conta antes de entrar na equipe. Ela mesma troca a senha em \"Esqueci minha senha\".");
+  }
 
   // Conta compartilhada com outro restaurante: um dono não troca a senha usada lá.
   const { data: vinculos } = await admin.rpc("contar_restaurantes_do_usuario", { p_user_id: membro.user_id });

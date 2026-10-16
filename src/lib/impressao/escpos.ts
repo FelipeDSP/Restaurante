@@ -36,7 +36,11 @@ function codificar(texto: string, codificacao: Codificacao): number[] {
     .replace(/[\u201c\u201d]/g, '"');
   for (const c of normalizado) {
     const codigo = c.charCodeAt(0);
-    if (codigo < 0x80) {
+    if (codigo === 0x0a) {
+      bytes.push(codigo);
+    } else if (codigo < 0x20 || (codigo >= 0x7f && codigo < 0xa0)) {
+      bytes.push(0x20);
+    } else if (codigo < 0x80) {
       bytes.push(codigo);
     } else if (codificacao === "cp850" && CP850[c] !== undefined) {
       bytes.push(CP850[c]);

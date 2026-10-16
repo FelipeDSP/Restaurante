@@ -7,6 +7,7 @@ import { z } from "zod";
 import { gravarRestauranteAtivo } from "@/lib/auth/cookie-restaurante";
 import { COOKIE_RESTAURANTE, destinoInicial, obterVinculos } from "@/lib/auth/dal";
 import { rotaInicial } from "@/lib/auth/papeis";
+import { caminhoInterno } from "@/lib/caminho-seguro";
 import { consumirLimite, ipDoCliente } from "@/lib/limite-taxa";
 import { createClient } from "@/lib/supabase/server";
 import { origemDoSite } from "@/lib/url";
@@ -19,14 +20,6 @@ const loginSchema = z.object({
   next: z.string().optional(),
 });
 
-// Só aceita caminhos internos (evita redirecionar para outro site).
-function caminhoSeguro(next: string | undefined): string {
-  if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\")) {
-    return "/inicio";
-  }
-  return next;
-}
-
 export async function entrar(_estado: EstadoLogin, formData: FormData): Promise<EstadoLogin> {
   const email = String(formData.get("email") ?? "");
   const dados = loginSchema.safeParse({
@@ -38,6 +31,12 @@ export async function entrar(_estado: EstadoLogin, formData: FormData): Promise<
     return { erro: dados.error.issues[0]?.message, email };
   }
 
+  // Tentativa de adivinhar senha: limite por e-mail e por IP (o Supabase só vê o IP do servidor).
+  const ip = await ipDoCliente();
+  if (!consumirLimite(`login:email:${dados.data.email}`, 10, 15 * 60_000) || (ip && !consumirLimite(`login:ip:${ip}`, 30, 15 * 60_000))) {
+    return { erro: "Muitas tentativas. Aguarde alguns minutos e tente de novo.", email };
+  }
+
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({
     email: dados.data.email,
@@ -47,7 +46,7 @@ export async function entrar(_estado: EstadoLogin, formData: FormData): Promise<
     return { erro: "E-mail ou senha incorretos.", email };
   }
 
-  redirect(caminhoSeguro(dados.data.next));
+  redirect(caminhoInterno(dados.data.next, "/inicio"));
 }
 
 export async function sair(): Promise<void> {

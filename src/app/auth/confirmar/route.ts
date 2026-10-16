@@ -1,6 +1,7 @@
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { type NextRequest, NextResponse } from "next/server";
 
+import { caminhoInterno } from "@/lib/caminho-seguro";
 import { createClient } from "@/lib/supabase/server";
 import { origemDoSite } from "@/lib/url";
 
@@ -8,14 +9,9 @@ import { origemDoSite } from "@/lib/url";
 // Aceita os dois formatos: ?token_hash=&type= (template de e-mail) e ?code= (fluxo PKCE).
 const TIPOS: EmailOtpType[] = ["signup", "email", "invite", "magiclink", "recovery", "email_change"];
 
-function destinoSeguro(next: string | null): string {
-  if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\")) return "/comecar";
-  return next;
-}
-
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
-  const destino = destinoSeguro(searchParams.get("next"));
+  const destino = caminhoInterno(searchParams.get("next"), "/comecar");
   const supabase = await createClient();
 
   const tokenHash = searchParams.get("token_hash");

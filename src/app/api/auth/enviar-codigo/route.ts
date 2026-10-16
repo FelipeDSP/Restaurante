@@ -31,6 +31,8 @@ export async function POST(request: Request) {
   const telefone = evento.user?.phone;
   const codigo = evento.sms?.otp;
   if (!telefone || !codigo) return erro(400, "Evento sem telefone ou código.");
+  // Quem chama o Supabase direto pode pedir código para qualquer número: só celular do Brasil.
+  if (!/^\+?55\d{10,11}$/.test(telefone)) return erro(400, "Use um celular do Brasil.");
 
   const resultado = await enviarCodigo(telefone, codigo);
   if (!resultado.ok) {

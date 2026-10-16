@@ -241,7 +241,8 @@ function configurarAtualizacao() {
   }
   const verificar = () => {
     const { servidor } = lerConfig();
-    if (!servidor) return;
+    // Atualização só por https (o instalador não tem assinatura: o canal precisa ser seguro).
+    if (!servidor || !servidor.startsWith("https://")) return;
     autoUpdater.setFeedURL({ provider: "generic", url: `${servidor.replace(/\/+$/, "")}/downloads/impressao` });
     autoUpdater.checkForUpdates().catch((e) => log(`atualização: ${String(e.message).split("\n")[0]}`));
   };

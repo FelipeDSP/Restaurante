@@ -5,16 +5,22 @@ import { z } from "zod";
 
 import { falha, falhaValidacao, mensagemErroBanco, type ResultadoAcao, sucesso } from "@/lib/acoes";
 import { exigirAcesso, exigirDono } from "@/lib/auth/dal";
-import { gerarCodigoPareamento, hashDe, VALIDADE_CODIGO_MIN } from "@/lib/impressao/agente";
+import { gerarCodigoPareamento, hashDe } from "@/lib/impressao/agente";
 import { createClient } from "@/lib/supabase/server";
 import { checkbox, dadosDoFormulario, id, textoObrigatorio } from "@/lib/validacao";
 
 export type ResultadoCodigo = (NonNullable<ResultadoAcao> & { codigo?: string; expiraEm?: string }) | undefined;
 
-function novoCodigo() {
-  const codigo = gerarCodigoPareamento();
-  const expiraEm = new Date(Date.now() + VALIDADE_CODIGO_MIN * 60_000).toISOString();
-  return { codigo, expiraEm, campos: { codigo_hash: hashDe(codigo), codigo_expira_em: expiraEm } };
+// O banco grava o código (validade curta, sem repetir entre restaurantes); se por acaso o número
+// sorteado já estiver em uso em outro lugar, sorteia de novo.
+async function definirCodigo(supabase: Awaited<ReturnType<typeof createClient>>, agenteId: string) {
+  for (let tentativa = 0; tentativa < 5; tentativa++) {
+    const codigo = gerarCodigoPareamento();
+    const { data, error } = await supabase.rpc("definir_codigo_pareamento", { p_agente_id: agenteId, p_codigo_hash: hashDe(codigo) });
+    if (!error && data) return { codigo, expiraEm: data };
+    if (error?.code !== "23505") return { erro: error ? mensagemErroBanco(error) : "Não foi possível gerar o código." };
+  }
+  return { erro: "Não foi possível gerar o código. Tente de novo." };
 }
 
 // Cadastra o computador do caixa e devolve o código de 6 dígitos para digitar no app.
@@ -23,31 +29,36 @@ export async function conectarComputador(_estado: ResultadoCodigo, formData: For
   const dados = z.object({ nome: textoObrigatorio("o nome do computador", 80) }).safeParse({ nome: formData.get("nome") });
   if (!dados.success) return falhaValidacao(dados.error, formData);
 
-  const { codigo, expiraEm, campos } = novoCodigo();
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data: agente, error } = await supabase
     .from("agentes_impressao")
-    .insert({ restaurante_id: acesso.restaurante.id, nome: dados.data.nome, ...campos });
+    .insert({ restaurante_id: acesso.restaurante.id, nome: dados.data.nome })
+    .select("id")
+    .single();
   if (error) return falha(mensagemErroBanco(error), undefined, formData);
 
+  const resultado = await definirCodigo(supabase, agente.id);
   refresh();
-  return { ok: true, chave: Date.now(), codigo, expiraEm };
+  if ("erro" in resultado) return falha(resultado.erro ?? "Não foi possível gerar o código.", undefined, formData);
+  return { ok: true, chave: Date.now(), codigo: resultado.codigo, expiraEm: resultado.expiraEm };
 }
 
 // Novo código para (re)parear um computador já cadastrado (ex.: reinstalou o app).
 export async function gerarNovoCodigo(agenteId: string): Promise<ResultadoCodigo> {
   const acesso = await exigirDono();
   if (!id.safeParse(agenteId).success) return falha("Computador inválido.");
-  const { codigo, expiraEm, campos } = novoCodigo();
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data: agente } = await supabase
     .from("agentes_impressao")
-    .update({ ...campos, ativo: true })
+    .select("id")
     .eq("id", agenteId)
-    .eq("restaurante_id", acesso.restaurante.id);
-  if (error) return falha(mensagemErroBanco(error));
+    .eq("restaurante_id", acesso.restaurante.id)
+    .maybeSingle();
+  if (!agente) return falha("Computador não encontrado.");
+  const resultado = await definirCodigo(supabase, agente.id);
   refresh();
-  return { ok: true, chave: Date.now(), codigo, expiraEm };
+  if ("erro" in resultado) return falha(resultado.erro ?? "Não foi possível gerar o código.");
+  return { ok: true, chave: Date.now(), codigo: resultado.codigo, expiraEm: resultado.expiraEm };
 }
 
 // Computador criado por engano ou que não existe mais. Nada da fila é apagado (só perde o vínculo).
@@ -73,10 +84,13 @@ export async function desconectarComputador(agenteId: string): Promise<Resultado
   const supabase = await createClient();
   const { error } = await supabase
     .from("agentes_impressao")
-    .update({ ativo: false, codigo_hash: null, codigo_expira_em: null })
+    .update({ ativo: false })
     .eq("id", agenteId)
     .eq("restaurante_id", acesso.restaurante.id);
   if (error) return falha(mensagemErroBanco(error));
+  // Apaga um código ainda não usado (a função confere que o computador é deste dono).
+  // O tipo gerado não aceita null, mas a função aceita (null = apagar o código).
+  await supabase.rpc("definir_codigo_pareamento", { p_agente_id: agenteId, p_codigo_hash: null as unknown as string });
   refresh();
   return sucesso("Computador desconectado: ele não imprime mais até ser pareado de novo.");
 }

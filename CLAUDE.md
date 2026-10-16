@@ -225,4 +225,10 @@ Durante o desenvolvimento usamos um projeto Supabase que já contém outro siste
 - Site público: dados via `createPublicClient()` (anon, sem cookies), sempre filtrando pelo restaurante resolvido do slug; o restaurante nunca vem de id enviado pelo navegador.
 - Componentes de UI acessíveis e mobile-first; o PWA do garçom deve ser usável com uma mão e botões grandes.
 - Após cada migração: regenerar tipos, rodar os advisors de segurança do Supabase e corrigir alertas de RLS.
+- Segurança (revisão de 16/10, migração `endurecer_papeis`):
+  - Pedido não muda depois de criado (taxa, endereço, cliente, pagamento previsto, observação: trigger `t03_campos_fixos`); andamento do delivery só dono/caixa (a cozinha só `em_preparo` → `pronto`); pedido com pagamento ativo não cancela. Delivery limitado no banco (5 por telefone em 10 min, 40 esperando aceite).
+  - `membros` não aceita insert pela API: o painel grava com a chave secreta depois de `exigirDono()`. "Nova senha" só para conta criada pelo próprio restaurante (conta que já existia é da pessoa: ela usa "Esqueci minha senha").
+  - Código de pareamento só pela RPC `definir_codigo_pareamento` (10 min, único entre restaurantes); até 10 computadores por restaurante. O app de impressão só aceita `https://` (http só localhost).
+  - Texto que vai para a impressora passa por `codificar()` (bytes de controle viram espaço). Redirecionar depois de login/link: `caminhoInterno()` (`src/lib/caminho-seguro.ts`). IP para limites: último endereço do `X-Forwarded-For` (`ipDoCliente`). O ícone do PWA só baixa logo do bucket `rest-logos`.
+  - O repositório no GitHub é público: nada de IP, caminho de servidor ou segredo em arquivo versionado.
 - Commits pequenos, um por funcionalidade.

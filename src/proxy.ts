@@ -10,6 +10,8 @@ function redirecionarEnderecoAntigo(request: NextRequest): NextResponse | null {
   if (!oficial) return null;
   const host = (request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? "").split(":")[0];
   if (!host.endsWith(".sslip.io") || host === new URL(oficial).hostname) return null;
+  // O app de impressão manda a chave no cabeçalho, que se perde ao seguir para outro domínio.
+  if (request.nextUrl.pathname.startsWith("/api/agente/")) return null;
   return NextResponse.redirect(new URL(`${request.nextUrl.pathname}${request.nextUrl.search}`, oficial), 308);
 }
 
