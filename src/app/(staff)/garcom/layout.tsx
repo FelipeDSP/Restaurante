@@ -1,4 +1,6 @@
+import { ChevronLeft } from "lucide-react";
 import type { Metadata, Viewport } from "next";
+import Link from "next/link";
 
 import { FaixaConexao } from "@/components/staff/faixa-conexao";
 import { MarcaRestaurante } from "@/components/staff/marca-restaurante";
@@ -40,7 +42,19 @@ export default async function GarcomLayout({ children }: LayoutProps<"/garcom">)
     <div className="flex min-h-full flex-1 flex-col" style={estiloMarca(acesso.restaurante)}>
       <header className="sticky top-0 z-10 bg-[var(--cor-primaria)] text-[var(--cor-primaria-contraste)] shadow-sm">
         <div className="mx-auto flex h-16 w-full max-w-md items-center justify-between gap-3 px-4">
-          <MarcaRestaurante restaurante={acesso.restaurante} />
+          <div className="flex min-w-0 items-center gap-2">
+            {/* Dono e caixa entram aqui pelo painel: voltam com um toque. */}
+            {podeAcessar(acesso.papel, "painel") ? (
+              <Link
+                href="/painel"
+                className="flex h-11 shrink-0 items-center gap-1 rounded-full bg-black/15 pr-4 pl-3 text-sm font-semibold hover:bg-black/25"
+              >
+                <ChevronLeft className="size-5" aria-hidden />
+                Painel
+              </Link>
+            ) : null}
+            <MarcaRestaurante restaurante={acesso.restaurante} />
+          </div>
           <MenuUsuario
             nome={acesso.nome}
             papel={NOME_PAPEL[acesso.papel]}

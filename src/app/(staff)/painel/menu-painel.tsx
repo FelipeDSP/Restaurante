@@ -74,7 +74,7 @@ export function MenuCelular({ itens, novos }: Props) {
   const [aberto, setAberto] = useState(false);
   // O portal fica dentro da tela do restaurante para herdar as cores da marca.
   const [ancora, setAncora] = useState<HTMLSpanElement | null>(null);
-  const atalhos = itens.filter((i) => i.grupo === "Operação" && i.href !== "/cozinha");
+  const atalhos = itens.filter((i) => i.grupo === "Operação" && i.href !== "/cozinha" && i.href !== "/garcom");
 
   return (
     <nav aria-label="Painel" className="flex gap-1 overflow-x-auto sem-barra-rolagem px-2 pb-2 lg:hidden">

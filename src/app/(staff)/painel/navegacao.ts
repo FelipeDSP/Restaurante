@@ -15,6 +15,8 @@ export const NAVEGACAO: ItemNavegacao[] = [
   { href: "/painel/comandas", rotulo: "Comandas", grupo: "Operação", papeis: ["dono", "caixa"] },
   { href: "/painel/caixa", rotulo: "Caixa", grupo: "Operação", papeis: ["dono", "caixa"] },
   { href: "/painel/relatorios", rotulo: "Relatórios", grupo: "Operação", papeis: ["dono"] },
+  // O dono e o caixa também atendem mesas: o mesmo app do garçom (abrir mesa, lançar, cobrar, fechar).
+  { href: "/garcom", rotulo: "App do garçom", grupo: "Operação", papeis: ["dono", "caixa"] },
   { href: "/cozinha", rotulo: "Tela da cozinha", grupo: "Operação", papeis: ["dono", "caixa"] },
   {
     href: "/painel/produtos",

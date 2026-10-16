@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import { Plus } from "lucide-react";
 import Link from "next/link";
 
 import { AtualizarEmTempoReal } from "@/components/staff/atualizar-em-tempo-real";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { exigirAcesso } from "@/lib/auth/dal";
 import { formatarBRL } from "@/lib/dinheiro";
 import { createClient } from "@/lib/supabase/server";
@@ -57,7 +59,12 @@ export default async function ComandasPage() {
           <Link href="/painel/caixa" className="text-sm font-medium text-destructive underline">
             Caixa fechado: abrir caixa
           </Link>
-        ) : null}
+        ) : (
+          <Button className="h-11" nativeButton={false} render={<Link href="/garcom" />}>
+            <Plus />
+            Abrir mesa
+          </Button>
+        )}
       </div>
 
       {comandas.length === 0 ? (
