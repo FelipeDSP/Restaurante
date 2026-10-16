@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Minus, Plus, Printer, ReceiptText, Undo2, UtensilsCrossed, Wallet, X } from "lucide-react";
+import { Calculator, Check, Minus, Pencil, Plus, Printer, ReceiptText, Undo2, UtensilsCrossed, Wallet, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -17,13 +17,14 @@ import { cn } from "@/lib/utils";
 
 import {
   alterarItem,
+  alterarPessoas,
   alterarStatusConta,
   cancelarComanda,
   cancelarItem,
   estornarPagamento,
   fecharComanda,
   imprimirConta,
-  registrarPagamento,
+  registrarPagamentos,
 } from "../../actions";
 import type { DetalheComanda, ItemComanda, PagamentoComanda } from "../../dados";
 
@@ -107,7 +108,6 @@ function LinhaItem({ item, editavel }: { item: ItemComanda; editavel: boolean })
             <span className="text-xs font-medium text-muted-foreground">Na cozinha</span>
           ) : null}
           {item.observacao ? <span className="text-sm text-muted-foreground">Obs.: {item.observacao}</span> : null}
-          <span className="text-xs text-muted-foreground">Pedido nº {item.pedidoNumero}</span>
         </span>
         <span className="font-medium tabular-nums">{formatarBRL(item.total)}</span>
       </button>
@@ -195,30 +195,113 @@ function LinhaItem({ item, editavel }: { item: ItemComanda; editavel: boolean })
   );
 }
 
+// Calculadora da conta separada: marca o que cada um consumiu (quantas unidades de cada item)
+// e mostra quanto a pessoa paga. Não grava nada; o valor vai para o pagamento.
+function CalculadoraItens({ itens, aoUsar }: { itens: ItemComanda[]; aoUsar: (valor: number) => void }) {
+  const [escolhidos, setEscolhidos] = useState<Record<string, number>>({});
+  const ativos = itens.filter((i) => !i.cancelado);
+  const total = ativos.reduce((soma, i) => soma + (escolhidos[i.id] ?? 0) * i.precoUnitario, 0);
+  const mudar = (item: ItemComanda, n: number) =>
+    setEscolhidos((e) => ({ ...e, [item.id]: Math.max(0, Math.min(item.quantidade, n)) }));
+
+  return (
+    <div className="flex flex-col gap-3 rounded-lg bg-muted/60 p-3">
+      <p className="text-sm text-muted-foreground">Marque o que esta pessoa consumiu.</p>
+      <ul className="flex flex-col divide-y">
+        {ativos.map((i) => {
+          const n = escolhidos[i.id] ?? 0;
+          return (
+            <li key={i.id} className="flex items-center justify-between gap-2 py-2">
+              <span className="flex min-w-0 flex-col">
+                <span className={cn("truncate", n > 0 && "font-semibold")}>
+                  {i.quantidade}× {i.nome}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {formatarBRL(i.precoUnitario)} cada{i.adicionais.length > 0 ? ` · ${resumoAdicionais(i.adicionais)}` : ""}
+                </span>
+              </span>
+              {i.quantidade === 1 ? (
+                <Button
+                  type="button"
+                  variant={n > 0 ? "default" : "outline"}
+                  className="h-11 min-w-20"
+                  aria-pressed={n > 0}
+                  onClick={() => mudar(i, n > 0 ? 0 : 1)}
+                >
+                  {n > 0 ? <Check /> : null}
+                  {n > 0 ? "Marcado" : "Marcar"}
+                </Button>
+              ) : (
+                <div className="flex shrink-0 items-center gap-1">
+                  <Button type="button" variant="outline" size="icon" className="size-11" aria-label={`Menos ${i.nome}`} disabled={n === 0} onClick={() => mudar(i, n - 1)}>
+                    <Minus />
+                  </Button>
+                  <span className="w-12 text-center font-semibold tabular-nums">
+                    {n}/{i.quantidade}
+                  </span>
+                  <Button type="button" variant="outline" size="icon" className="size-11" aria-label={`Mais ${i.nome}`} disabled={n >= i.quantidade} onClick={() => mudar(i, n + 1)}>
+                    <Plus />
+                  </Button>
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-lg font-bold tabular-nums">{formatarBRL(total)}</span>
+        <div className="flex gap-2">
+          <Button type="button" variant="ghost" className="h-11" disabled={total === 0} onClick={() => setEscolhidos({})}>
+            Limpar
+          </Button>
+          <Button type="button" className="h-11" disabled={total === 0} onClick={() => aoUsar(total)}>
+            Cobrar {formatarBRL(total)}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type Parte = { chave: number; forma: string; valorTexto: string; recebidoTexto: string };
+
+let proximaChave = 1;
+const novaParte = (forma: string, valor: number): Parte => ({
+  chave: proximaChave++,
+  forma,
+  valorTexto: valor > 0 ? textoDeCentavos(valor) : "",
+  recebidoTexto: "",
+});
+
 function PainelPagamento({
   comandaId,
   total,
   falta,
   pessoas,
+  itens,
   aoFechar,
 }: {
   comandaId: string;
   total: number;
   falta: number;
   pessoas: number | null;
+  itens: ItemComanda[];
   aoFechar: () => void;
 }) {
-  const [forma, setForma] = useState<string>("pix");
-  const [valorTexto, setValorTexto] = useState(textoDeCentavos(falta));
+  // Uma ou mais formas (pagamento combinado: parte no Pix, parte no cartão...).
+  const [partes, setPartes] = useState<Parte[]>(() => [novaParte("pix", falta)]);
   const [faltaBase, setFaltaBase] = useState(falta);
-  const [recebidoTexto, setRecebidoTexto] = useState("");
+  const [calculando, setCalculando] = useState(false);
+  // Valor que esta pessoa vai pagar (calculadora ou "1 de N"); sem ele, a conta toda.
+  const [alvo, setAlvo] = useState<number | null>(null);
   const { pendente, executar } = useAcao();
   const secao = useRef<HTMLElement>(null);
 
-  // Outro aparelho registrou um pagamento: o valor acompanha o que falta agora.
+  // Registrou um pagamento (aqui ou em outro aparelho): recomeça com o que falta agora.
   if (falta !== faltaBase) {
     setFaltaBase(falta);
-    setValorTexto(textoDeCentavos(falta));
+    setPartes([novaParte("pix", falta)]);
+    setAlvo(null);
   }
 
   // O painel abre abaixo da lista; no celular ficaria fora da tela.
@@ -226,12 +309,25 @@ function PainelPagamento({
     secao.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
 
-  const valor = centavosDeTexto(valorTexto);
-  const recebido = recebidoTexto ? centavosDeTexto(recebidoTexto) : null;
-  const troco = forma === "dinheiro" && valor !== null && recebido !== null ? recebido - valor : null;
+  const valores = partes.map((p) => centavosDeTexto(p.valorTexto));
+  const invalido = valores.some((v) => v === null || v <= 0);
+  const soma = valores.reduce<number>((s, v) => s + (v ?? 0), 0);
+  const acima = soma > falta;
+  const restante = Math.max(0, Math.min(alvo ?? falta, falta) - soma);
+  const trocoDe = (p: Parte, v: number | null) => {
+    const recebido = p.forma === "dinheiro" && p.recebidoTexto ? centavosDeTexto(p.recebidoTexto) : null;
+    return recebido !== null && v !== null ? recebido - v : null;
+  };
+  const trocoNegativo = partes.some((p, n) => (trocoDe(p, valores[n]) ?? 0) < 0);
   // Parte de cada pessoa sobre o total da conta (não sobre o que falta), limitada ao que falta.
   const porPessoa = pessoas && pessoas > 1 ? Math.min(falta, Math.ceil(total / pessoas)) : null;
-  const acima = valor !== null && valor > falta;
+
+  const mudar = (chave: number, campo: Partial<Parte>) => setPartes((ps) => ps.map((p) => (p.chave === chave ? { ...p, ...campo } : p)));
+  // Valor de uma forma só (atalhos "Tudo", "por pessoa", calculadora): vira uma parte única.
+  const usarValor = (valor: number, daPessoa: boolean) => {
+    setAlvo(daPessoa ? valor : null);
+    setPartes((ps) => [{ ...ps[0], valorTexto: textoDeCentavos(valor), recebidoTexto: "" }]);
+  };
 
   return (
     <section
@@ -254,75 +350,140 @@ function PainelPagamento({
         </p>
       ) : (
         <>
-          <fieldset className="flex flex-col gap-2">
-            <legend className="mb-2 text-sm font-medium">Forma</legend>
-            <div className="grid grid-cols-3 gap-2">
-              {FORMAS_PAGAMENTO.map((f) => (
-                <Button
-                  key={f.valor}
-                  type="button"
-                  variant={forma === f.valor ? "default" : "outline"}
-                  className="h-12"
-                  aria-pressed={forma === f.valor}
-                  onClick={() => setForma(f.valor)}
-                >
-                  {f.rotulo}
-                </Button>
-              ))}
-            </div>
-          </fieldset>
-
-          <label className="flex flex-col gap-2 text-sm font-medium">
-            Valor (R$)
-            <Input
-              value={valorTexto}
-              onChange={(e) => setValorTexto(e.target.value)}
-              inputMode="decimal"
-              className="h-12 text-lg"
-              aria-invalid={valor === null || acima}
-              aria-describedby={acima ? "valor-acima" : undefined}
-            />
-          </label>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" className="h-11" onClick={() => setValorTexto(textoDeCentavos(falta))}>
+            <Button type="button" variant="outline" className="h-11" onClick={() => usarValor(falta, false)}>
               Tudo ({formatarBRL(falta)})
             </Button>
             {porPessoa ? (
-              <Button type="button" variant="outline" className="h-11" onClick={() => setValorTexto(textoDeCentavos(porPessoa))}>
+              <Button type="button" variant="outline" className="h-11" onClick={() => usarValor(porPessoa, true)}>
                 1 de {pessoas} ({formatarBRL(porPessoa)})
               </Button>
             ) : null}
+            <Button
+              type="button"
+              variant={calculando ? "default" : "outline"}
+              className="h-11"
+              aria-expanded={calculando}
+              onClick={() => setCalculando((c) => !c)}
+            >
+              <Calculator />
+              Por item
+            </Button>
           </div>
 
-          {forma === "dinheiro" ? (
-            <label className="flex flex-col gap-2 text-sm font-medium">
-              Recebido em dinheiro (para calcular o troco)
-              <Input
-                value={recebidoTexto}
-                onChange={(e) => setRecebidoTexto(e.target.value)}
-                inputMode="decimal"
-                placeholder="Ex.: 100,00"
-                className="h-12 text-lg"
-              />
-              {troco !== null && troco > 0 ? <span className="text-base font-semibold">Troco: {formatarBRL(troco)}</span> : null}
-              {troco !== null && troco < 0 ? <span className="text-sm text-destructive">Recebido é menor que o valor.</span> : null}
-            </label>
+          {calculando ? (
+            <CalculadoraItens
+              itens={itens}
+              aoUsar={(valor) => {
+                usarValor(Math.min(valor, falta), true);
+                setCalculando(false);
+              }}
+            />
+          ) : null}
+
+          {partes.map((p, n) => {
+            const troco = trocoDe(p, valores[n]);
+            return (
+              <fieldset key={p.chave} className={cn("flex flex-col gap-3", partes.length > 1 && "rounded-lg border p-3")}>
+                <legend className="flex w-full items-center justify-between text-sm font-medium">
+                  {partes.length > 1 ? `Forma ${n + 1}` : "Forma"}
+                </legend>
+                <div className="grid grid-cols-3 gap-2">
+                  {FORMAS_PAGAMENTO.map((f) => (
+                    <Button
+                      key={f.valor}
+                      type="button"
+                      variant={p.forma === f.valor ? "default" : "outline"}
+                      className="h-12"
+                      aria-pressed={p.forma === f.valor}
+                      onClick={() => mudar(p.chave, { forma: f.valor })}
+                    >
+                      {f.rotulo}
+                    </Button>
+                  ))}
+                </div>
+                <div className="flex items-end gap-2">
+                  <label className="flex flex-1 flex-col gap-2 text-sm font-medium">
+                    Valor (R$)
+                    <Input
+                      value={p.valorTexto}
+                      onChange={(e) => mudar(p.chave, { valorTexto: e.target.value })}
+                      inputMode="decimal"
+                      className="h-12 text-lg"
+                      aria-invalid={valores[n] === null || acima}
+                    />
+                  </label>
+                  {partes.length > 1 ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="size-12"
+                      aria-label={`Tirar a forma ${n + 1}`}
+                      onClick={() => setPartes((ps) => ps.filter((x) => x.chave !== p.chave))}
+                    >
+                      <X />
+                    </Button>
+                  ) : null}
+                </div>
+                {p.forma === "dinheiro" ? (
+                  <label className="flex flex-col gap-2 text-sm font-medium">
+                    Recebido em dinheiro (para calcular o troco)
+                    <Input
+                      value={p.recebidoTexto}
+                      onChange={(e) => mudar(p.chave, { recebidoTexto: e.target.value })}
+                      inputMode="decimal"
+                      placeholder="Ex.: 100,00"
+                      className="h-12 text-lg"
+                    />
+                    {troco !== null && troco > 0 ? <span className="text-base font-semibold">Troco: {formatarBRL(troco)}</span> : null}
+                    {troco !== null && troco < 0 ? <span className="text-sm text-destructive">Recebido é menor que o valor.</span> : null}
+                  </label>
+                ) : null}
+              </fieldset>
+            );
+          })}
+
+          {partes.length < 5 ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 self-start"
+              disabled={restante === 0}
+              onClick={() => setPartes((ps) => [...ps, novaParte(ps.some((x) => x.forma === "pix") ? "credito" : "pix", restante)])}
+            >
+              <Plus />
+              Outra forma {restante > 0 ? `(${formatarBRL(restante)})` : ""}
+            </Button>
+          ) : null}
+
+          {partes.length > 1 ? (
+            <p className="text-sm text-muted-foreground" role="status">
+              Somando: <strong className="text-foreground">{formatarBRL(soma)}</strong>
+              {restante > 0 ? ` · faltam ${formatarBRL(restante)} ${alvo !== null ? "desta pessoa" : "na conta"}` : ""}
+            </p>
           ) : null}
 
           {acima ? (
-            <p id="valor-acima" role="alert" className="text-sm font-medium text-destructive">
-              O valor é maior que o que falta ({formatarBRL(falta)}).
-              {forma === "dinheiro" ? " Para dar troco, preencha o recebido em dinheiro." : ""}
+            <p role="alert" className="text-sm font-medium text-destructive">
+              Passa do que falta ({formatarBRL(falta)}). Para dar troco no dinheiro, preencha o recebido.
             </p>
           ) : null}
 
           <Button
             type="button"
             className="h-14 text-lg"
-            disabled={pendente || valor === null || valor <= 0 || acima || (troco !== null && troco < 0)}
-            onClick={() => valor && executar(() => registrarPagamento(comandaId, valor, forma), aoFechar)}
+            disabled={pendente || invalido || acima || trocoNegativo}
+            onClick={() =>
+              executar(
+                () => registrarPagamentos(comandaId, partes.map((p, n) => ({ forma: p.forma, valor: valores[n] ?? 0 }))),
+                () => {
+                  if (soma >= falta) aoFechar();
+                },
+              )
+            }
           >
-            {pendente ? "Registrando..." : `Registrar ${valor ? formatarBRL(valor) : ""}`}
+            {pendente ? "Registrando..." : `Registrar ${soma > 0 ? formatarBRL(soma) : ""}`}
           </Button>
         </>
       )}
@@ -402,6 +563,87 @@ function LinhaPagamento({
   );
 }
 
+// Histórico da mesa: um grupo por pedido (cada lançamento do garçom), na ordem em que saíram.
+function agruparPorPedido(itens: ItemComanda[]) {
+  const grupos = new Map<number, { numero: number; criadoEm: string; autor: string | null; total: number; itens: ItemComanda[] }>();
+  for (const i of itens) {
+    const g = grupos.get(i.pedidoNumero) ?? { numero: i.pedidoNumero, criadoEm: i.pedidoCriadoEm, autor: i.pedidoAutor, total: 0, itens: [] };
+    g.itens.push(i);
+    if (!i.cancelado) g.total += i.total;
+    grupos.set(i.pedidoNumero, g);
+  }
+  return [...grupos.values()].sort((a, b) => a.criadoEm.localeCompare(b.criadoEm));
+}
+
+// Tudo junto: o mesmo produto (com as mesmas opções e observação) somado num item só.
+function ResumoItens({ itens }: { itens: ItemComanda[] }) {
+  const somados = new Map<string, { nome: string; detalhe: string; quantidade: number; total: number }>();
+  for (const i of itens.filter((x) => !x.cancelado)) {
+    const detalhe = [resumoAdicionais(i.adicionais), i.observacao ? `Obs.: ${i.observacao}` : ""].filter(Boolean).join(" · ");
+    const chave = `${i.nome}|${detalhe}|${i.precoUnitario}`;
+    const atual = somados.get(chave) ?? { nome: i.nome, detalhe, quantidade: 0, total: 0 };
+    atual.quantidade += i.quantidade;
+    atual.total += i.total;
+    somados.set(chave, atual);
+  }
+  return (
+    <ul className="divide-y">
+      {[...somados.entries()].map(([chave, i]) => (
+        <li key={chave} className="flex justify-between gap-3 py-2">
+          <span className="flex flex-col">
+            <span className="font-medium">
+              {i.quantidade}× {i.nome}
+            </span>
+            {i.detalhe ? <span className="text-sm text-muted-foreground">{i.detalhe}</span> : null}
+          </span>
+          <span className="font-medium tabular-nums">{formatarBRL(i.total)}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// Chegou ou saiu gente: o garçom muda a quantidade de pessoas com a mesa aberta.
+function EditarPessoas({ comandaId, pessoas }: { comandaId: string; pessoas: number | null }) {
+  const [editando, setEditando] = useState(false);
+  const [valor, setValor] = useState(pessoas ?? 1);
+  const { pendente, executar } = useAcao();
+
+  if (!editando) {
+    return (
+      <button
+        type="button"
+        className="flex min-h-11 items-center gap-1 rounded-md px-1 underline-offset-4 hover:underline"
+        onClick={() => {
+          setValor(pessoas ?? 1);
+          setEditando(true);
+        }}
+      >
+        · {pessoas ? `${pessoas} ${pessoas === 1 ? "pessoa" : "pessoas"}` : "pessoas?"}
+        <Pencil className="size-3.5" aria-hidden />
+        <span className="sr-only">Mudar a quantidade de pessoas</span>
+      </button>
+    );
+  }
+  return (
+    <div className="flex w-full items-center gap-2 rounded-lg bg-muted/60 p-2" role="group" aria-label="Quantidade de pessoas">
+      <Stepper valor={valor} aoMudar={setValor} rotulo="pessoas" />
+      <span className="text-sm">{valor === 1 ? "pessoa" : "pessoas"}</span>
+      <Button
+        type="button"
+        className="ml-auto h-11"
+        disabled={pendente || valor === pessoas}
+        onClick={() => executar(() => alterarPessoas(comandaId, valor), () => setEditando(false))}
+      >
+        Salvar
+      </Button>
+      <Button type="button" variant="ghost" className="h-11" onClick={() => setEditando(false)}>
+        Cancelar
+      </Button>
+    </div>
+  );
+}
+
 type Props = {
   mesaId: string;
   // De onde a tela foi aberta: define para onde voltar depois de fechar/lançar.
@@ -415,6 +657,8 @@ export function TelaComanda({ mesaId, comanda, podeGerenciar, fusoHorario, orige
   const router = useRouter();
   const [pagando, setPagando] = useState(false);
   const [confirmarFechar, setConfirmarFechar] = useState(false);
+  // Histórico por pedido (cada rodada separada) ou tudo somado por produto.
+  const [visao, setVisao] = useState<"pedidos" | "resumo">("pedidos");
   const { pendente, executar } = useAcao();
 
   // Fechar a comanda não tem volta: o primeiro toque só arma (desarma sozinho em 6 s).
@@ -441,22 +685,54 @@ export function TelaComanda({ mesaId, comanda, podeGerenciar, fusoHorario, orige
           <Badge>Ocupada</Badge>
         )}
         <span>desde {horaLocal(comanda.abertaEm, fusoHorario)}</span>
-        {comanda.pessoas ? <span>· {comanda.pessoas} pessoas</span> : null}
+        <EditarPessoas comandaId={comanda.id} pessoas={comanda.pessoas} />
         {comanda.garcom ? <span>· {comanda.garcom}</span> : null}
       </div>
 
       <section aria-labelledby="titulo-itens">
-        <h2 id="titulo-itens" className="mb-1 text-lg font-semibold">
-          Itens
-        </h2>
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <h2 id="titulo-itens" className="text-lg font-semibold">
+            Itens
+          </h2>
+          {comanda.itens.length > 0 ? (
+            <div className="flex rounded-lg border p-0.5 text-sm" role="group" aria-label="Como ver os itens">
+              {(["pedidos", "resumo"] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  aria-pressed={visao === v}
+                  onClick={() => setVisao(v)}
+                  className={cn("min-h-9 rounded-md px-3", visao === v ? "bg-muted font-semibold" : "text-muted-foreground")}
+                >
+                  {v === "pedidos" ? "Por pedido" : "Tudo junto"}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
         {comanda.itens.length === 0 ? (
           <p className="py-4 text-muted-foreground">Nenhum item lançado ainda.</p>
+        ) : visao === "resumo" ? (
+          <ResumoItens itens={comanda.itens} />
         ) : (
-          <ul className="divide-y">
-            {comanda.itens.map((item) => (
-              <LinhaItem key={item.id} item={item} editavel />
+          <ol className="flex flex-col gap-3">
+            {agruparPorPedido(comanda.itens).map((g) => (
+              <li key={g.numero} className="rounded-xl border">
+                <div className="flex items-center justify-between gap-2 border-b bg-muted/40 px-3 py-2 text-sm">
+                  <span className="font-semibold">
+                    Pedido nº {g.numero} · {horaLocal(g.criadoEm, fusoHorario)}
+                    {g.autor ? <span className="font-normal text-muted-foreground"> · {g.autor}</span> : null}
+                  </span>
+                  <span className="font-semibold tabular-nums">{formatarBRL(g.total)}</span>
+                </div>
+                <ul className="divide-y px-3">
+                  {g.itens.map((item) => (
+                    <LinhaItem key={item.id} item={item} editavel />
+                  ))}
+                </ul>
+              </li>
             ))}
-          </ul>
+          </ol>
         )}
       </section>
 
@@ -501,6 +777,7 @@ export function TelaComanda({ mesaId, comanda, podeGerenciar, fusoHorario, orige
           total={comanda.total}
           falta={falta}
           pessoas={comanda.pessoas}
+          itens={comanda.itens}
           aoFechar={() => setPagando(false)}
         />
       ) : null}

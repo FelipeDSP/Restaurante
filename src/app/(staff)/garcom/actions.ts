@@ -177,6 +177,67 @@ export async function registrarPagamento(comandaId: string, valor: number, forma
   return sucesso(`Pagamento de ${formatarBRL(dados.data.valor)} registrado.`);
 }
 
+// Pagamento combinado (ex.: parte no Pix, parte no cartão): todas as formas num envio só.
+// Um insert com várias linhas é uma transação: o trigger confere cada parte contra o que falta
+// (somando as anteriores do mesmo envio) e, se uma passar do saldo, nenhuma é gravada.
+export async function registrarPagamentos(comandaId: string, partes: { valor: number; forma: string }[]): Promise<ResultadoAcao> {
+  const acesso = await exigirAcesso("garcom");
+  const dados = z
+    .object({
+      comandaId: id,
+      partes: z
+        .array(z.object({ valor: z.number().int().min(1, "Informe o valor de cada forma."), forma: z.enum(FORMAS) }))
+        .min(1, "Informe o pagamento.")
+        .max(10, "Formas demais."),
+    })
+    .safeParse({ comandaId, partes });
+  if (!dados.success) return falha(dados.error.issues[0]?.message ?? "Dados inválidos.");
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("pagamentos").insert(
+    dados.data.partes.map((p) =>
+      novoRegistro("pagamentos", {
+        restaurante_id: acesso.restaurante.id,
+        comanda_id: dados.data.comandaId,
+        valor: p.valor,
+        forma: p.forma,
+      }),
+    ),
+  );
+  if (error) return falha(mensagemErroBanco(error));
+
+  refresh();
+  const total = dados.data.partes.reduce((soma, p) => soma + p.valor, 0);
+  return sucesso(
+    dados.data.partes.length > 1
+      ? `${dados.data.partes.length} pagamentos registrados (${formatarBRL(total)}).`
+      : `Pagamento de ${formatarBRL(total)} registrado.`,
+  );
+}
+
+// Chegou ou saiu gente da mesa: muda a quantidade de pessoas da comanda aberta.
+export async function alterarPessoas(comandaId: string, pessoas: number): Promise<ResultadoAcao> {
+  const acesso = await exigirAcesso("garcom");
+  const dados = z
+    .object({ comandaId: id, pessoas: z.number().int().min(1, "Pelo menos 1 pessoa.").max(100, "Máximo de 100 pessoas.") })
+    .safeParse({ comandaId, pessoas });
+  if (!dados.success) return falha(dados.error.issues[0]?.message ?? "Dados inválidos.");
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("comandas")
+    .update({ pessoas: dados.data.pessoas })
+    .eq("id", dados.data.comandaId)
+    .eq("restaurante_id", acesso.restaurante.id)
+    .in("status", ["aberta", "conta_pedida"])
+    .select("id");
+  if (error) return falha(mensagemErroBanco(error));
+  if (!data.length) return falha("Comanda não encontrada ou já fechada.");
+
+  refresh();
+  return sucesso(`Mesa com ${dados.data.pessoas} ${dados.data.pessoas === 1 ? "pessoa" : "pessoas"}.`);
+}
+
 export async function estornarPagamento(pagamentoId: string, motivo: string): Promise<ResultadoAcao> {
   const acesso = await exigirAcesso("garcom");
   if (acesso.papel === "garcom") return falha("Só o caixa ou o dono podem estornar.");

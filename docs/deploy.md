@@ -103,3 +103,9 @@ O projeto Supabase atual tem o **seed de desenvolvimento**: 3 restaurantes de ex
 - O limite por IP depende do proxy repassar o IP do cliente (`X-Forwarded-For`/`X-Real-IP`; o Traefik do Coolify faz isso por padrão). Sem o cabeçalho, o site só limita por telefone. No cadastro e no pareamento do app, IP desconhecido conta como um só.
 - Logs: aba *Logs* do app no Coolify.
 - Atualizar: push no `main` + *Redeploy* (ou ativar *Auto Deploy* no Coolify).
+
+## Domínio atual
+
+- `https://uau.estudyou.com` (DNS A para a VPS 72.60.10.10), configurado no Coolify junto com o endereço sslip antigo (os dois respondem).
+- `NEXT_PUBLIC_SITE_URL` precisa ser `https://uau.estudyou.com` **no Coolify e na variável do repositório no GitHub** (ela é embutida no build; mudar só no Coolify não basta).
+- No Supabase (*Authentication → URL Configuration*): Site URL `https://uau.estudyou.com` e Redirect URL `https://uau.estudyou.com/auth/confirmar**`.

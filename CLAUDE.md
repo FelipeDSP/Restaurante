@@ -218,6 +218,7 @@ Durante o desenvolvimento usamos um projeto Supabase que já contém outro siste
 - Menu do painel: itens em `painel/navegacao.ts` com `grupo` (Operação, Cardápio, Configurações, Conta); barra lateral no computador e "Menu" no celular.
 - Nomes de status (pedido e mesa) só em `src/lib/rotulos.ts`.
 - Garçom: `<AvisoPronto>` (layout) avisa com vibração quando a cozinha termina um pedido das mesas dele; o lançamento guarda rascunho por mesa e tem revisão antes de enviar.
+- Tela da mesa (`garcom/mesas/[mesaId]/tela-comanda.tsx`, também usada pelo painel): itens **por pedido** (cada lançamento com hora, quem lançou e subtotal) ou **tudo junto** (somado por produto); quantidade de pessoas editável com a mesa aberta (`alterarPessoas`); pagamento com **calculadora por item** (marca o que cada pessoa consumiu, não grava nada) e **pagamento combinado** (várias formas num envio: `registrarPagamentos` insere todas de uma vez; o trigger confere cada parte somando as anteriores e, se passar do saldo, nada é gravado). O painel continua aberto enquanto falta pagar.
 - Senha: "Esqueci minha senha" (`/recuperar-senha` → e-mail → `/auth/confirmar` → `/nova-senha`). Na Equipe, o dono gera a senha inicial e envia o acesso pelo WhatsApp.
 - Botões crescem para 44 px em telas de toque (`pointer-coarse:min-h-11` nos tamanhos do `button.tsx`); não use `size="sm"` achando que fica pequeno no celular.
 - Site público: dados via `createPublicClient()` (anon, sem cookies), sempre filtrando pelo restaurante resolvido do slug; o restaurante nunca vem de id enviado pelo navegador.

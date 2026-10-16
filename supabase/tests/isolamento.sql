@@ -1488,6 +1488,59 @@ begin
 end;
 $$;
 
+-- ======================================================================
+-- Pagamento combinado e pessoas da mesa
+-- ======================================================================
+do $$
+declare
+  a constant uuid := md5('brasa-espetinhos')::uuid;
+  v_comanda uuid;
+  v_total integer;
+  n integer;
+begin
+  perform pg_temp.entrar('caixa.brasa@exemplo.com');
+  if not exists (select 1 from public.caixa_sessoes where restaurante_id = a and fechada_em is null) then
+    insert into public.caixa_sessoes (restaurante_id, valor_inicial) values (a, 0);
+  end if;
+
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  insert into public.comandas (restaurante_id, mesa_id, pessoas)
+  select a, m.id, 2 from public.mesas m
+  where m.restaurante_id = a and m.ativa
+    and not exists (select 1 from public.comandas c where c.mesa_id = m.id and c.status in ('aberta', 'conta_pedida'))
+  order by m.ordem limit 1
+  returning id into v_comanda;
+  perform public.lancar_itens_comanda(v_comanda, jsonb_build_array(
+    jsonb_build_object('produto_id', md5('brasa-espetinhos/Burgers/Burger artesanal')::uuid, 'quantidade', 2)));
+  select total into v_total from public.comandas where id = v_comanda;
+
+  -- Garçom muda a quantidade de pessoas com a mesa aberta.
+  update public.comandas set pessoas = 5 where id = v_comanda;
+  select count(*) into n from public.comandas where id = v_comanda and pessoas = 5;
+  perform pg_temp.ok(n = 1, 'mesa: garçom muda a quantidade de pessoas');
+
+  -- Várias formas num envio que passa do total: nenhuma é gravada.
+  begin
+    insert into public.pagamentos (restaurante_id, comanda_id, valor, forma)
+    values (a, v_comanda, v_total - 100, 'pix'), (a, v_comanda, 500, 'credito');
+    perform pg_temp.ok(false, 'pagamento combinado: passou do total, nada gravado');
+  exception when others then
+    select count(*) into n from public.pagamentos where comanda_id = v_comanda;
+    perform pg_temp.ok(n = 0, 'pagamento combinado: passou do total, nada gravado');
+  end;
+
+  -- Várias formas que fecham o total: todas gravadas e a comanda fecha.
+  insert into public.pagamentos (restaurante_id, comanda_id, valor, forma)
+  values (a, v_comanda, 1000, 'pix'), (a, v_comanda, 2000, 'credito'), (a, v_comanda, v_total - 3000, 'dinheiro');
+  select count(*) into n from public.pagamentos where comanda_id = v_comanda and estornado_em is null;
+  perform pg_temp.ok(n = 3, 'pagamento combinado: três formas gravadas');
+  update public.comandas set status = 'fechada' where id = v_comanda;
+  select count(*) into n from public.comandas where id = v_comanda and status = 'fechada';
+  perform pg_temp.ok(n = 1, 'pagamento combinado: comanda quitada fecha');
+  perform pg_temp.admin();
+end;
+$$;
+
 select n, ok, teste from resultado order by n;
 select count(*) filter (where not ok) as falhas, count(*) as total from resultado;
 

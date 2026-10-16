@@ -85,6 +85,9 @@ export async function carregarMapa(restauranteId: string): Promise<MesaNoMapa[]>
 export type ItemComanda = {
   id: string;
   pedidoNumero: number;
+  // Cada lançamento ("rodada") da mesa: quando e por quem, para o histórico por pedido.
+  pedidoCriadoEm: string;
+  pedidoAutor: string | null;
   nome: string;
   precoUnitario: number; // produto + opções
   adicionais: AdicionalEscolhido[];
@@ -140,7 +143,7 @@ export async function carregarComandaDaMesa(restauranteId: string, mesaId: strin
     .select(
       `id, status, pessoas, total, aberta_em,
        garcom:membros!comandas_restaurante_id_garcom_id_fkey(nome),
-       pedidos(numero, status, tarefas_producao(status, pronto_em), itens_pedido(id, nome_produto, preco_unitario, preco_adicionais, adicionais, etapas, para_viagem, quantidade, observacao, total, criado_em, cancelado_em, motivo_cancelamento)),
+       pedidos(numero, status, criado_em, autor:membros!pedidos_restaurante_id_criado_por_fkey(nome), tarefas_producao(status, pronto_em), itens_pedido(id, nome_produto, preco_unitario, preco_adicionais, adicionais, etapas, para_viagem, quantidade, observacao, total, criado_em, cancelado_em, motivo_cancelamento)),
        pagamentos(id, valor, forma, criado_em, estornado_em, motivo_estorno, registrado:membros!pagamentos_restaurante_id_registrado_por_fkey(nome))`,
     )
     .eq("restaurante_id", restauranteId)
@@ -158,6 +161,8 @@ export async function carregarComandaDaMesa(restauranteId: string, mesaId: strin
       return p.itens_pedido.map((i) => ({
         id: i.id,
         pedidoNumero: p.numero,
+        pedidoCriadoEm: p.criado_em,
+        pedidoAutor: p.autor?.nome ?? null,
         nome: i.nome_produto,
         precoUnitario: i.preco_unitario + i.preco_adicionais,
         adicionais: lerAdicionais(i.adicionais),
