@@ -166,6 +166,19 @@ export function ResumoSessao({ resumo, fusoHorario }: { resumo: ResumoCaixa; fus
         />
       </div>
 
+      {resumo.entregadores.length > 0 ? (
+        <Tabela
+          titulo="Entregadores (a pagar)"
+          vazio=""
+          linhas={resumo.entregadores.map((e) => ({
+            chave: e.nome,
+            rotulo: e.nome,
+            detalhe: `${e.entregas} ${e.entregas === 1 ? "entrega" : "entregas"}`,
+            valor: formatarBRL(e.valor),
+          }))}
+        />
+      ) : null}
+
       <div className="grid gap-4 lg:grid-cols-2">
         <Tabela
           titulo="Itens mais vendidos"

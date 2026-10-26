@@ -376,6 +376,33 @@ export default async function RelatoriosPage(props: PageProps<"/painel/relatorio
                 )}
               </CardContent>
             </Card>
+            {r.entregadores.length > 0 ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Entregadores</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-muted-foreground">
+                        <th className="pb-2 font-medium">Entregador</th>
+                        <th className="pb-2 text-right font-medium">Entregas</th>
+                        <th className="pb-2 text-right font-medium">A pagar</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {r.entregadores.map((e) => (
+                        <tr key={e.nome} className="border-t">
+                          <td className="py-2">{e.nome}</td>
+                          <td className="py-2 text-right tabular-nums">{e.entregas}</td>
+                          <td className="py-2 text-right tabular-nums">{formatarBRL(e.valor)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </CardContent>
+              </Card>
+            ) : null}
           </div>
         </>
       )}

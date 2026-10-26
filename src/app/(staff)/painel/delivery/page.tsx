@@ -31,7 +31,8 @@ export default async function DeliveryPage() {
        itens_pedido(id, nome_produto, quantidade, observacao, adicionais, total, cancelado_em),
        pagamentos(valor, estornado_em),
        tarefas_producao(status),
-       pedidos_alteracoes(descricao, criado_em)`,
+       pedidos_alteracoes(descricao, criado_em),
+       entregador_id, valor_entregador`,
     )
     .eq("restaurante_id", acesso.restaurante.id)
     .eq("origem", "delivery")
@@ -39,6 +40,13 @@ export default async function DeliveryPage() {
     .order("criado_em", { ascending: true })
     .limit(200);
   if (error) throw new Error(error.message);
+
+  const { data: entregadores } = await supabase
+    .from("entregadores")
+    .select("id, nome")
+    .eq("restaurante_id", acesso.restaurante.id)
+    .eq("ativo", true)
+    .order("nome");
 
   const pedidos: PedidoDelivery[] = data.map((p) => ({
     id: p.id,
@@ -69,6 +77,8 @@ export default async function DeliveryPage() {
     pracasPendentes: p.tarefas_producao.filter((t) => t.status === "pendente").length,
     motivoCancelamento: p.motivo_cancelamento,
     bairroId: p.bairro_id,
+    entregadorId: p.entregador_id,
+    valorEntregador: p.valor_entregador,
     alteracoes: p.pedidos_alteracoes
       .toSorted((a, b) => a.criado_em.localeCompare(b.criado_em))
       .map((a) => ({ descricao: a.descricao, hora: horaLocal(a.criado_em, fuso) })),
@@ -95,7 +105,7 @@ export default async function DeliveryPage() {
             : "Caixa fechado: o site não recebe pedidos até o caixa ser aberto."}
         </p>
       </div>
-      <QuadroDelivery pedidos={pedidos} />
+      <QuadroDelivery pedidos={pedidos} entregadores={entregadores} />
     </main>
   );
 }

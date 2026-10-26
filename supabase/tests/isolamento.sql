@@ -1859,6 +1859,67 @@ begin
 end;
 $$;
 
+-- ======================================================================
+-- Entregadores
+-- ======================================================================
+do $$
+declare
+  a constant uuid := md5('brasa-espetinhos')::uuid;
+  burger constant uuid := md5('brasa-espetinhos/Burgers/Burger artesanal')::uuid;
+  v_taxa uuid;
+  v_fixo uuid;
+  v_pedido uuid;
+  v_sessao uuid;
+  v_json jsonb;
+  n integer;
+begin
+  perform pg_temp.entrar('caixa.brasa@exemplo.com');
+  if not exists (select 1 from public.caixa_sessoes where restaurante_id = a and fechada_em is null) then
+    insert into public.caixa_sessoes (restaurante_id, valor_inicial) values (a, 0);
+  end if;
+  select id into v_sessao from public.caixa_sessoes where restaurante_id = a and fechada_em is null;
+
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  insert into public.entregadores (restaurante_id, nome, recebe_taxa) values (a, 'Moto Taxa', true) returning id into v_taxa;
+  insert into public.entregadores (restaurante_id, nome, recebe_taxa, valor_por_entrega) values (a, 'Moto Fixo', false, 400) returning id into v_fixo;
+
+  perform pg_temp.entrar('caixa.brasa@exemplo.com');
+  begin
+    insert into public.entregadores (restaurante_id, nome) values (a, 'Caixa cria');
+    perform pg_temp.ok(false, 'entregador: só o dono cadastra');
+  exception when others then
+    perform pg_temp.ok(true, 'entregador: só o dono cadastra');
+  end;
+
+  perform pg_temp.admin();
+  insert into public.pedidos (restaurante_id, origem, cliente_nome, cliente_telefone, endereco, taxa_entrega, forma_pagamento_prevista, status)
+  values (a, 'delivery', 'Entrega', '69977770001', '{"rua":"R","numero":"1","bairro":"Centro"}', 600, 'pix', 'recebido')
+  returning id into v_pedido;
+
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  begin
+    update public.pedidos set entregador_id = v_taxa where id = v_pedido;
+    perform pg_temp.ok(false, 'entregador: garçom não escolhe');
+  exception when others then
+    perform pg_temp.ok(true, 'entregador: garçom não escolhe');
+  end;
+
+  perform pg_temp.entrar('caixa.brasa@exemplo.com');
+  update public.pedidos set entregador_id = v_taxa where id = v_pedido;
+  select count(*) into n from public.pedidos where id = v_pedido and valor_entregador = 600;
+  perform pg_temp.ok(n = 1, 'entregador: recebe a taxa de entrega');
+  update public.pedidos set entregador_id = v_fixo where id = v_pedido;
+  select count(*) into n from public.pedidos where id = v_pedido and valor_entregador = 400;
+  perform pg_temp.ok(n = 1, 'entregador: valor fixo por entrega');
+
+  v_json := public.entregas_da_sessao(v_sessao);
+  perform pg_temp.ok(exists (
+    select 1 from jsonb_array_elements(v_json) x where x ->> 'nome' = 'Moto Fixo' and (x ->> 'valor')::int = 400 and (x ->> 'entregas')::int = 1
+  ), 'entregador: acerto da noite por entregador');
+  perform pg_temp.admin();
+end;
+$$;
+
 select n, ok, teste from resultado order by n;
 select count(*) filter (where not ok) as falhas, count(*) as total from resultado;
 

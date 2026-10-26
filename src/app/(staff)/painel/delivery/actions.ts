@@ -92,6 +92,26 @@ export async function entregarPedido(pedidoId: string, forma: string): Promise<R
   return sucesso("Pedido entregue e pagamento registrado.");
 }
 
+// Escolhe (ou tira) o entregador do pedido; o valor dele vem do cadastro, pelo banco.
+export async function definirEntregador(pedidoId: string, entregadorId: string | null): Promise<ResultadoAcao> {
+  const acesso = await exigirAcesso("painel");
+  const dados = z.object({ pedidoId: id, entregadorId: id.nullable() }).safeParse({ pedidoId, entregadorId });
+  if (!dados.success) return falha("Dados inválidos.");
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("pedidos")
+    .update({ entregador_id: dados.data.entregadorId })
+    .eq("id", dados.data.pedidoId)
+    .eq("restaurante_id", acesso.restaurante.id)
+    .eq("origem", "delivery")
+    .not("status", "in", "(entregue,cancelado)")
+    .select("id");
+  if (error) return falha(mensagemErroBanco(error));
+  if (!data.length) return falha("Pedido não encontrado ou já finalizado.");
+  refresh();
+  return sucesso(dados.data.entregadorId ? "Entregador definido." : "Entregador retirado.");
+}
+
 // Cardápio (com opções) e bairros para a janela de edição; carregados só quando ela abre.
 export async function dadosParaEdicao() {
   const acesso = await exigirAcesso("painel");

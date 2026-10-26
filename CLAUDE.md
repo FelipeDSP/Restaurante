@@ -187,6 +187,11 @@ Já existe (cupom de desconto no delivery):
 - Checkout: "Tem cupom?" → `validarCupom` (RPC `validar_cupom`, limite por IP) mostra o desconto; `criar_pedido_delivery(..., p_cupom)` valida de novo (mensagem termina com `(cupom)`: o site tira o cupom) e copia código/tipo/valor no pedido. `pedidos.desconto` é recalculado pelo trigger (a edição do pedido também); total = subtotal + taxa − desconto. Usos = pedidos não cancelados com o cupom.
 - Desconto aparece no acompanhamento, no cartão do painel, na via impressa; o "vendido" do resumo e dos relatórios já vem sem ele, com `descontos` à parte.
 
+Já existe (entregadores e acerto):
+- `entregadores` (nome, telefone, `recebe_taxa` ou `valor_por_entrega`, ativo). Só o dono cadastra (Painel › Restaurante › Entregadores); dono e caixa leem.
+- No cartão do delivery (a partir do aceite), o caixa escolhe o entregador (`definirEntregador`). `pedidos.entregador_id` só dono/caixa mudam; `valor_entregador` vem do cadastro pelo trigger `t06_entregador` (acompanha a taxa se a edição mudar).
+- Acerto: `entregas_da_sessao` no resumo do caixa ("Entregadores (a pagar)") e `entregas_do_periodo` nos relatórios. Pedido cancelado não conta.
+
 Já existe (avisos no celular do cliente, Web Push):
 - Na página de acompanhamento, "Avisar quando o pedido mudar" pede permissão, registra `/sw.js` (só avisos, sem cache) e manda a inscrição para `/api/pedidos/[id]/avisos` (aceita só serviços de push dos navegadores: FCM, Mozilla, Apple, Windows). Tabela `pedidos_avisos` só a chave secreta lê e grava.
 - O painel avisa depois de aceitar, saiu para entrega, entregar e cancelar (`after(() => avisarCliente(id))`, `src/lib/avisos-push.ts`); o status vem do banco. Pedido terminado apaga as inscrições.

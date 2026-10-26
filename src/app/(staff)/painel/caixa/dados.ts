@@ -35,6 +35,8 @@ export type ResumoCaixa = {
   couvert: number;
   // Cupons do delivery (o vendido já vem sem eles).
   descontos: number;
+  // Acerto da noite: entregas e valor de cada entregador (vem de entregas_da_sessao).
+  entregadores: { nome: string; entregas: number; valor: number }[];
   quantidade_itens: number;
   por_forma: (Valor & { forma: string })[];
   por_origem: (Valor & { origem: string })[];
@@ -100,9 +102,13 @@ export async function carregarResumo(restauranteId: string, sessaoId: string): P
     .maybeSingle();
   if (!sessao) return null;
 
-  const { data, error } = await supabase.rpc("resumo_caixa_sessao", { p_sessao_id: sessaoId });
+  const [{ data, error }, entregas] = await Promise.all([
+    supabase.rpc("resumo_caixa_sessao", { p_sessao_id: sessaoId }),
+    supabase.rpc("entregas_da_sessao", { p_sessao_id: sessaoId }),
+  ]);
   if (error) throw new Error(error.message);
-  return (data as ResumoCaixa | null) ?? null;
+  if (!data) return null;
+  return { ...(data as Omit<ResumoCaixa, "entregadores">), entregadores: (entregas.data as ResumoCaixa["entregadores"] | null) ?? [] };
 }
 
 // Dinheiro que deveria estar na gaveta: troco inicial + recebido em dinheiro + suprimentos − sangrias.

@@ -32,7 +32,7 @@ function destino(pedido: PedidoDelivery, coluna: ColunaId): Status | "entregar" 
   return null;
 }
 
-export function QuadroDelivery({ pedidos }: { pedidos: PedidoDelivery[] }) {
+export function QuadroDelivery({ pedidos, entregadores }: { pedidos: PedidoDelivery[]; entregadores: { id: string; nome: string }[] | null }) {
   // O cartão muda de coluna na hora; se o banco recusar, volta quando a tela recarrega.
   const [visiveis, mover] = useOptimistic(pedidos, (atual, { id, status }: { id: string; status: Status }) =>
     atual.map((p) => (p.id === id ? { ...p, status } : p)),
@@ -181,6 +181,7 @@ export function QuadroDelivery({ pedidos }: { pedidos: PedidoDelivery[] }) {
                     <CartaoPedido
                       key={pedido.id + (entregando === pedido.id ? ":entregar" : "")}
                       pedido={pedido}
+                      entregadores={entregadores ?? []}
                       modoInicial={entregando === pedido.id ? "entregar" : "normal"}
                       aoSairDoModo={() => setEntregando((id) => (id === pedido.id ? null : id))}
                       arrastavel={COLUNAS.some((c) => destino(pedido, c.id) !== null)}

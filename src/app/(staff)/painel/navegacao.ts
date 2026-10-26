@@ -40,6 +40,7 @@ export const NAVEGACAO: ItemNavegacao[] = [
     secoes: [
       { href: "/painel/restaurante", rotulo: "Dados e delivery" },
       { href: "/painel/bairros", rotulo: "Bairros" },
+      { href: "/painel/entregadores", rotulo: "Entregadores" },
     ],
   },
   {

@@ -11,7 +11,7 @@ import { formatarBRL } from "@/lib/dinheiro";
 import { FORMAS_PAGAMENTO, nomeForma } from "@/lib/rotulos";
 import { cn } from "@/lib/utils";
 
-import { avancarPedido, cancelarPedido, entregarPedido } from "./actions";
+import { avancarPedido, cancelarPedido, definirEntregador, entregarPedido } from "./actions";
 import { EditarPedido } from "./editar-pedido";
 
 export type PedidoDelivery = {
@@ -25,6 +25,8 @@ export type PedidoDelivery = {
   endereco: Record<string, string | null>;
   bairro: string | null;
   bairroId: string | null;
+  entregadorId: string | null;
+  valorEntregador: number;
   formaPrevista: string | null;
   trocoPara: number | null;
   observacao: string | null;
@@ -61,6 +63,8 @@ type Modo = "normal" | "cancelar" | "entregar";
 
 type Props = {
   pedido: PedidoDelivery;
+  // Entregadores ativos do restaurante (vazio = o restaurante não usa o cadastro).
+  entregadores: { id: string; nome: string }[];
   // Solto na coluna "Finalizados": abre direto na confirmação do pagamento.
   modoInicial?: Modo;
   aoSairDoModo?: () => void;
@@ -69,7 +73,7 @@ type Props = {
   aoArrastar?: (ativo: boolean) => void;
 };
 
-export function CartaoPedido({ pedido, modoInicial = "normal", aoSairDoModo, arrastavel, aoArrastar }: Props) {
+export function CartaoPedido({ pedido, entregadores, modoInicial = "normal", aoSairDoModo, arrastavel, aoArrastar }: Props) {
   const { pendente, executar } = useAcao();
   const [modo, setModoInterno] = useState<Modo>(modoInicial);
   const setModo = (novo: Modo) => {
@@ -268,6 +272,30 @@ export function CartaoPedido({ pedido, modoInicial = "normal", aoSairDoModo, arr
           </>
         ) : null}
       </p>
+
+      {entregadores.length > 0 && pedido.status !== "recebido" ? (
+        <label className="flex items-center gap-2 text-sm">
+          <span className="text-muted-foreground">Entregador</span>
+          <select
+            value={pedido.entregadorId ?? ""}
+            disabled={pendente}
+            onChange={(ev) => executar(() => definirEntregador(pedido.id, ev.target.value || null))}
+            className="h-9 min-w-0 flex-1 rounded-md border bg-background px-2"
+            aria-label="Entregador"
+          >
+            <option value="">Escolher…</option>
+            {entregadores.map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.nome}
+              </option>
+            ))}
+            {pedido.entregadorId && !entregadores.some((e) => e.id === pedido.entregadorId) ? (
+              <option value={pedido.entregadorId}>(desativado)</option>
+            ) : null}
+          </select>
+          {pedido.entregadorId ? <span className="tabular-nums text-muted-foreground">{formatarBRL(pedido.valorEntregador)}</span> : null}
+        </label>
+      ) : null}
 
       {modo === "normal" ? (
         <div className="flex flex-wrap gap-2">
