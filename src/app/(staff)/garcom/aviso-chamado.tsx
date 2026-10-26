@@ -12,13 +12,13 @@ import { atenderChamado } from "./actions";
 
 // Chamados ainda valem por 30 min (depois disso não fazem mais sentido na tela).
 const VALIDADE_MS = 30 * 60_000;
-// Enquanto ele não responde, vibra e bipa de novo (algumas vezes).
-const REPETIR_MS = 20_000;
-const REPETICOES = 4;
+// Até ele responder: vibra a cada 3 s e bipa a cada 6 s.
+const VIBRAR_MS = 3_000;
 
-type Chamado = { id: string; recado: string | null; chamado_por: string | null };
+type Chamado = { id: string; recado: string | null; chamado_por: string | null; criado_em?: string };
 
-// Chamado do dono/caixa pelo painel: vibração, bipe e aviso na tela até o garçom tocar em "Vou".
+// Chamado pelo painel: vibração, bipe e aviso na tela sem parar até o garçom tocar em "Vou"
+// (ou fechar o aviso, ou responder em outro aparelho, ou o chamado vencer).
 export function AvisoChamado({ restauranteId, membroId }: { restauranteId: string; membroId: string }) {
   const audio = useRef<AudioContext | null>(null);
   const abertos = useRef(new Map<string, number>());
@@ -39,9 +39,15 @@ export function AvisoChamado({ restauranteId, membroId }: { restauranteId: strin
     return () => repeticoes.forEach((intervalo) => clearInterval(intervalo));
   }, []);
 
-  const alertar = useCallback(() => {
-    navigator.vibrate?.([400, 150, 400, 150, 400]);
-    if (audio.current?.state === "running") tocarAlerta(audio.current);
+  const alertar = useCallback((bipar: boolean) => {
+    navigator.vibrate?.([700, 300, 700]);
+    if (bipar && audio.current?.state === "running") tocarAlerta(audio.current);
+  }, []);
+
+  const encerrar = useCallback((chamadoId: string) => {
+    clearInterval(abertos.current.get(chamadoId));
+    abertos.current.delete(chamadoId);
+    navigator.vibrate?.(0);
   }, []);
 
   const mostrar = useCallback(
@@ -54,37 +60,52 @@ export function AvisoChamado({ restauranteId, membroId }: { restauranteId: strin
       }
       if (abertos.current.has(chamado.id)) return;
 
+      const vence = (chamado.criado_em ? new Date(chamado.criado_em).getTime() : Date.now()) + VALIDADE_MS;
+      const idAviso = `chamado-${chamado.id}`;
       let vezes = 0;
       const intervalo = window.setInterval(() => {
+        if (Date.now() > vence) {
+          encerrar(chamado.id);
+          toast.dismiss(idAviso);
+          return;
+        }
         vezes += 1;
-        if (vezes >= REPETICOES) clearInterval(intervalo);
-        alertar();
-      }, REPETIR_MS);
+        alertar(vezes % 2 === 0);
+      }, VIBRAR_MS);
       abertos.current.set(chamado.id, intervalo);
-      alertar();
+      alertar(true);
 
-      const encerrar = () => {
-        clearInterval(intervalo);
-        abertos.current.delete(chamado.id);
-      };
       toast.warning(`${quem} está chamando você`, {
-        id: `chamado-${chamado.id}`,
+        id: idAviso,
         description: chamado.recado ?? undefined,
         duration: Infinity,
         // Botão grande: o garçom responde com uma mão.
         classNames: { actionButton: "!h-11 !rounded-full !px-6 !text-base !font-semibold" },
-        action: { label: "Vou", onClick: () => executar(() => atenderChamado(chamado.id), encerrar) },
-        onDismiss: () => clearInterval(intervalo),
+        action: {
+          label: "Vou",
+          onClick: (evento) => {
+            // O aviso (e a vibração) só some quando o "Vou" chega ao sistema; sem internet, continua.
+            evento.preventDefault();
+            executar(
+              () => atenderChamado(chamado.id),
+              () => {
+                encerrar(chamado.id);
+                toast.dismiss(idAviso);
+              },
+            );
+          },
+        },
+        onDismiss: () => encerrar(chamado.id),
       });
     },
-    [alertar, executar],
+    [alertar, encerrar, executar],
   );
 
   // Chamados que chegaram com o app fechado (ou durante uma queda de conexão).
   const conferir = useCallback(async () => {
     const { data } = await createClient()
       .from("chamados_garcom")
-      .select("id, recado, chamado_por")
+      .select("id, recado, chamado_por, criado_em")
       .eq("restaurante_id", restauranteId)
       .eq("garcom_id", membroId)
       .is("atendido_em", null)
@@ -106,6 +127,19 @@ export function AvisoChamado({ restauranteId, membroId }: { restauranteId: strin
     },
     "INSERT",
     () => void conferir(),
+  );
+
+  // Respondido em outro aparelho dele: para de vibrar aqui também.
+  useMudancasRealtime(
+    restauranteId,
+    ["chamados_garcom"],
+    (mudanca) => {
+      const c = mudanca.new as { id?: string; garcom_id?: string; atendido_em?: string | null };
+      if (!c.id || c.garcom_id !== membroId || !c.atendido_em || !abertos.current.has(c.id)) return;
+      encerrar(c.id);
+      toast.dismiss(`chamado-${c.id}`);
+    },
+    "UPDATE",
   );
 
   return null;
