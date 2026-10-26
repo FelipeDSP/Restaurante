@@ -12,13 +12,19 @@ import { cn } from "@/lib/utils";
 
 import { BaixarCsv } from "./baixar-csv";
 import { carregarRelatorio, dataCurta, PERIODOS, periodoAnterior, resolverPeriodo } from "./dados";
-import { BarraCelula, Barras, Kpi, Linha, MARCA, Painel, Rosca, variacao, Vazio } from "./graficos";
+import { BarraCelula, Barras, COR_OUTROS, CORES, type Fatia, Kpi, Linha, MARCA, Painel, Rosca, variacao, Vazio } from "./graficos";
 
 export const metadata: Metadata = { title: "Relatórios" };
 
 const DIAS_SEMANA = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
-const porcento = (parte: number, todo: number) => (todo ? `${Math.round((parte / todo) * 100)}%` : "0%");
+// Ordem fixa das fatias: a mesma coisa tem sempre a mesma cor (CORES na mesma posição).
+const ORIGENS = ["mesa", "delivery", "balcao"];
+const FORMAS = ["pix", "dinheiro", "credito", "debito", "outro"];
+const posicao = (lista: string[], valor: string) => (lista.includes(valor) ? lista.indexOf(valor) : lista.length);
+const corFixa = (lista: string[], valor: string) => CORES[posicao(lista, valor) % CORES.length];
+
+const porcento =(parte: number, todo: number) => (todo ? `${Math.round((parte / todo) * 100)}%` : "0%");
 const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
 
 export default async function RelatoriosPage(props: PageProps<"/painel/relatorios">) {
@@ -189,12 +195,15 @@ export default async function RelatoriosPage(props: PageProps<"/painel/relatorio
                 <Rosca
                   centro={formatarBRL(r.vendido)}
                   rotuloCentro="vendido"
-                  fatias={r.por_origem.map((o) => ({
-                    chave: o.origem,
-                    rotulo: `${nomeOrigem(o.origem)} · ${o.pedidos}`,
-                    valor: o.vendido,
-                    texto: formatarBRL(o.vendido),
-                  }))}
+                  fatias={[...r.por_origem]
+                    .sort((a, b) => posicao(ORIGENS, a.origem) - posicao(ORIGENS, b.origem))
+                    .map((o) => ({
+                      chave: o.origem,
+                      rotulo: `${nomeOrigem(o.origem)} · ${o.pedidos}`,
+                      valor: o.vendido,
+                      texto: formatarBRL(o.vendido),
+                      cor: corFixa(ORIGENS, o.origem),
+                    }))}
                 />
               )}
             </Painel>
@@ -205,7 +214,9 @@ export default async function RelatoriosPage(props: PageProps<"/painel/relatorio
                 <Rosca
                   centro={formatarBRL(r.recebido)}
                   rotuloCentro="recebido"
-                  fatias={r.por_forma.map((f) => ({ chave: f.forma, rotulo: nomeForma(f.forma), valor: f.valor, texto: formatarBRL(f.valor) }))}
+                  fatias={[...r.por_forma]
+                    .sort((a, b) => posicao(FORMAS, a.forma) - posicao(FORMAS, b.forma))
+                    .map((f) => ({ chave: f.forma, rotulo: nomeForma(f.forma), valor: f.valor, texto: formatarBRL(f.valor), cor: corFixa(FORMAS, f.forma) }))}
                 />
               )}
             </Painel>
@@ -219,15 +230,7 @@ export default async function RelatoriosPage(props: PageProps<"/painel/relatorio
                 <Rosca
                   centro={String(r.por_hora.reduce((t, h) => t + h.pedidos, 0))}
                   rotuloCentro="pedidos"
-                  // Ordem da noite: madrugada (0h a 5h) depois das 23h.
-                  fatias={[...r.por_hora]
-                    .sort((x, y) => ((x.hora + 18) % 24) - ((y.hora + 18) % 24))
-                    .map((h) => ({
-                      chave: String(h.hora),
-                      rotulo: `${String(h.hora).padStart(2, "0")}h`,
-                      valor: h.pedidos,
-                      texto: plural(h.pedidos, "pedido", "pedidos"),
-                    }))}
+                  fatias={fatiasHorario(r.por_hora)}
                 />
               )}
             </Painel>
@@ -243,6 +246,7 @@ export default async function RelatoriosPage(props: PageProps<"/painel/relatorio
                     rotulo: `${DIAS_SEMANA[d.dia]} · ${plural(d.noites, "noite", "noites")}`,
                     valor: d.vendido,
                     texto: formatarBRL(d.vendido),
+                    cor: CORES[d.dia],
                   }))}
                 />
               )}
@@ -411,6 +415,22 @@ export default async function RelatoriosPage(props: PageProps<"/painel/relatorio
       )}
     </main>
   );
+}
+
+// Horários na ordem da noite (madrugada depois das 23h). Mais de 7 horários: os de menos pedidos
+// viram uma fatia "Outros", para a rosca continuar legível.
+function fatiasHorario(horas: { hora: number; pedidos: number }[]): Fatia[] {
+  const ordemNoite = (h: number) => (h + 18) % 24;
+  const principais = horas.length > 7 ? [...horas].sort((a, b) => b.pedidos - a.pedidos).slice(0, 6) : horas;
+  const resto = horas.filter((h) => !principais.includes(h));
+  const fatias: Fatia[] = [...principais]
+    .sort((a, b) => ordemNoite(a.hora) - ordemNoite(b.hora))
+    .map((h) => ({ chave: String(h.hora), rotulo: `${String(h.hora).padStart(2, "0")}h`, valor: h.pedidos, texto: plural(h.pedidos, "pedido", "pedidos") }));
+  if (resto.length > 0) {
+    const pedidos = resto.reduce((t, h) => t + h.pedidos, 0);
+    fatias.push({ chave: "outros", rotulo: "Outros horários", valor: pedidos, texto: plural(pedidos, "pedido", "pedidos"), cor: COR_OUTROS });
+  }
+  return fatias;
 }
 
 function Etiqueta({ rotulo, valor }: { rotulo: string; valor: string }) {

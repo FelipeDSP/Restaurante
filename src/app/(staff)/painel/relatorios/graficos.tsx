@@ -7,9 +7,13 @@ import { cn } from "@/lib/utils";
 
 // Gráficos dos relatórios em CSS/SVG puro (sem biblioteca), renderizados no servidor.
 
-// Tons da cor do restaurante (fatias e legendas): a própria cor e misturas com branco.
 export const MARCA = "var(--cor-primaria)";
-export const CORES = [100, 70, 45, 85, 58, 32, 92].map((p) => (p === 100 ? MARCA : `color-mix(in oklch, ${MARCA} ${p}%, white)`));
+
+// Cores das fatias das roscas: fixas para todo restaurante (a cor da marca pode ser qualquer uma e
+// não garante fatias distintas). Ordem validada para vizinhas distintas, inclusive para daltônicos:
+// azul, laranja, verde-água, mostarda, rosa, verde, roxo, vermelho. "Outros" fica em cinza.
+export const CORES = ["#2f6fd0", "#e8743b", "#17a88b", "#e0a21b", "#d9669b", "#4c9a2a", "#6a57c8", "#d64545"];
+export const COR_OUTROS = "#9ca3af";
 
 // Variação em relação ao período anterior; null quando não há base para comparar.
 export function variacao(atual: number, anterior: number | null): number | null {
@@ -164,14 +168,21 @@ export function Linha({
   );
 }
 
-// Rosca (conic-gradient) com legenda.
-export function Rosca({ fatias, centro, rotuloCentro }: { fatias: { chave: string; rotulo: string; valor: number; texto: string }[]; centro: string; rotuloCentro: string }) {
+// Rosca (conic-gradient) com legenda. Cada fatia traz a sua cor (a mesma coisa tem sempre a mesma
+// cor em qualquer período); sem cor, segue a ordem de CORES.
+export type Fatia = { chave: string; rotulo: string; valor: number; texto: string; cor?: string };
+
+export function Rosca({ fatias, centro, rotuloCentro }: { fatias: Fatia[]; centro: string; rotuloCentro: string }) {
   const total = fatias.reduce((s, f) => s + f.valor, 0);
+  const cor = (f: Fatia, i: number) => f.cor ?? CORES[i % CORES.length];
+  // Fresta de fundo entre as fatias, para separar cores vizinhas.
+  const fresta = fatias.length > 1 ? 0.6 : 0;
   let acumulado = 0;
   const partes = fatias.map((f, i) => {
     const inicio = (acumulado / total) * 100;
     acumulado += f.valor;
-    return `${CORES[i % CORES.length]} ${inicio}% ${(acumulado / total) * 100}%`;
+    const fim = (acumulado / total) * 100;
+    return `${cor(f, i)} ${inicio}% ${Math.max(inicio, fim - fresta)}%, var(--background) ${Math.max(inicio, fim - fresta)}% ${fim}%`;
   });
   return (
     <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center">
@@ -190,7 +201,7 @@ export function Rosca({ fatias, centro, rotuloCentro }: { fatias: { chave: strin
       <ul className="flex w-full flex-col gap-2 text-sm">
         {fatias.map((f, i) => (
           <li key={f.chave} className="flex items-center gap-2">
-            <span className="size-3 shrink-0 rounded-full" style={{ backgroundColor: CORES[i % CORES.length] }} aria-hidden />
+            <span className="size-3 shrink-0 rounded-full" style={{ backgroundColor: cor(f, i) }} aria-hidden />
             <span className="min-w-0 flex-1 truncate">{f.rotulo}</span>
             <span className="text-muted-foreground tabular-nums">{total ? Math.round((f.valor / total) * 100) : 0}%</span>
             <span className="w-24 text-right font-medium tabular-nums">{f.texto}</span>
