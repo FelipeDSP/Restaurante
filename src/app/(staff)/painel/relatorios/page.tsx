@@ -261,7 +261,9 @@ export default async function RelatoriosPage(props: PageProps<"/painel/relatorio
                   {(["quantidade", "valor"] as const).map((o) => (
                     <Link
                       key={o}
-                      href={linkPeriodo({ ordem: o })}
+                      href={linkPeriodo(todos ? { ordem: o, todos: "1" } : { ordem: o })}
+                      // Trocar a ordem não volta para o topo da página.
+                      scroll={false}
                       aria-current={ordem === o ? "true" : undefined}
                       className={cn("flex min-h-9 items-center rounded-md px-3 text-sm", ordem === o ? "bg-muted font-medium" : "text-muted-foreground")}
                     >
