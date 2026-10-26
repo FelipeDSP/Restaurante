@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 
 import type { PedidoPublico } from "../../dados";
 import { useMeusPedidos } from "../../meus-pedidos";
+import { AvisoPush } from "./aviso-push";
 
 type Status = PedidoPublico["status"];
 
@@ -43,10 +44,12 @@ const emAndamento = (s: Status) => s !== "entregue" && s !== "cancelado";
 
 type Props = {
   inicial: PedidoPublico;
+  // Chave pública dos avisos no celular (null = avisos desligados neste servidor).
+  chaveAvisos: string | null;
   restaurante: { id: string; slug: string; nome: string; whatsapp: string | null; fusoHorario: string };
 };
 
-export function Acompanhamento({ inicial, restaurante }: Props) {
+export function Acompanhamento({ inicial, chaveAvisos, restaurante }: Props) {
   const [pedido, setPedido] = useState(inicial);
   const [atualizadoEm, setAtualizadoEm] = useState(() => new Date().toISOString());
   const [semConexao, setSemConexao] = useState(false);
@@ -139,6 +142,8 @@ export function Acompanhamento({ inicial, restaurante }: Props) {
           )
         ) : null}
       </section>
+
+      {ativo && chaveAvisos ? <AvisoPush pedidoId={pedido.id} chavePublica={chaveAvisos} /> : null}
 
       {pedido.status === "cancelado" ? (
         <section className="flex items-start gap-3 rounded-xl bg-red-50 p-4 text-red-900">

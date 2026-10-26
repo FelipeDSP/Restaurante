@@ -173,6 +173,13 @@ Já existe (conta do cliente do delivery, opcional):
 - Telas: `/[slug]/entrar` (celular → código → nome), cartão "Minha conta" em `/[slug]/pedidos` (nome, endereços, sair, excluir) e checkout preenchido pela conta (endereços usados viram botões). Sessão e dados em `src/app/(publico)/[slug]/conta.ts`; telefone em `src/lib/telefone.ts`.
 - Local: `supabase/config.toml` liga o login por telefone (`[auth.sms]`, Twilio de mentira só para habilitar) e o gancho em `http://host.docker.internal:3000`; o segredo fica em `supabase/.env` e `.env.local` (fora do git).
 
+Já existe (avisos no celular do cliente, Web Push):
+- Na página de acompanhamento, "Avisar quando o pedido mudar" pede permissão, registra `/sw.js` (só avisos, sem cache) e manda a inscrição para `/api/pedidos/[id]/avisos` (aceita só serviços de push dos navegadores: FCM, Mozilla, Apple, Windows). Tabela `pedidos_avisos` só a chave secreta lê e grava.
+- O painel avisa depois de aceitar, saiu para entrega, entregar e cancelar (`after(() => avisarCliente(id))`, `src/lib/avisos-push.ts`); o status vem do banco. Pedido terminado apaga as inscrições.
+- Chaves VAPID só em tempo de execução: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_ASSUNTO` (mailto:). Sem elas o botão some. Gerar com `npx web-push generate-vapid-keys`.
+- iPhone: só com o site na tela de início (iOS 16.4+). O site do restaurante tem manifest próprio (`/pwa/[id]/manifest?app=site`, sem start_url: abre a página de onde foi instalado).
+- Sem depender de outro produto (decisão do cliente): WhatsApp/Chatyou só como integração opcional no futuro.
+
 ## Acesso público (anon)
 
 - Leitura de `restaurantes` (apenas colunas públicas, via view `restaurantes_publicos`), `categorias` ativas, `produtos` disponíveis para delivery e `bairros_entrega` ativos, somente de restaurantes ativos.

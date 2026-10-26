@@ -16,6 +16,8 @@ export async function generateMetadata(props: LayoutProps<"/[slug]">): Promise<M
     title: { template: `%s · ${restaurante.nome}`, default: `${restaurante.nome} · Cardápio e delivery` },
     description: `Peça online no ${restaurante.nome}.`,
     icons: { icon: urlIcone(restaurante, 192), apple: urlIcone(restaurante, 180) },
+    manifest: `/pwa/${restaurante.id}/manifest?app=site`,
+    appleWebApp: { capable: true, title: restaurante.nome, statusBarStyle: "default" },
   };
 }
 

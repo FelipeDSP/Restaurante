@@ -16,7 +16,7 @@ function nomeCurto(nome: string): string {
   return curto || nome.slice(0, 12);
 }
 
-export async function GET(_request: Request, ctx: RouteContext<"/pwa/[restauranteId]/manifest">) {
+export async function GET(request: Request, ctx: RouteContext<"/pwa/[restauranteId]/manifest">) {
   const { restauranteId } = await ctx.params;
   if (!id.safeParse(restauranteId).success) return new Response("Não encontrado", { status: 404 });
 
@@ -27,6 +27,27 @@ export async function GET(_request: Request, ctx: RouteContext<"/pwa/[restaurant
 
   const marca = { id: restaurante.id, nome: restaurante.nome, corPrimaria: restaurante.cor_primaria, logoUrl: restaurante.logo_url };
   const icone = (tamanho: 192 | 512) => urlIcone(marca, tamanho);
+  // Site do cliente: sem start_url, o app instalado abre a página de onde foi instalado (o
+  // acompanhamento do pedido, no caso dos avisos no iPhone).
+  if (new URL(request.url).searchParams.get("app") === "site") {
+    return Response.json(
+      {
+        name: restaurante.nome,
+        short_name: nomeCurto(restaurante.nome),
+        scope: "/",
+        display: "standalone",
+        lang: "pt-BR",
+        background_color: "#ffffff",
+        theme_color: restaurante.cor_primaria,
+        icons: [
+          { src: icone(192), sizes: "192x192", type: "image/png", purpose: "any" },
+          { src: icone(512), sizes: "512x512", type: "image/png", purpose: "any" },
+        ],
+      },
+      { headers: { "Content-Type": "application/manifest+json", "Cache-Control": "public, max-age=300" } },
+    );
+  }
+
   const manifest = {
     id: `/garcom?r=${restauranteId}`,
     name: restaurante.nome,

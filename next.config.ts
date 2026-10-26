@@ -22,7 +22,17 @@ const nextConfig: NextConfig = {
   // Só em `next dev`: permite testar pelo celular na mesma rede (ex.: http://192.168.1.37:3000).
   allowedDevOrigins: ["192.168.*.*", "10.*.*.*"],
   async headers() {
-    return [{ source: "/:path*", headers: cabecalhosSeguranca }];
+    return [
+      { source: "/:path*", headers: cabecalhosSeguranca },
+      // Service worker dos avisos: sempre a versão mais nova, só scripts do próprio site.
+      {
+        source: "/sw.js",
+        headers: [
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+          { key: "Content-Security-Policy", value: "default-src 'self'; script-src 'self'" },
+        ],
+      },
+    ];
   },
 };
 

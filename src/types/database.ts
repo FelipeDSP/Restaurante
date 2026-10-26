@@ -672,6 +672,37 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"pedidos_avisos": {
+                  Row: {
+                    "auth": string,"criado_em": string,"endpoint": string,"id": string,"p256dh": string,"pedido_id": string,"restaurante_id": string
+                  }
+                  Insert: {
+                    "auth": string,"criado_em"?: string,"endpoint": string,"id"?: string,"p256dh": string,"pedido_id": string,"restaurante_id": string
+                  }
+                  Update: {
+                    "auth"?: string,"criado_em"?: string,"endpoint"?: string,"id"?: string,"p256dh"?: string,"pedido_id"?: string,"restaurante_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "pedidos_avisos_restaurante_id_fkey"
+      columns: ["restaurante_id"]
+isOneToOne: false
+      referencedRelation: "restaurantes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "pedidos_avisos_restaurante_id_fkey"
+      columns: ["restaurante_id"]
+isOneToOne: false
+      referencedRelation: "restaurantes_publicos"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "pedidos_avisos_restaurante_id_pedido_id_fkey"
+      columns: ["restaurante_id","pedido_id"]
+isOneToOne: false
+      referencedRelation: "pedidos"
+      referencedColumns: ["restaurante_id","id"]
+    }
+                  ]
                 },"produto_etapas": {
                   Row: {
                     "estacao_id": string,"id": string,"ordem": number,"produto_id": string,"restaurante_id": string

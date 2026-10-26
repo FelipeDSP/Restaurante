@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { chavePublicaAvisos } from "@/lib/avisos-push";
 import { id as idSchema } from "@/lib/validacao";
 
 import { buscarRestaurantePorSlug, consultarPedido } from "../../dados";
@@ -21,6 +22,7 @@ export default async function PedidoPage(props: PageProps<"/[slug]/pedido/[id]">
   return (
     <Acompanhamento
       inicial={pedido}
+      chaveAvisos={chavePublicaAvisos()}
       restaurante={{
         id: restaurante.id,
         slug: restaurante.slug,

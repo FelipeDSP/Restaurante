@@ -1,10 +1,12 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { after } from "next/server";
 import { z } from "zod";
 
 import { falha, mensagemErroBanco, type ResultadoAcao, sucesso } from "@/lib/acoes";
 import { exigirAcesso } from "@/lib/auth/dal";
+import { avisarCliente } from "@/lib/avisos-push";
 import { createClient } from "@/lib/supabase/server";
 import { id } from "@/lib/validacao";
 
@@ -32,6 +34,7 @@ export async function avancarPedido(pedidoId: string, status: string): Promise<R
   if (error) return falha(mensagemErroBanco(error));
   if (!data.length) return falha("Pedido não encontrado ou já finalizado.");
 
+  after(() => avisarCliente(dados.data.pedidoId));
   refresh();
   return sucesso(ROTULO[dados.data.status]);
 }
@@ -55,6 +58,7 @@ export async function cancelarPedido(pedidoId: string, motivo: string): Promise<
   if (error) return falha(mensagemErroBanco(error));
   if (!data.length) return falha("Pedido não encontrado ou já finalizado.");
 
+  after(() => avisarCliente(dados.data.pedidoId));
   refresh();
   return sucesso("Pedido cancelado.");
 }
@@ -83,6 +87,7 @@ export async function entregarPedido(pedidoId: string, forma: string): Promise<R
   });
   if (error) return falha(mensagemErroBanco(error));
 
+  after(() => avisarCliente(dados.data.pedidoId));
   refresh();
   return sucesso("Pedido entregue e pagamento registrado.");
 }

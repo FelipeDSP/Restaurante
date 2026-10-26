@@ -22,6 +22,6 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     // Ignora arquivos estáticos e imagens.
-    "/((?!_next/static|_next/image|downloads/|favicon.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp|ico|webmanifest)$).*)",
+    "/((?!_next/static|_next/image|downloads/|favicon.ico|sw.js|.*\.(?:svg|png|jpg|jpeg|gif|webp|ico|webmanifest)$).*)",
   ],
 };

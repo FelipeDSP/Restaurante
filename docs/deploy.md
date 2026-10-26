@@ -42,6 +42,9 @@ Em *Environment Variables* do app:
 - `SUPABASE_SECRET_KEY` nunca vai para o navegador; é usada só no servidor (cadastro de equipe, troca de senha e as rotas `/api/agente` do app de impressão). **Não** marque como build variable. Sem ela, a impressão automática não funciona.
 - `SITE_URL` é a origem pública, usada no link de confirmação de e-mail do cadastro e para redirecionar o endereço `*.sslip.io` do Coolify. Sem ela, o app usa o host da requisição (`NEXT_PUBLIC_SITE_URL`, se existir, serve de alternativa).
 
+### Avisos no celular do cliente (opcional)
+Gere as chaves uma vez, num terminal seu: `npx web-push generate-vapid-keys`. No Coolify (só runtime): `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` e `VAPID_ASSUNTO` (ex.: `mailto:suporte@seu-dominio.com.br`). Não troque as chaves depois: os avisos já ligados param de funcionar. Sem elas, o site não mostra o botão de avisos.
+
 ## 3.1 App de impressão (instalador e atualizações)
 
 O painel (Impressoras) tem o link "Baixar o app de impressão", e o app instalado procura atualizações em `https://seu-dominio.com.br/downloads/impressao/latest.yml`. Os arquivos ficam **fora da imagem**, num volume, para publicar versão nova sem redeploy:
