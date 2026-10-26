@@ -103,9 +103,10 @@ export function BarraApp({ itens, novos }: Props) {
   if (abasDeDentro(itens)) {
     abas = operacao.flatMap((i) => (i.secoes && i.secoes.length > 1 ? i.secoes : [{ href: i.href, rotulo: i.rotulo }]));
   }
-  // Até 5 abas cabem; com mais, ficam 4 e o "Mais".
-  const visiveis = abas.length > 5 ? abas.slice(0, 4) : abas;
-  const temMais = itens.length > operacao.length || abas.length > visiveis.length;
+  // Cabem 5 abas no rodapé: com o "Mais" (outras áreas no menu), ficam 4 e ele.
+  const menuTemOutros = itens.length > operacao.length;
+  const visiveis = abas.length > 5 || (menuTemOutros && abas.length > 4) ? abas.slice(0, 4) : abas;
+  const temMais = menuTemOutros || abas.length > visiveis.length;
   const ativo = itemAtivo(itens, caminho);
   const abaAtiva = (href: string) =>
     visiveis.some((a) => a.href === caminho) ? href === caminho : href === ativo;
