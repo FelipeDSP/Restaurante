@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { exigirDono } from "@/lib/auth/dal";
+import { exigirPermissao } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { diaLocal } from "@/lib/tempo";
 
@@ -9,7 +9,7 @@ import { type Cupom, ListaCupons, NovoCupom } from "./lista-cupons";
 export const metadata: Metadata = { title: "Cupons" };
 
 export default async function CuponsPage() {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "cupons");
   const supabase = await createClient();
   const fuso = acesso.restaurante.fusoHorario;
 

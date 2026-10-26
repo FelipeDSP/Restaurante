@@ -69,6 +69,10 @@ insert into public.restaurantes (
    'America/Cuiaba', pg_temp.horario_integral(), false, 0, null)
 on conflict (id) do nothing;
 
+-- Os testes usam a taxa por bairro (como os restaurantes que já existiam antes da taxa fixa).
+update public.restaurantes set taxa_entrega_modo = 'bairro'
+where id in (md5('brasa-espetinhos')::uuid, md5('burger-do-ze')::uuid, md5('espeto-da-praca')::uuid);
+
 -- ---------------------------------------------------------------------------
 -- Usuários e membros
 -- ---------------------------------------------------------------------------

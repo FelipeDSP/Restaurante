@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import { exigirDono } from "@/lib/auth/dal";
+import { exigirPermissao } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 
 import { ListaProdutos } from "./lista-produtos";
@@ -10,7 +10,7 @@ import { ListaProdutos } from "./lista-produtos";
 export const metadata: Metadata = { title: "Produtos" };
 
 export default async function ProdutosPage() {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "cardapio");
   const supabase = await createClient();
 
   const { data, error } = await supabase

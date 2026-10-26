@@ -1,18 +1,19 @@
-import type { Modulo, Papel } from "@/lib/auth/papeis";
+import { type Papel, type Permissao, podeAcessar } from "@/lib/auth/papeis";
 
 export type GrupoNavegacao = "Operação" | "Cadastros" | "Ajustes";
 
-export type Secao = { href: string; rotulo: string };
+// Aba de um item; "acesso" restringe a aba a uma permissão.
+export type Secao = { href: string; rotulo: string; acesso?: Permissao };
 
 // "secoes": páginas que ficam dentro do mesmo item do menu, mostradas como abas no topo.
-// "acesso": o módulo que mostra o item ("painel" = qualquer módulo do painel; "dono" = só o dono).
-// "soEquipe": some para o dono (que vê a versão completa em outro item).
+// "acesso": permissões que mostram o item (qualquer uma); "painel" = qualquer permissão do painel;
+// "dono" = só o dono. "ocultarCom": some para quem tem esta permissão (vê a versão completa noutro item).
 export type ItemNavegacao = {
   href: string;
   rotulo: string;
   grupo: GrupoNavegacao;
-  acesso: Modulo | "painel" | "dono";
-  soEquipe?: boolean;
+  acesso: Permissao[] | "painel" | "dono";
+  ocultarCom?: Permissao;
   secoes?: Secao[];
 };
 
@@ -20,61 +21,71 @@ export const GRUPOS: GrupoNavegacao[] = ["Operação", "Cadastros", "Ajustes"];
 
 export const NAVEGACAO: ItemNavegacao[] = [
   { href: "/painel", rotulo: "Início", grupo: "Operação", acesso: "painel" },
-  { href: "/painel/delivery", rotulo: "Delivery", grupo: "Operação", acesso: "delivery" },
-  { href: "/painel/comandas", rotulo: "Comandas", grupo: "Operação", acesso: "comandas" },
-  { href: "/painel/caixa", rotulo: "Caixa", grupo: "Operação", acesso: "caixa" },
-  { href: "/painel/relatorios", rotulo: "Relatórios", grupo: "Operação", acesso: "dono" },
-  // O dono e o caixa também atendem mesas: o mesmo app do garçom (abrir mesa, lançar, cobrar, fechar).
-  { href: "/garcom", rotulo: "App do garçom", grupo: "Operação", acesso: "garcom" },
-  { href: "/cozinha", rotulo: "Tela da cozinha", grupo: "Operação", acesso: "cozinha" },
+  { href: "/painel/delivery", rotulo: "Delivery", grupo: "Operação", acesso: ["delivery"] },
+  { href: "/painel/comandas", rotulo: "Comandas", grupo: "Operação", acesso: ["comandas_painel"] },
+  { href: "/painel/caixa", rotulo: "Caixa", grupo: "Operação", acesso: ["caixa_operar"] },
+  { href: "/painel/relatorios", rotulo: "Relatórios", grupo: "Operação", acesso: ["relatorios"] },
+  // O mesmo app do garçom (abrir mesa, lançar, cobrar, fechar), para quem também atende mesas.
+  { href: "/garcom", rotulo: "App do garçom", grupo: "Operação", acesso: ["garcom_app"] },
+  { href: "/cozinha", rotulo: "Tela da cozinha", grupo: "Operação", acesso: ["cozinha_tela"] },
   {
     href: "/painel/produtos",
     rotulo: "Cardápio",
     grupo: "Cadastros",
-    acesso: "dono",
+    acesso: ["cardapio"],
     secoes: [
       { href: "/painel/produtos", rotulo: "Produtos" },
       { href: "/painel/categorias", rotulo: "Categorias" },
       { href: "/painel/adicionais", rotulo: "Adicionais" },
     ],
   },
-  { href: "/painel/mesas", rotulo: "Mesas", grupo: "Cadastros", acesso: "dono" },
-  { href: "/painel/cupons", rotulo: "Cupons", grupo: "Cadastros", acesso: "dono" },
-  { href: "/painel/equipe", rotulo: "Equipe", grupo: "Cadastros", acesso: "dono" },
+  { href: "/painel/mesas", rotulo: "Mesas", grupo: "Cadastros", acesso: ["mesas"] },
+  { href: "/painel/cupons", rotulo: "Cupons", grupo: "Cadastros", acesso: ["cupons"] },
+  {
+    href: "/painel/equipe",
+    rotulo: "Equipe",
+    grupo: "Cadastros",
+    acesso: "dono",
+    secoes: [
+      { href: "/painel/equipe", rotulo: "Pessoas" },
+      { href: "/painel/equipe/funcoes", rotulo: "Funções" },
+    ],
+  },
   {
     href: "/painel/restaurante",
     rotulo: "Restaurante",
     grupo: "Ajustes",
-    acesso: "dono",
+    acesso: ["restaurante", "entregadores"],
     secoes: [
-      { href: "/painel/restaurante", rotulo: "Dados e delivery" },
-      { href: "/painel/entregadores", rotulo: "Entregadores" },
+      { href: "/painel/restaurante", rotulo: "Dados e delivery", acesso: "restaurante" },
+      { href: "/painel/entregadores", rotulo: "Entregadores", acesso: "entregadores" },
     ],
   },
   {
     href: "/painel/pracas",
     rotulo: "Cozinha e impressão",
     grupo: "Ajustes",
-    acesso: "dono",
+    acesso: ["impressao"],
     secoes: [
       { href: "/painel/pracas", rotulo: "Setores" },
       { href: "/painel/impressoras", rotulo: "Impressoras" },
     ],
   },
-  // Quem tem o caixa (sem ser dono) só cuida das impressoras (sem os setores).
-  { href: "/painel/impressoras", rotulo: "Impressoras", grupo: "Ajustes", acesso: "caixa", soEquipe: true },
+  // Quem abre o caixa (sem cuidar dos setores) só vê e testa as impressoras.
+  { href: "/painel/impressoras", rotulo: "Impressoras", grupo: "Ajustes", acesso: ["caixa_operar"], ocultarCom: "impressao" },
 ];
 
-const MODULOS_PAINEL: readonly Modulo[] = ["caixa", "delivery", "comandas"];
-
-// Itens do menu que a pessoa vê.
-export function itensDoMenu(papel: Papel, modulos: readonly Modulo[]): ItemNavegacao[] {
-  const dono = papel === "dono";
-  return NAVEGACAO.filter((item) => {
-    if (dono) return !item.soEquipe;
-    if (item.acesso === "dono") return false;
-    if (item.acesso === "painel") return MODULOS_PAINEL.some((m) => modulos.includes(m));
-    return modulos.includes(item.acesso);
+// Itens do menu que a pessoa vê (com as abas que ela pode abrir; o item leva à primeira).
+export function itensDoMenu(papel: Papel, permissoes: readonly Permissao[]): ItemNavegacao[] {
+  const tem = (p: Permissao) => permissoes.includes(p);
+  return NAVEGACAO.flatMap((item): ItemNavegacao[] => {
+    if (item.ocultarCom && tem(item.ocultarCom)) return [];
+    const pode =
+      item.acesso === "dono" ? papel === "dono" : item.acesso === "painel" ? podeAcessar(permissoes, "painel") : item.acesso.some(tem);
+    if (!pode) return [];
+    if (!item.secoes) return [item];
+    const secoes = item.secoes.filter((s) => !s.acesso || tem(s.acesso));
+    return secoes.length ? [{ ...item, href: secoes[0].href, secoes }] : [];
   });
 }
 

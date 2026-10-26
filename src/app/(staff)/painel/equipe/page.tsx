@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 
 import { exigirDono } from "@/lib/auth/dal";
-import { ehPapel, modulosEfetivos } from "@/lib/auth/papeis";
+import { ehPermissao } from "@/lib/auth/papeis";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { origemDoSite } from "@/lib/url";
 
-import { ListaEquipe, type Membro, NovoMembro } from "./lista-equipe";
+import { type Funcao, ListaEquipe, type Membro, NovoMembro } from "./lista-equipe";
 
 export const metadata: Metadata = { title: "Equipe" };
 
@@ -14,13 +14,18 @@ export default async function EquipePage() {
   const acesso = await exigirDono();
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from("membros")
-    .select("id, user_id, nome, papel, modulos, ativo")
-    .eq("restaurante_id", acesso.restaurante.id)
-    .order("ativo", { ascending: false })
-    .order("nome");
+  const [{ data, error }, { data: dadosFuncoes, error: erroFuncoes }] = await Promise.all([
+    supabase
+      .from("membros")
+      .select("id, user_id, nome, papel, funcao_id, permissoes_extras, permissoes_removidas, ativo")
+      .eq("restaurante_id", acesso.restaurante.id)
+      .order("ativo", { ascending: false })
+      .order("nome"),
+    supabase.from("funcoes").select("id, nome, permissoes").eq("restaurante_id", acesso.restaurante.id).order("nome"),
+  ]);
   if (error) throw new Error(error.message);
+  if (erroFuncoes) throw new Error(erroFuncoes.message);
+  const funcoes: Funcao[] = dadosFuncoes.map((f) => ({ id: f.id, nome: f.nome, permissoes: f.permissoes.filter(ehPermissao) }));
 
   // E-mails ficam no Auth; só o servidor com a chave secreta consegue ler.
   const admin = createAdminClient();
@@ -34,33 +39,28 @@ export default async function EquipePage() {
     );
   }
 
-  const membros: Membro[] = data.flatMap((m) =>
-    ehPapel(m.papel)
-      ? [
-          {
-            id: m.id,
-            nome: m.nome,
-            papel: m.papel,
-            modulos: modulosEfetivos(m.papel, m.modulos),
-            ativo: m.ativo,
-            email: emails.get(m.user_id) ?? null,
-            euMesmo: m.id === acesso.membroId,
-          },
-        ]
-      : [],
-  );
+  const membros: Membro[] = data.map((m) => ({
+    id: m.id,
+    nome: m.nome,
+    funcao: m.papel === "dono" ? "dono" : (m.funcao_id ?? ""),
+    extras: m.permissoes_extras.filter(ehPermissao),
+    removidas: m.permissoes_removidas.filter(ehPermissao),
+    ativo: m.ativo,
+    email: emails.get(m.user_id) ?? null,
+    euMesmo: m.id === acesso.membroId,
+  }));
 
   return (
     <main className="flex flex-col gap-6 p-4 md:p-6">
-      <h1 className="text-2xl font-semibold">Equipe</h1>
+      <h1 className="sr-only">Equipe</h1>
       {!admin ? (
         <p role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
           Cadastrar pessoas e trocar senhas ainda não está disponível neste servidor. Fale com o suporte. Editar
           nome, função e acessos funciona normalmente.
         </p>
       ) : null}
-      <NovoMembro habilitado={Boolean(admin)} enderecoLogin={`${await origemDoSite()}/login`} restaurante={acesso.restaurante.nome} />
-      <ListaEquipe membros={membros} contasHabilitadas={Boolean(admin)} />
+      <NovoMembro habilitado={Boolean(admin)} enderecoLogin={`${await origemDoSite()}/login`} restaurante={acesso.restaurante.nome} funcoes={funcoes} />
+      <ListaEquipe membros={membros} funcoes={funcoes} contasHabilitadas={Boolean(admin)} />
     </main>
   );
 }

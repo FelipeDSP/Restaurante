@@ -4,7 +4,7 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 
 import { falha, falhaValidacao, mensagemErroBanco, type ResultadoAcao, sucesso } from "@/lib/acoes";
-import { exigirDono } from "@/lib/auth/dal";
+import { exigirPermissao } from "@/lib/auth/dal";
 import { moverItem, proximaOrdem } from "@/lib/ordenacao";
 import { createClient } from "@/lib/supabase/server";
 import { dadosDoFormulario, dinheiro, id, textoObrigatorio } from "@/lib/validacao";
@@ -34,7 +34,7 @@ const opcaoSchema = z.object({
 });
 
 export async function criarGrupo(_estado: ResultadoAcao, formData: FormData): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "cardapio");
   const dados = grupoSchema.safeParse(dadosDoFormulario(formData));
   if (!dados.success) return falhaValidacao(dados.error, formData);
 
@@ -50,7 +50,7 @@ export async function criarGrupo(_estado: ResultadoAcao, formData: FormData): Pr
 }
 
 export async function salvarGrupo(grupoId: string, _estado: ResultadoAcao, formData: FormData): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "cardapio");
   if (!id.safeParse(grupoId).success) return falha("Grupo inválido.");
   const dados = grupoSchema.safeParse(dadosDoFormulario(formData));
   if (!dados.success) return falhaValidacao(dados.error, formData);
@@ -68,7 +68,7 @@ export async function salvarGrupo(grupoId: string, _estado: ResultadoAcao, formD
 }
 
 export async function alternarGrupo(grupoId: string, ativo: boolean): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "cardapio");
   if (!id.safeParse(grupoId).success) return falha("Grupo inválido.");
 
   const supabase = await createClient();
@@ -84,7 +84,7 @@ export async function alternarGrupo(grupoId: string, ativo: boolean): Promise<Re
 }
 
 export async function moverGrupo(grupoId: string, direcao: "cima" | "baixo"): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "cardapio");
   if (!id.safeParse(grupoId).success) return falha("Grupo inválido.");
 
   const supabase = await createClient();
@@ -97,7 +97,7 @@ export async function moverGrupo(grupoId: string, direcao: "cima" | "baixo"): Pr
 
 // Apaga o grupo, suas opções e as ligações com produtos (pedidos antigos guardam o retrato).
 export async function excluirGrupo(grupoId: string): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "cardapio");
   if (!id.safeParse(grupoId).success) return falha("Grupo inválido.");
 
   const supabase = await createClient();
@@ -113,7 +113,7 @@ export async function excluirGrupo(grupoId: string): Promise<ResultadoAcao> {
 }
 
 export async function criarOpcao(grupoId: string, _estado: ResultadoAcao, formData: FormData): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "cardapio");
   if (!id.safeParse(grupoId).success) return falha("Grupo inválido.");
   const dados = opcaoSchema.safeParse(dadosDoFormulario(formData));
   if (!dados.success) return falhaValidacao(dados.error, formData);
@@ -130,7 +130,7 @@ export async function criarOpcao(grupoId: string, _estado: ResultadoAcao, formDa
 }
 
 export async function salvarOpcao(opcaoId: string, _estado: ResultadoAcao, formData: FormData): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "cardapio");
   if (!id.safeParse(opcaoId).success) return falha("Opção inválida.");
   const dados = opcaoSchema.safeParse(dadosDoFormulario(formData));
   if (!dados.success) return falhaValidacao(dados.error, formData);
@@ -148,7 +148,7 @@ export async function salvarOpcao(opcaoId: string, _estado: ResultadoAcao, formD
 }
 
 export async function alternarOpcao(opcaoId: string, disponivel: boolean): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "cardapio");
   if (!id.safeParse(opcaoId).success) return falha("Opção inválida.");
 
   const supabase = await createClient();
@@ -164,7 +164,7 @@ export async function alternarOpcao(opcaoId: string, disponivel: boolean): Promi
 }
 
 export async function moverOpcao(opcaoId: string, grupoId: string, direcao: "cima" | "baixo"): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "cardapio");
   if (!id.safeParse(opcaoId).success || !id.safeParse(grupoId).success) return falha("Opção inválida.");
 
   const supabase = await createClient();
@@ -179,7 +179,7 @@ export async function moverOpcao(opcaoId: string, grupoId: string, direcao: "cim
 }
 
 export async function excluirOpcao(opcaoId: string): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "cardapio");
   if (!id.safeParse(opcaoId).success) return falha("Opção inválida.");
 
   const supabase = await createClient();

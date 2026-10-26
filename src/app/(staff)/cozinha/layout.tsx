@@ -6,7 +6,7 @@ import { FaixaConexao } from "@/components/staff/faixa-conexao";
 import { MarcaRestaurante } from "@/components/staff/marca-restaurante";
 import { MenuUsuario } from "@/components/staff/menu-usuario";
 import { exigirAcesso } from "@/lib/auth/dal";
-import { NOME_PAPEL, podeAcessar } from "@/lib/auth/papeis";
+import { podeAcessar } from "@/lib/auth/papeis";
 import { estiloMarca } from "@/lib/cores";
 import { urlIcone } from "@/lib/icone";
 
@@ -21,7 +21,7 @@ export async function generateMetadata(): Promise<Metadata> {
 // Tela da cozinha: feita para ficar aberta num tablet ou TV perto das praças.
 export default async function CozinhaLayout({ children }: LayoutProps<"/cozinha">) {
   const acesso = await exigirAcesso("cozinha");
-  const painel = podeAcessar(acesso.modulos, "painel");
+  const painel = podeAcessar(acesso.permissoes, "painel");
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-muted/40" style={estiloMarca(acesso.restaurante)}>
@@ -42,7 +42,7 @@ export default async function CozinhaLayout({ children }: LayoutProps<"/cozinha"
           </div>
           <MenuUsuario
             nome={acesso.nome}
-            papel={NOME_PAPEL[acesso.papel]}
+            papel={acesso.funcao}
             podeTrocarRestaurante={acesso.vinculos.length > 1}
             outraArea={painel ? { href: "/painel", rotulo: "Abrir painel" } : undefined}
           />

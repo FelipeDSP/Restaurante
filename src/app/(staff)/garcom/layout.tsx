@@ -6,7 +6,7 @@ import { FaixaConexao } from "@/components/staff/faixa-conexao";
 import { MarcaRestaurante } from "@/components/staff/marca-restaurante";
 import { MenuUsuario } from "@/components/staff/menu-usuario";
 import { exigirAcesso } from "@/lib/auth/dal";
-import { NOME_PAPEL, podeAcessar } from "@/lib/auth/papeis";
+import { podeAcessar } from "@/lib/auth/papeis";
 import { estiloMarca } from "@/lib/cores";
 import { urlIcone } from "@/lib/icone";
 
@@ -45,7 +45,7 @@ export default async function GarcomLayout({ children }: LayoutProps<"/garcom">)
         <div className="mx-auto flex h-16 w-full max-w-md items-center justify-between gap-3 px-4">
           <div className="flex min-w-0 items-center gap-2">
             {/* Dono e caixa entram aqui pelo painel: voltam com um toque. */}
-            {podeAcessar(acesso.modulos, "painel") ? (
+            {podeAcessar(acesso.permissoes, "painel") ? (
               <Link
                 href="/painel"
                 className="flex h-11 shrink-0 items-center gap-1 rounded-full bg-black/15 pr-4 pl-3 text-sm font-semibold hover:bg-black/25"
@@ -58,10 +58,10 @@ export default async function GarcomLayout({ children }: LayoutProps<"/garcom">)
           </div>
           <MenuUsuario
             nome={acesso.nome}
-            papel={NOME_PAPEL[acesso.papel]}
+            papel={acesso.funcao}
             podeTrocarRestaurante={acesso.vinculos.length > 1}
             outraArea={
-              podeAcessar(acesso.modulos, "painel")
+              podeAcessar(acesso.permissoes, "painel")
                 ? { href: "/painel", rotulo: "Abrir painel" }
                 : undefined
             }

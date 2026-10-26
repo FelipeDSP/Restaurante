@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { exigirDono } from "@/lib/auth/dal";
+import { exigirPermissao } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 
 import { ListaPracas, NovaPraca } from "./lista-pracas";
@@ -8,7 +8,7 @@ import { ListaPracas, NovaPraca } from "./lista-pracas";
 export const metadata: Metadata = { title: "Setores da cozinha" };
 
 export default async function PracasPage() {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "impressao");
   const supabase = await createClient();
 
   const { data, error } = await supabase

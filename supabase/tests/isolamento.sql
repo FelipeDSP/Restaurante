@@ -1198,7 +1198,7 @@ begin
     perform public.relatorio_vendas(b, (now() - interval '2 days')::date, now()::date);
     perform pg_temp.ok(false, 'relatório: dono de A não vê o relatório de B');
   exception when others then
-    perform pg_temp.ok(sqlerrm like 'Só o dono%', 'relatório: dono de A não vê o relatório de B');
+    perform pg_temp.ok(sqlerrm like 'Sem permissão%', 'relatório: dono de A não vê o relatório de B');
   end;
 
   begin
@@ -1213,7 +1213,7 @@ begin
     perform public.relatorio_vendas(a, now()::date, now()::date);
     perform pg_temp.ok(false, 'relatório: caixa não vê os relatórios');
   exception when others then
-    perform pg_temp.ok(sqlerrm like 'Só o dono%', 'relatório: caixa não vê os relatórios');
+    perform pg_temp.ok(sqlerrm like 'Sem permissão%', 'relatório: caixa não vê os relatórios');
   end;
 
   perform pg_temp.anonimo();
@@ -1993,7 +1993,7 @@ end;
 $$;
 
 -- ======================================================================
--- Módulos por pessoa
+-- Permissões: funções e ajustes por pessoa
 -- ======================================================================
 do $$
 declare
@@ -2001,105 +2001,154 @@ declare
   zero constant uuid := '00000000-0000-0000-0000-000000000000';
   v_g1 uuid;
   v_g2 uuid;
+  v_caixa_funcao uuid;
+  v_gerente uuid;
   v_pedido uuid;
   v_mesa uuid;
   v_comanda uuid;
+  v_json jsonb;
   n integer;
 begin
   perform pg_temp.admin();
   select id into v_g1 from public.membros where restaurante_id = a and nome = 'Garçom 1 (brasa)';
   select id into v_g2 from public.membros where restaurante_id = a and nome = 'Garçom 2 (brasa)';
-  perform pg_temp.ok((select modulos from public.membros where id = v_g1) = array['garcom'],
-                     'módulos: garçom antigo fica só com o app do garçom');
-  perform pg_temp.ok((select modulos from public.membros m where m.restaurante_id = a and m.papel = 'caixa' limit 1)
-                     = array['caixa', 'comandas', 'cozinha', 'delivery', 'garcom'],
-                     'módulos: caixa antigo fica com toda a operação');
+  select id into v_caixa_funcao from public.funcoes where restaurante_id = a and padrao = 'caixa';
+  perform pg_temp.ok((select count(*) from public.funcoes where restaurante_id = a and padrao is not null) = 3,
+                     'permissões: restaurante tem as funções Caixa, Garçom e Cozinha');
+  perform pg_temp.ok(rest_privado.permissoes_membro(v_g1) = array['garcom_app'],
+                     'permissões: garçom antigo fica só com o app do garçom');
+  perform pg_temp.ok((select rest_privado.permissoes_membro(m.id) from public.membros m where m.restaurante_id = a and m.papel = 'caixa' limit 1)
+                     @> array['caixa_operar', 'delivery', 'comandas_gerenciar', 'garcom_app'],
+                     'permissões: caixa antigo continua com a operação');
   if not exists (select 1 from public.caixa_sessoes where restaurante_id = a and fechada_em is null) then
     perform pg_temp.entrar('caixa.brasa@exemplo.com');
     insert into public.caixa_sessoes (restaurante_id, valor_inicial) values (a, 0);
     perform pg_temp.admin();
   end if;
 
-  -- Garçom sem o módulo caixa não faz sangria; com o módulo, faz.
+  -- Garçom não faz sangria nem vê relatórios; não mexe nas próprias permissões nem nas funções.
   perform pg_temp.entrar('garcom2.brasa@exemplo.com');
   begin
     insert into public.movimentos_caixa (restaurante_id, caixa_sessao_id, tipo, valor, motivo, registrado_por)
-    values (a, zero, 'sangria', 100, 'teste de módulo', zero);
-    perform pg_temp.ok(false, 'módulos: sem "caixa" não faz sangria');
+    values (a, zero, 'sangria', 100, 'teste de permissão', zero);
+    perform pg_temp.ok(false, 'permissões: garçom não faz sangria');
   exception when others then
-    perform pg_temp.ok(true, 'módulos: sem "caixa" não faz sangria');
+    perform pg_temp.ok(true, 'permissões: garçom não faz sangria');
   end;
-
-  -- Garçom não muda os próprios módulos.
-  update public.membros set modulos = array['caixa', 'garcom'] where id = v_g2;
-  perform pg_temp.admin();
-  perform pg_temp.ok((select modulos from public.membros where id = v_g2) = array['garcom'],
-                     'módulos: garçom não libera módulo para si');
-
-  -- O dono libera.
-  perform pg_temp.entrar('dono.brasa@exemplo.com');
-  update public.membros set modulos = array['garcom', 'caixa', 'delivery', 'caixa'] where id = v_g2 and restaurante_id = a;
-  perform pg_temp.admin();
-  perform pg_temp.ok((select modulos from public.membros where id = v_g2) = array['caixa', 'delivery', 'garcom'],
-                     'módulos: dono libera por pessoa (sem repetir, em ordem)');
   begin
-    update public.membros set modulos = array['relatorios'] where id = v_g2;
-    perform pg_temp.ok(false, 'módulos: só módulos conhecidos');
+    v_json := public.relatorio_vendas(a, current_date - 7, current_date);
+    perform pg_temp.ok(false, 'permissões: garçom não vê relatórios');
   exception when others then
-    perform pg_temp.ok(true, 'módulos: só módulos conhecidos');
+    perform pg_temp.ok(true, 'permissões: garçom não vê relatórios');
+  end;
+  update public.membros set permissoes_extras = array['relatorios'] where id = v_g2;
+  update public.funcoes set permissoes = array['garcom_app', 'relatorios'] where restaurante_id = a and padrao = 'garcom';
+  perform pg_temp.admin();
+  perform pg_temp.ok(rest_privado.permissoes_membro(v_g2) = array['garcom_app'],
+                     'permissões: garçom não se dá permissão nem muda a função');
+
+  -- Dono: permissão a mais só para uma pessoa.
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  update public.membros set permissoes_extras = array['relatorios', 'relatorios'] where id = v_g2 and restaurante_id = a;
+  perform pg_temp.entrar('garcom2.brasa@exemplo.com');
+  v_json := public.relatorio_vendas(a, current_date - 7, current_date);
+  perform pg_temp.ok(v_json is not null, 'permissões: garçom com "relatórios" a mais vê os relatórios');
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  begin
+    v_json := public.relatorio_vendas(a, current_date - 7, current_date);
+    perform pg_temp.ok(false, 'permissões: a permissão a mais é só daquela pessoa');
+  exception when others then
+    perform pg_temp.ok(true, 'permissões: a permissão a mais é só daquela pessoa');
+  end;
+  perform pg_temp.admin();
+  begin
+    update public.membros set permissoes_extras = array['apagar_tudo'] where id = v_g2;
+    perform pg_temp.ok(false, 'permissões: só permissões conhecidas');
+  exception when others then
+    perform pg_temp.ok(true, 'permissões: só permissões conhecidas');
   end;
 
+  -- Função personalizada: Gerente = caixa + cardápio, sem estorno.
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  insert into public.funcoes (restaurante_id, nome, permissoes)
+  values (a, ' Gerente ', array['caixa_operar', 'cardapio', 'delivery']) returning id into v_gerente;
+  update public.membros set funcao_id = v_gerente, permissoes_extras = '{}' where id = v_g2 and restaurante_id = a;
   perform pg_temp.entrar('garcom2.brasa@exemplo.com');
   insert into public.movimentos_caixa (restaurante_id, caixa_sessao_id, tipo, valor, motivo, registrado_por)
-  values (a, zero, 'suprimento', 100, 'teste de módulo', zero);
-  perform pg_temp.ok(true, 'módulos: garçom com "caixa" faz suprimento');
+  values (a, zero, 'suprimento', 100, 'teste de permissão', zero);
+  perform pg_temp.ok(true, 'permissões: função personalizada libera o caixa');
+  update public.categorias set nome = nome where restaurante_id = a;
+  get diagnostics n = row_count;
+  perform pg_temp.ok(n > 0, 'permissões: função personalizada edita o cardápio');
+  update public.mesas set numero = numero where restaurante_id = a;
+  get diagnostics n = row_count;
+  perform pg_temp.ok(n = 0, 'permissões: sem "mesas" não edita mesas');
 
-  -- Delivery: só quem tem o módulo muda o andamento.
+  -- Delivery: quem tem aceita; quem não tem, não.
   perform pg_temp.admin();
   insert into public.pedidos (restaurante_id, origem, cliente_nome, cliente_telefone, endereco, taxa_entrega, forma_pagamento_prevista, status)
-  values (a, 'delivery', 'Módulo', '69977770009', '{"rua":"R","numero":"1","bairro":"Centro"}', 500, 'pix', 'recebido')
+  values (a, 'delivery', 'Permissão', '69977770009', '{"rua":"R","numero":"1","bairro":"Centro"}', 500, 'pix', 'recebido')
   returning id into v_pedido;
   perform pg_temp.entrar('garcom1.brasa@exemplo.com');
   begin
     update public.pedidos set status = 'em_preparo' where id = v_pedido;
-    perform pg_temp.ok(false, 'módulos: sem "delivery" não aceita delivery');
+    perform pg_temp.ok(false, 'permissões: sem "delivery" não aceita delivery');
   exception when others then
-    perform pg_temp.ok(true, 'módulos: sem "delivery" não aceita delivery');
+    perform pg_temp.ok(true, 'permissões: sem "delivery" não aceita delivery');
   end;
   perform pg_temp.entrar('garcom2.brasa@exemplo.com');
   update public.pedidos set status = 'em_preparo' where id = v_pedido;
   perform pg_temp.admin();
   perform pg_temp.ok((select status from public.pedidos where id = v_pedido) = 'em_preparo',
-                     'módulos: garçom com "delivery" aceita delivery');
+                     'permissões: com "delivery" aceita delivery');
 
-  -- Comandas: sem o módulo, a mesa abre no próprio nome; não cancela comanda.
+  -- Tirar só de uma pessoa: o caixa sem estorno.
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  update public.membros set permissoes_removidas = array['caixa_estornar']
+  where restaurante_id = a and papel = 'caixa' and nome = 'Caixa (brasa)';
+  perform pg_temp.admin();
+  perform pg_temp.ok(not ('caixa_estornar' = any (rest_privado.permissoes_membro(
+                       (select id from public.membros where restaurante_id = a and nome = 'Caixa (brasa)')))),
+                     'permissões: tirada só daquela pessoa');
+  perform pg_temp.ok((select 'caixa_estornar' = any (permissoes) from public.funcoes where id = v_caixa_funcao),
+                     'permissões: a função continua com ela');
+
+  -- Comandas: sem gerenciar, a mesa abre no próprio nome e não cancela.
   select id into v_mesa from public.mesas m
   where m.restaurante_id = a and m.ativa
     and not exists (select 1 from public.comandas c where c.mesa_id = m.id and c.status in ('aberta', 'conta_pedida'))
   limit 1;
-  perform pg_temp.entrar('garcom2.brasa@exemplo.com');
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
   insert into public.comandas (restaurante_id, mesa_id, garcom_id, caixa_sessao_id)
-  values (a, v_mesa, v_g1, zero) returning id into v_comanda;
+  values (a, v_mesa, v_g2, zero) returning id into v_comanda;
   perform pg_temp.admin();
-  perform pg_temp.ok((select garcom_id from public.comandas where id = v_comanda) = v_g2,
-                     'módulos: sem "comandas" a mesa abre no próprio nome');
-  perform pg_temp.entrar('garcom2.brasa@exemplo.com');
+  perform pg_temp.ok((select garcom_id from public.comandas where id = v_comanda) = v_g1,
+                     'permissões: sem "gerenciar mesas" a mesa abre no próprio nome');
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
   begin
     update public.comandas set status = 'cancelada' where id = v_comanda;
-    perform pg_temp.ok(false, 'módulos: sem "comandas" não cancela comanda');
+    perform pg_temp.ok(false, 'permissões: sem "gerenciar mesas" não cancela comanda');
   exception when others then
-    perform pg_temp.ok(true, 'módulos: sem "comandas" não cancela comanda');
+    perform pg_temp.ok(true, 'permissões: sem "gerenciar mesas" não cancela comanda');
   end;
-  perform pg_temp.entrar('caixa.brasa@exemplo.com');
-  update public.comandas set status = 'cancelada' where id = v_comanda;
-  perform pg_temp.admin();
-  perform pg_temp.ok((select status from public.comandas where id = v_comanda) = 'cancelada',
-                     'módulos: com "comandas" cancela comanda');
 
-  -- Outro restaurante: módulos não valem lá.
-  perform pg_temp.entrar('garcom2.brasa@exemplo.com');
-  select count(*) into n from public.cupons where restaurante_id <> a;
-  perform pg_temp.ok(n = 0, 'módulos: não abrem dados de outro restaurante');
+  -- Função em uso não some; de outro restaurante, nem aparece.
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  begin
+    delete from public.funcoes where id = v_gerente;
+    perform pg_temp.ok(false, 'permissões: função em uso não é excluída');
+  exception when others then
+    perform pg_temp.ok(true, 'permissões: função em uso não é excluída');
+  end;
+  perform pg_temp.entrar('dono.burger@exemplo.com');
+  select count(*) into n from public.funcoes where restaurante_id = a;
+  perform pg_temp.ok(n = 0, 'permissões: funções de outro restaurante não aparecem');
+  begin
+    update public.membros set funcao_id = v_gerente where restaurante_id <> a and papel <> 'dono';
+    perform pg_temp.ok(false, 'permissões: não usa função de outro restaurante');
+  exception when others then
+    perform pg_temp.ok(true, 'permissões: não usa função de outro restaurante');
+  end;
   perform pg_temp.admin();
 end;
 $$;

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { exigirDono } from "@/lib/auth/dal";
+import { exigirPermissao } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 
 import { FormProduto } from "../form-produto";
@@ -9,7 +9,7 @@ import { carregarGruposParaProduto, carregarPracas } from "../grupos";
 export const metadata: Metadata = { title: "Novo produto" };
 
 export default async function NovoProdutoPage(props: PageProps<"/painel/produtos/novo">) {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "cardapio");
   const { categoria } = await props.searchParams;
   const supabase = await createClient();
 

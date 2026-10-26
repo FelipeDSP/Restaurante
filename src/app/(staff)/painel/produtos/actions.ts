@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { falha, falhaValidacao, mensagemErroBanco, type ResultadoAcao } from "@/lib/acoes";
-import { exigirDono } from "@/lib/auth/dal";
+import { exigirPermissao } from "@/lib/auth/dal";
 import { moverItem, proximaOrdem } from "@/lib/ordenacao";
 import { urlImagemDoRestaurante } from "@/lib/storage";
 import { createClient } from "@/lib/supabase/server";
@@ -110,7 +110,7 @@ export async function salvarProduto(
   _estado: ResultadoAcao,
   formData: FormData,
 ): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "cardapio");
   const restauranteId = acesso.restaurante.id;
 
   const dados = produtoSchema(restauranteId).safeParse(dadosDoFormulario(formData));
@@ -175,7 +175,7 @@ export async function alternarDisponibilidade(
   campo: "disponivel" | "disponivel_delivery",
   valor: boolean,
 ): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "cardapio");
   if (!id.safeParse(produtoId).success) return falha("Produto inválido.");
   if (campo !== "disponivel" && campo !== "disponivel_delivery") return falha("Campo inválido.");
 
@@ -196,7 +196,7 @@ export async function moverProduto(
   categoriaId: string,
   direcao: "cima" | "baixo",
 ): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "cardapio");
   if (!id.safeParse(produtoId).success || !id.safeParse(categoriaId).success) return falha("Produto inválido.");
 
   const supabase = await createClient();
@@ -215,7 +215,7 @@ export async function moverProduto(
 }
 
 export async function excluirProduto(produtoId: string): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "cardapio");
   if (!id.safeParse(produtoId).success) return falha("Produto inválido.");
 
   const supabase = await createClient();

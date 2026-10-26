@@ -4,7 +4,7 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 
 import { falha, falhaValidacao, mensagemErroBanco, type ResultadoAcao, sucesso } from "@/lib/acoes";
-import { exigirDono } from "@/lib/auth/dal";
+import { exigirPermissao } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { dinheiro, id, textoObrigatorio } from "@/lib/validacao";
 
@@ -18,7 +18,7 @@ function mensagemBairro(codigo: string, padrao: string) {
 }
 
 export async function criarBairro(_estado: ResultadoAcao, formData: FormData): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "restaurante");
   const dados = bairroSchema.safeParse({ nome: formData.get("nome"), taxa: formData.get("taxa") });
   if (!dados.success) return falhaValidacao(dados.error, formData);
 
@@ -51,7 +51,7 @@ export async function criarBairro(_estado: ResultadoAcao, formData: FormData): P
 }
 
 export async function salvarBairro(bairroId: string, _estado: ResultadoAcao, formData: FormData): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "restaurante");
   const dados = bairroSchema
     .extend({ id })
     .safeParse({ id: bairroId, nome: formData.get("nome"), taxa: formData.get("taxa") });
@@ -70,7 +70,7 @@ export async function salvarBairro(bairroId: string, _estado: ResultadoAcao, for
 }
 
 export async function alternarBairro(bairroId: string, ativo: boolean): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "restaurante");
   if (!id.safeParse(bairroId).success) return falha("Bairro inválido.");
 
   const supabase = await createClient();
@@ -86,7 +86,7 @@ export async function alternarBairro(bairroId: string, ativo: boolean): Promise<
 }
 
 export async function excluirBairro(bairroId: string): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "restaurante");
   if (!id.safeParse(bairroId).success) return falha("Bairro inválido.");
 
   const supabase = await createClient();

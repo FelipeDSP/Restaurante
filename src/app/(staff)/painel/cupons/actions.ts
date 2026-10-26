@@ -4,7 +4,7 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 
 import { falha, falhaValidacao, mensagemErroBanco, type ResultadoAcao, sucesso } from "@/lib/acoes";
-import { exigirDono } from "@/lib/auth/dal";
+import { exigirPermissao } from "@/lib/auth/dal";
 import { centavosDeTexto } from "@/lib/dinheiro";
 import { createClient } from "@/lib/supabase/server";
 import { dadosDoFormulario, id } from "@/lib/validacao";
@@ -51,7 +51,7 @@ const cupomSchema = z
   });
 
 export async function criarCupom(_estado: ResultadoAcao, formData: FormData): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "cupons");
   const dados = cupomSchema.safeParse(dadosDoFormulario(formData));
   if (!dados.success) return falhaValidacao(dados.error, formData);
   const d = dados.data;
@@ -77,7 +77,7 @@ export async function criarCupom(_estado: ResultadoAcao, formData: FormData): Pr
 }
 
 export async function alternarCupom(cupomId: string, ativo: boolean): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "cupons");
   if (!id.safeParse(cupomId).success) return falha("Cupom inválido.");
   const supabase = await createClient();
   const { error } = await supabase

@@ -4,7 +4,7 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 
 import { falha, falhaValidacao, mensagemErroBanco, type ResultadoAcao, sucesso } from "@/lib/acoes";
-import { exigirDono } from "@/lib/auth/dal";
+import { exigirPermissao } from "@/lib/auth/dal";
 import { moverItem, proximaOrdem } from "@/lib/ordenacao";
 import { createClient } from "@/lib/supabase/server";
 import { id, textoObrigatorio } from "@/lib/validacao";
@@ -12,7 +12,7 @@ import { id, textoObrigatorio } from "@/lib/validacao";
 const numeroMesa = textoObrigatorio("o número ou nome da mesa", 30);
 
 export async function criarMesa(_estado: ResultadoAcao, formData: FormData): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "mesas");
   const dados = z.object({ numero: numeroMesa }).safeParse({ numero: formData.get("numero") });
   if (!dados.success) return falhaValidacao(dados.error, formData);
 
@@ -38,7 +38,7 @@ const sequenciaSchema = z
   .refine((v) => v.ate - v.de < 100, { message: "Crie no máximo 100 mesas por vez.", path: ["ate"] });
 
 export async function criarMesasEmSequencia(_estado: ResultadoAcao, formData: FormData): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "mesas");
   const dados = sequenciaSchema.safeParse({ de: formData.get("de"), ate: formData.get("ate") });
   if (!dados.success) return falhaValidacao(dados.error, formData);
 
@@ -67,7 +67,7 @@ export async function criarMesasEmSequencia(_estado: ResultadoAcao, formData: Fo
 }
 
 export async function renomearMesa(mesaId: string, _estado: ResultadoAcao, formData: FormData): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "mesas");
   const dados = z.object({ id, numero: numeroMesa }).safeParse({ id: mesaId, numero: formData.get("numero") });
   if (!dados.success) return falhaValidacao(dados.error, formData);
 
@@ -86,7 +86,7 @@ export async function renomearMesa(mesaId: string, _estado: ResultadoAcao, formD
 }
 
 export async function alternarMesa(mesaId: string, ativa: boolean): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "mesas");
   if (!id.safeParse(mesaId).success) return falha("Mesa inválida.");
 
   const supabase = await createClient();
@@ -102,7 +102,7 @@ export async function alternarMesa(mesaId: string, ativa: boolean): Promise<Resu
 }
 
 export async function moverMesa(mesaId: string, direcao: "cima" | "baixo"): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "mesas");
   if (!id.safeParse(mesaId).success) return falha("Mesa inválida.");
 
   const supabase = await createClient();
@@ -114,7 +114,7 @@ export async function moverMesa(mesaId: string, direcao: "cima" | "baixo"): Prom
 }
 
 export async function excluirMesa(mesaId: string): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "mesas");
   if (!id.safeParse(mesaId).success) return falha("Mesa inválida.");
 
   const supabase = await createClient();

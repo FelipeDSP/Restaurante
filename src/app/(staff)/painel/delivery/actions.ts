@@ -5,7 +5,7 @@ import { after } from "next/server";
 import { z } from "zod";
 
 import { falha, mensagemErroBanco, type ResultadoAcao, sucesso } from "@/lib/acoes";
-import { exigirModulo } from "@/lib/auth/dal";
+import { exigirPermissao } from "@/lib/auth/dal";
 import { avisarCliente } from "@/lib/avisos-push";
 import { createClient } from "@/lib/supabase/server";
 import { carregarCardapioSalao } from "../../garcom/dados";
@@ -20,7 +20,7 @@ const ROTULO: Record<(typeof STATUS_AVANCO)[number], string> = {
 };
 
 export async function avancarPedido(pedidoId: string, status: string): Promise<ResultadoAcao> {
-  const acesso = await exigirModulo("painel", "delivery");
+  const acesso = await exigirPermissao("painel", "delivery");
   const dados = z.object({ pedidoId: id, status: z.enum(STATUS_AVANCO) }).safeParse({ pedidoId, status });
   if (!dados.success) return falha("Dados inválidos.");
 
@@ -42,7 +42,7 @@ export async function avancarPedido(pedidoId: string, status: string): Promise<R
 }
 
 export async function cancelarPedido(pedidoId: string, motivo: string): Promise<ResultadoAcao> {
-  const acesso = await exigirModulo("painel", "delivery");
+  const acesso = await exigirPermissao("painel", "delivery");
   const dados = z
     .object({ pedidoId: id, motivo: z.string().trim().min(3, "Informe o motivo.").max(500) })
     .safeParse({ pedidoId, motivo });
@@ -66,7 +66,7 @@ export async function cancelarPedido(pedidoId: string, motivo: string): Promise<
 }
 
 export async function entregarPedido(pedidoId: string, forma: string): Promise<ResultadoAcao> {
-  const acesso = await exigirModulo("painel", "delivery");
+  const acesso = await exigirPermissao("painel", "delivery");
   const dados = z.object({ pedidoId: id, forma: z.enum(FORMAS) }).safeParse({ pedidoId, forma });
   if (!dados.success) return falha("Escolha a forma de pagamento.");
 
@@ -94,7 +94,7 @@ export async function entregarPedido(pedidoId: string, forma: string): Promise<R
 
 // Escolhe (ou tira) o entregador do pedido; o valor dele vem do cadastro, pelo banco.
 export async function definirEntregador(pedidoId: string, entregadorId: string | null): Promise<ResultadoAcao> {
-  const acesso = await exigirModulo("painel", "delivery");
+  const acesso = await exigirPermissao("painel", "delivery");
   const dados = z.object({ pedidoId: id, entregadorId: id.nullable() }).safeParse({ pedidoId, entregadorId });
   if (!dados.success) return falha("Dados inválidos.");
   const supabase = await createClient();
@@ -114,7 +114,7 @@ export async function definirEntregador(pedidoId: string, entregadorId: string |
 
 // Cardápio (com opções) e bairros para a janela de edição; carregados só quando ela abre.
 export async function dadosParaEdicao() {
-  const acesso = await exigirModulo("painel", "delivery");
+  const acesso = await exigirPermissao("painel", "delivery");
   const supabase = await createClient();
   const [cardapio, bairros] = await Promise.all([
     carregarCardapioSalao(acesso.restaurante.id),
@@ -166,7 +166,7 @@ export type EdicaoPedido = z.input<typeof edicaoSchema>;
 
 // Quem tem o delivery edita um pedido em andamento; o banco valida, recalcula e registra.
 export async function editarPedido(entrada: EdicaoPedido): Promise<ResultadoAcao> {
-  const acesso = await exigirModulo("painel", "delivery");
+  const acesso = await exigirPermissao("painel", "delivery");
   const dados = edicaoSchema.safeParse(entrada);
   if (!dados.success) return falha(dados.error.issues[0]?.message ?? "Dados inválidos.");
 

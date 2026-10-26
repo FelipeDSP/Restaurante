@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { falha, falhaValidacao, mensagemErroBanco, type ResultadoAcao, sucesso } from "@/lib/acoes";
 import { exigirDono } from "@/lib/auth/dal";
-import { MODULOS, PAPEIS } from "@/lib/auth/papeis";
+import { PERMISSOES } from "@/lib/auth/papeis";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { id, textoObrigatorio } from "@/lib/validacao";
@@ -13,14 +13,14 @@ import { id, textoObrigatorio } from "@/lib/validacao";
 const SEM_CHAVE =
   "Cadastro de contas indisponível: configure SUPABASE_SECRET_KEY no servidor.";
 
-const papel = z.enum(PAPEIS, { error: "Escolha o papel." });
-// Módulos marcados (o dono tem todos, a lista dele é ignorada).
-const modulos = z.array(z.enum(MODULOS)).max(MODULOS.length);
-function modulosDoFormulario(formData: FormData) {
-  return formData.getAll("modulos").map(String);
-}
-function semModulo(papelEscolhido: string, lista: string[]) {
-  return papelEscolhido !== "dono" && lista.length === 0;
+// "dono" ou o id de uma função do restaurante (o banco confere que é deste restaurante).
+const funcao = z.union([z.literal("dono"), id], { error: "Escolha a função." });
+const permissoes = z.array(z.enum(PERMISSOES)).max(PERMISSOES.length);
+const lista = (formData: FormData, campo: string) => formData.getAll(campo).map(String);
+
+// Papel e função gravados: dono não tem função; o resto da equipe tem.
+function vinculo(escolha: string) {
+  return escolha === "dono" ? { papel: "dono", funcao_id: null } : { papel: "equipe", funcao_id: escolha };
 }
 
 const senha = z.string().min(8, "A senha precisa de pelo menos 8 caracteres.").max(72);
@@ -28,8 +28,7 @@ const senha = z.string().min(8, "A senha precisa de pelo menos 8 caracteres.").m
 const novoMembroSchema = z.object({
   nome: textoObrigatorio("o nome", 120),
   email: z.email("Informe um e-mail válido.").trim().toLowerCase(),
-  papel,
-  modulos,
+  funcao,
   senha: z.preprocess((v) => (v === "" ? undefined : v), senha.optional()),
 });
 
@@ -38,14 +37,10 @@ export async function adicionarMembro(_estado: ResultadoAcao, formData: FormData
   const dados = novoMembroSchema.safeParse({
     nome: formData.get("nome"),
     email: formData.get("email"),
-    papel: formData.get("papel"),
-    modulos: modulosDoFormulario(formData),
+    funcao: formData.get("funcao"),
     senha: formData.get("senha"),
   });
   if (!dados.success) return falhaValidacao(dados.error, formData);
-  if (semModulo(dados.data.papel, dados.data.modulos)) {
-    return falha("Marque pelo menos um acesso.", { modulos: "Marque pelo menos um." }, formData);
-  }
 
   const admin = createAdminClient();
   if (!admin) return falha(SEM_CHAVE, undefined, formData);
@@ -75,20 +70,22 @@ export async function adicionarMembro(_estado: ResultadoAcao, formData: FormData
   }
 
   // Vínculo gravado pelo servidor (a API não deixa ninguém inserir membros direto): o restaurante é
-  // o do dono conferido por exigirDono(), nunca um id vindo do navegador.
+  // o do dono conferido por exigirDono(), nunca um id vindo do navegador. A função precisa ser
+  // deste restaurante (chave estrangeira composta).
   const { error } = await admin.from("membros").insert({
     restaurante_id: acesso.restaurante.id,
     user_id: userId,
     nome: dados.data.nome,
-    papel: dados.data.papel,
-    modulos: dados.data.papel === "dono" ? [] : dados.data.modulos,
+    ...vinculo(dados.data.funcao),
   });
   if (error) {
     if (contaCriada) await admin.auth.admin.deleteUser(userId);
     return falha(
       error.code === "23505"
         ? "Essa pessoa já faz parte da equipe (veja na lista; pode estar inativa)."
-        : mensagemErroBanco(error),
+        : error.code === "23503"
+          ? "Escolha a função de novo."
+          : mensagemErroBanco(error),
       undefined,
       formData,
     );
@@ -102,29 +99,82 @@ export async function adicionarMembro(_estado: ResultadoAcao, formData: FormData
   );
 }
 
+// Nome, função e o que muda só para a pessoa (permissões dadas a mais e tiradas da função).
 export async function atualizarMembro(membroId: string, _estado: ResultadoAcao, formData: FormData): Promise<ResultadoAcao> {
   const acesso = await exigirDono();
   const dados = z
-    .object({ id, nome: textoObrigatorio("o nome", 120), papel, modulos })
-    .safeParse({ id: membroId, nome: formData.get("nome"), papel: formData.get("papel"), modulos: modulosDoFormulario(formData) });
+    .object({ id, nome: textoObrigatorio("o nome", 120), funcao, extras: permissoes, removidas: permissoes })
+    .safeParse({
+      id: membroId,
+      nome: formData.get("nome"),
+      funcao: formData.get("funcao"),
+      extras: lista(formData, "extras"),
+      removidas: lista(formData, "removidas"),
+    });
   if (!dados.success) return falhaValidacao(dados.error, formData);
-  if (semModulo(dados.data.papel, dados.data.modulos)) {
-    return falha("Marque pelo menos um acesso.", { modulos: "Marque pelo menos um." }, formData);
-  }
-  if (dados.data.id === acesso.membroId && dados.data.papel !== acesso.papel) {
-    return falha("Você não pode alterar o seu próprio papel.", undefined, formData);
+  if (dados.data.id === acesso.membroId && dados.data.funcao !== "dono") {
+    return falha("Você não pode tirar o seu próprio acesso de dono.", undefined, formData);
   }
 
+  const dono = dados.data.funcao === "dono";
   const supabase = await createClient();
   const { error } = await supabase
     .from("membros")
-    .update({ nome: dados.data.nome, papel: dados.data.papel, modulos: dados.data.papel === "dono" ? [] : dados.data.modulos })
+    .update({
+      nome: dados.data.nome,
+      ...vinculo(dados.data.funcao),
+      permissoes_extras: dono ? [] : dados.data.extras,
+      permissoes_removidas: dono ? [] : dados.data.removidas,
+    })
     .eq("id", dados.data.id)
     .eq("restaurante_id", acesso.restaurante.id);
-  if (error) return falha(mensagemErroBanco(error), undefined, formData);
+  if (error) return falha(error.code === "23503" ? "Escolha a função de novo." : mensagemErroBanco(error), undefined, formData);
 
   refresh();
-  return sucesso("Membro atualizado.");
+  return sucesso("Salvo.");
+}
+
+// ---- Funções ------------------------------------------------------------------
+
+const funcaoSchema = z.object({ nome: textoObrigatorio("o nome", 40).pipe(z.string().min(2, "Nome muito curto.")), permissoes });
+
+function lerFuncao(formData: FormData) {
+  return funcaoSchema.safeParse({ nome: formData.get("nome"), permissoes: lista(formData, "permissoes") });
+}
+
+const NOME_REPETIDO = "Já existe uma função com esse nome.";
+
+export async function criarFuncao(_estado: ResultadoAcao, formData: FormData): Promise<ResultadoAcao> {
+  const acesso = await exigirDono();
+  const dados = lerFuncao(formData);
+  if (!dados.success) return falhaValidacao(dados.error, formData);
+  const supabase = await createClient();
+  const { error } = await supabase.from("funcoes").insert({ restaurante_id: acesso.restaurante.id, ...dados.data });
+  if (error) return falha(error.code === "23505" ? NOME_REPETIDO : mensagemErroBanco(error), undefined, formData);
+  refresh();
+  return sucesso(`Função ${dados.data.nome} criada.`);
+}
+
+export async function salvarFuncao(funcaoId: string, _estado: ResultadoAcao, formData: FormData): Promise<ResultadoAcao> {
+  const acesso = await exigirDono();
+  if (!id.safeParse(funcaoId).success) return falha("Função inválida.");
+  const dados = lerFuncao(formData);
+  if (!dados.success) return falhaValidacao(dados.error, formData);
+  const supabase = await createClient();
+  const { error } = await supabase.from("funcoes").update(dados.data).eq("id", funcaoId).eq("restaurante_id", acesso.restaurante.id);
+  if (error) return falha(error.code === "23505" ? NOME_REPETIDO : mensagemErroBanco(error), undefined, formData);
+  refresh();
+  return sucesso("Função salva.");
+}
+
+export async function excluirFuncao(funcaoId: string): Promise<ResultadoAcao> {
+  const acesso = await exigirDono();
+  if (!id.safeParse(funcaoId).success) return falha("Função inválida.");
+  const supabase = await createClient();
+  const { error } = await supabase.from("funcoes").delete().eq("id", funcaoId).eq("restaurante_id", acesso.restaurante.id);
+  if (error) return falha(error.code === "23503" ? "Tem gente nessa função (inclusive com acesso desativado). Troque a função dessas pessoas antes." : mensagemErroBanco(error));
+  refresh();
+  return sucesso("Função excluída.");
 }
 
 export async function alternarMembro(membroId: string, ativo: boolean): Promise<ResultadoAcao> {

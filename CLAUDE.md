@@ -111,15 +111,16 @@ Já existe (app de impressão, fase 3):
 - Fluxo: `/cadastro` → (confirmação de e-mail opcional, via `/auth/confirmar`) → `/comecar` → `/painel` com "Primeiros passos" e aviso de teste.
 - No painel, a assinatura aparece só para o dono e sem citar a marca da plataforma.
 
-## Papéis e módulos
+## Papéis, funções e permissões
 
-- `dono`: tudo no restaurante, incluindo marca, equipe, cadastros e relatórios (sempre todos os módulos).
-- Resto da equipe: quem manda são os **módulos por pessoa** (`membros.modulos`), que o dono liga e desliga na Equipe; o papel (`caixa`, `garcom`, `cozinha`) é só a função mostrada e o atalho que sugere os módulos (caixa: todos; garçom: `garcom`; cozinha: `cozinha`).
-  - `caixa`: abrir/fechar caixa, sangria/suprimento, estorno, impressoras.
-  - `delivery`: tela Delivery (andamento, edição, entregador), clientes e cupons.
-  - `comandas`: Comandas no painel, trocar o garçom da mesa, cancelar comanda, abrir mesa em nome de outro.
-  - `garcom`: app do garçom. `cozinha`: tela da cozinha.
-- Painel abre com `caixa`, `delivery` ou `comandas`; o menu mostra só o que a pessoa tem (`itensDoMenu`). Páginas e ações de módulo usam `exigirModulo(area, modulo)` (`src/lib/auth/dal.ts`); o banco confere com `rest_privado.tem_modulo(restaurante, modulos[])` em vez de "dono ou caixa" (migração `modulos_por_pessoa`). Lista vazia nunca fica: o trigger põe os módulos do papel.
+- `dono` (`membros.papel = 'dono'`): tudo, sempre. Equipe (Pessoas e Funções) e Assinatura são só dele.
+- Resto da equipe (`papel = 'equipe'`; `caixa`/`garcom`/`cozinha` ficam em cadastros antigos, sem efeito): vale a **função** (`membros.funcao_id` → `funcoes`, por restaurante) mais o ajuste da pessoa: `permissoes_extras` (dadas só a ela) e `permissoes_removidas` (tiradas só dela). Permissões = (da função + extras) − removidas.
+- Todo restaurante nasce com as funções Caixa, Garçom e Cozinha (`funcoes.padrao`, trigger em `restaurantes`), iguais ao que os papéis faziam; o dono edita e cria outras (ex.: Gerente) em Painel › Equipe › Funções. Função com gente não é excluída.
+- Permissões (lista em `src/lib/auth/papeis.ts` e `rest_privado.permissoes_validas()`):
+  - Operação: `caixa_operar` (abrir/fechar, sangria/suprimento; ver e testar impressoras), `caixa_estornar`, `delivery` (andamento, edição, entregador, clientes), `comandas_painel` (Comandas no painel), `comandas_gerenciar` (trocar garçom, cancelar comanda, abrir mesa em nome de outro), `garcom_app`, `cozinha_tela`.
+  - Gestão: `relatorios`, `cardapio` (produtos, categorias, adicionais, fotos), `mesas`, `cupons`, `entregadores`, `impressao` (setores, impressoras, computadores), `restaurante` (dados, horários, delivery, bairros, logo).
+- Banco: `rest_privado.tem_permissao(restaurante, permissoes[])` em políticas e funções (migração `permissoes`); `permissoes_membro(membro)` faz a conta. App: `Vinculo.permissoes`/`funcao` (`obterVinculos`), `exigirPermissao(area, ...permissoes)` e `temPermissao()` (`src/lib/auth/dal.ts`); menu e abas por permissão (`itensDoMenu` em `painel/navegacao.ts`). Painel abre com qualquer permissão que não seja só `garcom_app`/`cozinha_tela`/`comandas_gerenciar`.
+- "Chamar garçom" vai para quem tem `garcom_app` (e não é dono).
 
 ## Banco de dados (MVP)
 

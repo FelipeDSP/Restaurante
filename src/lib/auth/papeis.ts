@@ -1,34 +1,58 @@
-export const PAPEIS = ["dono", "caixa", "garcom", "cozinha"] as const;
+export const PAPEIS = ["dono", "caixa", "garcom", "cozinha", "equipe"] as const;
 export type Papel = (typeof PAPEIS)[number];
 
 export type Area = "painel" | "garcom" | "cozinha";
 
-// Módulos que o dono libera por pessoa (o dono tem todos). O banco confere os mesmos
-// (rest_privado.tem_modulo); aqui decidem só o que aparece e para onde a pessoa vai.
-export const MODULOS = ["caixa", "delivery", "comandas", "garcom", "cozinha"] as const;
-export type Modulo = (typeof MODULOS)[number];
+// Permissões que o dono dá por função (Caixa, Garçom, Cozinha ou as que ele criar) e ajusta por pessoa.
+// O banco confere as mesmas (rest_privado.tem_permissao); aqui decidem o que aparece e para onde ir.
+export const PERMISSOES = [
+  "caixa_operar",
+  "caixa_estornar",
+  "delivery",
+  "comandas_painel",
+  "comandas_gerenciar",
+  "garcom_app",
+  "cozinha_tela",
+  "relatorios",
+  "cardapio",
+  "mesas",
+  "cupons",
+  "entregadores",
+  "impressao",
+  "restaurante",
+] as const;
+export type Permissao = (typeof PERMISSOES)[number];
 
-export const NOME_MODULO: Record<Modulo, string> = {
-  caixa: "Caixa",
+export const NOME_PERMISSAO: Record<Permissao, string> = {
+  caixa_operar: "Abrir e fechar o caixa",
+  caixa_estornar: "Estornar pagamento",
   delivery: "Delivery",
-  comandas: "Comandas",
-  garcom: "App do garçom",
-  cozinha: "Tela da cozinha",
+  comandas_painel: "Comandas no painel",
+  comandas_gerenciar: "Trocar garçom e cancelar mesa",
+  garcom_app: "App do garçom",
+  cozinha_tela: "Tela da cozinha",
+  relatorios: "Relatórios",
+  cardapio: "Cardápio",
+  mesas: "Cadastro de mesas",
+  cupons: "Cupons",
+  entregadores: "Entregadores",
+  impressao: "Setores e impressoras",
+  restaurante: "Dados do restaurante",
 };
 
-// Módulos de costume de cada papel: o papel é o atalho do cadastro.
-export const MODULOS_DO_PAPEL: Record<Papel, readonly Modulo[]> = {
-  dono: MODULOS,
-  caixa: MODULOS,
-  garcom: ["garcom"],
-  cozinha: ["cozinha"],
-};
+export const GRUPOS_PERMISSOES: { titulo: string; itens: Permissao[] }[] = [
+  {
+    titulo: "Operação",
+    itens: ["caixa_operar", "caixa_estornar", "delivery", "comandas_painel", "comandas_gerenciar", "garcom_app", "cozinha_tela"],
+  },
+  { titulo: "Gestão", itens: ["relatorios", "cardapio", "mesas", "cupons", "entregadores", "impressao", "restaurante"] },
+];
 
-// Módulos que abrem cada área.
-const MODULOS_DA_AREA: Record<Area, readonly Modulo[]> = {
-  painel: ["caixa", "delivery", "comandas"],
-  garcom: ["garcom"],
-  cozinha: ["cozinha"],
+// Permissões que abrem cada área.
+const PERMISSOES_DA_AREA: Record<Area, readonly Permissao[]> = {
+  painel: PERMISSOES.filter((p) => !["garcom_app", "cozinha_tela", "comandas_gerenciar"].includes(p)),
+  garcom: ["garcom_app"],
+  cozinha: ["cozinha_tela"],
 };
 
 export const NOME_PAPEL: Record<Papel, string> = {
@@ -36,30 +60,38 @@ export const NOME_PAPEL: Record<Papel, string> = {
   caixa: "Caixa",
   garcom: "Garçom",
   cozinha: "Cozinha",
+  equipe: "Equipe",
 };
 
 export function ehPapel(valor: string): valor is Papel {
   return (PAPEIS as readonly string[]).includes(valor);
 }
 
-export function ehModulo(valor: string): valor is Modulo {
-  return (MODULOS as readonly string[]).includes(valor);
+export function ehPermissao(valor: string): valor is Permissao {
+  return (PERMISSOES as readonly string[]).includes(valor);
 }
 
-// Módulos que valem para a pessoa (dono: todos; lista vazia antiga: os do papel).
-export function modulosEfetivos(papel: Papel, modulos: readonly string[] | null | undefined): Modulo[] {
-  if (papel === "dono") return [...MODULOS];
-  const validos = (modulos ?? []).filter(ehModulo);
-  return validos.length > 0 ? validos : [...MODULOS_DO_PAPEL[papel]];
+// Mesma conta do banco (rest_privado.permissoes_membro): dono tem todas; equipe tem
+// (as da função + as dadas a ela) − as tiradas dela.
+export function permissoesEfetivas(
+  papel: Papel,
+  daFuncao: readonly string[] | null | undefined,
+  extras: readonly string[] | null | undefined,
+  removidas: readonly string[] | null | undefined,
+): Permissao[] {
+  if (papel === "dono") return [...PERMISSOES];
+  const tiradas = new Set(removidas ?? []);
+  const todas = new Set([...(daFuncao ?? []), ...(extras ?? [])]);
+  return PERMISSOES.filter((p) => todas.has(p) && !tiradas.has(p));
 }
 
-export function podeAcessar(modulos: readonly Modulo[], area: Area): boolean {
-  return MODULOS_DA_AREA[area].some((m) => modulos.includes(m));
+export function podeAcessar(permissoes: readonly Permissao[], area: Area): boolean {
+  return PERMISSOES_DA_AREA[area].some((p) => permissoes.includes(p));
 }
 
-export function rotaInicial(modulos: readonly Modulo[]): "/painel" | "/garcom" | "/cozinha" | "/sem-acesso" {
-  if (podeAcessar(modulos, "painel")) return "/painel";
-  if (podeAcessar(modulos, "garcom")) return "/garcom";
-  if (podeAcessar(modulos, "cozinha")) return "/cozinha";
+export function rotaInicial(permissoes: readonly Permissao[]): "/painel" | "/garcom" | "/cozinha" | "/sem-acesso" {
+  if (podeAcessar(permissoes, "painel")) return "/painel";
+  if (podeAcessar(permissoes, "garcom")) return "/garcom";
+  if (podeAcessar(permissoes, "cozinha")) return "/cozinha";
   return "/sem-acesso";
 }

@@ -4,7 +4,7 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { exigirDono } from "@/lib/auth/dal";
+import { exigirPermissao } from "@/lib/auth/dal";
 import { formatarBRL } from "@/lib/dinheiro";
 import { nomeForma, nomeOrigem } from "@/lib/rotulos";
 import { diaLocal } from "@/lib/tempo";
@@ -28,7 +28,7 @@ const porcento =(parte: number, todo: number) => (todo ? `${Math.round((parte / 
 const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
 
 export default async function RelatoriosPage(props: PageProps<"/painel/relatorios">) {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "relatorios");
   const params = await props.searchParams;
   const texto = (v: string | string[] | undefined) => (typeof v === "string" ? v : undefined);
   const fuso = acesso.restaurante.fusoHorario;

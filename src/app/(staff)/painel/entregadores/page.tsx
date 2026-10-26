@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { exigirDono } from "@/lib/auth/dal";
+import { exigirPermissao } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 
 import { type Entregador, ListaEntregadores, NovoEntregador } from "./lista-entregadores";
@@ -8,7 +8,7 @@ import { type Entregador, ListaEntregadores, NovoEntregador } from "./lista-entr
 export const metadata: Metadata = { title: "Entregadores" };
 
 export default async function EntregadoresPage() {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "entregadores");
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("entregadores")

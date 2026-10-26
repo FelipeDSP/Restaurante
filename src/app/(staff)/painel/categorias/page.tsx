@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { exigirDono } from "@/lib/auth/dal";
+import { exigirPermissao } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 
 import { ListaCategorias, NovaCategoria } from "./lista-categorias";
@@ -8,7 +8,7 @@ import { ListaCategorias, NovaCategoria } from "./lista-categorias";
 export const metadata: Metadata = { title: "Categorias" };
 
 export default async function CategoriasPage() {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "cardapio");
   const supabase = await createClient();
 
   // Sempre filtrar pelo restaurante ativo: a RLS também libera o cardápio público de outros restaurantes.

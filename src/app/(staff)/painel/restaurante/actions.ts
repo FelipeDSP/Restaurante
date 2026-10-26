@@ -4,7 +4,7 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 
 import { falha, falhaValidacao, mensagemErroBanco, type ResultadoAcao, sucesso } from "@/lib/acoes";
-import { exigirDono } from "@/lib/auth/dal";
+import { exigirPermissao } from "@/lib/auth/dal";
 import { fusoSchema, horariosSchema } from "@/lib/horarios";
 import { urlImagemDoRestaurante } from "@/lib/storage";
 import { createClient } from "@/lib/supabase/server";
@@ -27,7 +27,7 @@ function telefone(rotulo: string) {
 }
 
 export async function salvarRestaurante(_estado: ResultadoAcao, formData: FormData): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "restaurante");
 
   let horarios: unknown;
   try {

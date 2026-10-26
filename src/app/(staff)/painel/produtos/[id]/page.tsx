@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { exigirDono } from "@/lib/auth/dal";
+import { exigirPermissao } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { id as idSchema } from "@/lib/validacao";
 
@@ -11,7 +11,7 @@ import { carregarGruposParaProduto, carregarPracas } from "../grupos";
 export const metadata: Metadata = { title: "Editar produto" };
 
 export default async function EditarProdutoPage(props: PageProps<"/painel/produtos/[id]">) {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "cardapio");
   const { id } = await props.params;
   if (!idSchema.safeParse(id).success) notFound();
 

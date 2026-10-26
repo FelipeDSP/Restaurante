@@ -4,7 +4,7 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 
 import { falha, falhaValidacao, mensagemErroBanco, type ResultadoAcao, sucesso } from "@/lib/acoes";
-import { exigirDono, exigirModulo } from "@/lib/auth/dal";
+import { exigirPermissao } from "@/lib/auth/dal";
 import { gerarCodigoPareamento, hashDe } from "@/lib/impressao/agente";
 import { createClient } from "@/lib/supabase/server";
 import { checkbox, dadosDoFormulario, id, textoObrigatorio } from "@/lib/validacao";
@@ -25,7 +25,7 @@ async function definirCodigo(supabase: Awaited<ReturnType<typeof createClient>>,
 
 // Cadastra o computador do caixa e devolve o código de 6 dígitos para digitar no app.
 export async function conectarComputador(_estado: ResultadoCodigo, formData: FormData): Promise<ResultadoCodigo> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "impressao");
   const dados = z.object({ nome: textoObrigatorio("o nome do computador", 80) }).safeParse({ nome: formData.get("nome") });
   if (!dados.success) return falhaValidacao(dados.error, formData);
 
@@ -45,7 +45,7 @@ export async function conectarComputador(_estado: ResultadoCodigo, formData: For
 
 // Novo código para (re)parear um computador já cadastrado (ex.: reinstalou o app).
 export async function gerarNovoCodigo(agenteId: string): Promise<ResultadoCodigo> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "impressao");
   if (!id.safeParse(agenteId).success) return falha("Computador inválido.");
   const supabase = await createClient();
   const { data: agente } = await supabase
@@ -63,7 +63,7 @@ export async function gerarNovoCodigo(agenteId: string): Promise<ResultadoCodigo
 
 // Computador criado por engano ou que não existe mais. Nada da fila é apagado (só perde o vínculo).
 export async function excluirComputador(agenteId: string): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "impressao");
   if (!id.safeParse(agenteId).success) return falha("Computador inválido.");
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -79,7 +79,7 @@ export async function excluirComputador(agenteId: string): Promise<ResultadoAcao
 }
 
 export async function desconectarComputador(agenteId: string): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "impressao");
   if (!id.safeParse(agenteId).success) return falha("Computador inválido.");
   const supabase = await createClient();
   const { error } = await supabase
@@ -130,7 +130,7 @@ const impressoraSchema = z
 
 // impressoraId null = nova.
 export async function salvarImpressora(impressoraId: string | null, _estado: ResultadoAcao, formData: FormData): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "impressao");
   const restauranteId = acesso.restaurante.id;
   const dados = impressoraSchema.safeParse(dadosDoFormulario(formData));
   if (!dados.success) return falhaValidacao(dados.error, formData);
@@ -170,7 +170,7 @@ export async function salvarImpressora(impressoraId: string | null, _estado: Res
 }
 
 export async function excluirImpressora(impressoraId: string): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "impressao");
   if (!id.safeParse(impressoraId).success) return falha("Impressora inválida.");
   const supabase = await createClient();
   const { error } = await supabase.from("impressoras").delete().eq("id", impressoraId).eq("restaurante_id", acesso.restaurante.id);
@@ -180,7 +180,7 @@ export async function excluirImpressora(impressoraId: string): Promise<Resultado
 }
 
 export async function imprimirTeste(impressoraId: string): Promise<ResultadoAcao> {
-  await exigirModulo("painel", "caixa");
+  await exigirPermissao("painel", "caixa_operar", "impressao");
   if (!id.safeParse(impressoraId).success) return falha("Impressora inválida.");
   const supabase = await createClient();
   const { error } = await supabase.rpc("imprimir_teste", { p_impressora_id: impressoraId });
@@ -190,7 +190,7 @@ export async function imprimirTeste(impressoraId: string): Promise<ResultadoAcao
 }
 
 export async function reimprimir(filaId: string): Promise<ResultadoAcao> {
-  await exigirModulo("painel", "caixa");
+  await exigirPermissao("painel", "caixa_operar", "impressao");
   if (!id.safeParse(filaId).success) return falha("Impressão inválida.");
   const supabase = await createClient();
   const { error } = await supabase.rpc("reimprimir", { p_fila_id: filaId });

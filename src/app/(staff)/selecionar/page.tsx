@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { escolherRestaurante, sair } from "@/lib/auth/actions";
 import { obterContexto } from "@/lib/auth/dal";
-import { NOME_PAPEL } from "@/lib/auth/papeis";
 import { corDeContraste } from "@/lib/cores";
 
 export const metadata: Metadata = { title: "Escolher restaurante" };
@@ -40,7 +39,7 @@ export default async function SelecionarPage() {
                 </span>
                 <span className="flex flex-col">
                   <span className="font-medium">{v.restaurante.nome}</span>
-                  <span className="text-sm text-muted-foreground">{NOME_PAPEL[v.papel]}</span>
+                  <span className="text-sm text-muted-foreground">{v.funcao}</span>
                 </span>
               </button>
             </form>

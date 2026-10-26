@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { exigirDono } from "@/lib/auth/dal";
+import { exigirPermissao } from "@/lib/auth/dal";
 import { lerHorarios } from "@/lib/horarios";
 import { createClient } from "@/lib/supabase/server";
 
@@ -9,7 +9,7 @@ import { FormRestaurante } from "./form-restaurante";
 export const metadata: Metadata = { title: "Restaurante" };
 
 export default async function RestaurantePage() {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "restaurante");
   const supabase = await createClient();
 
   const { data: r, error } = await supabase

@@ -68,7 +68,7 @@ export async function escolherRestaurante(formData: FormData): Promise<void> {
   if (!vinculo) redirect("/selecionar");
 
   await gravarRestauranteAtivo(vinculo.restaurante.id);
-  redirect(rotaInicial(vinculo.modulos));
+  redirect(rotaInicial(vinculo.permissoes));
 }
 
 // ---------------------------------------------------------------------------

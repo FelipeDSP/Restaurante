@@ -4,7 +4,7 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 
 import { falha, falhaValidacao, mensagemErroBanco, type ResultadoAcao, sucesso } from "@/lib/acoes";
-import { exigirDono } from "@/lib/auth/dal";
+import { exigirPermissao } from "@/lib/auth/dal";
 import { centavosDeTexto } from "@/lib/dinheiro";
 import { createClient } from "@/lib/supabase/server";
 import { dadosDoFormulario, id } from "@/lib/validacao";
@@ -36,7 +36,7 @@ function campos(d: z.infer<typeof entregadorSchema>) {
 }
 
 export async function criarEntregador(_estado: ResultadoAcao, formData: FormData): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "entregadores");
   const dados = entregadorSchema.safeParse(dadosDoFormulario(formData));
   if (!dados.success) return falhaValidacao(dados.error, formData);
   const supabase = await createClient();
@@ -47,7 +47,7 @@ export async function criarEntregador(_estado: ResultadoAcao, formData: FormData
 }
 
 export async function salvarEntregador(entregadorId: string, _estado: ResultadoAcao, formData: FormData): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "entregadores");
   if (!id.safeParse(entregadorId).success) return falha("Entregador inválido.");
   const dados = entregadorSchema.safeParse(dadosDoFormulario(formData));
   if (!dados.success) return falhaValidacao(dados.error, formData);
@@ -63,7 +63,7 @@ export async function salvarEntregador(entregadorId: string, _estado: ResultadoA
 }
 
 export async function alternarEntregador(entregadorId: string, ativo: boolean): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "entregadores");
   if (!id.safeParse(entregadorId).success) return falha("Entregador inválido.");
   const supabase = await createClient();
   const { error } = await supabase

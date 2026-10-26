@@ -7,8 +7,7 @@ import { FaixaConexao } from "@/components/staff/faixa-conexao";
 import { MarcaRestaurante } from "@/components/staff/marca-restaurante";
 import { MenuUsuario } from "@/components/staff/menu-usuario";
 import { carregarAssinatura } from "@/lib/assinatura";
-import { ehAdminPlataforma, exigirAcesso } from "@/lib/auth/dal";
-import { NOME_PAPEL } from "@/lib/auth/papeis";
+import { ehAdminPlataforma, exigirAcesso, temPermissao } from "@/lib/auth/dal";
 import { estiloMarca } from "@/lib/cores";
 import { urlIcone } from "@/lib/icone";
 import { createClient } from "@/lib/supabase/server";
@@ -40,9 +39,9 @@ async function contarPedidosNovos(restauranteId: string): Promise<number> {
 
 export default async function PainelLayout({ children }: LayoutProps<"/painel">) {
   const acesso = await exigirAcesso("painel");
-  const itens = itensDoMenu(acesso.papel, acesso.modulos);
+  const itens = itensDoMenu(acesso.papel, acesso.permissoes);
   const [novos, assinatura, adminPlataforma] = await Promise.all([
-    acesso.modulos.includes("delivery") ? contarPedidosNovos(acesso.restaurante.id) : 0,
+    acesso.permissoes.includes("delivery") ? contarPedidosNovos(acesso.restaurante.id) : 0,
     acesso.papel === "dono" ? carregarAssinatura(acesso.restaurante.id) : null,
     ehAdminPlataforma(),
   ]);
@@ -64,13 +63,15 @@ export default async function PainelLayout({ children }: LayoutProps<"/painel">)
                 <span className="hidden sm:inline">Admin</span>
               </Link>
             ) : null}
-            <ChamarGarcom restauranteId={acesso.restaurante.id} membroId={acesso.membroId} />
-            {acesso.modulos.includes("delivery") ? <AlertaPedidos restauranteId={acesso.restaurante.id} /> : null}
+            {temPermissao(acesso, "caixa_operar", "delivery", "comandas_painel") ? (
+              <ChamarGarcom restauranteId={acesso.restaurante.id} membroId={acesso.membroId} />
+            ) : null}
+            {acesso.permissoes.includes("delivery") ? <AlertaPedidos restauranteId={acesso.restaurante.id} /> : null}
             <MenuUsuario
               nome={acesso.nome}
-              papel={NOME_PAPEL[acesso.papel]}
+              papel={acesso.funcao}
               podeTrocarRestaurante={acesso.vinculos.length > 1}
-              outraArea={acesso.modulos.includes("garcom") ? { href: "/garcom", rotulo: "Abrir área do garçom" } : undefined}
+              outraArea={acesso.permissoes.includes("garcom_app") ? { href: "/garcom", rotulo: "Abrir área do garçom" } : undefined}
               adminPlataforma={adminPlataforma}
               assinatura={acesso.papel === "dono"}
             />

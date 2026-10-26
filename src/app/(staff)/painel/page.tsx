@@ -4,7 +4,7 @@ import { AtualizarEmTempoReal } from "@/components/staff/atualizar-em-tempo-real
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { exigirAcesso } from "@/lib/auth/dal";
-import type { Modulo } from "@/lib/auth/papeis";
+import type { Permissao } from "@/lib/auth/papeis";
 import { formatarBRL } from "@/lib/dinheiro";
 import { dataHoraLocal } from "@/lib/tempo";
 
@@ -12,7 +12,7 @@ import { carregarResumo, carregarSessaoAberta } from "./caixa/dados";
 import { PrimeirosPassos } from "./primeiros-passos";
 import { UltimasNoites } from "./ultimas-noites";
 
-async function StatusCaixa({ restauranteId, fuso, modulos }: { restauranteId: string; fuso: string; modulos: Modulo[] }) {
+async function StatusCaixa({ restauranteId, fuso, permissoes }: { restauranteId: string; fuso: string; permissoes: Permissao[] }) {
   const sessao = await carregarSessaoAberta(restauranteId);
   const resumo = sessao ? await carregarResumo(restauranteId, sessao.id) : null;
 
@@ -22,7 +22,7 @@ async function StatusCaixa({ restauranteId, fuso, modulos }: { restauranteId: st
         <CardHeader>
           <CardTitle>Caixa fechado</CardTitle>
         </CardHeader>
-        {modulos.includes("caixa") ? (
+        {permissoes.includes("caixa_operar") ? (
           <CardContent>
             <Button className="h-11" nativeButton={false} render={<Link href="/painel/caixa" />}>
               Abrir caixa
@@ -57,12 +57,12 @@ async function StatusCaixa({ restauranteId, fuso, modulos }: { restauranteId: st
           </div>
         </dl>
         <div className="flex flex-wrap gap-2">
-          {modulos.includes("comandas") ? (
+          {permissoes.includes("comandas_painel") ? (
             <Button className="h-11" nativeButton={false} render={<Link href="/painel/comandas" />}>
               Ver comandas
             </Button>
           ) : null}
-          {modulos.includes("caixa") ? (
+          {permissoes.includes("caixa_operar") ? (
             <Button variant="outline" className="h-11" nativeButton={false} render={<Link href="/painel/caixa" />}>
               Resumo e fechamento
             </Button>
@@ -81,8 +81,8 @@ export default async function PainelPage() {
       <AtualizarEmTempoReal restauranteId={acesso.restaurante.id} tabelas={["comandas", "pagamentos"]} />
       <h1 className="text-2xl font-semibold">Olá, {acesso.nome}</h1>
       {acesso.papel === "dono" ? <PrimeirosPassos acesso={acesso} /> : null}
-      <StatusCaixa restauranteId={acesso.restaurante.id} fuso={acesso.restaurante.fusoHorario} modulos={acesso.modulos} />
-      {acesso.papel === "dono" ? <UltimasNoites restauranteId={acesso.restaurante.id} fuso={acesso.restaurante.fusoHorario} /> : null}
+      <StatusCaixa restauranteId={acesso.restaurante.id} fuso={acesso.restaurante.fusoHorario} permissoes={acesso.permissoes} />
+      {acesso.permissoes.includes("relatorios") ? <UltimasNoites restauranteId={acesso.restaurante.id} fuso={acesso.restaurante.fusoHorario} /> : null}
     </main>
   );
 }

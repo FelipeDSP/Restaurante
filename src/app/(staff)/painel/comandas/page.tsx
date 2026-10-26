@@ -5,7 +5,7 @@ import Link from "next/link";
 import { AtualizarEmTempoReal } from "@/components/staff/atualizar-em-tempo-real";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { exigirModulo } from "@/lib/auth/dal";
+import { exigirPermissao } from "@/lib/auth/dal";
 import { formatarBRL } from "@/lib/dinheiro";
 import { createClient } from "@/lib/supabase/server";
 import { tempoDesde } from "@/lib/tempo";
@@ -16,7 +16,7 @@ import { caixaEstaAberto } from "../../garcom/dados";
 export const metadata: Metadata = { title: "Comandas" };
 
 export default async function ComandasPage() {
-  const acesso = await exigirModulo("painel", "comandas");
+  const acesso = await exigirPermissao("painel", "comandas_painel");
   const supabase = await createClient();
 
   const [{ data, error }, caixaAberto] = await Promise.all([
@@ -56,14 +56,14 @@ export default async function ComandasPage() {
           </p>
         </div>
         {!caixaAberto ? (
-          acesso.modulos.includes("caixa") ? (
+          acesso.permissoes.includes("caixa_operar") ? (
             <Link href="/painel/caixa" className="text-sm font-medium text-destructive underline">
               Caixa fechado: abrir caixa
             </Link>
           ) : (
             <p className="text-sm font-medium text-destructive">Caixa fechado</p>
           )
-        ) : acesso.modulos.includes("garcom") ? (
+        ) : acesso.permissoes.includes("garcom_app") ? (
           <Button className="h-11" nativeButton={false} render={<Link href="/garcom" />}>
             <Plus />
             Abrir mesa

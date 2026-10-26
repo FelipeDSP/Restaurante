@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Copy, KeyRound, MessageCircle, UserPlus } from "lucide-react";
+import { ChevronDown, Copy, KeyRound, MessageCircle, SlidersHorizontal, UserPlus } from "lucide-react";
 import { useActionState, useState } from "react";
 import { toast } from "sonner";
 
@@ -11,61 +11,40 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { type Modulo, MODULOS, MODULOS_DO_PAPEL, NOME_MODULO, NOME_PAPEL, PAPEIS, type Papel } from "@/lib/auth/papeis";
+import type { Permissao } from "@/lib/auth/papeis";
 import { cn } from "@/lib/utils";
 
 import { adicionarMembro, alternarMembro, atualizarMembro, redefinirSenha } from "./actions";
+import { AjustePermissoes } from "./permissoes-ui";
+
+export type Funcao = { id: string; nome: string; permissoes: Permissao[] };
 
 export type Membro = {
   id: string;
   nome: string;
-  papel: Papel;
-  modulos: Modulo[];
+  // "dono" ou o id da função.
+  funcao: string;
+  extras: Permissao[];
+  removidas: Permissao[];
   ativo: boolean;
   email: string | null;
   euMesmo: boolean;
 };
 
-function OpcoesPapel() {
-  return PAPEIS.map((p) => (
-    <option key={p} value={p}>
-      {NOME_PAPEL[p]}
-    </option>
-  ));
-}
-
-const iguais = (a: readonly Modulo[], b: readonly Modulo[]) => a.length === b.length && a.every((m) => b.includes(m));
-
-// O que a pessoa acessa. A função só sugere (caixa: tudo da operação; garçom: o app; cozinha: a tela);
-// o dono liga e desliga cada um. Dono tem tudo.
-function EscolherModulos({ papel, modulos, aoMudar }: { papel: Papel; modulos: Modulo[]; aoMudar: (m: Modulo[]) => void }) {
-  if (papel === "dono") return <p className="text-sm text-muted-foreground">Acesso a tudo</p>;
+function OpcoesFuncao({ funcoes }: { funcoes: Funcao[] }) {
   return (
-    <div role="group" aria-label="Acessos" className="flex flex-wrap gap-2">
-      {MODULOS.map((m) => {
-        const marcado = modulos.includes(m);
-        return (
-          <button
-            key={m}
-            type="button"
-            aria-pressed={marcado}
-            onClick={() => aoMudar(marcado ? modulos.filter((x) => x !== m) : [...modulos, m])}
-            className={cn(
-              "flex min-h-10 items-center gap-1.5 rounded-full border px-3 text-sm font-medium",
-              marcado ? "border-[var(--cor-primaria)] bg-[var(--cor-primaria)] text-[var(--cor-primaria-contraste)]" : "text-muted-foreground hover:bg-muted",
-            )}
-          >
-            {marcado ? <Check className="size-4" aria-hidden /> : null}
-            {NOME_MODULO[m]}
-          </button>
-        );
-      })}
-      {modulos.map((m) => (
-        <input key={m} type="hidden" name="modulos" value={m} />
+    <>
+      {funcoes.map((f) => (
+        <option key={f.id} value={f.id}>
+          {f.nome}
+        </option>
       ))}
-    </div>
+      <option value="dono">Dono (acesso a tudo)</option>
+    </>
   );
 }
+
+const nomeDaFuncao = (funcoes: Funcao[], escolha: string) => (escolha === "dono" ? "Dono" : (funcoes.find((f) => f.id === escolha)?.nome ?? ""));
 
 // Senha fácil de ditar ou digitar no celular (sem 0/O, 1/l/I).
 function gerarSenha(): string {
@@ -76,7 +55,7 @@ function gerarSenha(): string {
   return `${sortear(letras, 4)}${sortear(numeros, 4)}`;
 }
 
-type AcessoCriado = { nome: string; email: string; senha: string; papel: Papel; chaveAntes?: number };
+type AcessoCriado = { nome: string; email: string; senha: string; funcao: string; chaveAntes?: number };
 
 // Depois de adicionar: o dono copia o acesso ou manda pelo WhatsApp (antes era anotar e repassar à mão).
 function CartaoAcesso({
@@ -91,7 +70,7 @@ function CartaoAcesso({
   aoFechar: () => void;
 }) {
   const texto = [
-    `Olá, ${acesso.nome}! Seu acesso ao sistema do ${restaurante} (${NOME_PAPEL[acesso.papel]}):`,
+    `Olá, ${acesso.nome}! Seu acesso ao sistema do ${restaurante} (${acesso.funcao}):`,
     `Endereço: ${enderecoLogin}`,
     `E-mail: ${acesso.email}`,
     acesso.senha ? `Senha: ${acesso.senha}` : "Senha: a mesma que você já usa.",
@@ -137,16 +116,17 @@ export function NovoMembro({
   habilitado,
   enderecoLogin,
   restaurante,
+  funcoes,
 }: {
   habilitado: boolean;
   enderecoLogin: string;
   restaurante: string;
+  funcoes: Funcao[];
 }) {
   const [estado, acao] = useActionState(adicionarMembro, undefined);
   useAvisoResultado(estado);
   const [senha, setSenha] = useState("");
-  const [papel, setPapel] = useState<Papel>("garcom");
-  const [modulos, setModulos] = useState<Modulo[]>([...MODULOS_DO_PAPEL.garcom]);
+  const [funcao, setFuncao] = useState(funcoes[0]?.id ?? "dono");
   const [enviado, setEnviado] = useState<AcessoCriado | null>(null);
   const [aberto, setAberto] = useState(false);
   const [chaveVista, setChaveVista] = useState(estado?.chave);
@@ -195,7 +175,7 @@ export function NovoMembro({
               nome: String(dados.get("nome") ?? "").trim(),
               email: String(dados.get("email") ?? "").trim().toLowerCase(),
               senha: String(dados.get("senha") ?? ""),
-              papel: String(dados.get("papel") ?? "garcom") as Papel,
+              funcao: nomeDaFuncao(funcoes, String(dados.get("funcao") ?? "")),
               chaveAntes: estado?.chave,
             });
             return acao(dados);
@@ -211,20 +191,11 @@ export function NovoMembro({
               <Input id="membro-email" name="email" type="email" autoComplete="off" defaultValue={valorCampo(estado, "email", "")} required className="h-11" />
               <ErroCampo estado={estado} campo="email" />
             </Campo>
-            <Campo rotulo="Função" htmlFor="membro-papel">
-              <Selecao
-                id="membro-papel"
-                name="papel"
-                value={papel}
-                onChange={(e) => {
-                  const novo = e.target.value as Papel;
-                  setPapel(novo);
-                  setModulos([...MODULOS_DO_PAPEL[novo]]);
-                }}
-                className="h-11"
-              >
-                <OpcoesPapel />
+            <Campo rotulo="Função" htmlFor="membro-funcao">
+              <Selecao id="membro-funcao" name="funcao" value={funcao} onChange={(e) => setFuncao(e.target.value)} className="h-11">
+                <OpcoesFuncao funcoes={funcoes} />
               </Selecao>
+              <ErroCampo estado={estado} campo="funcao" />
             </Campo>
             <Campo rotulo="Senha" htmlFor="membro-senha">
               <div className="flex gap-2">
@@ -243,11 +214,6 @@ export function NovoMembro({
               </div>
               <ErroCampo estado={estado} campo="senha" />
             </Campo>
-            <div className="flex flex-col gap-2 sm:col-span-2">
-              <span className="text-sm font-medium">Acessos</span>
-              <EscolherModulos papel={papel} modulos={modulos} aoMudar={setModulos} />
-              <ErroCampo estado={estado} campo="modulos" />
-            </div>
             <div className="flex gap-2 sm:col-span-2">
               <BotaoEnviar className="h-11" pendente="Adicionando...">
                 Adicionar
@@ -302,14 +268,21 @@ function TrocarSenha({ membro }: { membro: Membro }) {
   );
 }
 
-function LinhaMembro({ membro, contasHabilitadas }: { membro: Membro; contasHabilitadas: boolean }) {
+const mesmas = (a: readonly Permissao[], b: readonly Permissao[]) => a.length === b.length && a.every((p) => b.includes(p));
+
+function LinhaMembro({ membro, funcoes, contasHabilitadas }: { membro: Membro; funcoes: Funcao[]; contasHabilitadas: boolean }) {
   const [estado, acao] = useActionState(atualizarMembro.bind(null, membro.id), undefined);
   useAvisoResultado(estado);
   const { pendente, executar } = useAcao();
   const [nome, setNome] = useState(membro.nome);
-  const [papel, setPapel] = useState<Papel>(membro.papel);
-  const [modulos, setModulos] = useState<Modulo[]>(membro.modulos);
-  const alterado = nome !== membro.nome || papel !== membro.papel || (papel !== "dono" && !iguais(modulos, membro.modulos));
+  const [funcao, setFuncao] = useState(membro.funcao);
+  const [extras, setExtras] = useState(membro.extras);
+  const [removidas, setRemovidas] = useState(membro.removidas);
+  const [ajustando, setAjustando] = useState(false);
+  const daFuncao = funcoes.find((f) => f.id === funcao)?.permissoes ?? [];
+  const ajustes = funcao === "dono" ? 0 : extras.filter((p) => !daFuncao.includes(p)).length + removidas.filter((p) => daFuncao.includes(p)).length;
+  const alterado =
+    nome !== membro.nome || funcao !== membro.funcao || !mesmas(extras, membro.extras) || !mesmas(removidas, membro.removidas);
 
   return (
     <li className="flex flex-col gap-2 rounded-lg border p-3">
@@ -325,34 +298,52 @@ function LinhaMembro({ membro, contasHabilitadas }: { membro: Membro; contasHabi
           className="h-10 min-w-40 flex-1"
           required
         />
-        <label htmlFor={`papel-${membro.id}`} className="sr-only">
-          Papel
+        <label htmlFor={`funcao-${membro.id}`} className="sr-only">
+          Função
         </label>
         <Selecao
-          id={`papel-${membro.id}`}
-          name="papel"
-          value={papel}
+          id={`funcao-${membro.id}`}
+          name="funcao"
+          value={funcao}
           onChange={(e) => {
-            const novo = e.target.value as Papel;
-            setPapel(novo);
-            setModulos(novo === membro.papel ? membro.modulos : [...MODULOS_DO_PAPEL[novo]]);
+            // Outra função: os ajustes eram sobre a anterior.
+            setFuncao(e.target.value);
+            setExtras(e.target.value === membro.funcao ? membro.extras : []);
+            setRemovidas(e.target.value === membro.funcao ? membro.removidas : []);
           }}
           disabled={membro.euMesmo}
-          className="w-36"
+          className="w-44"
         >
-          <OpcoesPapel />
+          <OpcoesFuncao funcoes={funcoes} />
         </Selecao>
-        {/* select desabilitado não é enviado: repete o papel atual. */}
-        {membro.euMesmo ? <input type="hidden" name="papel" value={membro.papel} /> : null}
+        {/* select desabilitado não é enviado: repete a função atual. */}
+        {membro.euMesmo ? <input type="hidden" name="funcao" value={membro.funcao} /> : null}
+        {funcao !== "dono" ? (
+          <Button type="button" variant="ghost" size="sm" aria-expanded={ajustando} onClick={() => setAjustando((a) => !a)}>
+            <SlidersHorizontal />
+            {ajustes ? `Permissões (${ajustes} ${ajustes === 1 ? "ajuste" : "ajustes"})` : "Permissões"}
+            <ChevronDown className={ajustando ? "rotate-180" : undefined} />
+          </Button>
+        ) : null}
         {alterado ? (
           <BotaoEnviar size="sm" pendente="...">
             Salvar
           </BotaoEnviar>
         ) : null}
-        <div className="basis-full">
-          {membro.euMesmo ? null : <EscolherModulos papel={papel} modulos={modulos} aoMudar={setModulos} />}
-          <ErroCampo estado={estado} campo="modulos" />
-        </div>
+        {funcao !== "dono" ? (
+          <div className={ajustando ? "basis-full rounded-lg bg-muted/40 p-3" : "hidden"}>
+            <AjustePermissoes
+              daFuncao={daFuncao}
+              extras={extras}
+              removidas={removidas}
+              aoMudar={(e, r) => {
+                setExtras(e);
+                setRemovidas(r);
+              }}
+            />
+          </div>
+        ) : null}
+        <ErroCampo estado={estado} campo="funcao" />
       </form>
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <span className="text-muted-foreground">{membro.email ?? "e-mail indisponível"}</span>
@@ -389,11 +380,11 @@ function LinhaMembro({ membro, contasHabilitadas }: { membro: Membro; contasHabi
   );
 }
 
-export function ListaEquipe({ membros, contasHabilitadas }: { membros: Membro[]; contasHabilitadas: boolean }) {
+export function ListaEquipe({ membros, funcoes, contasHabilitadas }: { membros: Membro[]; funcoes: Funcao[]; contasHabilitadas: boolean }) {
   return (
     <ul className="flex flex-col gap-2">
       {membros.map((membro) => (
-        <LinhaMembro key={membro.id} membro={membro} contasHabilitadas={contasHabilitadas} />
+        <LinhaMembro key={membro.id} membro={membro} funcoes={funcoes} contasHabilitadas={contasHabilitadas} />
       ))}
     </ul>
   );

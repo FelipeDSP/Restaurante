@@ -5,7 +5,7 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 
 import { falha, falhaValidacao, mensagemErroBanco, type ResultadoAcao, sucesso } from "@/lib/acoes";
-import { exigirDono } from "@/lib/auth/dal";
+import { exigirPermissao } from "@/lib/auth/dal";
 import { moverItem, proximaOrdem } from "@/lib/ordenacao";
 import { createClient } from "@/lib/supabase/server";
 import { id, textoObrigatorio } from "@/lib/validacao";
@@ -19,7 +19,7 @@ function mensagemNome(erro: PostgrestError) {
 }
 
 export async function criarPraca(_estado: ResultadoAcao, formData: FormData): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "impressao");
   const dados = nomeSchema.safeParse({ nome: formData.get("nome") });
   if (!dados.success) return falhaValidacao(dados.error, formData);
 
@@ -35,7 +35,7 @@ export async function criarPraca(_estado: ResultadoAcao, formData: FormData): Pr
 }
 
 export async function renomearPraca(pracaId: string, _estado: ResultadoAcao, formData: FormData): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "impressao");
   const dados = z.object({ id, nome: textoObrigatorio("o nome", 60) }).safeParse({ id: pracaId, nome: formData.get("nome") });
   if (!dados.success) return falhaValidacao(dados.error, formData);
 
@@ -52,7 +52,7 @@ export async function renomearPraca(pracaId: string, _estado: ResultadoAcao, for
 }
 
 export async function alternarPraca(pracaId: string, ativa: boolean): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "impressao");
   if (!id.safeParse(pracaId).success) return falha("Praça inválida.");
 
   const supabase = await createClient();
@@ -68,7 +68,7 @@ export async function alternarPraca(pracaId: string, ativa: boolean): Promise<Re
 }
 
 export async function moverPraca(pracaId: string, direcao: "cima" | "baixo"): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "impressao");
   if (!id.safeParse(pracaId).success) return falha("Praça inválida.");
 
   const supabase = await createClient();
@@ -80,7 +80,7 @@ export async function moverPraca(pracaId: string, direcao: "cima" | "baixo"): Pr
 }
 
 export async function excluirPraca(pracaId: string): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "impressao");
   if (!id.safeParse(pracaId).success) return falha("Praça inválida.");
 
   const supabase = await createClient();

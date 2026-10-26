@@ -4,7 +4,7 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 
 import { falha, falhaValidacao, mensagemErroBanco, type ResultadoAcao, sucesso } from "@/lib/acoes";
-import { exigirDono } from "@/lib/auth/dal";
+import { exigirPermissao } from "@/lib/auth/dal";
 import { moverItem, proximaOrdem } from "@/lib/ordenacao";
 import { createClient } from "@/lib/supabase/server";
 import { id, textoObrigatorio } from "@/lib/validacao";
@@ -12,7 +12,7 @@ import { id, textoObrigatorio } from "@/lib/validacao";
 const nomeSchema = z.object({ nome: textoObrigatorio("o nome", 80) });
 
 export async function criarCategoria(_estado: ResultadoAcao, formData: FormData): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "cardapio");
   const dados = nomeSchema.safeParse({ nome: formData.get("nome") });
   if (!dados.success) return falhaValidacao(dados.error, formData);
 
@@ -32,7 +32,7 @@ export async function renomearCategoria(
   _estado: ResultadoAcao,
   formData: FormData,
 ): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "cardapio");
   const dados = z.object({ id, nome: textoObrigatorio("o nome", 80) }).safeParse({
     id: categoriaId,
     nome: formData.get("nome"),
@@ -52,7 +52,7 @@ export async function renomearCategoria(
 }
 
 export async function alternarCategoria(categoriaId: string, ativa: boolean): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "cardapio");
   if (!id.safeParse(categoriaId).success) return falha("Categoria inválida.");
 
   const supabase = await createClient();
@@ -68,7 +68,7 @@ export async function alternarCategoria(categoriaId: string, ativa: boolean): Pr
 }
 
 export async function moverCategoria(categoriaId: string, direcao: "cima" | "baixo"): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "cardapio");
   if (!id.safeParse(categoriaId).success) return falha("Categoria inválida.");
 
   const supabase = await createClient();
@@ -80,7 +80,7 @@ export async function moverCategoria(categoriaId: string, direcao: "cima" | "bai
 }
 
 export async function excluirCategoria(categoriaId: string): Promise<ResultadoAcao> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "cardapio");
   if (!id.safeParse(categoriaId).success) return falha("Categoria inválida.");
 
   const supabase = await createClient();
@@ -103,7 +103,7 @@ export async function excluirCategoria(categoriaId: string): Promise<ResultadoAc
 
 // Criada de dentro do formulário de produto (sem sair da tela): devolve o id para já selecionar.
 export async function criarCategoriaRapida(nome: string): Promise<{ ok: boolean; mensagem?: string; id?: string }> {
-  const acesso = await exigirDono();
+  const acesso = await exigirPermissao("painel", "cardapio");
   const dados = nomeSchema.safeParse({ nome });
   if (!dados.success) return { ok: false, mensagem: dados.error.issues[0]?.message ?? "Informe o nome." };
 

@@ -457,6 +457,31 @@ isOneToOne: false
       referencedColumns: ["restaurante_id","id"]
     }
                   ]
+                },"funcoes": {
+                  Row: {
+                    "criado_em": string,"id": string,"nome": string,"padrao": string | null,"permissoes": (string)[],"restaurante_id": string
+                  }
+                  Insert: {
+                    "criado_em"?: string,"id"?: string,"nome": string,"padrao"?: string | null,"permissoes"?: (string)[],"restaurante_id": string
+                  }
+                  Update: {
+                    "criado_em"?: string,"id"?: string,"nome"?: string,"padrao"?: string | null,"permissoes"?: (string)[],"restaurante_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "funcoes_restaurante_id_fkey"
+      columns: ["restaurante_id"]
+isOneToOne: false
+      referencedRelation: "restaurantes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "funcoes_restaurante_id_fkey"
+      columns: ["restaurante_id"]
+isOneToOne: false
+      referencedRelation: "restaurantes_publicos"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"grupos_adicionais": {
                   Row: {
                     "ativo": boolean,"criado_em": string,"id": string,"maximo": number,"minimo": number,"nome": string,"ordem": number,"repetir": boolean,"restaurante_id": string
@@ -558,13 +583,13 @@ isOneToOne: false
                   ]
                 },"membros": {
                   Row: {
-                    "ativo": boolean,"criado_em": string,"id": string,"modulos": (string)[],"nome": string,"papel": string,"restaurante_id": string,"user_id": string
+                    "ativo": boolean,"criado_em": string,"funcao_id": string | null,"id": string,"nome": string,"papel": string,"permissoes_extras": (string)[],"permissoes_removidas": (string)[],"restaurante_id": string,"user_id": string
                   }
                   Insert: {
-                    "ativo"?: boolean,"criado_em"?: string,"id"?: string,"modulos"?: (string)[],"nome": string,"papel": string,"restaurante_id": string,"user_id": string
+                    "ativo"?: boolean,"criado_em"?: string,"funcao_id"?: string | null,"id"?: string,"nome": string,"papel": string,"permissoes_extras"?: (string)[],"permissoes_removidas"?: (string)[],"restaurante_id": string,"user_id": string
                   }
                   Update: {
-                    "ativo"?: boolean,"criado_em"?: string,"id"?: string,"modulos"?: (string)[],"nome"?: string,"papel"?: string,"restaurante_id"?: string,"user_id"?: string
+                    "ativo"?: boolean,"criado_em"?: string,"funcao_id"?: string | null,"id"?: string,"nome"?: string,"papel"?: string,"permissoes_extras"?: (string)[],"permissoes_removidas"?: (string)[],"restaurante_id"?: string,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -579,6 +604,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "restaurantes_publicos"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "membros_restaurante_id_funcao_id_fkey"
+      columns: ["restaurante_id","funcao_id"]
+isOneToOne: false
+      referencedRelation: "funcoes"
+      referencedColumns: ["restaurante_id","id"]
     }
                   ]
                 },"mesas": {
@@ -1109,6 +1140,9 @@ isOneToOne: false
                            },
 "meus_pedidos_cliente":
 { Args: { "p_restaurante_id": string }; Returns: Json
+                           },
+"minhas_permissoes":
+{ Args: { "p_restaurante_id": string }; Returns: (string)[]
                            },
 "reimprimir":
 { Args: { "p_fila_id": string }; Returns: undefined
