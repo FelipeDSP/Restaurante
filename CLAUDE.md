@@ -182,6 +182,11 @@ Já existe (taxa de serviço e couvert, só nas mesas):
 - A comanda congela `servico_percentual` e `couvert_unitario` ao abrir; `comandas.subtotal` (itens) + `servico` + `couvert` = `total` (o total a pagar, usado por pagamento e fechamento). Garçom/caixa tiram ou voltam a cobrar com `cobrar_servico`/`cobrar_couvert` (`alterarCobranca`); o banco recusa se o total ficar abaixo do já pago.
 - Calculadora por item soma o serviço proporcional e um couvert; a conta impressa mostra subtotal, serviço e couvert. Resumo do caixa e relatórios mostram serviço e couvert à parte do "vendido"; por garçom, o serviço gerado.
 
+Já existe (cupom de desconto no delivery):
+- `cupons` (código único por restaurante em maiúsculas; tipo `percentual` sobre os itens, `valor` em centavos ou `frete` grátis; pedido mínimo, início/fim, limite de usos, um por cliente pelo telefone, ativo). Só o dono cria e ativa/desativa (Painel › Cadastros › Cupons); dono e caixa leem.
+- Checkout: "Tem cupom?" → `validarCupom` (RPC `validar_cupom`, limite por IP) mostra o desconto; `criar_pedido_delivery(..., p_cupom)` valida de novo (mensagem termina com `(cupom)`: o site tira o cupom) e copia código/tipo/valor no pedido. `pedidos.desconto` é recalculado pelo trigger (a edição do pedido também); total = subtotal + taxa − desconto. Usos = pedidos não cancelados com o cupom.
+- Desconto aparece no acompanhamento, no cartão do painel, na via impressa; o "vendido" do resumo e dos relatórios já vem sem ele, com `descontos` à parte.
+
 Já existe (avisos no celular do cliente, Web Push):
 - Na página de acompanhamento, "Avisar quando o pedido mudar" pede permissão, registra `/sw.js` (só avisos, sem cache) e manda a inscrição para `/api/pedidos/[id]/avisos` (aceita só serviços de push dos navegadores: FCM, Mozilla, Apple, Windows). Tabela `pedidos_avisos` só a chave secreta lê e grava.
 - O painel avisa depois de aceitar, saiu para entrega, entregar e cancelar (`after(() => avisarCliente(id))`, `src/lib/avisos-push.ts`); o status vem do banco. Pedido terminado apaga as inscrições.

@@ -1772,6 +1772,93 @@ begin
 end;
 $$;
 
+-- ======================================================================
+-- Cupom de desconto
+-- ======================================================================
+do $$
+declare
+  a constant uuid := md5('brasa-espetinhos')::uuid;
+  burger constant uuid := md5('brasa-espetinhos/Burgers/Burger artesanal')::uuid;
+  v_json jsonb;
+  n integer;
+  itens jsonb;
+  ende jsonb := '{"rua": "Rua C", "numero": "5", "bairro": "Centro"}';
+begin
+  itens := jsonb_build_array(jsonb_build_object('produto_id', burger, 'quantidade', 1));
+  perform pg_temp.admin();
+  update public.restaurantes set horarios = (
+    select jsonb_object_agg(d, '[{"abre": "00:00", "fecha": "00:00"}]'::jsonb)
+    from unnest(array['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab']) d
+  ), ativo = true, aceita_delivery = true, pedido_minimo = 0 where id = a;
+  perform pg_temp.entrar('caixa.brasa@exemplo.com');
+  if not exists (select 1 from public.caixa_sessoes where restaurante_id = a and fechada_em is null) then
+    insert into public.caixa_sessoes (restaurante_id, valor_inicial) values (a, 0);
+  end if;
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  update public.restaurantes set taxa_entrega_modo = 'fixa', taxa_entrega_fixa = 700 where id = a;
+  insert into public.cupons (restaurante_id, codigo, tipo, valor, pedido_minimo, limite_usos, um_por_cliente) values
+    (a, 'DEZ', 'percentual', 10, 0, null, false),
+    (a, 'FRETE', 'frete', 0, 0, null, false),
+    (a, 'MIN50', 'valor', 1000, 5000, null, false),
+    (a, 'UNICO', 'valor', 500, 0, null, true);
+
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  begin
+    insert into public.cupons (restaurante_id, codigo, tipo, valor) values (a, 'GARCOM', 'percentual', 50);
+    perform pg_temp.ok(false, 'cupom: garçom não cria cupom');
+  exception when others then
+    perform pg_temp.ok(true, 'cupom: garçom não cria cupom');
+  end;
+
+  perform pg_temp.anonimo();
+  v_json := public.validar_cupom(a, ' dez ');
+  perform pg_temp.ok(v_json ->> 'tipo' = 'percentual' and (v_json ->> 'valor')::int = 10, 'cupom: site valida o código (sem diferenciar maiúsculas)');
+  begin
+    perform public.validar_cupom(a, 'NAOEXISTE');
+    perform pg_temp.ok(false, 'cupom: código inexistente é recusado');
+  exception when others then
+    perform pg_temp.ok(true, 'cupom: código inexistente é recusado');
+  end;
+
+  v_json := public.criar_pedido_delivery(a, 'Cupom Dez', '69988880001', null, ende, 'pix', itens, null, null, null, null, 'dez');
+  perform pg_temp.admin();
+  select count(*) into n from public.pedidos
+  where id = (v_json ->> 'id')::uuid and cupom_codigo = 'DEZ' and desconto = 320 and total = 3200 + 700 - 320;
+  perform pg_temp.ok(n = 1, 'cupom: 10% sobre os itens');
+  perform pg_temp.anonimo();
+
+  v_json := public.criar_pedido_delivery(a, 'Cupom Frete', '69988880002', null, ende, 'pix', itens, null, null, null, null, 'FRETE');
+  perform pg_temp.admin();
+  select count(*) into n from public.pedidos where id = (v_json ->> 'id')::uuid and desconto = 700 and total = 3200;
+  perform pg_temp.ok(n = 1, 'cupom: frete grátis');
+  perform pg_temp.anonimo();
+
+  begin
+    perform public.criar_pedido_delivery(a, 'Cupom Min', '69988880003', null, ende, 'pix', itens, null, null, null, null, 'MIN50');
+    perform pg_temp.ok(false, 'cupom: respeita o pedido mínimo do cupom');
+  exception when others then
+    perform pg_temp.ok(sqlerrm like '%(cupom)', 'cupom: respeita o pedido mínimo do cupom');
+  end;
+
+  perform public.criar_pedido_delivery(a, 'Cupom Unico', '69988880004', null, ende, 'pix', itens, null, null, null, null, 'UNICO');
+  begin
+    perform public.criar_pedido_delivery(a, 'Cupom Unico', '69988880004', null, ende, 'pix', itens, null, null, null, null, 'UNICO');
+    perform pg_temp.ok(false, 'cupom: uma vez por telefone');
+  exception when others then
+    perform pg_temp.ok(sqlerrm like '%(cupom)', 'cupom: uma vez por telefone');
+  end;
+
+  -- Edição do pedido recalcula o desconto do cupom.
+  perform pg_temp.entrar('caixa.brasa@exemplo.com');
+  select id into v_json from (select jsonb_build_object('id', id) as id from public.pedidos where cupom_codigo = 'DEZ' and cliente_telefone = '69988880001') x;
+  perform public.editar_pedido_delivery((v_json ->> 'id')::uuid, '{}', '{}',
+    jsonb_build_array(jsonb_build_object('produto_id', burger, 'quantidade', 1)));
+  select count(*) into n from public.pedidos where id = (v_json ->> 'id')::uuid and desconto = 640 and total = 6400 + 700 - 640;
+  perform pg_temp.ok(n = 1, 'cupom: edição recalcula o desconto');
+  perform pg_temp.admin();
+end;
+$$;
+
 select n, ok, teste from resultado order by n;
 select count(*) filter (where not ok) as falhas, count(*) as total from resultado;
 

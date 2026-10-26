@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 
 import { type ItemCarrinho, precoUnitario, useCarrinho } from "../carrinho-store";
 import type { ContaCliente, EnderecoSalvo } from "../conta";
-import { enviarPedido } from "./actions";
+import { type CupomValido, enviarPedido, validarCupom } from "./actions";
 import type { EnderecoCep } from "@/app/api/cep/[cep]/route";
 
 import { FORM_VAZIO, FORMAS, type FormCheckout, temDadosSalvos, useDadosCliente } from "./dados-cliente";
@@ -63,6 +63,7 @@ function Erro({ texto }: { texto?: string }) {
 export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produtosDisponiveis, conta, podeEntrar }: Props) {
   const router = useRouter();
   const { itens, alterarQuantidade, alterarObservacao, atualizarDados, limpar } = useCarrinho(restaurante.id);
+  const [cupom, setCupom] = useState<CupomValido | null>(null);
   const [enviando, iniciar] = useTransition();
   const [erros, setErros] = useState<Record<string, string>>({});
   const formulario = useRef<HTMLFormElement>(null);
@@ -138,7 +139,18 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
   // Endereço de outra cidade (o CEP diz qual): avisa, sem bloquear (o restaurante confirma).
   const outraCidade =
     fixa && restaurante.cidade && form.cidade && normalizarCidade(form.cidade) !== normalizarCidade(restaurante.cidade) ? form.cidade : null;
-  const total = subtotal + taxa;
+  // Cupom: o desconto aparece já aqui; o banco calcula de novo ao criar o pedido.
+  const cupomVale = cupom !== null && subtotal >= cupom.pedidoMinimo;
+  const desconto = !cupomVale
+    ? 0
+    : cupom.tipo === "percentual"
+      ? Math.round((subtotal * cupom.valor) / 100)
+      : cupom.tipo === "valor"
+        ? Math.min(cupom.valor, subtotal)
+        : taxaDefinida
+          ? taxa
+          : 0;
+  const total = subtotal + taxa - desconto;
   const faltaMinimo = Math.max(0, restaurante.pedidoMinimo - subtotal);
   const troco = form.forma === "dinheiro" && form.trocoPara ? centavosDeTexto(form.trocoPara) : null;
 
@@ -162,6 +174,7 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
         adicionais: i.adicionais.map((a) => a.id),
       })),
       totalEsperado: total,
+      cupom: cupomVale ? cupom.codigo : "",
     };
     const conteudo = JSON.stringify(dados);
     if (envioAtual.current?.conteudo !== conteudo) envioAtual.current = { conteudo, chave: novoId() };
@@ -185,6 +198,7 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
         router.push(`/${restaurante.slug}/pedido/${resultado.pedidoId}`);
       } else {
         setErros(resultado.erros ?? {});
+        if (resultado.removerCupom) setCupom(null);
         toast.error(resultado.mensagem, { duration: resultado.atualizar ? 10000 : undefined });
         // Preço mudou ou item esgotou: o cardápio recarrega e o carrinho mostra os valores de agora.
         if (resultado.atualizar) router.refresh();
@@ -479,6 +493,22 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
           <span>Taxa de entrega</span>
           <span className="tabular-nums">{taxaDefinida ? (taxa === 0 ? "Grátis" : formatarBRL(taxa)) : "escolha o bairro"}</span>
         </div>
+        {cupom ? (
+          <div className="flex justify-between text-sm text-green-700">
+            <span>
+              Cupom {cupom.codigo}
+              {!cupomVale ? <span className="block text-amber-700">Vale a partir de {formatarBRL(cupom.pedidoMinimo)} em itens</span> : null}
+            </span>
+            <span className="flex items-center gap-2">
+              <span className="tabular-nums">{cupomVale ? `− ${formatarBRL(desconto)}` : "—"}</span>
+              <button type="button" className="text-xs text-muted-foreground underline" onClick={() => setCupom(null)}>
+                tirar
+              </button>
+            </span>
+          </div>
+        ) : (
+          <CampoCupom slug={restaurante.slug} aoAplicar={setCupom} />
+        )}
         <div className="flex justify-between text-lg font-bold">
           <span>Total</span>
           <span className="tabular-nums">{formatarBRL(total)}</span>
@@ -597,5 +627,53 @@ function CampoCep({
       </span>
       <Erro texto={erro} />
     </label>
+  );
+}
+
+// "Tem cupom?": recolhido até o cliente tocar; confere o código no servidor.
+function CampoCupom({ slug, aoAplicar }: { slug: string; aoAplicar: (cupom: CupomValido) => void }) {
+  const [aberto, setAberto] = useState(false);
+  const [codigo, setCodigo] = useState("");
+  const [conferindo, iniciar] = useTransition();
+  if (!aberto) {
+    return (
+      <button type="button" className="self-start py-1 text-sm font-medium underline underline-offset-4" onClick={() => setAberto(true)}>
+        Tem cupom?
+      </button>
+    );
+  }
+  return (
+    <div className="flex gap-2 py-1">
+      <Input
+        value={codigo}
+        onChange={(e) => setCodigo(e.target.value.toUpperCase())}
+        placeholder="Código do cupom"
+        aria-label="Código do cupom"
+        maxLength={20}
+        autoFocus
+        className="h-10 uppercase"
+      />
+      <Button
+        type="button"
+        variant="outline"
+        className="h-10"
+        disabled={conferindo || codigo.trim().length < 3}
+        onClick={() =>
+          iniciar(async () => {
+            try {
+              const r = await validarCupom(slug, codigo);
+              if (r.ok) {
+                aoAplicar(r.cupom);
+                toast.success("Cupom aplicado.");
+              } else toast.error(r.mensagem);
+            } catch {
+              toast.error("Sem conexão. Tente de novo.");
+            }
+          })
+        }
+      >
+        Aplicar
+      </Button>
+    </div>
   );
 }

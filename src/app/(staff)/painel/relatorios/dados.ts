@@ -15,6 +15,7 @@ export type Relatorio = {
   taxas_entrega: number;
   servico: number;
   couvert: number;
+  descontos: number;
   pedidos_cancelados: { quantidade: number; valor: number };
   itens_cancelados: { quantidade: number; valor: number };
   estornos: { quantidade: number; valor: number };

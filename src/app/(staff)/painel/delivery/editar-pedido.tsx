@@ -102,7 +102,16 @@ function Conteudo({ pedido, aoFechar }: { pedido: PedidoDelivery; aoFechar: () =
   const subtotal =
     pedido.itens.filter((i) => !removidos.has(i.id)).reduce((s, i) => s + i.total, 0) +
     novos.reduce((s, n) => s + (n.produto.preco + precoDasOpcoes(n.adicionais)) * n.quantidade, 0);
-  const total = subtotal + (taxaCentavos ?? 0);
+  // O desconto do cupom é recalculado pelo banco do mesmo jeito.
+  const c = pedido.cupom;
+  const desconto = !c
+    ? 0
+    : c.tipo === "percentual"
+      ? Math.round((subtotal * c.valor) / 100)
+      : c.tipo === "valor"
+        ? Math.min(c.valor, subtotal)
+        : (taxaCentavos ?? 0);
+  const total = subtotal + (taxaCentavos ?? 0) - desconto;
   const itensRestantes = pedido.itens.length - removidos.size + novos.length;
 
   const produtosFiltrados = useMemo(() => {

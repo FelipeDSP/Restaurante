@@ -127,6 +127,7 @@ export default async function RelatoriosPage(props: PageProps<"/painel/relatorio
                 `Média de ${formatarBRL(mediaNoite)} por noite`,
                 r.servico ? `+ serviço ${formatarBRL(r.servico)}` : "",
                 r.couvert ? `+ couvert ${formatarBRL(r.couvert)}` : "",
+                r.descontos ? `cupons: −${formatarBRL(r.descontos)}` : "",
               ]
                 .filter(Boolean)
                 .join(" · ")}

@@ -33,6 +33,8 @@ export type ResumoCaixa = {
   // Mesas: taxa de serviço e couvert (fora do "vendido").
   servico: number;
   couvert: number;
+  // Cupons do delivery (o vendido já vem sem eles).
+  descontos: number;
   quantidade_itens: number;
   por_forma: (Valor & { forma: string })[];
   por_origem: (Valor & { origem: string })[];

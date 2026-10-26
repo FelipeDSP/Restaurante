@@ -213,6 +213,12 @@ export function Acompanhamento({ inicial, chaveAvisos, restaurante }: Props) {
           <span>Taxa de entrega</span>
           <span className="tabular-nums">{formatarBRL(pedido.taxa_entrega)}</span>
         </div>
+        {pedido.desconto > 0 ? (
+          <div className="flex justify-between text-sm text-green-700">
+            <span>Cupom {pedido.cupom_codigo}</span>
+            <span className="tabular-nums">− {formatarBRL(pedido.desconto)}</span>
+          </div>
+        ) : null}
         <div className="flex justify-between text-lg font-bold">
           <span>Total</span>
           <span className="tabular-nums">{formatarBRL(pedido.total)}</span>

@@ -145,6 +145,8 @@ export type PedidoPublico = {
   criado_em: string;
   subtotal: number;
   taxa_entrega: number;
+  desconto: number;
+  cupom_codigo: string | null;
   total: number;
   forma_pagamento_prevista: string | null;
   troco_para: number | null;

@@ -150,7 +150,7 @@ async function documentoDelivery(supabase: Cliente, pedidoId: string, r: Restaur
   const { data: p, error } = await supabase
     .from("pedidos")
     .select(
-      `numero, status, cliente_nome, cliente_telefone, endereco, taxa_entrega, subtotal, total,
+      `numero, status, cliente_nome, cliente_telefone, endereco, taxa_entrega, subtotal, total, desconto, cupom_codigo,
        forma_pagamento_prevista, troco_para, observacao, criado_em,
        bairro:bairros_entrega!pedidos_restaurante_id_bairro_id_fkey(nome),
        itens_pedido(quantidade, nome_produto, adicionais, observacao, total, cancelado_em, criado_em)`,
@@ -187,6 +187,7 @@ async function documentoDelivery(supabase: Cliente, pedidoId: string, r: Restaur
     { tipo: "separador" },
     { tipo: "colunas", esquerda: "Subtotal", direita: formatarBRL(p.subtotal) },
     { tipo: "colunas", esquerda: "Entrega", direita: formatarBRL(p.taxa_entrega) },
+    ...(p.desconto > 0 ? [{ tipo: "colunas" as const, esquerda: `Cupom ${p.cupom_codigo ?? ""}`, direita: `-${formatarBRL(p.desconto)}` }] : []),
     { tipo: "colunas", esquerda: "TOTAL", direita: formatarBRL(p.total), negrito: true, grande: true },
     { tipo: "texto", texto: `Pagamento na entrega: ${nomeForma(p.forma_pagamento_prevista ?? "")}`, negrito: true },
   );

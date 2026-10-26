@@ -26,7 +26,7 @@ export default async function DeliveryPage() {
     .from("pedidos")
     .select(
       `id, numero, status, criado_em, cliente_nome, cliente_telefone, endereco, bairro_id, forma_pagamento_prevista, troco_para,
-       observacao, subtotal, taxa_entrega, total, motivo_cancelamento,
+       observacao, subtotal, taxa_entrega, total, motivo_cancelamento, desconto, cupom_codigo, cupom_tipo, cupom_valor,
        bairro:bairros_entrega!pedidos_restaurante_id_bairro_id_fkey(nome),
        itens_pedido(id, nome_produto, quantidade, observacao, adicionais, total, cancelado_em),
        pagamentos(valor, estornado_em),
@@ -62,6 +62,8 @@ export default async function DeliveryPage() {
     observacao: p.observacao,
     subtotal: p.subtotal,
     taxaEntrega: p.taxa_entrega,
+    desconto: p.desconto,
+    cupom: p.cupom_codigo ? { codigo: p.cupom_codigo, tipo: p.cupom_tipo ?? "", valor: p.cupom_valor ?? 0 } : null,
     total: p.total,
     pago: p.pagamentos.filter((pg) => !pg.estornado_em).reduce((soma, pg) => soma + pg.valor, 0),
     pracasPendentes: p.tarefas_producao.filter((t) => t.status === "pendente").length,

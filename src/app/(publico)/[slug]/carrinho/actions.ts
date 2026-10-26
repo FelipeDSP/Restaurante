@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { centavosDeTexto } from "@/lib/dinheiro";
 import { ipDoCliente, limiteAtingido, registrarUso } from "@/lib/limite-taxa";
+import { createPublicClient } from "@/lib/supabase/publico";
 import { createClient } from "@/lib/supabase/server";
 import { id } from "@/lib/validacao";
 
@@ -12,7 +13,9 @@ import { buscarRestaurantePorSlug, MENSAGEM_FECHADO } from "../dados";
 export type ResultadoPedido =
   | { ok: true; pedidoId: string }
   // atualizar: preço ou disponibilidade mudou; a tela recarrega o cardápio para o cliente conferir.
-  | { ok: false; mensagem: string; erros?: Record<string, string>; atualizar?: boolean };
+  | { ok: false; mensagem: string; erros?: Record<string, string>; atualizar?: boolean; removerCupom?: boolean };
+
+export type CupomValido = { codigo: string; tipo: "percentual" | "valor" | "frete"; valor: number; pedidoMinimo: number };
 
 const pedidoSchema = z.object({
   itens: z
@@ -52,6 +55,8 @@ const pedidoSchema = z.object({
   chave: id,
   // Total que o cliente viu; se mudou, o pedido é recusado com aviso.
   totalEsperado: z.number().int().min(0),
+  // Código do cupom (vazio = sem cupom); o banco valida e calcula o desconto de novo.
+  cupom: z.string().trim().max(20).default(""),
 });
 
 export type DadosPedido = z.input<typeof pedidoSchema>;
@@ -137,6 +142,7 @@ export async function enviarPedido(slug: string, entrada: DadosPedido): Promise<
     p_observacao: d.observacao || undefined,
     p_chave: d.chave,
     p_total_esperado: d.totalEsperado,
+    p_cupom: d.cupom || undefined,
   });
 
   if (error) {
@@ -145,7 +151,8 @@ export async function enviarPedido(slug: string, entrada: DadosPedido): Promise<
     const motivo = MOTIVOS.find((m) => error.message.includes(`(${m})`));
     if (motivo) return { ok: false, mensagem: MENSAGEM_FECHADO[motivo] };
     const atualizar = /\((precos_mudaram|indisponivel)\)$/.test(error.message);
-    return { ok: false, mensagem: error.message.replace(/\s*\((precos_mudaram|indisponivel)\)$/, ""), atualizar };
+    const removerCupom = /\(cupom\)$/.test(error.message);
+    return { ok: false, mensagem: error.message.replace(/\s*\((precos_mudaram|indisponivel|cupom)\)$/, ""), atualizar, removerCupom };
   }
 
   const pedidoId = (data as { id?: string } | null)?.id;
@@ -153,4 +160,22 @@ export async function enviarPedido(slug: string, entrada: DadosPedido): Promise<
   registrarUso(chaveTelefone);
   if (chaveIp) registrarUso(chaveIp);
   return { ok: true, pedidoId };
+}
+
+// Prévia do cupom no checkout (o pedido valida de novo). Limite por IP contra tentativa de adivinhar códigos.
+export async function validarCupom(slug: string, codigo: string): Promise<{ ok: true; cupom: CupomValido } | { ok: false; mensagem: string }> {
+  const restaurante = await buscarRestaurantePorSlug(slug);
+  if (!restaurante) return { ok: false, mensagem: "Restaurante não encontrado." };
+  const texto = z.string().trim().min(3).max(20).safeParse(codigo);
+  if (!texto.success) return { ok: false, mensagem: "Digite o código do cupom." };
+
+  const ip = await ipDoCliente();
+  const chave = `cupom:${restaurante.id}:${ip ?? "desconhecido"}`;
+  if (limiteAtingido(chave, 20, JANELA_LIMITE_MS)) return { ok: false, mensagem: "Muitas tentativas. Aguarde alguns minutos." };
+  registrarUso(chave);
+
+  const { data, error } = await createPublicClient().rpc("validar_cupom", { p_restaurante_id: restaurante.id, p_codigo: texto.data });
+  if (error) return { ok: false, mensagem: error.code === "P0001" ? error.message : "Não foi possível conferir o cupom." };
+  const c = data as { codigo: string; tipo: CupomValido["tipo"]; valor: number; pedido_minimo: number };
+  return { ok: true, cupom: { codigo: c.codigo, tipo: c.tipo, valor: c.valor, pedidoMinimo: c.pedido_minimo } };
 }

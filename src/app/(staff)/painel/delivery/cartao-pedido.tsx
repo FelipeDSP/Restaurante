@@ -30,6 +30,8 @@ export type PedidoDelivery = {
   observacao: string | null;
   subtotal: number;
   taxaEntrega: number;
+  desconto: number;
+  cupom: { codigo: string; tipo: string; valor: number } | null;
   total: number;
   pago: number;
   // Praças da cozinha que ainda não marcaram pronto: enquanto houver, quem marca "Pronto" é a cozinha.
@@ -238,6 +240,12 @@ export function CartaoPedido({ pedido, modoInicial = "normal", aoSairDoModo, arr
             <span className="tabular-nums text-muted-foreground">{formatarBRL(item.total)}</span>
           </li>
         ))}
+        {pedido.desconto > 0 ? (
+          <li className="flex justify-between gap-2 text-green-700">
+            <span>Cupom {pedido.cupom?.codigo}</span>
+            <span className="tabular-nums">− {formatarBRL(pedido.desconto)}</span>
+          </li>
+        ) : null}
         {pedido.taxaEntrega > 0 ? (
           <li className="flex justify-between gap-2 text-muted-foreground">
             <span>Taxa de entrega</span>

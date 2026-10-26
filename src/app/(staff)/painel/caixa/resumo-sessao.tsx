@@ -68,8 +68,12 @@ export function ResumoSessao({ resumo, fusoHorario }: { resumo: ResumoCaixa; fus
           valor={formatarBRL(resumo.total_vendido)}
           destaque
           detalhe={
-            resumo.servico || resumo.couvert
-              ? [resumo.servico ? `+ serviço ${formatarBRL(resumo.servico)}` : "", resumo.couvert ? `+ couvert ${formatarBRL(resumo.couvert)}` : ""]
+            resumo.servico || resumo.couvert || resumo.descontos
+              ? [
+                  resumo.servico ? `+ serviço ${formatarBRL(resumo.servico)}` : "",
+                  resumo.couvert ? `+ couvert ${formatarBRL(resumo.couvert)}` : "",
+                  resumo.descontos ? `cupons: −${formatarBRL(resumo.descontos)}` : "",
+                ]
                   .filter(Boolean)
                   .join(" · ")
               : undefined
