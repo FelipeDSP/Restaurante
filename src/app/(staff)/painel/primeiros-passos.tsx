@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 
 type Passo = { titulo: string; descricao: string; href: string; feito: boolean };
 
-async function contar(tabela: "produtos" | "mesas" | "bairros_entrega" | "membros" | "caixa_sessoes", restauranteId: string) {
+async function contar(tabela: "produtos" | "mesas" | "membros" | "caixa_sessoes", restauranteId: string) {
   const supabase = await createClient();
   const { count } = await supabase
     .from(tabela)
@@ -21,13 +21,12 @@ async function contar(tabela: "produtos" | "mesas" | "bairros_entrega" | "membro
 export async function PrimeirosPassos({ acesso }: { acesso: Acesso }) {
   const id = acesso.restaurante.id;
   const supabase = await createClient();
-  const [produtos, mesas, bairros, membros, sessoes, { data: restaurante }] = await Promise.all([
+  const [produtos, mesas, membros, sessoes, { data: restaurante }] = await Promise.all([
     contar("produtos", id),
     contar("mesas", id),
-    contar("bairros_entrega", id),
     contar("membros", id),
     contar("caixa_sessoes", id),
-    supabase.from("restaurantes").select("aceita_delivery, taxa_entrega_modo").eq("id", id).maybeSingle(),
+    supabase.from("restaurantes").select("aceita_delivery").eq("id", id).maybeSingle(),
   ]);
 
   const passos: Passo[] = [
@@ -52,8 +51,8 @@ export async function PrimeirosPassos({ acesso }: { acesso: Acesso }) {
     {
       titulo: "Ligue o delivery",
       descricao: "Taxa de entrega, horários e pedido mínimo.",
-      href: restaurante?.taxa_entrega_modo === "bairro" && bairros === 0 ? "/painel/bairros" : "/painel/restaurante",
-      feito: Boolean(restaurante?.aceita_delivery) && (restaurante?.taxa_entrega_modo !== "bairro" || bairros > 0),
+      href: "/painel/restaurante#delivery",
+      feito: Boolean(restaurante?.aceita_delivery),
     },
     {
       titulo: "Chame a equipe",

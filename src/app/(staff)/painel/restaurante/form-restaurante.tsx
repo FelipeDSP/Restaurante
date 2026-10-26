@@ -55,8 +55,6 @@ function horariosEnviados(estado: ResultadoAcao): Horarios | null {
 export function FormRestaurante({ restaurante }: { restaurante: DadosRestaurante }) {
   const [estado, acao] = useActionState(salvarRestaurante, undefined);
   useAvisoResultado(estado);
-  // Rádio controlado: a escolha continua marcada mesmo depois de um erro ao salvar.
-  const [modoTaxa, setModoTaxa] = useState(restaurante.taxa_entrega_modo);
   const [corPrimaria, setCorPrimaria] = useState(restaurante.cor_primaria);
   const [corSecundaria, setCorSecundaria] = useState(restaurante.cor_secundaria);
   const [diasCouvert, setDiasCouvert] = useState<number[]>(
@@ -187,57 +185,19 @@ export function FormRestaurante({ restaurante }: { restaurante: DadosRestaurante
             />
             Aceitar pedidos de delivery pelo site
           </label>
-          <fieldset className="flex flex-col gap-2 sm:col-span-2">
-            <legend className="mb-1 text-sm font-medium">Taxa de entrega</legend>
-            <label className="flex min-h-11 items-start gap-3 rounded-lg border p-3 text-sm has-[:checked]:border-[var(--cor-primaria-texto)]">
-              <input
-                type="radio"
-                name="taxa_entrega_modo"
-                value="fixa"
-                checked={modoTaxa === "fixa"}
-                onChange={() => setModoTaxa("fixa")}
-                className="mt-0.5 size-5 accent-[var(--cor-primaria-texto)]"
-              />
-              <span className="flex flex-col">
-                <span className="font-medium">Taxa fixa</span>
-                <span className="text-muted-foreground">O mesmo valor para qualquer endereço</span>
-              </span>
-            </label>
-            {modoTaxa === "fixa" ? (
-              <Campo rotulo="Valor da taxa (R$)" htmlFor="taxa_entrega_fixa" className="pl-11" dica="0,00 = entrega grátis">
-                <Input
-                  id="taxa_entrega_fixa"
-                  name="taxa_entrega_fixa"
-                  inputMode="decimal"
-                  placeholder="Ex.: 7,00"
-                  defaultValue={valorCampo(estado, "taxa_entrega_fixa", textoDeCentavos(restaurante.taxa_entrega_fixa))}
-                  className="h-10 max-w-40"
-                />
-                <ErroCampo estado={estado} campo="taxa_entrega_fixa" />
-              </Campo>
-            ) : (
-              <input type="hidden" name="taxa_entrega_fixa" value={textoDeCentavos(restaurante.taxa_entrega_fixa)} />
-            )}
-            <label className="flex min-h-11 items-start gap-3 rounded-lg border p-3 text-sm has-[:checked]:border-[var(--cor-primaria-texto)]">
-              <input
-                type="radio"
-                name="taxa_entrega_modo"
-                value="bairro"
-                checked={modoTaxa === "bairro"}
-                onChange={() => setModoTaxa("bairro")}
-                className="mt-0.5 size-5 accent-[var(--cor-primaria-texto)]"
-              />
-              <span className="flex flex-col">
-                <span className="font-medium">Por bairro</span>
-                <span className="text-muted-foreground">Cada bairro com a sua taxa</span>
-              </span>
-            </label>
-            {modoTaxa === "bairro" ? (
-              <Link href="/painel/bairros" className="pl-11 text-sm font-medium underline underline-offset-4">
-                Editar bairros e taxas
-              </Link>
-            ) : null}
-          </fieldset>
+          {/* Por enquanto só taxa fixa (a taxa por bairro volta quando for repensada; o banco ainda aceita). */}
+          <input type="hidden" name="taxa_entrega_modo" value="fixa" />
+          <Campo rotulo="Taxa de entrega (R$)" htmlFor="taxa_entrega_fixa" dica="0,00 = entrega grátis">
+            <Input
+              id="taxa_entrega_fixa"
+              name="taxa_entrega_fixa"
+              inputMode="decimal"
+              placeholder="Ex.: 7,00"
+              defaultValue={valorCampo(estado, "taxa_entrega_fixa", textoDeCentavos(restaurante.taxa_entrega_fixa))}
+              className="h-10 max-w-40"
+            />
+            <ErroCampo estado={estado} campo="taxa_entrega_fixa" />
+          </Campo>
           <Campo rotulo="Pedido mínimo (R$)" htmlFor="pedido_minimo">
             <Input
               id="pedido_minimo"
