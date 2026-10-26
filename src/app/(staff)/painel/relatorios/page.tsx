@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 
 import { BaixarCsv } from "./baixar-csv";
 import { carregarRelatorio, dataCurta, PERIODOS, periodoAnterior, resolverPeriodo } from "./dados";
-import { BarraCelula, Barras, Colunas, Kpi, MARCA, Painel, Rosca, variacao, Vazio } from "./graficos";
+import { BarraCelula, Barras, Kpi, Linha, MARCA, Painel, Rosca, variacao, Vazio } from "./graficos";
 
 export const metadata: Metadata = { title: "Relatórios" };
 
@@ -149,8 +149,8 @@ export default async function RelatoriosPage(props: PageProps<"/painel/relatorio
 
           <div className="grid gap-5 lg:grid-cols-3">
             <Painel titulo="Vendido por noite" className="lg:col-span-2">
-              <Colunas
-                colunas={[...r.por_sessao]
+              <Linha
+                pontos={[...r.por_sessao]
                   .sort((a, b) => a.aberta_em.localeCompare(b.aberta_em))
                   .map((s) => ({
                     chave: s.id,
@@ -216,30 +216,33 @@ export default async function RelatoriosPage(props: PageProps<"/painel/relatorio
               {r.por_hora.length === 0 ? (
                 <Vazio>Sem pedidos.</Vazio>
               ) : (
-                <Colunas
+                <Rosca
+                  centro={String(r.por_hora.reduce((t, h) => t + h.pedidos, 0))}
+                  rotuloCentro="pedidos"
                   // Ordem da noite: madrugada (0h a 5h) depois das 23h.
-                  colunas={[...r.por_hora]
+                  fatias={[...r.por_hora]
                     .sort((x, y) => ((x.hora + 18) % 24) - ((y.hora + 18) % 24))
                     .map((h) => ({
                       chave: String(h.hora),
                       rotulo: `${String(h.hora).padStart(2, "0")}h`,
                       valor: h.pedidos,
-                      texto: `${plural(h.pedidos, "pedido", "pedidos")} · ${formatarBRL(h.vendido)}`,
+                      texto: plural(h.pedidos, "pedido", "pedidos"),
                     }))}
                 />
               )}
             </Painel>
-            <Painel titulo="Média por dia da semana">
+            <Painel titulo="Por dia da semana">
               {r.por_dia_semana.length === 0 ? (
                 <Vazio>Sem vendas.</Vazio>
               ) : (
-                <Barras
-                  linhas={r.por_dia_semana.map((d) => ({
+                <Rosca
+                  centro={formatarBRL(r.vendido)}
+                  rotuloCentro="vendido"
+                  fatias={r.por_dia_semana.map((d) => ({
                     chave: String(d.dia),
-                    rotulo: DIAS_SEMANA[d.dia],
-                    valor: d.vendido / d.noites,
-                    texto: formatarBRL(Math.round(d.vendido / d.noites)),
-                    detalhe: plural(d.noites, "noite", "noites"),
+                    rotulo: `${DIAS_SEMANA[d.dia]} · ${plural(d.noites, "noite", "noites")}`,
+                    valor: d.vendido,
+                    texto: formatarBRL(d.vendido),
                   }))}
                 />
               )}

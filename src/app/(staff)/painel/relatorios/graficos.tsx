@@ -93,55 +93,72 @@ export function Vazio({ children }: { children: ReactNode }) {
   return <p className="py-6 text-center text-sm text-muted-foreground">{children}</p>;
 }
 
-// Colunas verticais (linha do tempo, horários). Cada coluna pode ser um link.
-export function Colunas({
-  colunas,
-  cor = CORES[0],
+// Linha do tempo (SVG): área preenchida, um ponto por item (pode ser link) e a média tracejada.
+export function Linha({
+  pontos,
   media,
 }: {
-  colunas: { chave: string; rotulo: string; valor: number; texto: string; href?: string }[];
-  cor?: string;
-  // Linha tracejada da média (mesma unidade de `valor`).
+  pontos: { chave: string; rotulo: string; valor: number; texto: string; href?: string }[];
   media?: { valor: number; texto: string };
 }) {
-  const maior = Math.max(...colunas.map((c) => c.valor), media?.valor ?? 0, 1);
-  // Muitas colunas: mostra só alguns rótulos embaixo.
-  const passo = Math.ceil(colunas.length / 10);
+  const maior = Math.max(...pontos.map((p) => p.valor), media?.valor ?? 0, 1);
+  const n = pontos.length;
+  // Posição em %: x com folga nas pontas; y com folga em cima para o ponto não cortar.
+  const x = (i: number) => (n === 1 ? 50 : 4 + (i * 92) / (n - 1));
+  const y = (v: number) => 100 - (v / maior) * 88;
+  const linha = pontos.map((p, i) => `${x(i)},${y(p.valor)}`).join(" ");
+  const area = n > 1 ? `${x(0)},100 ${linha} ${x(n - 1)},100` : "";
+  // Muitos pontos: mostra só alguns rótulos embaixo.
+  const passo = Math.ceil(n / 8);
   return (
     <div className="flex flex-col gap-1">
-      <div className="relative flex h-48 items-end justify-around gap-1 border-b sm:gap-2">
+      <div className="relative h-52 border-b">
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 size-full overflow-visible" aria-hidden>
+          {area ? <polygon points={area} fill={MARCA} fillOpacity={0.12} /> : null}
+          {n > 1 ? (
+            <polyline
+              points={linha}
+              fill="none"
+              stroke={MARCA}
+              strokeWidth={2.5}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+              vectorEffect="non-scaling-stroke"
+            />
+          ) : null}
+        </svg>
         {media && media.valor > 0 ? (
-          <div className="pointer-events-none absolute inset-x-0 border-t-2 border-dashed border-foreground/25" style={{ bottom: `${(media.valor / maior) * 100}%` }}>
+          <div className="pointer-events-none absolute inset-x-0 border-t-2 border-dashed border-foreground/20" style={{ top: `${y(media.valor)}%` }}>
             <span className="absolute -top-5 right-0 rounded bg-background/90 px-1 text-[11px] text-muted-foreground">{media.texto}</span>
           </div>
         ) : null}
-        {colunas.map((c) => {
-          const barra = (
-            <span
-              className="block w-full rounded-t-lg transition-opacity group-hover:opacity-80"
-              style={{ height: `${c.valor > 0 ? Math.max(2, (c.valor / maior) * 100) : 0}%`, backgroundColor: cor }}
-            />
+        {pontos.map((p, i) => {
+          const dica = `${p.rotulo}: ${p.texto}`;
+          const estilo = { left: `${x(i)}%`, top: `${y(p.valor)}%` };
+          const classe = "group absolute grid size-8 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full";
+          const bolinha = (
+            <span className="block size-3 rounded-full border-2 border-[var(--cor-primaria)] bg-background transition-transform group-hover:scale-150" />
           );
-          const comum = "group relative flex h-full min-w-0 max-w-16 flex-1 flex-col items-center justify-end";
-          const dica = `${c.rotulo}: ${c.texto}`;
-          return c.href ? (
-            <Link key={c.chave} href={c.href} className={comum} title={dica} aria-label={dica}>
-              {barra}
+          return p.href ? (
+            <Link key={p.chave} href={p.href} className={classe} style={estilo} title={dica} aria-label={dica}>
+              {bolinha}
             </Link>
           ) : (
-            <span key={c.chave} className={comum} title={dica}>
+            <span key={p.chave} className={classe} style={estilo} title={dica}>
               <span className="sr-only">{dica}</span>
-              {barra}
+              {bolinha}
             </span>
           );
         })}
       </div>
-      <div className="flex justify-around gap-1 sm:gap-2" aria-hidden>
-        {colunas.map((c, i) => (
-          <span key={c.chave} className="min-w-0 max-w-16 flex-1 truncate text-center text-[11px] text-muted-foreground">
-            {i % passo === 0 ? c.rotulo : ""}
-          </span>
-        ))}
+      <div className="relative h-4" aria-hidden>
+        {pontos.map((p, i) =>
+          i % passo === 0 ? (
+            <span key={p.chave} className="absolute -translate-x-1/2 text-[11px] whitespace-nowrap text-muted-foreground" style={{ left: `${x(i)}%` }}>
+              {p.rotulo}
+            </span>
+          ) : null,
+        )}
       </div>
     </div>
   );
