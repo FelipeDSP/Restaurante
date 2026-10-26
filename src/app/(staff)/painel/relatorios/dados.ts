@@ -94,6 +94,12 @@ export function resolverPeriodo(
   }
 }
 
+// Período do mesmo tamanho logo antes (para comparar: "+12% que o período anterior").
+export function periodoAnterior(de: string, ate: string): { de: string; ate: string } {
+  const dias = Math.round((new Date(`${ate}T12:00:00Z`).getTime() - new Date(`${de}T12:00:00Z`).getTime()) / 86_400_000) + 1;
+  return { de: somarDias(de, -dias), ate: somarDias(de, -1) };
+}
+
 // "01/10" ou "01/10/2025" (ano só quando não é o atual).
 export function dataCurta(data: string): string {
   const [ano, mes, dia] = data.split("-");

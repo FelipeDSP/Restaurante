@@ -1,8 +1,8 @@
+import { Ban, Clock, Crown, Receipt, ShoppingBag, Star, TrendingUp, Utensils, Wallet } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { exigirDono } from "@/lib/auth/dal";
 import { formatarBRL } from "@/lib/dinheiro";
@@ -11,48 +11,15 @@ import { diaLocal } from "@/lib/tempo";
 import { cn } from "@/lib/utils";
 
 import { BaixarCsv } from "./baixar-csv";
-import { carregarRelatorio, dataCurta, PERIODOS, resolverPeriodo } from "./dados";
+import { carregarRelatorio, dataCurta, PERIODOS, periodoAnterior, resolverPeriodo } from "./dados";
+import { BarraCelula, Barras, Colunas, CORES, Kpi, Painel, Rosca, variacao, Vazio } from "./graficos";
 
 export const metadata: Metadata = { title: "Relatórios" };
 
 const DIAS_SEMANA = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
-function Indicador({ rotulo, valor, detalhe }: { rotulo: string; valor: string; detalhe?: string }) {
-  return (
-    <div className="rounded-xl border bg-background p-4">
-      <p className="text-sm text-muted-foreground">{rotulo}</p>
-      <p className="text-2xl font-bold tabular-nums">{valor}</p>
-      {detalhe ? <p className="text-xs text-muted-foreground">{detalhe}</p> : null}
-    </div>
-  );
-}
-
-// Barras horizontais simples (sem biblioteca de gráfico).
-function Barras({ linhas, vazio }: { linhas: { chave: string; rotulo: string; valor: number; texto: string; detalhe?: string }[]; vazio: string }) {
-  if (linhas.length === 0) return <p className="text-sm text-muted-foreground">{vazio}</p>;
-  const maior = Math.max(...linhas.map((l) => l.valor), 1);
-  return (
-    <ul className="flex flex-col gap-2">
-      {linhas.map((l) => (
-        <li key={l.chave} className="grid grid-cols-[minmax(4.5rem,8rem)_1fr_auto] items-center gap-3 text-sm">
-          <span className="truncate">{l.rotulo}</span>
-          <span className="h-3 rounded-full bg-muted" aria-hidden>
-            <span
-              className="block h-3 rounded-full bg-[var(--cor-primaria)]"
-              style={{ width: `${l.valor > 0 ? Math.max(2, (l.valor / maior) * 100) : 0}%` }}
-            />
-          </span>
-          <span className="text-right tabular-nums">
-            {l.texto}
-            {l.detalhe ? <span className="block text-xs text-muted-foreground">{l.detalhe}</span> : null}
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 const porcento = (parte: number, todo: number) => (todo ? `${Math.round((parte / todo) * 100)}%` : "0%");
+const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
 
 export default async function RelatoriosPage(props: PageProps<"/painel/relatorios">) {
   const acesso = await exigirDono();
@@ -61,28 +28,57 @@ export default async function RelatoriosPage(props: PageProps<"/painel/relatorio
   const fuso = acesso.restaurante.fusoHorario;
   const periodo = resolverPeriodo(fuso, { periodo: texto(params.periodo), de: texto(params.de), ate: texto(params.ate) });
   const ordem = texto(params.ordem) === "valor" ? "valor" : "quantidade";
-  const r = await carregarRelatorio(acesso.restaurante.id, periodo.de, periodo.ate);
+  const todos = texto(params.todos) === "1";
+  const antes = periodoAnterior(periodo.de, periodo.ate);
+  const [r, anterior] = await Promise.all([
+    carregarRelatorio(acesso.restaurante.id, periodo.de, periodo.ate),
+    // A comparação é um extra: se falhar, a página sai sem ela.
+    carregarRelatorio(acesso.restaurante.id, antes.de, antes.ate).catch(() => null),
+  ]);
+  const base = anterior && anterior.sessoes > 0 ? anterior : null;
 
   const ticket = r.contas ? Math.round(r.vendido / r.contas) : 0;
+  const ticketAntes = base?.contas ? Math.round(base.vendido / base.contas) : null;
   const mediaNoite = r.sessoes ? Math.round(r.vendido / r.sessoes) : 0;
-  const produtos = [...r.produtos].sort((a, b) => (ordem === "valor" ? b.total - a.total : b.quantidade - a.quantidade));
   const cancelados = r.pedidos_cancelados.valor + r.itens_cancelados.valor;
+  const canceladosAntes = base ? base.pedidos_cancelados.valor + base.itens_cancelados.valor : null;
+  const produtos = [...r.produtos].sort((a, b) => (ordem === "valor" ? b.total - a.total : b.quantidade - a.quantidade));
   const linkPeriodo = (extra: Record<string, string>) => {
-    const base: Record<string, string> = periodo.periodo ? { periodo: periodo.periodo } : { de: periodo.de, ate: periodo.ate };
-    return `/painel/relatorios?${new URLSearchParams({ ...base, ...extra })}`;
+    const atual: Record<string, string> = periodo.periodo ? { periodo: periodo.periodo } : { de: periodo.de, ate: periodo.ate };
+    return `/painel/relatorios?${new URLSearchParams({ ...atual, ...extra })}`;
   };
 
+  // Destaques do período.
+  const melhorNoite = r.por_sessao.reduce<(typeof r.por_sessao)[number] | null>((m, s) => (!m || s.vendido > m.vendido ? s : m), null);
+  const maisVendido = [...r.produtos].sort((a, b) => b.quantidade - a.quantidade)[0];
+  const melhorDia = r.por_dia_semana.reduce<(typeof r.por_dia_semana)[number] | null>(
+    (m, d) => (!m || d.vendido / d.noites > m.vendido / m.noites ? d : m),
+    null,
+  );
+  const pico = r.por_hora.reduce<(typeof r.por_hora)[number] | null>((m, h) => (!m || h.pedidos > m.pedidos ? h : m), null);
+  const destaques = [
+    melhorNoite ? { icone: Star, rotulo: "Melhor noite", valor: diaLocal(melhorNoite.aberta_em, fuso), detalhe: formatarBRL(melhorNoite.vendido) } : null,
+    maisVendido ? { icone: Crown, rotulo: "Mais vendido", valor: maisVendido.nome, detalhe: `${maisVendido.quantidade} vendidos` } : null,
+    melhorDia ? { icone: TrendingUp, rotulo: "Dia mais forte", valor: DIAS_SEMANA[melhorDia.dia], detalhe: `${formatarBRL(Math.round(melhorDia.vendido / melhorDia.noites))} por noite` } : null,
+    pico ? { icone: Clock, rotulo: "Horário de pico", valor: `${String(pico.hora).padStart(2, "0")}h`, detalhe: plural(pico.pedidos, "pedido", "pedidos") } : null,
+  ].filter((d) => d !== null);
+
+  const maiorProduto = Math.max(...produtos.map((p) => (ordem === "valor" ? p.total : p.quantidade)), 1);
+  const maiorGarcom = Math.max(...r.garcons.map((g) => g.vendido), 1);
+  const maiorEntregador = Math.max(...r.entregadores.map((e) => e.entregas), 1);
+
   return (
-    <main className="flex flex-col gap-6 p-4 md:p-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Relatórios</h1>
-        <p className="text-muted-foreground">
-          {dataCurta(periodo.de)} a {dataCurta(periodo.ate)} · {r.sessoes} {r.sessoes === 1 ? "noite" : "noites"} de caixa. Cada noite
-          conta pelo dia em que o caixa abriu, mesmo fechando depois da meia-noite.
-        </p>
+    <main className="flex flex-col gap-5 p-4 md:p-6">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold">Relatórios</h1>
+          <p className="text-sm text-muted-foreground">
+            {dataCurta(periodo.de)} a {dataCurta(periodo.ate)} · {plural(r.sessoes, "noite", "noites")} de caixa
+          </p>
+        </div>
       </div>
 
-      <section aria-label="Período" className="flex flex-col gap-3 rounded-xl border bg-background p-4 lg:flex-row lg:items-end lg:justify-between">
+      <section aria-label="Período" className="flex flex-col gap-3 rounded-2xl border bg-background p-3 shadow-sm lg:flex-row lg:items-end lg:justify-between">
         <nav className="flex flex-wrap gap-2" aria-label="Períodos prontos">
           {PERIODOS.map((p) => (
             <Link
@@ -108,155 +104,157 @@ export default async function RelatoriosPage(props: PageProps<"/painel/relatorio
             <Input type="date" name="ate" defaultValue={periodo.ate} className="h-11 w-40" required />
           </label>
           <Button type="submit" variant="outline" className="h-11">
-            Ver período
+            Ver
           </Button>
         </form>
       </section>
 
       {r.sessoes === 0 ? (
-        <p className="rounded-xl border border-dashed p-8 text-center text-muted-foreground">
-          Nenhum caixa aberto neste período. Escolha outras datas.
-        </p>
+        <p className="rounded-2xl border border-dashed p-10 text-center text-muted-foreground">Nenhum caixa aberto neste período.</p>
       ) : (
         <>
           <section aria-label="Números do período" className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-            <Indicador
-              rotulo="Vendido"
-              valor={formatarBRL(r.vendido)}
-              detalhe={[
-                `Média de ${formatarBRL(mediaNoite)} por noite`,
-                r.servico ? `+ serviço ${formatarBRL(r.servico)}` : "",
-                r.couvert ? `+ couvert ${formatarBRL(r.couvert)}` : "",
-                r.descontos ? `cupons: −${formatarBRL(r.descontos)}` : "",
-              ]
-                .filter(Boolean)
-                .join(" · ")}
-            />
-            <Indicador rotulo="Contas" valor={String(r.contas)} detalhe="Comandas fechadas + pedidos de delivery" />
-            <Indicador rotulo="Ticket médio" valor={formatarBRL(ticket)} />
-            <Indicador rotulo="Itens vendidos" valor={String(r.itens)} detalhe={r.taxas_entrega ? `Taxas de entrega: ${formatarBRL(r.taxas_entrega)}` : undefined} />
-            <Indicador
+            <div className="col-span-2 lg:col-span-1">
+              <Kpi
+                rotulo="Vendido"
+                valor={formatarBRL(r.vendido)}
+                icone={Wallet}
+                delta={variacao(r.vendido, base?.vendido ?? null)}
+                detalhe={`${formatarBRL(mediaNoite)} por noite`}
+              />
+            </div>
+            <Kpi rotulo="Contas" valor={String(r.contas)} icone={Receipt} cor={CORES[0]} delta={variacao(r.contas, base?.contas ?? null)} />
+            <Kpi rotulo="Ticket médio" valor={formatarBRL(ticket)} icone={TrendingUp} cor={CORES[3]} delta={variacao(ticket, ticketAntes)} />
+            <Kpi rotulo="Itens vendidos" valor={String(r.itens)} icone={Utensils} cor={CORES[2]} delta={variacao(r.itens, base?.itens ?? null)} />
+            <Kpi
               rotulo="Cancelado"
               valor={formatarBRL(cancelados)}
-              detalhe={`${r.pedidos_cancelados.quantidade} pedidos e ${r.itens_cancelados.quantidade} itens${r.estornos.quantidade ? ` · ${r.estornos.quantidade} estornos (${formatarBRL(r.estornos.valor)})` : ""}`}
+              icone={Ban}
+              cor={CORES[4]}
+              delta={variacao(cancelados, canceladosAntes)}
+              quedaEhBoa
+              detalhe={plural(r.pedidos_cancelados.quantidade + r.itens_cancelados.quantidade, "cancelamento", "cancelamentos")}
             />
           </section>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Vendido por noite</CardTitle>
-              <CardDescription>Toque numa noite para ver o resumo completo do caixa.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="flex flex-col gap-2">
-                {r.por_sessao.map((s) => {
-                  const maior = Math.max(...r.por_sessao.map((x) => x.vendido), 1);
-                  return (
-                    <li key={s.id}>
-                      <Link
-                        href={`/painel/caixa/${s.id}`}
-                        className="grid grid-cols-[5.5rem_1fr_auto] items-center gap-3 rounded-md text-sm hover:bg-muted/60"
-                      >
-                        <span className="font-medium">{diaLocal(s.aberta_em, fuso)}</span>
-                        <span className="h-3 rounded-full bg-muted" aria-hidden>
-                          <span
-                            className="block h-3 rounded-full bg-[var(--cor-primaria)]"
-                            style={{ width: `${s.vendido > 0 ? Math.max(2, (s.vendido / maior) * 100) : 0}%` }}
-                          />
-                        </span>
-                        <span className="text-right tabular-nums">
-                          {formatarBRL(s.vendido)}
-                          <span className="block text-xs text-muted-foreground">{s.contas} contas</span>
-                        </span>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </CardContent>
-          </Card>
+          {r.servico || r.couvert || r.descontos || r.taxas_entrega || r.estornos.quantidade ? (
+            <ul className="flex flex-wrap gap-2 text-sm">
+              {r.taxas_entrega ? <Etiqueta rotulo="Taxas de entrega" valor={formatarBRL(r.taxas_entrega)} /> : null}
+              {r.servico ? <Etiqueta rotulo="Serviço" valor={formatarBRL(r.servico)} /> : null}
+              {r.couvert ? <Etiqueta rotulo="Couvert" valor={formatarBRL(r.couvert)} /> : null}
+              {r.descontos ? <Etiqueta rotulo="Cupons" valor={`−${formatarBRL(r.descontos)}`} /> : null}
+              {r.estornos.quantidade ? <Etiqueta rotulo="Estornos" valor={`${r.estornos.quantidade} · ${formatarBRL(r.estornos.valor)}`} /> : null}
+            </ul>
+          ) : null}
 
-          <div className="grid gap-6 lg:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Por dia da semana</CardTitle>
-                <CardDescription>Média vendida por noite em cada dia.</CardDescription>
-              </CardHeader>
-              <CardContent>
+          <div className="grid gap-5 lg:grid-cols-3">
+            <Painel titulo="Vendido por noite" className="lg:col-span-2">
+              <Colunas
+                colunas={[...r.por_sessao]
+                  .sort((a, b) => a.aberta_em.localeCompare(b.aberta_em))
+                  .map((s) => ({
+                    chave: s.id,
+                    rotulo: diaLocal(s.aberta_em, fuso),
+                    valor: s.vendido,
+                    texto: `${formatarBRL(s.vendido)} · ${plural(s.contas, "conta", "contas")}`,
+                    href: `/painel/caixa/${s.id}`,
+                  }))}
+                media={{ valor: mediaNoite, texto: `média ${formatarBRL(mediaNoite)}` }}
+              />
+            </Painel>
+
+            <Painel titulo="Destaques">
+              <ul className="grid gap-2">
+                {destaques.map((d, i) => (
+                  <li key={d.rotulo} className="flex items-center gap-3 rounded-xl bg-muted/60 p-3">
+                    <span
+                      className="grid size-9 shrink-0 place-items-center rounded-lg text-white"
+                      style={{ backgroundColor: [CORES[5], CORES[1], CORES[0], CORES[2]][i % 4] }}
+                      aria-hidden
+                    >
+                      <d.icone className="size-5" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-xs text-muted-foreground">{d.rotulo}</span>
+                      <span className="block truncate font-semibold">{d.valor}</span>
+                    </span>
+                    <span className="shrink-0 text-sm tabular-nums text-muted-foreground">{d.detalhe}</span>
+                  </li>
+                ))}
+              </ul>
+            </Painel>
+          </div>
+
+          <div className="grid gap-5 lg:grid-cols-2">
+            <Painel titulo="Mesas e delivery">
+              {r.por_origem.length === 0 ? (
+                <Vazio>Sem vendas.</Vazio>
+              ) : (
+                <Rosca
+                  centro={formatarBRL(r.vendido)}
+                  rotuloCentro="vendido"
+                  fatias={r.por_origem.map((o) => ({
+                    chave: o.origem,
+                    rotulo: `${nomeOrigem(o.origem)} · ${o.pedidos}`,
+                    valor: o.vendido,
+                    texto: formatarBRL(o.vendido),
+                  }))}
+                />
+              )}
+            </Painel>
+            <Painel titulo="Formas de pagamento">
+              {r.por_forma.length === 0 ? (
+                <Vazio>Nenhum pagamento.</Vazio>
+              ) : (
+                <Rosca
+                  centro={formatarBRL(r.recebido)}
+                  rotuloCentro="recebido"
+                  fatias={r.por_forma.map((f) => ({ chave: f.forma, rotulo: nomeForma(f.forma), valor: f.valor, texto: formatarBRL(f.valor) }))}
+                />
+              )}
+            </Painel>
+          </div>
+
+          <div className="grid gap-5 lg:grid-cols-2">
+            <Painel titulo="Pedidos por horário">
+              {r.por_hora.length === 0 ? (
+                <Vazio>Sem pedidos.</Vazio>
+              ) : (
+                <Colunas
+                  cor={CORES[2]}
+                  // Ordem da noite: madrugada (0h a 5h) depois das 23h.
+                  colunas={[...r.por_hora]
+                    .sort((x, y) => ((x.hora + 18) % 24) - ((y.hora + 18) % 24))
+                    .map((h) => ({
+                      chave: String(h.hora),
+                      rotulo: `${String(h.hora).padStart(2, "0")}h`,
+                      valor: h.pedidos,
+                      texto: `${plural(h.pedidos, "pedido", "pedidos")} · ${formatarBRL(h.vendido)}`,
+                    }))}
+                />
+              )}
+            </Painel>
+            <Painel titulo="Média por dia da semana">
+              {r.por_dia_semana.length === 0 ? (
+                <Vazio>Sem vendas.</Vazio>
+              ) : (
                 <Barras
-                  vazio="Sem vendas no período."
+                  cor={CORES[0]}
                   linhas={r.por_dia_semana.map((d) => ({
                     chave: String(d.dia),
                     rotulo: DIAS_SEMANA[d.dia],
                     valor: d.vendido / d.noites,
                     texto: formatarBRL(Math.round(d.vendido / d.noites)),
-                    detalhe: `${d.noites} ${d.noites === 1 ? "noite" : "noites"}`,
+                    detalhe: plural(d.noites, "noite", "noites"),
                   }))}
                 />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Por horário</CardTitle>
-                <CardDescription>Pedidos lançados em cada hora (cozinha e delivery).</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Barras
-                  vazio="Sem pedidos no período."
-                  // Ordem da noite: madrugada (0h a 5h) depois das 23h.
-                  linhas={[...r.por_hora].sort((x, y) => ((x.hora + 18) % 24) - ((y.hora + 18) % 24)).map((h) => ({
-                    chave: String(h.hora),
-                    rotulo: `${String(h.hora).padStart(2, "0")}h`,
-                    valor: h.pedidos,
-                    texto: `${h.pedidos} ${h.pedidos === 1 ? "pedido" : "pedidos"}`,
-                    detalhe: formatarBRL(h.vendido),
-                  }))}
-                />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Mesas e delivery</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Barras
-                  vazio="Sem vendas no período."
-                  linhas={r.por_origem.map((o) => ({
-                    chave: o.origem,
-                    rotulo: nomeOrigem(o.origem),
-                    valor: o.vendido,
-                    texto: formatarBRL(o.vendido),
-                    detalhe: `${porcento(o.vendido, r.vendido)} · ${o.pedidos} ${o.origem === "mesa" ? "comandas" : "pedidos"}`,
-                  }))}
-                />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Formas de pagamento</CardTitle>
-                <CardDescription>Recebido no período: {formatarBRL(r.recebido)}.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Barras
-                  vazio="Nenhum pagamento no período."
-                  linhas={r.por_forma.map((f) => ({
-                    chave: f.forma,
-                    rotulo: nomeForma(f.forma),
-                    valor: f.valor,
-                    texto: formatarBRL(f.valor),
-                    detalhe: `${porcento(f.valor, r.recebido)} · ${f.quantidade} pagamentos`,
-                  }))}
-                />
-              </CardContent>
-            </Card>
+              )}
+            </Painel>
           </div>
 
-          <Card>
-            <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3">
-              <div className="flex flex-col gap-1.5">
-                <CardTitle>Produtos</CardTitle>
-                <CardDescription>{produtos.length} produtos vendidos no período.</CardDescription>
-              </div>
+          <Painel
+            titulo={`Produtos (${produtos.length})`}
+            acao={
               <div className="flex flex-wrap gap-2">
                 <div className="flex rounded-lg border p-0.5" role="group" aria-label="Ordenar por">
                   {(["quantidade", "valor"] as const).map((o) => (
@@ -276,136 +274,169 @@ export default async function RelatoriosPage(props: PageProps<"/painel/relatorio
                   linhas={produtos.map((p) => [p.nome, p.categoria ?? "", p.quantidade, p.total / 100])}
                 />
               </div>
-            </CardHeader>
-            <CardContent>
+            }
+          >
+            {produtos.length === 0 ? (
+              <Vazio>Nenhum produto vendido.</Vazio>
+            ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-left text-muted-foreground">
+                    <tr className="text-left text-xs text-muted-foreground">
                       <th className="pb-2 font-medium">#</th>
                       <th className="pb-2 font-medium">Produto</th>
                       <th className="pb-2 text-right font-medium">Qtd.</th>
                       <th className="pb-2 text-right font-medium">Total</th>
-                      <th className="pb-2 text-right font-medium">% do vendido</th>
+                      <th className="pb-2 text-right font-medium">%</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {produtos.map((p, i) => (
+                    {(todos ? produtos : produtos.slice(0, 10)).map((p, i) => (
                       <tr key={p.produto_id} className="border-t">
-                        <td className="py-2 pr-2 text-muted-foreground tabular-nums">{i + 1}</td>
+                        <td className="py-2 pr-2">
+                          <span
+                            className={cn(
+                              "grid size-6 place-items-center rounded-full text-xs font-semibold tabular-nums",
+                              i < 3 ? "text-white" : "text-muted-foreground",
+                            )}
+                            style={i < 3 ? { backgroundColor: ["#ca8a04", "#64748b", "#b45309"][i] } : undefined}
+                          >
+                            {i + 1}
+                          </span>
+                        </td>
                         <td className="py-2">
                           {p.nome}
                           {p.categoria ? <span className="block text-xs text-muted-foreground">{p.categoria}</span> : null}
                         </td>
-                        <td className="py-2 text-right tabular-nums">{p.quantidade}</td>
-                        <td className="py-2 text-right tabular-nums">{formatarBRL(p.total)}</td>
+                        <td className="py-2 text-right tabular-nums">
+                          <span className="flex items-center justify-end gap-2">
+                            {ordem === "quantidade" ? <BarraCelula valor={p.quantidade} maior={maiorProduto} cor={CORES[1]} /> : null}
+                            {p.quantidade}
+                          </span>
+                        </td>
+                        <td className="py-2 text-right tabular-nums">
+                          <span className="flex items-center justify-end gap-2">
+                            {ordem === "valor" ? <BarraCelula valor={p.total} maior={maiorProduto} cor={CORES[0]} /> : null}
+                            {formatarBRL(p.total)}
+                          </span>
+                        </td>
                         <td className="py-2 text-right tabular-nums text-muted-foreground">{porcento(p.total, r.vendido)}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+                {!todos && produtos.length > 10 ? (
+                  <Link
+                    href={linkPeriodo({ ordem, todos: "1" })}
+                    scroll={false}
+                    className="mt-2 flex min-h-11 items-center justify-center rounded-lg border text-sm font-medium hover:bg-muted"
+                  >
+                    Ver todos ({produtos.length})
+                  </Link>
+                ) : null}
               </div>
-            </CardContent>
-          </Card>
+            )}
+          </Painel>
 
-          <div className="grid gap-6 lg:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Delivery por bairro</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {r.bairros.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Nenhum delivery no período.</p>
-                ) : (
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="text-left text-muted-foreground">
-                        <th className="pb-2 font-medium">Bairro</th>
-                        <th className="pb-2 text-right font-medium">Pedidos</th>
-                        <th className="pb-2 text-right font-medium">Vendido</th>
-                        <th className="pb-2 text-right font-medium">Taxas</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {r.bairros.map((b) => (
-                        <tr key={b.nome} className="border-t">
-                          <td className="py-2">{b.nome}</td>
-                          <td className="py-2 text-right tabular-nums">{b.pedidos}</td>
-                          <td className="py-2 text-right tabular-nums">{formatarBRL(b.vendido)}</td>
-                          <td className="py-2 text-right tabular-nums text-muted-foreground">{formatarBRL(b.taxas)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Garçons</CardTitle>
-                <CardDescription>Comandas fechadas de cada um.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {r.garcons.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Nenhuma comanda fechada no período.</p>
-                ) : (
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="text-left text-muted-foreground">
-                        <th className="pb-2 font-medium">Garçom</th>
-                        <th className="pb-2 text-right font-medium">Comandas</th>
-                        <th className="pb-2 text-right font-medium">Vendido</th>
-                        <th className="pb-2 text-right font-medium">Ticket</th>
-                        {r.servico ? <th className="pb-2 text-right font-medium">Serviço</th> : null}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {r.garcons.map((g) => (
-                        <tr key={g.nome} className="border-t">
-                          <td className="py-2">{g.nome}</td>
-                          <td className="py-2 text-right tabular-nums">{g.comandas}</td>
-                          <td className="py-2 text-right tabular-nums">{formatarBRL(g.vendido)}</td>
-                          <td className="py-2 text-right tabular-nums text-muted-foreground">
-                            {formatarBRL(g.comandas ? Math.round(g.vendido / g.comandas) : 0)}
-                          </td>
-                          {r.servico ? <td className="py-2 text-right tabular-nums">{formatarBRL(g.servico ?? 0)}</td> : null}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </CardContent>
-            </Card>
+          <div className="grid gap-5 lg:grid-cols-2">
+            <Painel titulo="Garçons">
+              {r.garcons.length === 0 ? (
+                <Vazio>Nenhuma comanda fechada.</Vazio>
+              ) : (
+                <ul className="flex flex-col gap-3">
+                  {r.garcons.map((g, i) => (
+                    <li key={g.nome} className="flex items-center gap-3 text-sm">
+                      <Iniciais nome={g.nome} cor={CORES[i % CORES.length]} />
+                      <span className="flex min-w-0 flex-1 flex-col gap-1">
+                        <span className="flex items-baseline justify-between gap-2">
+                          <span className="truncate font-medium">{g.nome}</span>
+                          <span className="tabular-nums">{formatarBRL(g.vendido)}</span>
+                        </span>
+                        <span className="h-2 rounded-full bg-muted" aria-hidden>
+                          <span
+                            className="block h-2 rounded-full"
+                            style={{ width: `${Math.max(3, (g.vendido / maiorGarcom) * 100)}%`, backgroundColor: CORES[i % CORES.length] }}
+                          />
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {plural(g.comandas, "comanda", "comandas")} · ticket {formatarBRL(g.comandas ? Math.round(g.vendido / g.comandas) : 0)}
+                          {r.servico ? ` · serviço ${formatarBRL(g.servico ?? 0)}` : ""}
+                        </span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Painel>
+            <Painel titulo="Delivery por bairro">
+              {r.bairros.length === 0 ? (
+                <Vazio>Nenhum delivery.</Vazio>
+              ) : (
+                <Barras
+                  linhas={r.bairros.map((b) => ({
+                    chave: b.nome,
+                    rotulo: b.nome,
+                    valor: b.vendido,
+                    texto: formatarBRL(b.vendido),
+                    detalhe: plural(b.pedidos, "pedido", "pedidos"),
+                  }))}
+                />
+              )}
+            </Painel>
             {r.entregadores.length > 0 ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Entregadores</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="text-left text-muted-foreground">
-                        <th className="pb-2 font-medium">Entregador</th>
-                        <th className="pb-2 text-right font-medium">Entregas</th>
-                        <th className="pb-2 text-right font-medium">A pagar</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {r.entregadores.map((e) => (
-                        <tr key={e.nome} className="border-t">
-                          <td className="py-2">{e.nome}</td>
-                          <td className="py-2 text-right tabular-nums">{e.entregas}</td>
-                          <td className="py-2 text-right tabular-nums">{formatarBRL(e.valor)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </CardContent>
-              </Card>
+              <Painel titulo="Entregadores">
+                <ul className="flex flex-col gap-3">
+                  {r.entregadores.map((e, i) => (
+                    <li key={e.nome} className="flex items-center gap-3 text-sm">
+                      <Iniciais nome={e.nome} cor={CORES[(i + 1) % CORES.length]} />
+                      <span className="flex min-w-0 flex-1 flex-col gap-1">
+                        <span className="flex items-baseline justify-between gap-2">
+                          <span className="truncate font-medium">{e.nome}</span>
+                          <span className="tabular-nums">
+                            <span className="text-xs text-muted-foreground">a pagar </span>
+                            {formatarBRL(e.valor)}
+                          </span>
+                        </span>
+                        <span className="h-2 rounded-full bg-muted" aria-hidden>
+                          <span
+                            className="block h-2 rounded-full"
+                            style={{ width: `${Math.max(3, (e.entregas / maiorEntregador) * 100)}%`, backgroundColor: CORES[(i + 1) % CORES.length] }}
+                          />
+                        </span>
+                        <span className="text-xs text-muted-foreground">{plural(e.entregas, "entrega", "entregas")}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </Painel>
             ) : null}
           </div>
         </>
       )}
     </main>
+  );
+}
+
+function Etiqueta({ rotulo, valor }: { rotulo: string; valor: string }) {
+  return (
+    <li className="flex items-center gap-1.5 rounded-full border bg-background px-3 py-1">
+      <ShoppingBag className="size-3.5 text-muted-foreground" aria-hidden />
+      <span className="text-muted-foreground">{rotulo}</span>
+      <span className="font-medium tabular-nums">{valor}</span>
+    </li>
+  );
+}
+
+function Iniciais({ nome, cor }: { nome: string; cor: string }) {
+  const letras = nome
+    .split(/\s+/)
+    .filter((p) => /^\p{L}/u.test(p))
+    .slice(0, 2)
+    .map((p) => p[0].toUpperCase())
+    .join("");
+  return (
+    <span className="grid size-9 shrink-0 place-items-center rounded-full text-xs font-semibold text-white" style={{ backgroundColor: cor }} aria-hidden>
+      {letras || "?"}
+    </span>
   );
 }
