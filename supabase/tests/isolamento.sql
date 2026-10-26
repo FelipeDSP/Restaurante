@@ -1992,6 +1992,118 @@ begin
 end;
 $$;
 
+-- ======================================================================
+-- Módulos por pessoa
+-- ======================================================================
+do $$
+declare
+  a constant uuid := md5('brasa-espetinhos')::uuid;
+  zero constant uuid := '00000000-0000-0000-0000-000000000000';
+  v_g1 uuid;
+  v_g2 uuid;
+  v_pedido uuid;
+  v_mesa uuid;
+  v_comanda uuid;
+  n integer;
+begin
+  perform pg_temp.admin();
+  select id into v_g1 from public.membros where restaurante_id = a and nome = 'Garçom 1 (brasa)';
+  select id into v_g2 from public.membros where restaurante_id = a and nome = 'Garçom 2 (brasa)';
+  perform pg_temp.ok((select modulos from public.membros where id = v_g1) = array['garcom'],
+                     'módulos: garçom antigo fica só com o app do garçom');
+  perform pg_temp.ok((select modulos from public.membros m where m.restaurante_id = a and m.papel = 'caixa' limit 1)
+                     = array['caixa', 'comandas', 'cozinha', 'delivery', 'garcom'],
+                     'módulos: caixa antigo fica com toda a operação');
+  if not exists (select 1 from public.caixa_sessoes where restaurante_id = a and fechada_em is null) then
+    perform pg_temp.entrar('caixa.brasa@exemplo.com');
+    insert into public.caixa_sessoes (restaurante_id, valor_inicial) values (a, 0);
+    perform pg_temp.admin();
+  end if;
+
+  -- Garçom sem o módulo caixa não faz sangria; com o módulo, faz.
+  perform pg_temp.entrar('garcom2.brasa@exemplo.com');
+  begin
+    insert into public.movimentos_caixa (restaurante_id, caixa_sessao_id, tipo, valor, motivo, registrado_por)
+    values (a, zero, 'sangria', 100, 'teste de módulo', zero);
+    perform pg_temp.ok(false, 'módulos: sem "caixa" não faz sangria');
+  exception when others then
+    perform pg_temp.ok(true, 'módulos: sem "caixa" não faz sangria');
+  end;
+
+  -- Garçom não muda os próprios módulos.
+  update public.membros set modulos = array['caixa', 'garcom'] where id = v_g2;
+  perform pg_temp.admin();
+  perform pg_temp.ok((select modulos from public.membros where id = v_g2) = array['garcom'],
+                     'módulos: garçom não libera módulo para si');
+
+  -- O dono libera.
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  update public.membros set modulos = array['garcom', 'caixa', 'delivery', 'caixa'] where id = v_g2 and restaurante_id = a;
+  perform pg_temp.admin();
+  perform pg_temp.ok((select modulos from public.membros where id = v_g2) = array['caixa', 'delivery', 'garcom'],
+                     'módulos: dono libera por pessoa (sem repetir, em ordem)');
+  begin
+    update public.membros set modulos = array['relatorios'] where id = v_g2;
+    perform pg_temp.ok(false, 'módulos: só módulos conhecidos');
+  exception when others then
+    perform pg_temp.ok(true, 'módulos: só módulos conhecidos');
+  end;
+
+  perform pg_temp.entrar('garcom2.brasa@exemplo.com');
+  insert into public.movimentos_caixa (restaurante_id, caixa_sessao_id, tipo, valor, motivo, registrado_por)
+  values (a, zero, 'suprimento', 100, 'teste de módulo', zero);
+  perform pg_temp.ok(true, 'módulos: garçom com "caixa" faz suprimento');
+
+  -- Delivery: só quem tem o módulo muda o andamento.
+  perform pg_temp.admin();
+  insert into public.pedidos (restaurante_id, origem, cliente_nome, cliente_telefone, endereco, taxa_entrega, forma_pagamento_prevista, status)
+  values (a, 'delivery', 'Módulo', '69977770009', '{"rua":"R","numero":"1","bairro":"Centro"}', 500, 'pix', 'recebido')
+  returning id into v_pedido;
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  begin
+    update public.pedidos set status = 'em_preparo' where id = v_pedido;
+    perform pg_temp.ok(false, 'módulos: sem "delivery" não aceita delivery');
+  exception when others then
+    perform pg_temp.ok(true, 'módulos: sem "delivery" não aceita delivery');
+  end;
+  perform pg_temp.entrar('garcom2.brasa@exemplo.com');
+  update public.pedidos set status = 'em_preparo' where id = v_pedido;
+  perform pg_temp.admin();
+  perform pg_temp.ok((select status from public.pedidos where id = v_pedido) = 'em_preparo',
+                     'módulos: garçom com "delivery" aceita delivery');
+
+  -- Comandas: sem o módulo, a mesa abre no próprio nome; não cancela comanda.
+  select id into v_mesa from public.mesas m
+  where m.restaurante_id = a and m.ativa
+    and not exists (select 1 from public.comandas c where c.mesa_id = m.id and c.status in ('aberta', 'conta_pedida'))
+  limit 1;
+  perform pg_temp.entrar('garcom2.brasa@exemplo.com');
+  insert into public.comandas (restaurante_id, mesa_id, garcom_id, caixa_sessao_id)
+  values (a, v_mesa, v_g1, zero) returning id into v_comanda;
+  perform pg_temp.admin();
+  perform pg_temp.ok((select garcom_id from public.comandas where id = v_comanda) = v_g2,
+                     'módulos: sem "comandas" a mesa abre no próprio nome');
+  perform pg_temp.entrar('garcom2.brasa@exemplo.com');
+  begin
+    update public.comandas set status = 'cancelada' where id = v_comanda;
+    perform pg_temp.ok(false, 'módulos: sem "comandas" não cancela comanda');
+  exception when others then
+    perform pg_temp.ok(true, 'módulos: sem "comandas" não cancela comanda');
+  end;
+  perform pg_temp.entrar('caixa.brasa@exemplo.com');
+  update public.comandas set status = 'cancelada' where id = v_comanda;
+  perform pg_temp.admin();
+  perform pg_temp.ok((select status from public.comandas where id = v_comanda) = 'cancelada',
+                     'módulos: com "comandas" cancela comanda');
+
+  -- Outro restaurante: módulos não valem lá.
+  perform pg_temp.entrar('garcom2.brasa@exemplo.com');
+  select count(*) into n from public.cupons where restaurante_id <> a;
+  perform pg_temp.ok(n = 0, 'módulos: não abrem dados de outro restaurante');
+  perform pg_temp.admin();
+end;
+$$;
+
 select n, ok, teste from resultado order by n;
 select count(*) filter (where not ok) as falhas, count(*) as total from resultado;
 

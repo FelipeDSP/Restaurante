@@ -712,11 +712,13 @@ type Props = {
   // De onde a tela foi aberta: define para onde voltar depois de fechar/lançar.
   origem?: "garcom" | "painel";
   comanda: DetalheComanda;
+  // Cancelar a comanda (módulo comandas) e estornar pagamento (módulo caixa).
   podeGerenciar: boolean;
+  podeEstornar: boolean;
   fusoHorario: string;
 };
 
-export function TelaComanda({ mesaId, comanda, podeGerenciar, fusoHorario, origem = "garcom" }: Props) {
+export function TelaComanda({ mesaId, comanda, podeGerenciar, podeEstornar, fusoHorario, origem = "garcom" }: Props) {
   const router = useRouter();
   const [pagando, setPagando] = useState(false);
   const [confirmarFechar, setConfirmarFechar] = useState(false);
@@ -829,7 +831,7 @@ export function TelaComanda({ mesaId, comanda, podeGerenciar, fusoHorario, orige
           </h2>
           <ul className="divide-y">
             {comanda.pagamentos.map((p) => (
-              <LinhaPagamento key={p.id} pagamento={p} podeEstornar={podeGerenciar} fusoHorario={fusoHorario} />
+              <LinhaPagamento key={p.id} pagamento={p} podeEstornar={podeEstornar} fusoHorario={fusoHorario} />
             ))}
           </ul>
         </section>

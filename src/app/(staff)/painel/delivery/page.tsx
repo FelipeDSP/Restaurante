@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { AtualizarEmTempoReal } from "@/components/staff/atualizar-em-tempo-real";
 import { lerAdicionais } from "@/lib/adicionais";
-import { exigirAcesso } from "@/lib/auth/dal";
+import { exigirModulo } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { horaLocal, tempoDesde } from "@/lib/tempo";
 
@@ -13,7 +13,7 @@ import { QuadroDelivery } from "./quadro-delivery";
 export const metadata: Metadata = { title: "Delivery" };
 
 export default async function DeliveryPage() {
-  const acesso = await exigirAcesso("painel");
+  const acesso = await exigirModulo("painel", "delivery");
   const supabase = await createClient();
   const sessao = await carregarSessaoAberta(acesso.restaurante.id);
   const fuso = acesso.restaurante.fusoHorario;

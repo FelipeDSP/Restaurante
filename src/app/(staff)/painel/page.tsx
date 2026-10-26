@@ -4,6 +4,7 @@ import { AtualizarEmTempoReal } from "@/components/staff/atualizar-em-tempo-real
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { exigirAcesso } from "@/lib/auth/dal";
+import type { Modulo } from "@/lib/auth/papeis";
 import { formatarBRL } from "@/lib/dinheiro";
 import { dataHoraLocal } from "@/lib/tempo";
 
@@ -11,7 +12,7 @@ import { carregarResumo, carregarSessaoAberta } from "./caixa/dados";
 import { PrimeirosPassos } from "./primeiros-passos";
 import { UltimasNoites } from "./ultimas-noites";
 
-async function StatusCaixa({ restauranteId, fuso }: { restauranteId: string; fuso: string }) {
+async function StatusCaixa({ restauranteId, fuso, modulos }: { restauranteId: string; fuso: string; modulos: Modulo[] }) {
   const sessao = await carregarSessaoAberta(restauranteId);
   const resumo = sessao ? await carregarResumo(restauranteId, sessao.id) : null;
 
@@ -21,11 +22,13 @@ async function StatusCaixa({ restauranteId, fuso }: { restauranteId: string; fus
         <CardHeader>
           <CardTitle>Caixa fechado</CardTitle>
         </CardHeader>
-        <CardContent>
-          <Button className="h-11" nativeButton={false} render={<Link href="/painel/caixa" />}>
-            Abrir caixa
-          </Button>
-        </CardContent>
+        {modulos.includes("caixa") ? (
+          <CardContent>
+            <Button className="h-11" nativeButton={false} render={<Link href="/painel/caixa" />}>
+              Abrir caixa
+            </Button>
+          </CardContent>
+        ) : null}
       </Card>
     );
   }
@@ -54,12 +57,16 @@ async function StatusCaixa({ restauranteId, fuso }: { restauranteId: string; fus
           </div>
         </dl>
         <div className="flex flex-wrap gap-2">
-          <Button className="h-11" nativeButton={false} render={<Link href="/painel/comandas" />}>
-            Ver comandas
-          </Button>
-          <Button variant="outline" className="h-11" nativeButton={false} render={<Link href="/painel/caixa" />}>
-            Resumo e fechamento
-          </Button>
+          {modulos.includes("comandas") ? (
+            <Button className="h-11" nativeButton={false} render={<Link href="/painel/comandas" />}>
+              Ver comandas
+            </Button>
+          ) : null}
+          {modulos.includes("caixa") ? (
+            <Button variant="outline" className="h-11" nativeButton={false} render={<Link href="/painel/caixa" />}>
+              Resumo e fechamento
+            </Button>
+          ) : null}
         </div>
       </CardContent>
     </Card>
@@ -74,7 +81,7 @@ export default async function PainelPage() {
       <AtualizarEmTempoReal restauranteId={acesso.restaurante.id} tabelas={["comandas", "pagamentos"]} />
       <h1 className="text-2xl font-semibold">Olá, {acesso.nome}</h1>
       {acesso.papel === "dono" ? <PrimeirosPassos acesso={acesso} /> : null}
-      <StatusCaixa restauranteId={acesso.restaurante.id} fuso={acesso.restaurante.fusoHorario} />
+      <StatusCaixa restauranteId={acesso.restaurante.id} fuso={acesso.restaurante.fusoHorario} modulos={acesso.modulos} />
       {acesso.papel === "dono" ? <UltimasNoites restauranteId={acesso.restaurante.id} fuso={acesso.restaurante.fusoHorario} /> : null}
     </main>
   );

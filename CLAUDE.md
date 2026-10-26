@@ -111,12 +111,15 @@ Já existe (app de impressão, fase 3):
 - Fluxo: `/cadastro` → (confirmação de e-mail opcional, via `/auth/confirmar`) → `/comecar` → `/painel` com "Primeiros passos" e aviso de teste.
 - No painel, a assinatura aparece só para o dono e sem citar a marca da plataforma.
 
-## Papéis
+## Papéis e módulos
 
-- `dono`: tudo no restaurante, incluindo marca, equipe e cadastros.
-- `caixa`: painel do caixa, pagamentos, sessão de caixa, pedidos de delivery.
-- `garcom`: PWA do garçom (mesas, comandas, itens, pagamentos das suas mesas).
-- `cozinha`: só a tela da cozinha (marca tickets como prontos).
+- `dono`: tudo no restaurante, incluindo marca, equipe, cadastros e relatórios (sempre todos os módulos).
+- Resto da equipe: quem manda são os **módulos por pessoa** (`membros.modulos`), que o dono liga e desliga na Equipe; o papel (`caixa`, `garcom`, `cozinha`) é só a função mostrada e o atalho que sugere os módulos (caixa: todos; garçom: `garcom`; cozinha: `cozinha`).
+  - `caixa`: abrir/fechar caixa, sangria/suprimento, estorno, impressoras.
+  - `delivery`: tela Delivery (andamento, edição, entregador), clientes e cupons.
+  - `comandas`: Comandas no painel, trocar o garçom da mesa, cancelar comanda, abrir mesa em nome de outro.
+  - `garcom`: app do garçom. `cozinha`: tela da cozinha.
+- Painel abre com `caixa`, `delivery` ou `comandas`; o menu mostra só o que a pessoa tem (`itensDoMenu`). Páginas e ações de módulo usam `exigirModulo(area, modulo)` (`src/lib/auth/dal.ts`); o banco confere com `rest_privado.tem_modulo(restaurante, modulos[])` em vez de "dono ou caixa" (migração `modulos_por_pessoa`). Lista vazia nunca fica: o trigger põe os módulos do papel.
 
 ## Banco de dados (MVP)
 

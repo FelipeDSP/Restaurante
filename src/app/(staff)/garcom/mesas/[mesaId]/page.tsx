@@ -54,7 +54,8 @@ export default async function MesaPage(props: PageProps<"/garcom/mesas/[mesaId]"
           key={comanda.id}
           mesaId={mesa.id}
           comanda={comanda}
-          podeGerenciar={acesso.papel !== "garcom"}
+          podeGerenciar={acesso.modulos.includes("comandas")}
+          podeEstornar={acesso.modulos.includes("caixa")}
           fusoHorario={acesso.restaurante.fusoHorario}
         />
       ) : mesa.ativa ? (

@@ -558,13 +558,13 @@ isOneToOne: false
                   ]
                 },"membros": {
                   Row: {
-                    "ativo": boolean,"criado_em": string,"id": string,"nome": string,"papel": string,"restaurante_id": string,"user_id": string
+                    "ativo": boolean,"criado_em": string,"id": string,"modulos": (string)[],"nome": string,"papel": string,"restaurante_id": string,"user_id": string
                   }
                   Insert: {
-                    "ativo"?: boolean,"criado_em"?: string,"id"?: string,"nome": string,"papel": string,"restaurante_id": string,"user_id": string
+                    "ativo"?: boolean,"criado_em"?: string,"id"?: string,"modulos"?: (string)[],"nome": string,"papel": string,"restaurante_id": string,"user_id": string
                   }
                   Update: {
-                    "ativo"?: boolean,"criado_em"?: string,"id"?: string,"nome"?: string,"papel"?: string,"restaurante_id"?: string,"user_id"?: string
+                    "ativo"?: boolean,"criado_em"?: string,"id"?: string,"modulos"?: (string)[],"nome"?: string,"papel"?: string,"restaurante_id"?: string,"user_id"?: string
                   }
                   Relationships: [
                     {

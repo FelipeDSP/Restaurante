@@ -3,7 +3,7 @@ import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { exigirAcesso } from "@/lib/auth/dal";
+import { exigirModulo } from "@/lib/auth/dal";
 import { dataHoraLocal } from "@/lib/tempo";
 import { id as idSchema } from "@/lib/validacao";
 
@@ -14,7 +14,7 @@ import { ResumoSessao } from "../resumo-sessao";
 export const metadata: Metadata = { title: "Resumo do caixa" };
 
 export default async function SessaoCaixaPage(props: PageProps<"/painel/caixa/[sessaoId]">) {
-  const acesso = await exigirAcesso("painel");
+  const acesso = await exigirModulo("painel", "caixa");
   const { sessaoId } = await props.params;
   if (!idSchema.safeParse(sessaoId).success) notFound();
 

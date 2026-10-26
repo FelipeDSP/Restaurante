@@ -16,7 +16,7 @@ import { createClient } from "@/lib/supabase/server";
 import { AvisoAssinatura } from "./aviso-assinatura";
 import { ChamarGarcom } from "./chamar-garcom";
 import { AbasSecao, MenuCelular, MenuLateral } from "./menu-painel";
-import { NAVEGACAO } from "./navegacao";
+import { itensDoMenu } from "./navegacao";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { restaurante } = await exigirAcesso("painel");
@@ -40,9 +40,9 @@ async function contarPedidosNovos(restauranteId: string): Promise<number> {
 
 export default async function PainelLayout({ children }: LayoutProps<"/painel">) {
   const acesso = await exigirAcesso("painel");
-  const itens = NAVEGACAO.filter((item) => item.papeis.includes(acesso.papel));
+  const itens = itensDoMenu(acesso.papel, acesso.modulos);
   const [novos, assinatura, adminPlataforma] = await Promise.all([
-    contarPedidosNovos(acesso.restaurante.id),
+    acesso.modulos.includes("delivery") ? contarPedidosNovos(acesso.restaurante.id) : 0,
     acesso.papel === "dono" ? carregarAssinatura(acesso.restaurante.id) : null,
     ehAdminPlataforma(),
   ]);
@@ -65,12 +65,12 @@ export default async function PainelLayout({ children }: LayoutProps<"/painel">)
               </Link>
             ) : null}
             <ChamarGarcom restauranteId={acesso.restaurante.id} membroId={acesso.membroId} />
-            <AlertaPedidos restauranteId={acesso.restaurante.id} />
+            {acesso.modulos.includes("delivery") ? <AlertaPedidos restauranteId={acesso.restaurante.id} /> : null}
             <MenuUsuario
               nome={acesso.nome}
               papel={NOME_PAPEL[acesso.papel]}
               podeTrocarRestaurante={acesso.vinculos.length > 1}
-              outraArea={{ href: "/garcom", rotulo: "Abrir área do garçom" }}
+              outraArea={acesso.modulos.includes("garcom") ? { href: "/garcom", rotulo: "Abrir área do garçom" } : undefined}
               adminPlataforma={adminPlataforma}
               assinatura={acesso.papel === "dono"}
             />

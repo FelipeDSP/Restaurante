@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 
-import { type Area, ehPapel, type Papel, podeAcessar, rotaInicial } from "@/lib/auth/papeis";
+import { type Area, ehPapel, type Modulo, modulosEfetivos, type Papel, podeAcessar, rotaInicial } from "@/lib/auth/papeis";
 import { createClient } from "@/lib/supabase/server";
 
 // Restaurante escolhido no seletor. Sempre revalidado contra `membros`.
@@ -24,6 +24,8 @@ export type Vinculo = {
   membroId: string;
   nome: string;
   papel: Papel;
+  // Módulos liberados (dono: todos).
+  modulos: Modulo[];
   restaurante: RestauranteResumo;
 };
 
@@ -45,7 +47,7 @@ export const obterVinculos = cache(async (): Promise<Vinculo[]> => {
   const { data, error } = await supabase
     .from("membros")
     .select(
-      "id, nome, papel, restaurante:restaurantes(id, slug, nome, logo_url, cor_primaria, cor_secundaria, fuso_horario, excluido_em)",
+      "id, nome, papel, modulos, restaurante:restaurantes(id, slug, nome, logo_url, cor_primaria, cor_secundaria, fuso_horario, excluido_em)",
     )
     .eq("user_id", usuario.id)
     .eq("ativo", true);
@@ -61,6 +63,7 @@ export const obterVinculos = cache(async (): Promise<Vinculo[]> => {
           membroId: m.id,
           nome: m.nome,
           papel: m.papel,
+          modulos: modulosEfetivos(m.papel, m.modulos),
           restaurante: {
             id: r.id,
             slug: r.slug,
@@ -103,7 +106,7 @@ export async function destinoInicial(): Promise<string> {
   if (!usuario) return "/login";
   if (vinculos.length === 0) return "/sem-acesso";
   if (!ativo) return "/selecionar";
-  return rotaInicial(ativo.papel);
+  return rotaInicial(ativo.modulos);
 }
 
 // Garante usuário logado, restaurante ativo e papel permitido na área; senão redireciona.
@@ -114,7 +117,7 @@ export const exigirAcesso = cache(async (area: Area): Promise<Acesso> => {
   if (!usuario) redirect("/login");
   if (vinculos.length === 0) redirect("/sem-acesso");
   if (!ativo) redirect("/selecionar");
-  if (!podeAcessar(ativo.papel, area)) redirect(rotaInicial(ativo.papel));
+  if (!podeAcessar(ativo.modulos, area)) redirect(rotaInicial(ativo.modulos));
   return { ...ativo, usuario, vinculos };
 });
 
@@ -126,6 +129,13 @@ export const ehAdminPlataforma = cache(async (): Promise<boolean> => {
   const { data } = await supabase.rpc("admin_sou_admin");
   return data === true;
 });
+
+// Página ou ação de um módulo (caixa, delivery, comandas...): sem ele, volta para o início da pessoa.
+export async function exigirModulo(area: Area, modulo: Modulo): Promise<Acesso> {
+  const acesso = await exigirAcesso(area);
+  if (!acesso.modulos.includes(modulo)) redirect(rotaInicial(acesso.modulos));
+  return acesso;
+}
 
 // Cadastros e configurações do restaurante: só o dono.
 export const exigirDono = cache(async (): Promise<Acesso> => {

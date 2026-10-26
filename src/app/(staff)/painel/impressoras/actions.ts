@@ -4,7 +4,7 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 
 import { falha, falhaValidacao, mensagemErroBanco, type ResultadoAcao, sucesso } from "@/lib/acoes";
-import { exigirAcesso, exigirDono } from "@/lib/auth/dal";
+import { exigirDono, exigirModulo } from "@/lib/auth/dal";
 import { gerarCodigoPareamento, hashDe } from "@/lib/impressao/agente";
 import { createClient } from "@/lib/supabase/server";
 import { checkbox, dadosDoFormulario, id, textoObrigatorio } from "@/lib/validacao";
@@ -180,7 +180,7 @@ export async function excluirImpressora(impressoraId: string): Promise<Resultado
 }
 
 export async function imprimirTeste(impressoraId: string): Promise<ResultadoAcao> {
-  await exigirAcesso("painel");
+  await exigirModulo("painel", "caixa");
   if (!id.safeParse(impressoraId).success) return falha("Impressora inválida.");
   const supabase = await createClient();
   const { error } = await supabase.rpc("imprimir_teste", { p_impressora_id: impressoraId });
@@ -190,7 +190,7 @@ export async function imprimirTeste(impressoraId: string): Promise<ResultadoAcao
 }
 
 export async function reimprimir(filaId: string): Promise<ResultadoAcao> {
-  await exigirAcesso("painel");
+  await exigirModulo("painel", "caixa");
   if (!id.safeParse(filaId).success) return falha("Impressão inválida.");
   const supabase = await createClient();
   const { error } = await supabase.rpc("reimprimir", { p_fila_id: filaId });

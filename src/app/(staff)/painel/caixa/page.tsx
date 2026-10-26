@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { AtualizarEmTempoReal } from "@/components/staff/atualizar-em-tempo-real";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { exigirAcesso } from "@/lib/auth/dal";
+import { exigirModulo } from "@/lib/auth/dal";
 import { formatarBRL } from "@/lib/dinheiro";
 import { dataHoraLocal } from "@/lib/tempo";
 
@@ -14,7 +14,7 @@ import { ResumoSessao } from "./resumo-sessao";
 export const metadata: Metadata = { title: "Caixa" };
 
 export default async function CaixaPage() {
-  const acesso = await exigirAcesso("painel");
+  const acesso = await exigirModulo("painel", "caixa");
   const fuso = acesso.restaurante.fusoHorario;
   const [aberta, anteriores] = await Promise.all([
     carregarSessaoAberta(acesso.restaurante.id),

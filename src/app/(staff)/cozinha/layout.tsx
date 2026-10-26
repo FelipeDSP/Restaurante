@@ -21,7 +21,7 @@ export async function generateMetadata(): Promise<Metadata> {
 // Tela da cozinha: feita para ficar aberta num tablet ou TV perto das praças.
 export default async function CozinhaLayout({ children }: LayoutProps<"/cozinha">) {
   const acesso = await exigirAcesso("cozinha");
-  const painel = podeAcessar(acesso.papel, "painel");
+  const painel = podeAcessar(acesso.modulos, "painel");
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-muted/40" style={estiloMarca(acesso.restaurante)}>

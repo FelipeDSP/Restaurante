@@ -264,7 +264,7 @@ export async function alterarCobranca(comandaId: string, tipo: "servico" | "couv
 
 export async function estornarPagamento(pagamentoId: string, motivo: string): Promise<ResultadoAcao> {
   const acesso = await exigirAcesso("garcom");
-  if (acesso.papel === "garcom") return falha("Só o caixa ou o dono podem estornar.");
+  if (!acesso.modulos.includes("caixa")) return falha("Estorno é com quem cuida do caixa.");
   const dados = z
     .object({ pagamentoId: id, motivo: z.string().trim().min(3, "Informe o motivo do estorno.").max(500) })
     .safeParse({ pagamentoId, motivo });
@@ -300,7 +300,7 @@ export async function fecharComanda(comandaId: string): Promise<ResultadoAcao> {
 
 export async function cancelarComanda(comandaId: string): Promise<ResultadoAcao> {
   const acesso = await exigirAcesso("garcom");
-  if (acesso.papel === "garcom") return falha("Só o caixa ou o dono podem cancelar a comanda.");
+  if (!acesso.modulos.includes("comandas")) return falha("Cancelar a comanda é com quem cuida das comandas.");
   if (!id.safeParse(comandaId).success) return falha("Comanda inválida.");
 
   const supabase = await createClient();

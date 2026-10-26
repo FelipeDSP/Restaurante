@@ -45,7 +45,7 @@ export default async function GarcomLayout({ children }: LayoutProps<"/garcom">)
         <div className="mx-auto flex h-16 w-full max-w-md items-center justify-between gap-3 px-4">
           <div className="flex min-w-0 items-center gap-2">
             {/* Dono e caixa entram aqui pelo painel: voltam com um toque. */}
-            {podeAcessar(acesso.papel, "painel") ? (
+            {podeAcessar(acesso.modulos, "painel") ? (
               <Link
                 href="/painel"
                 className="flex h-11 shrink-0 items-center gap-1 rounded-full bg-black/15 pr-4 pl-3 text-sm font-semibold hover:bg-black/25"
@@ -61,7 +61,7 @@ export default async function GarcomLayout({ children }: LayoutProps<"/garcom">)
             papel={NOME_PAPEL[acesso.papel]}
             podeTrocarRestaurante={acesso.vinculos.length > 1}
             outraArea={
-              podeAcessar(acesso.papel, "painel")
+              podeAcessar(acesso.modulos, "painel")
                 ? { href: "/painel", rotulo: "Abrir painel" }
                 : undefined
             }

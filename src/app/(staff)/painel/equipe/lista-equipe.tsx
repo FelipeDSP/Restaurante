@@ -1,6 +1,6 @@
 "use client";
 
-import { Copy, KeyRound, MessageCircle, UserPlus } from "lucide-react";
+import { Check, Copy, KeyRound, MessageCircle, UserPlus } from "lucide-react";
 import { useActionState, useState } from "react";
 import { toast } from "sonner";
 
@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { NOME_PAPEL, PAPEIS, type Papel } from "@/lib/auth/papeis";
+import { type Modulo, MODULOS, MODULOS_DO_PAPEL, NOME_MODULO, NOME_PAPEL, PAPEIS, type Papel } from "@/lib/auth/papeis";
 import { cn } from "@/lib/utils";
 
 import { adicionarMembro, alternarMembro, atualizarMembro, redefinirSenha } from "./actions";
@@ -20,6 +20,7 @@ export type Membro = {
   id: string;
   nome: string;
   papel: Papel;
+  modulos: Modulo[];
   ativo: boolean;
   email: string | null;
   euMesmo: boolean;
@@ -31,6 +32,39 @@ function OpcoesPapel() {
       {NOME_PAPEL[p]}
     </option>
   ));
+}
+
+const iguais = (a: readonly Modulo[], b: readonly Modulo[]) => a.length === b.length && a.every((m) => b.includes(m));
+
+// O que a pessoa acessa. A função só sugere (caixa: tudo da operação; garçom: o app; cozinha: a tela);
+// o dono liga e desliga cada um. Dono tem tudo.
+function EscolherModulos({ papel, modulos, aoMudar }: { papel: Papel; modulos: Modulo[]; aoMudar: (m: Modulo[]) => void }) {
+  if (papel === "dono") return <p className="text-sm text-muted-foreground">Acesso a tudo</p>;
+  return (
+    <div role="group" aria-label="Acessos" className="flex flex-wrap gap-2">
+      {MODULOS.map((m) => {
+        const marcado = modulos.includes(m);
+        return (
+          <button
+            key={m}
+            type="button"
+            aria-pressed={marcado}
+            onClick={() => aoMudar(marcado ? modulos.filter((x) => x !== m) : [...modulos, m])}
+            className={cn(
+              "flex min-h-10 items-center gap-1.5 rounded-full border px-3 text-sm font-medium",
+              marcado ? "border-[var(--cor-primaria)] bg-[var(--cor-primaria)] text-[var(--cor-primaria-contraste)]" : "text-muted-foreground hover:bg-muted",
+            )}
+          >
+            {marcado ? <Check className="size-4" aria-hidden /> : null}
+            {NOME_MODULO[m]}
+          </button>
+        );
+      })}
+      {modulos.map((m) => (
+        <input key={m} type="hidden" name="modulos" value={m} />
+      ))}
+    </div>
+  );
 }
 
 // Senha fácil de ditar ou digitar no celular (sem 0/O, 1/l/I).
@@ -111,6 +145,8 @@ export function NovoMembro({
   const [estado, acao] = useActionState(adicionarMembro, undefined);
   useAvisoResultado(estado);
   const [senha, setSenha] = useState("");
+  const [papel, setPapel] = useState<Papel>("garcom");
+  const [modulos, setModulos] = useState<Modulo[]>([...MODULOS_DO_PAPEL.garcom]);
   const [enviado, setEnviado] = useState<AcessoCriado | null>(null);
   const [aberto, setAberto] = useState(false);
   const [chaveVista, setChaveVista] = useState(estado?.chave);
@@ -175,8 +211,18 @@ export function NovoMembro({
               <Input id="membro-email" name="email" type="email" autoComplete="off" defaultValue={valorCampo(estado, "email", "")} required className="h-11" />
               <ErroCampo estado={estado} campo="email" />
             </Campo>
-            <Campo rotulo="Papel" htmlFor="membro-papel">
-              <Selecao id="membro-papel" name="papel" defaultValue={valorCampo(estado, "papel", "garcom")} className="h-11">
+            <Campo rotulo="Função" htmlFor="membro-papel">
+              <Selecao
+                id="membro-papel"
+                name="papel"
+                value={papel}
+                onChange={(e) => {
+                  const novo = e.target.value as Papel;
+                  setPapel(novo);
+                  setModulos([...MODULOS_DO_PAPEL[novo]]);
+                }}
+                className="h-11"
+              >
                 <OpcoesPapel />
               </Selecao>
             </Campo>
@@ -197,6 +243,11 @@ export function NovoMembro({
               </div>
               <ErroCampo estado={estado} campo="senha" />
             </Campo>
+            <div className="flex flex-col gap-2 sm:col-span-2">
+              <span className="text-sm font-medium">Acessos</span>
+              <EscolherModulos papel={papel} modulos={modulos} aoMudar={setModulos} />
+              <ErroCampo estado={estado} campo="modulos" />
+            </div>
             <div className="flex gap-2 sm:col-span-2">
               <BotaoEnviar className="h-11" pendente="Adicionando...">
                 Adicionar
@@ -257,7 +308,8 @@ function LinhaMembro({ membro, contasHabilitadas }: { membro: Membro; contasHabi
   const { pendente, executar } = useAcao();
   const [nome, setNome] = useState(membro.nome);
   const [papel, setPapel] = useState<Papel>(membro.papel);
-  const alterado = nome !== membro.nome || papel !== membro.papel;
+  const [modulos, setModulos] = useState<Modulo[]>(membro.modulos);
+  const alterado = nome !== membro.nome || papel !== membro.papel || (papel !== "dono" && !iguais(modulos, membro.modulos));
 
   return (
     <li className="flex flex-col gap-2 rounded-lg border p-3">
@@ -280,7 +332,11 @@ function LinhaMembro({ membro, contasHabilitadas }: { membro: Membro; contasHabi
           id={`papel-${membro.id}`}
           name="papel"
           value={papel}
-          onChange={(e) => setPapel(e.target.value as Papel)}
+          onChange={(e) => {
+            const novo = e.target.value as Papel;
+            setPapel(novo);
+            setModulos(novo === membro.papel ? membro.modulos : [...MODULOS_DO_PAPEL[novo]]);
+          }}
           disabled={membro.euMesmo}
           className="w-36"
         >
@@ -293,6 +349,10 @@ function LinhaMembro({ membro, contasHabilitadas }: { membro: Membro; contasHabi
             Salvar
           </BotaoEnviar>
         ) : null}
+        <div className="basis-full">
+          {membro.euMesmo ? null : <EscolherModulos papel={papel} modulos={modulos} aoMudar={setModulos} />}
+          <ErroCampo estado={estado} campo="modulos" />
+        </div>
       </form>
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <span className="text-muted-foreground">{membro.email ?? "e-mail indisponível"}</span>

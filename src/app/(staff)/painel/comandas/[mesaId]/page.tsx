@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { AtualizarEmTempoReal } from "@/components/staff/atualizar-em-tempo-real";
-import { exigirAcesso } from "@/lib/auth/dal";
+import { exigirModulo } from "@/lib/auth/dal";
 import { id as idSchema } from "@/lib/validacao";
 
 import { carregarComandaDaMesa, carregarMesa } from "../../../garcom/dados";
@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: "Comanda" };
 
 // Mesma tela de comanda do garçom, aberta pelo caixa (pagamentos, estornos, fechamento).
 export default async function ComandaPainelPage(props: PageProps<"/painel/comandas/[mesaId]">) {
-  const acesso = await exigirAcesso("painel");
+  const acesso = await exigirModulo("painel", "comandas");
   const { mesaId } = await props.params;
   if (!idSchema.safeParse(mesaId).success) notFound();
 
@@ -41,6 +41,7 @@ export default async function ComandaPainelPage(props: PageProps<"/painel/comand
           mesaId={mesa.id}
           comanda={comanda}
           podeGerenciar
+          podeEstornar={acesso.modulos.includes("caixa")}
           fusoHorario={acesso.restaurante.fusoHorario}
           origem="painel"
         />

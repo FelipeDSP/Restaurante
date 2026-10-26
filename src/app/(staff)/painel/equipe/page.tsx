@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { exigirDono } from "@/lib/auth/dal";
-import { ehPapel } from "@/lib/auth/papeis";
+import { ehPapel, modulosEfetivos } from "@/lib/auth/papeis";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { origemDoSite } from "@/lib/url";
@@ -16,7 +16,7 @@ export default async function EquipePage() {
 
   const { data, error } = await supabase
     .from("membros")
-    .select("id, user_id, nome, papel, ativo")
+    .select("id, user_id, nome, papel, modulos, ativo")
     .eq("restaurante_id", acesso.restaurante.id)
     .order("ativo", { ascending: false })
     .order("nome");
@@ -41,6 +41,7 @@ export default async function EquipePage() {
             id: m.id,
             nome: m.nome,
             papel: m.papel,
+            modulos: modulosEfetivos(m.papel, m.modulos),
             ativo: m.ativo,
             email: emails.get(m.user_id) ?? null,
             euMesmo: m.id === acesso.membroId,
@@ -55,7 +56,7 @@ export default async function EquipePage() {
       {!admin ? (
         <p role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
           Cadastrar pessoas e trocar senhas ainda não está disponível neste servidor. Fale com o suporte. Editar
-          nome, papel e acesso funciona normalmente.
+          nome, função e acessos funciona normalmente.
         </p>
       ) : null}
       <NovoMembro habilitado={Boolean(admin)} enderecoLogin={`${await origemDoSite()}/login`} restaurante={acesso.restaurante.nome} />

@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { falha, falhaValidacao, mensagemErroBanco, type ResultadoAcao, sucesso } from "@/lib/acoes";
 import { exigirDono } from "@/lib/auth/dal";
-import { PAPEIS } from "@/lib/auth/papeis";
+import { MODULOS, PAPEIS } from "@/lib/auth/papeis";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { id, textoObrigatorio } from "@/lib/validacao";
@@ -14,12 +14,22 @@ const SEM_CHAVE =
   "Cadastro de contas indisponível: configure SUPABASE_SECRET_KEY no servidor.";
 
 const papel = z.enum(PAPEIS, { error: "Escolha o papel." });
+// Módulos marcados (o dono tem todos, a lista dele é ignorada).
+const modulos = z.array(z.enum(MODULOS)).max(MODULOS.length);
+function modulosDoFormulario(formData: FormData) {
+  return formData.getAll("modulos").map(String);
+}
+function semModulo(papelEscolhido: string, lista: string[]) {
+  return papelEscolhido !== "dono" && lista.length === 0;
+}
+
 const senha = z.string().min(8, "A senha precisa de pelo menos 8 caracteres.").max(72);
 
 const novoMembroSchema = z.object({
   nome: textoObrigatorio("o nome", 120),
   email: z.email("Informe um e-mail válido.").trim().toLowerCase(),
   papel,
+  modulos,
   senha: z.preprocess((v) => (v === "" ? undefined : v), senha.optional()),
 });
 
@@ -29,9 +39,13 @@ export async function adicionarMembro(_estado: ResultadoAcao, formData: FormData
     nome: formData.get("nome"),
     email: formData.get("email"),
     papel: formData.get("papel"),
+    modulos: modulosDoFormulario(formData),
     senha: formData.get("senha"),
   });
   if (!dados.success) return falhaValidacao(dados.error, formData);
+  if (semModulo(dados.data.papel, dados.data.modulos)) {
+    return falha("Marque pelo menos um acesso.", { modulos: "Marque pelo menos um." }, formData);
+  }
 
   const admin = createAdminClient();
   if (!admin) return falha(SEM_CHAVE, undefined, formData);
@@ -67,6 +81,7 @@ export async function adicionarMembro(_estado: ResultadoAcao, formData: FormData
     user_id: userId,
     nome: dados.data.nome,
     papel: dados.data.papel,
+    modulos: dados.data.papel === "dono" ? [] : dados.data.modulos,
   });
   if (error) {
     if (contaCriada) await admin.auth.admin.deleteUser(userId);
@@ -90,9 +105,12 @@ export async function adicionarMembro(_estado: ResultadoAcao, formData: FormData
 export async function atualizarMembro(membroId: string, _estado: ResultadoAcao, formData: FormData): Promise<ResultadoAcao> {
   const acesso = await exigirDono();
   const dados = z
-    .object({ id, nome: textoObrigatorio("o nome", 120), papel })
-    .safeParse({ id: membroId, nome: formData.get("nome"), papel: formData.get("papel") });
+    .object({ id, nome: textoObrigatorio("o nome", 120), papel, modulos })
+    .safeParse({ id: membroId, nome: formData.get("nome"), papel: formData.get("papel"), modulos: modulosDoFormulario(formData) });
   if (!dados.success) return falhaValidacao(dados.error, formData);
+  if (semModulo(dados.data.papel, dados.data.modulos)) {
+    return falha("Marque pelo menos um acesso.", { modulos: "Marque pelo menos um." }, formData);
+  }
   if (dados.data.id === acesso.membroId && dados.data.papel !== acesso.papel) {
     return falha("Você não pode alterar o seu próprio papel.", undefined, formData);
   }
@@ -100,7 +118,7 @@ export async function atualizarMembro(membroId: string, _estado: ResultadoAcao, 
   const supabase = await createClient();
   const { error } = await supabase
     .from("membros")
-    .update({ nome: dados.data.nome, papel: dados.data.papel })
+    .update({ nome: dados.data.nome, papel: dados.data.papel, modulos: dados.data.papel === "dono" ? [] : dados.data.modulos })
     .eq("id", dados.data.id)
     .eq("restaurante_id", acesso.restaurante.id);
   if (error) return falha(mensagemErroBanco(error), undefined, formData);

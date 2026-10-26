@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { AtualizarEmTempoReal } from "@/components/staff/atualizar-em-tempo-real";
 import { RecarregarPeriodicamente } from "@/components/staff/recarregar-periodicamente";
-import { exigirAcesso } from "@/lib/auth/dal";
+import { exigirModulo } from "@/lib/auth/dal";
 import { origemDoSite } from "@/lib/url";
 
 import { Computadores } from "./computadores";
@@ -13,7 +13,7 @@ import { Impressoras } from "./impressoras";
 export const metadata: Metadata = { title: "Impressoras" };
 
 export default async function ImpressorasPage() {
-  const acesso = await exigirAcesso("painel");
+  const acesso = await exigirModulo("painel", "caixa");
   const dono = acesso.papel === "dono";
   const [{ computadores, impressoras, pracas, fila }, endereco] = await Promise.all([carregarImpressao(acesso.restaurante.id), origemDoSite()]);
 
