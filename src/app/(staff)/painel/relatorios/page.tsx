@@ -283,13 +283,25 @@ export default async function RelatoriosPage(props: PageProps<"/painel/relatorio
               <Vazio>Nenhum produto vendido.</Vazio>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                {/* Larguras fixas: trocar a ordem só reordena as linhas, sem mexer nas colunas. */}
+                <table className="w-full min-w-[30rem] table-fixed text-sm">
+                  <colgroup>
+                    <col className="w-10" />
+                    <col />
+                    <col className="w-14 sm:w-28" />
+                    <col className="w-14" />
+                    <col className="w-24" />
+                    <col className="w-12" />
+                  </colgroup>
                   <thead>
                     <tr className="text-left text-xs text-muted-foreground">
                       <th className="pb-2 font-medium">#</th>
                       <th className="pb-2 font-medium">Produto</th>
-                      <th className="pb-2 text-right font-medium">Qtd.</th>
-                      <th className="pb-2 text-right font-medium">Total</th>
+                      <th className="pb-2">
+                        <span className="sr-only">{ordem === "quantidade" ? "Quantidade" : "Total"} em barra</span>
+                      </th>
+                      <th className={cn("pb-2 text-right font-medium", ordem === "quantidade" && "text-foreground")}>Qtd.</th>
+                      <th className={cn("pb-2 text-right font-medium", ordem === "valor" && "text-foreground")}>Total</th>
                       <th className="pb-2 text-right font-medium">%</th>
                     </tr>
                   </thead>
@@ -306,22 +318,15 @@ export default async function RelatoriosPage(props: PageProps<"/painel/relatorio
                             {i + 1}
                           </span>
                         </td>
-                        <td className="py-2">
-                          {p.nome}
-                          {p.categoria ? <span className="block text-xs text-muted-foreground">{p.categoria}</span> : null}
+                        <td className="py-2 pr-2">
+                          <span className="block truncate">{p.nome}</span>
+                          {p.categoria ? <span className="block truncate text-xs text-muted-foreground">{p.categoria}</span> : null}
                         </td>
-                        <td className="py-2 text-right tabular-nums">
-                          <span className="flex items-center justify-end gap-2">
-                            {ordem === "quantidade" ? <BarraCelula valor={p.quantidade} maior={maiorProduto} cor={MARCA} /> : null}
-                            {p.quantidade}
-                          </span>
+                        <td className="py-2 pr-3">
+                          <BarraCelula valor={ordem === "valor" ? p.total : p.quantidade} maior={maiorProduto} cor={MARCA} />
                         </td>
-                        <td className="py-2 text-right tabular-nums">
-                          <span className="flex items-center justify-end gap-2">
-                            {ordem === "valor" ? <BarraCelula valor={p.total} maior={maiorProduto} cor={MARCA} /> : null}
-                            {formatarBRL(p.total)}
-                          </span>
-                        </td>
+                        <td className="py-2 text-right tabular-nums">{p.quantidade}</td>
+                        <td className="py-2 text-right tabular-nums">{formatarBRL(p.total)}</td>
                         <td className="py-2 text-right tabular-nums text-muted-foreground">{porcento(p.total, r.vendido)}</td>
                       </tr>
                     ))}

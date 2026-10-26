@@ -241,7 +241,7 @@ export function Barras({ linhas, cor }: { linhas: { chave: string; rotulo: strin
 // Barrinha dentro de uma célula de tabela.
 export function BarraCelula({ valor, maior, cor }: { valor: number; maior: number; cor: string }) {
   return (
-    <span className="hidden h-2 w-20 rounded-full bg-muted sm:block" aria-hidden>
+    <span className="block h-2 w-full rounded-full bg-muted" aria-hidden>
       <span className="block h-2 rounded-full" style={{ width: `${maior ? Math.max(3, (valor / maior) * 100) : 0}%`, backgroundColor: cor }} />
     </span>
   );
