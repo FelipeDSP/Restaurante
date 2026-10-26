@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, GripVertical, MapPin, MessageCircle, Phone } from "lucide-react";
+import { ChevronDown, GripVertical, MapPin, MessageCircle, Pencil, Phone } from "lucide-react";
 import { useState } from "react";
 
 import { useAcao } from "@/components/staff/acoes-cliente";
@@ -12,6 +12,7 @@ import { FORMAS_PAGAMENTO, nomeForma } from "@/lib/rotulos";
 import { cn } from "@/lib/utils";
 
 import { avancarPedido, cancelarPedido, entregarPedido } from "./actions";
+import { EditarPedido } from "./editar-pedido";
 
 export type PedidoDelivery = {
   id: string;
@@ -23,6 +24,7 @@ export type PedidoDelivery = {
   clienteTelefone: string;
   endereco: Record<string, string | null>;
   bairro: string | null;
+  bairroId: string | null;
   formaPrevista: string | null;
   trocoPara: number | null;
   observacao: string | null;
@@ -33,6 +35,8 @@ export type PedidoDelivery = {
   // Praças da cozinha que ainda não marcaram pronto: enquanto houver, quem marca "Pronto" é a cozinha.
   pracasPendentes: number;
   motivoCancelamento: string | null;
+  // Mudanças feitas depois do pedido (editar pedido), da mais antiga para a mais nova.
+  alteracoes: { descricao: string; hora: string }[];
   itens: { id: string; nome: string; quantidade: number; observacao: string | null; adicionais: AdicionalEscolhido[]; total: number }[];
 };
 
@@ -74,6 +78,7 @@ export function CartaoPedido({ pedido, modoInicial = "normal", aoSairDoModo, arr
   const [detalhes, setDetalhes] = useState(false);
   const [motivo, setMotivo] = useState("");
   const [forma, setForma] = useState(pedido.formaPrevista ?? "dinheiro");
+  const [editando, setEditando] = useState(false);
 
   const ativo = pedido.status !== "entregue" && pedido.status !== "cancelado";
   const e = pedido.endereco;
@@ -149,6 +154,9 @@ export function CartaoPedido({ pedido, modoInicial = "normal", aoSairDoModo, arr
           <div>
             <h3 className="flex flex-wrap items-center gap-2 text-lg font-bold">
               Nº {pedido.numero}
+              {pedido.alteracoes.length ? (
+                <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">Editado</span>
+              ) : null}
               {pedido.status === "pronto" ? (
                 <span className="rounded-full bg-green-700 px-2.5 py-0.5 text-xs font-bold tracking-wide whitespace-nowrap text-white uppercase">
                   Pronto
@@ -205,6 +213,15 @@ export function CartaoPedido({ pedido, modoInicial = "normal", aoSairDoModo, arr
               {e.referencia ? <span className="block">Ref.: {e.referencia}</span> : null}
             </span>
           </span>
+          {pedido.alteracoes.length ? (
+            <ul className="mt-1 flex flex-col gap-0.5 rounded-md bg-muted/60 p-2 text-xs text-muted-foreground" aria-label="Alterações">
+              {pedido.alteracoes.map((a, i) => (
+                <li key={i}>
+                  {a.hora} · {a.descricao}
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </div>
       ) : null}
 
@@ -273,11 +290,16 @@ export function CartaoPedido({ pedido, modoInicial = "normal", aoSairDoModo, arr
               Entregue e pago
             </Button>
           ) : null}
+          <Button type="button" variant="ghost" className="h-11" disabled={pendente} onClick={() => setEditando(true)}>
+            <Pencil />
+            Editar
+          </Button>
           <Button type="button" variant="ghost" className="h-11 text-destructive" disabled={pendente} onClick={() => setModo("cancelar")}>
             Cancelar
           </Button>
         </div>
       ) : null}
+      <EditarPedido pedido={pedido} aberto={editando} aoFechar={() => setEditando(false)} />
 
       {modo === "entregar" ? (
         <div className="flex flex-col gap-2 rounded-lg bg-muted/60 p-3">

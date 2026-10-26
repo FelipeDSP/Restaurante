@@ -8,8 +8,10 @@ import { falha, mensagemErroBanco, type ResultadoAcao, sucesso } from "@/lib/aco
 import { exigirAcesso } from "@/lib/auth/dal";
 import { avisarCliente } from "@/lib/avisos-push";
 import { createClient } from "@/lib/supabase/server";
+import { carregarCardapioSalao } from "../../garcom/dados";
 import { id } from "@/lib/validacao";
 
+const FORMAS = ["dinheiro", "pix", "credito", "debito", "outro"] as const;
 const STATUS_AVANCO = ["em_preparo", "pronto", "saiu_entrega"] as const;
 const ROTULO: Record<(typeof STATUS_AVANCO)[number], string> = {
   em_preparo: "Pedido aceito: em preparo.",
@@ -63,8 +65,6 @@ export async function cancelarPedido(pedidoId: string, motivo: string): Promise<
   return sucesso("Pedido cancelado.");
 }
 
-const FORMAS = ["dinheiro", "pix", "credito", "debito", "outro"] as const;
-
 export async function entregarPedido(pedidoId: string, forma: string): Promise<ResultadoAcao> {
   const acesso = await exigirAcesso("painel");
   const dados = z.object({ pedidoId: id, forma: z.enum(FORMAS) }).safeParse({ pedidoId, forma });
@@ -90,4 +90,87 @@ export async function entregarPedido(pedidoId: string, forma: string): Promise<R
   after(() => avisarCliente(dados.data.pedidoId));
   refresh();
   return sucesso("Pedido entregue e pagamento registrado.");
+}
+
+// Cardápio (com opções) e bairros para a janela de edição; carregados só quando ela abre.
+export async function dadosParaEdicao() {
+  const acesso = await exigirAcesso("painel");
+  const supabase = await createClient();
+  const [cardapio, bairros] = await Promise.all([
+    carregarCardapioSalao(acesso.restaurante.id),
+    supabase
+      .from("bairros_entrega")
+      .select("id, nome, taxa")
+      .eq("restaurante_id", acesso.restaurante.id)
+      .eq("ativo", true)
+      .order("nome"),
+  ]);
+  return { cardapio, bairros: bairros.data ?? [] };
+}
+
+const textoCurto = (max: number) => z.string().trim().max(max);
+const edicaoSchema = z.object({
+  pedidoId: id,
+  campos: z
+    .object({
+      cliente_nome: textoCurto(120).min(2, "Informe o nome do cliente."),
+      cliente_telefone: z.string().max(30),
+      endereco: z.object({
+        rua: textoCurto(200),
+        numero: textoCurto(200),
+        complemento: textoCurto(200),
+        referencia: textoCurto(200),
+        bairro: textoCurto(200),
+      }).partial(),
+      bairro_id: id.nullable(),
+      taxa_entrega: z.number().int().min(0).max(100000),
+      forma_pagamento_prevista: z.enum(FORMAS),
+      troco_para: z.number().int().min(0).max(10_000_000).nullable(),
+      observacao: textoCurto(500),
+    })
+    .partial(),
+  remover: z.array(id).max(50),
+  adicionar: z
+    .array(
+      z.object({
+        produto_id: id,
+        quantidade: z.number().int().min(1).max(99),
+        observacao: textoCurto(300),
+        adicionais: z.array(id).max(30),
+      }),
+    )
+    .max(30),
+  motivo: textoCurto(200),
+});
+export type EdicaoPedido = z.input<typeof edicaoSchema>;
+
+// Dono e caixa editam um delivery em andamento; o banco valida, recalcula e registra.
+export async function editarPedido(entrada: EdicaoPedido): Promise<ResultadoAcao> {
+  const acesso = await exigirAcesso("painel");
+  if (acesso.papel !== "dono" && acesso.papel !== "caixa") return falha("Só dono e caixa editam pedidos.");
+  const dados = edicaoSchema.safeParse(entrada);
+  if (!dados.success) return falha(dados.error.issues[0]?.message ?? "Dados inválidos.");
+
+  const supabase = await createClient();
+  // O pedido precisa ser do restaurante ativo (o usuário pode pertencer a mais de um).
+  const { data: pedido } = await supabase
+    .from("pedidos")
+    .select("id")
+    .eq("id", dados.data.pedidoId)
+    .eq("restaurante_id", acesso.restaurante.id)
+    .eq("origem", "delivery")
+    .maybeSingle();
+  if (!pedido) return falha("Pedido não encontrado.");
+
+  const { error } = await supabase.rpc("editar_pedido_delivery", {
+    p_pedido_id: pedido.id,
+    p_campos: dados.data.campos,
+    p_remover: dados.data.remover,
+    p_adicionar: dados.data.adicionar,
+    p_motivo: dados.data.motivo,
+  });
+  if (error) return falha(mensagemErroBanco(error));
+
+  refresh();
+  return sucesso("Pedido atualizado.");
 }

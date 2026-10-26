@@ -672,6 +672,43 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"pedidos_alteracoes": {
+                  Row: {
+                    "criado_em": string,"descricao": string,"id": string,"membro_id": string | null,"pedido_id": string,"restaurante_id": string
+                  }
+                  Insert: {
+                    "criado_em"?: string,"descricao": string,"id"?: string,"membro_id"?: string | null,"pedido_id": string,"restaurante_id": string
+                  }
+                  Update: {
+                    "criado_em"?: string,"descricao"?: string,"id"?: string,"membro_id"?: string | null,"pedido_id"?: string,"restaurante_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "pedidos_alteracoes_restaurante_id_fkey"
+      columns: ["restaurante_id"]
+isOneToOne: false
+      referencedRelation: "restaurantes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "pedidos_alteracoes_restaurante_id_fkey"
+      columns: ["restaurante_id"]
+isOneToOne: false
+      referencedRelation: "restaurantes_publicos"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "pedidos_alteracoes_restaurante_id_membro_id_fkey"
+      columns: ["restaurante_id","membro_id"]
+isOneToOne: false
+      referencedRelation: "membros"
+      referencedColumns: ["restaurante_id","id"]
+    },{
+      foreignKeyName: "pedidos_alteracoes_restaurante_id_pedido_id_fkey"
+      columns: ["restaurante_id","pedido_id"]
+isOneToOne: false
+      referencedRelation: "pedidos"
+      referencedColumns: ["restaurante_id","id"]
+    }
+                  ]
                 },"pedidos_avisos": {
                   Row: {
                     "auth": string,"criado_em": string,"endpoint": string,"id": string,"p256dh": string,"pedido_id": string,"restaurante_id": string
@@ -946,6 +983,9 @@ isOneToOne: false
                            },
 "definir_codigo_pareamento":
 { Args: { "p_agente_id": string,"p_codigo_hash": string }; Returns: string
+                           },
+"editar_pedido_delivery":
+{ Args: { "p_adicionar"?: Json,"p_campos"?: Json,"p_motivo"?: string,"p_pedido_id": string,"p_remover"?: (string)[] }; Returns: Json
                            },
 "entrar_como_cliente":
 { Args: { "p_nome": string,"p_restaurante_id": string }; Returns: string

@@ -25,12 +25,13 @@ export default async function DeliveryPage() {
   const { data, error } = await supabase
     .from("pedidos")
     .select(
-      `id, numero, status, criado_em, cliente_nome, cliente_telefone, endereco, forma_pagamento_prevista, troco_para,
+      `id, numero, status, criado_em, cliente_nome, cliente_telefone, endereco, bairro_id, forma_pagamento_prevista, troco_para,
        observacao, subtotal, taxa_entrega, total, motivo_cancelamento,
        bairro:bairros_entrega!pedidos_restaurante_id_bairro_id_fkey(nome),
        itens_pedido(id, nome_produto, quantidade, observacao, adicionais, total, cancelado_em),
        pagamentos(valor, estornado_em),
-       tarefas_producao(status)`,
+       tarefas_producao(status),
+       pedidos_alteracoes(descricao, criado_em)`,
     )
     .eq("restaurante_id", acesso.restaurante.id)
     .eq("origem", "delivery")
@@ -65,6 +66,10 @@ export default async function DeliveryPage() {
     pago: p.pagamentos.filter((pg) => !pg.estornado_em).reduce((soma, pg) => soma + pg.valor, 0),
     pracasPendentes: p.tarefas_producao.filter((t) => t.status === "pendente").length,
     motivoCancelamento: p.motivo_cancelamento,
+    bairroId: p.bairro_id,
+    alteracoes: p.pedidos_alteracoes
+      .toSorted((a, b) => a.criado_em.localeCompare(b.criado_em))
+      .map((a) => ({ descricao: a.descricao, hora: horaLocal(a.criado_em, fuso) })),
     itens: p.itens_pedido
       .filter((i) => !i.cancelado_em)
       .map((i) => ({

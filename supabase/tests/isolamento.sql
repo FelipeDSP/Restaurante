@@ -1613,6 +1613,92 @@ begin
 end;
 $$;
 
+-- ======================================================================
+-- Editar pedido de delivery
+-- ======================================================================
+do $$
+declare
+  a constant uuid := md5('brasa-espetinhos')::uuid;
+  v_pedido uuid;
+  v_item uuid;
+  v_produto uuid;
+  v_res jsonb;
+  n integer;
+begin
+  perform pg_temp.entrar('caixa.brasa@exemplo.com');
+  if not exists (select 1 from public.caixa_sessoes where restaurante_id = a and fechada_em is null) then
+    insert into public.caixa_sessoes (restaurante_id, valor_inicial) values (a, 0);
+  end if;
+
+  perform pg_temp.admin();
+  select id into v_produto from public.produtos p
+  where restaurante_id = a and disponivel
+    and not exists (select 1 from public.produtos_grupos_adicionais g where g.produto_id = p.id)
+  order by nome limit 1;
+  insert into public.pedidos (restaurante_id, origem, cliente_nome, cliente_telefone, endereco, taxa_entrega, forma_pagamento_prevista, status)
+  values (a, 'delivery', 'Cliente Edição', '69999993333', '{"rua":"Rua C","numero":"3","bairro":"Centro"}', 500, 'pix', 'recebido')
+  returning id into v_pedido;
+  insert into public.itens_pedido (restaurante_id, pedido_id, produto_id, nome_produto, preco_unitario, quantidade)
+  values (a, v_pedido, v_produto, '', 0, 2) returning id into v_item;
+
+  -- Cozinha e garçom não mexem no delivery.
+  perform pg_temp.entrar('cozinha.brasa@exemplo.com');
+  begin
+    update public.itens_pedido set cancelado_em = now(), motivo_cancelamento = 'x' where id = v_item;
+    perform pg_temp.ok(false, 'editar delivery: cozinha não cancela item direto');
+  exception when others then
+    perform pg_temp.ok(true, 'editar delivery: cozinha não cancela item direto');
+  end;
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  begin
+    perform public.editar_pedido_delivery(v_pedido, '{"taxa_entrega":0}');
+    perform pg_temp.ok(false, 'editar delivery: garçom não edita');
+  exception when others then
+    perform pg_temp.ok(true, 'editar delivery: garçom não edita');
+  end;
+
+  -- Caixa edita taxa, endereço, adiciona e remove item; tudo registrado.
+  perform pg_temp.entrar('caixa.brasa@exemplo.com');
+  v_res := public.editar_pedido_delivery(
+    v_pedido,
+    '{"taxa_entrega":0,"endereco":{"numero":"30","complemento":"casa 2"}}',
+    array[v_item],
+    jsonb_build_array(jsonb_build_object('produto_id', v_produto, 'quantidade', 1)),
+    'Cliente pediu para trocar'
+  );
+  select count(*) into n from public.pedidos
+  where id = v_pedido and taxa_entrega = 0 and endereco ->> 'numero' = '30' and endereco ->> 'rua' = 'Rua C'
+    and total = (select sum(total) from public.itens_pedido where pedido_id = v_pedido and cancelado_em is null);
+  perform pg_temp.ok(n = 1, 'editar delivery: taxa, endereço e total recalculado');
+  select count(*) into n from public.itens_pedido where pedido_id = v_pedido and cancelado_em is null;
+  perform pg_temp.ok(n = 1, 'editar delivery: item trocado');
+  select count(*) into n from public.pedidos_alteracoes where pedido_id = v_pedido;
+  perform pg_temp.ok(n = 4, 'editar delivery: quatro alterações registradas');
+
+  begin
+    perform public.editar_pedido_delivery(v_pedido, '{}', array[(select id from public.itens_pedido where pedido_id = v_pedido and cancelado_em is null)]);
+    perform pg_temp.ok(false, 'editar delivery: não deixa o pedido sem itens');
+  exception when others then
+    perform pg_temp.ok(true, 'editar delivery: não deixa o pedido sem itens');
+  end;
+  begin
+    perform public.editar_pedido_delivery(v_pedido, '{"forma_pagamento_prevista":"dinheiro","troco_para":1}');
+    perform pg_temp.ok(false, 'editar delivery: troco menor que o total é recusado');
+  exception when others then
+    perform pg_temp.ok(true, 'editar delivery: troco menor que o total é recusado');
+  end;
+
+  -- Fora da edição, os campos continuam travados.
+  begin
+    update public.pedidos set taxa_entrega = 999 where id = v_pedido;
+    perform pg_temp.ok(false, 'editar delivery: fora da edição a taxa não muda');
+  exception when others then
+    perform pg_temp.ok(true, 'editar delivery: fora da edição a taxa não muda');
+  end;
+  perform pg_temp.admin();
+end;
+$$;
+
 select n, ok, teste from resultado order by n;
 select count(*) filter (where not ok) as falhas, count(*) as total from resultado;
 

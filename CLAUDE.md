@@ -173,6 +173,10 @@ Já existe (conta do cliente do delivery, opcional):
 - Telas: `/[slug]/entrar` (celular → código → nome), cartão "Minha conta" em `/[slug]/pedidos` (nome, endereços, sair, excluir) e checkout preenchido pela conta (endereços usados viram botões). Sessão e dados em `src/app/(publico)/[slug]/conta.ts`; telefone em `src/lib/telefone.ts`.
 - Local: `supabase/config.toml` liga o login por telefone (`[auth.sms]`, Twilio de mentira só para habilitar) e o gancho em `http://host.docker.internal:3000`; o segredo fica em `supabase/.env` e `.env.local` (fora do git).
 
+Já existe (editar pedido de delivery):
+- Dono e caixa editam um delivery em andamento ("Editar" no cartão do painel): itens (tirar/pôr, com opções), cliente, endereço, bairro/taxa, forma de pagamento/troco e observação. Só pela RPC `editar_pedido_delivery` (marca a transação com `rest.edicao_pedido`; fora dela os campos e os itens do delivery continuam travados pelos triggers). O banco recalcula o total, recusa troco menor que o total, total abaixo do já pago e pedido sem itens.
+- Cada mudança vira uma linha em `pedidos_alteracoes` (só dono/caixa leem), mostrada nos detalhes do cartão com o selo "Editado". Item novo vai para a cozinha pelo trigger; item tirado sai como cancelamento na impressora se já tinha sido impresso.
+
 Já existe (avisos no celular do cliente, Web Push):
 - Na página de acompanhamento, "Avisar quando o pedido mudar" pede permissão, registra `/sw.js` (só avisos, sem cache) e manda a inscrição para `/api/pedidos/[id]/avisos` (aceita só serviços de push dos navegadores: FCM, Mozilla, Apple, Windows). Tabela `pedidos_avisos` só a chave secreta lê e grava.
 - O painel avisa depois de aceitar, saiu para entrega, entregar e cancelar (`after(() => avisarCliente(id))`, `src/lib/avisos-push.ts`); o status vem do banco. Pedido terminado apaga as inscrições.
