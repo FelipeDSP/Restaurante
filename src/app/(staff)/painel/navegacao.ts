@@ -1,4 +1,4 @@
-import { type Papel, type Permissao, podeAcessar } from "@/lib/auth/papeis";
+import { type Papel, type Permissao, PERMISSOES_INICIO } from "@/lib/auth/papeis";
 
 export type GrupoNavegacao = "Operação" | "Cadastros" | "Ajustes";
 
@@ -6,13 +6,13 @@ export type GrupoNavegacao = "Operação" | "Cadastros" | "Ajustes";
 export type Secao = { href: string; rotulo: string; acesso?: Permissao };
 
 // "secoes": páginas que ficam dentro do mesmo item do menu, mostradas como abas no topo.
-// "acesso": permissões que mostram o item (qualquer uma); "painel" = qualquer permissão do painel;
+// "acesso": permissões que mostram o item (qualquer uma); "inicio" = quem tem o Início (não só mesas);
 // "dono" = só o dono. "ocultarCom": some para quem tem esta permissão (vê a versão completa noutro item).
 export type ItemNavegacao = {
   href: string;
   rotulo: string;
   grupo: GrupoNavegacao;
-  acesso: Permissao[] | "painel" | "dono";
+  acesso: Permissao[] | "inicio" | "dono";
   ocultarCom?: Permissao;
   secoes?: Secao[];
 };
@@ -20,10 +20,20 @@ export type ItemNavegacao = {
 export const GRUPOS: GrupoNavegacao[] = ["Operação", "Cadastros", "Ajustes"];
 
 export const NAVEGACAO: ItemNavegacao[] = [
-  { href: "/painel", rotulo: "Início", grupo: "Operação", acesso: "painel" },
+  { href: "/painel", rotulo: "Início", grupo: "Operação", acesso: "inicio" },
   { href: "/painel/delivery", rotulo: "Delivery", grupo: "Operação", acesso: ["delivery"] },
   // Mapa de mesas no próprio painel (abrir, lançar, cobrar, fechar), largo para o computador.
-  { href: "/painel/comandas", rotulo: "Mesas", grupo: "Operação", acesso: ["comandas_painel", "garcom_app"] },
+  {
+    href: "/painel/comandas",
+    rotulo: "Mesas",
+    grupo: "Operação",
+    acesso: ["comandas_painel", "garcom_app"],
+    secoes: [
+      { href: "/painel/comandas", rotulo: "Mesas" },
+      // Praças sem tela: o garçom marca que retirou o prato.
+      { href: "/painel/comandas/pracas", rotulo: "Praças", acesso: "garcom_app" },
+    ],
+  },
   { href: "/painel/caixa", rotulo: "Caixa", grupo: "Operação", acesso: ["caixa_operar"] },
   { href: "/painel/relatorios", rotulo: "Relatórios", grupo: "Operação", acesso: ["relatorios"] },
   { href: "/cozinha", rotulo: "Tela da cozinha", grupo: "Operação", acesso: ["cozinha_tela"] },
@@ -80,7 +90,7 @@ export function itensDoMenu(papel: Papel, permissoes: readonly Permissao[]): Ite
   return NAVEGACAO.flatMap((item): ItemNavegacao[] => {
     if (item.ocultarCom && tem(item.ocultarCom)) return [];
     const pode =
-      item.acesso === "dono" ? papel === "dono" : item.acesso === "painel" ? podeAcessar(permissoes, "painel") : item.acesso.some(tem);
+      item.acesso === "dono" ? papel === "dono" : item.acesso === "inicio" ? PERMISSOES_INICIO.some(tem) : item.acesso.some(tem);
     if (!pode) return [];
     if (!item.secoes) return [item];
     const secoes = item.secoes.filter((s) => !s.acesso || tem(s.acesso));

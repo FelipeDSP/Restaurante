@@ -48,12 +48,18 @@ export const GRUPOS_PERMISSOES: { titulo: string; itens: Permissao[] }[] = [
   { titulo: "Gestão", itens: ["relatorios", "cardapio", "mesas", "cupons", "entregadores", "impressao", "restaurante"] },
 ];
 
-// Permissões que abrem cada área.
+// Permissões que abrem cada área. O painel é o app de toda a equipe (no celular, com abas embaixo);
+// a cozinha continua em tela cheia, para tablet ou TV.
 const PERMISSOES_DA_AREA: Record<Area, readonly Permissao[]> = {
-  painel: PERMISSOES.filter((p) => !["garcom_app", "cozinha_tela", "comandas_gerenciar"].includes(p)),
+  painel: PERMISSOES.filter((p) => p !== "cozinha_tela"),
   garcom: ["garcom_app"],
   cozinha: ["cozinha_tela"],
 };
+
+// Quem tem alguma destas vê o Início do painel; quem só atende mesas começa direto nas Mesas.
+export const PERMISSOES_INICIO: readonly Permissao[] = PERMISSOES.filter(
+  (p) => !["garcom_app", "comandas_painel", "comandas_gerenciar", "cozinha_tela"].includes(p),
+);
 
 export const NOME_PAPEL: Record<Papel, string> = {
   dono: "Dono",
@@ -89,9 +95,9 @@ export function podeAcessar(permissoes: readonly Permissao[], area: Area): boole
   return PERMISSOES_DA_AREA[area].some((p) => permissoes.includes(p));
 }
 
-export function rotaInicial(permissoes: readonly Permissao[]): "/painel" | "/garcom" | "/cozinha" | "/sem-acesso" {
-  if (podeAcessar(permissoes, "painel")) return "/painel";
-  if (podeAcessar(permissoes, "garcom")) return "/garcom";
+export function rotaInicial(permissoes: readonly Permissao[]): "/painel" | "/painel/comandas" | "/cozinha" | "/sem-acesso" {
+  if (PERMISSOES_INICIO.some((p) => permissoes.includes(p))) return "/painel";
+  if (permissoes.includes("garcom_app") || permissoes.includes("comandas_painel")) return "/painel/comandas";
   if (podeAcessar(permissoes, "cozinha")) return "/cozinha";
   return "/sem-acesso";
 }

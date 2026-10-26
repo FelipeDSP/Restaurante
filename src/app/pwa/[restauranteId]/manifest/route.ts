@@ -2,7 +2,7 @@ import { urlIcone } from "@/lib/icone";
 import { buscarRestaurantePublico } from "@/lib/supabase/publico";
 import { id } from "@/lib/validacao";
 
-// Manifest do app do garçom com a marca do restaurante (white label).
+// Manifest do app da equipe com a marca do restaurante (white label).
 // Rota pública: o navegador baixa o manifest sem cookies.
 // Nome embaixo do ícone (cabe ~12 letras): palavras inteiras, sem cortar no meio ("Brasa Espeti").
 function nomeCurto(nome: string): string {
@@ -49,11 +49,13 @@ export async function GET(request: Request, ctx: RouteContext<"/pwa/[restaurante
   }
 
   const manifest = {
+    // Mesmo id de quando o app era só do garçom: quem já instalou recebe a atualização (sem ícone duplicado).
     id: `/garcom?r=${restauranteId}`,
     name: restaurante.nome,
     short_name: nomeCurto(restaurante.nome),
-    description: `Atendimento de mesas · ${restaurante.nome}`,
-    start_url: "/garcom",
+    description: `Equipe · ${restaurante.nome}`,
+    // Abre na área da pessoa (o painel manda quem só atende mesas para as Mesas).
+    start_url: "/painel",
     scope: "/",
     display: "standalone",
     orientation: "portrait",

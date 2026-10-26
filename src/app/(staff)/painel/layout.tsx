@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { ShieldCheck } from "lucide-react";
 import Link from "next/link";
 
@@ -12,17 +12,32 @@ import { estiloMarca } from "@/lib/cores";
 import { urlIcone } from "@/lib/icone";
 import { createClient } from "@/lib/supabase/server";
 
+import { AvisoChamado } from "../garcom/aviso-chamado";
+import { AvisoPronto } from "../garcom/aviso-pronto";
 import { AvisoAssinatura } from "./aviso-assinatura";
 import { ChamarGarcom } from "./chamar-garcom";
-import { AbasSecao, MenuCelular, MenuLateral } from "./menu-painel";
+import { AbasSecao, BarraApp, MenuLateral } from "./menu-painel";
 import { itensDoMenu } from "./navegacao";
 
+// App da equipe com a marca do restaurante: manifest e ícones em rotas públicas por restaurante
+// (instala pelo navegador: "Adicionar à tela de início").
 export async function generateMetadata(): Promise<Metadata> {
   const { restaurante } = await exigirAcesso("painel");
   return {
     title: { template: `%s · ${restaurante.nome}`, default: restaurante.nome },
-    icons: { icon: urlIcone(restaurante, 192), apple: urlIcone(restaurante, 180) },
+    applicationName: restaurante.nome,
+    manifest: `/pwa/${restaurante.id}/manifest?v=${urlIcone(restaurante, 192).split("v=")[1]}`,
+    icons: {
+      icon: [{ url: urlIcone(restaurante, 192), sizes: "192x192", type: "image/png" }],
+      apple: [{ url: urlIcone(restaurante, 180), sizes: "180x180", type: "image/png" }],
+    },
+    appleWebApp: { capable: true, title: restaurante.nome, statusBarStyle: "default" },
   };
+}
+
+export async function generateViewport(): Promise<Viewport> {
+  const { restaurante } = await exigirAcesso("painel");
+  return { themeColor: restaurante.corPrimaria, width: "device-width", initialScale: 1, viewportFit: "cover" };
 }
 
 // Pedidos de delivery aguardando aceite (contador no menu).
@@ -71,25 +86,32 @@ export default async function PainelLayout({ children }: LayoutProps<"/painel">)
               nome={acesso.nome}
               papel={acesso.funcao}
               podeTrocarRestaurante={acesso.vinculos.length > 1}
-              outraArea={acesso.permissoes.includes("garcom_app") ? { href: "/garcom", rotulo: "Abrir área do garçom" } : undefined}
               adminPlataforma={adminPlataforma}
               assinatura={acesso.papel === "dono"}
             />
           </div>
         </div>
-        <MenuCelular itens={itens} novos={novos} />
         <FaixaConexao />
       </header>
+      {/* Quem atende mesas recebe os avisos em qualquer tela: prato pronto e chamado do caixa. */}
+      {acesso.permissoes.includes("garcom_app") ? (
+        <>
+          <AvisoPronto restauranteId={acesso.restaurante.id} membroId={acesso.membroId} />
+          <AvisoChamado restauranteId={acesso.restaurante.id} membroId={acesso.membroId} />
+        </>
+      ) : null}
       <div className="flex flex-1">
         <MenuLateral itens={itens} novos={novos} />
         <div className="flex min-w-0 flex-1 flex-col">
           <AvisoAssinatura assinatura={assinatura} />
-          <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col">
+          {/* No celular, espaço para a barra de abas do rodapé. */}
+          <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col pb-20 lg:pb-0">
             <AbasSecao itens={itens} />
             {children}
           </div>
         </div>
       </div>
+      <BarraApp itens={itens} novos={novos} />
     </div>
   );
 }

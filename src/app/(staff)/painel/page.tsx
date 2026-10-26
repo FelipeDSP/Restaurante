@@ -3,8 +3,8 @@ import Link from "next/link";
 import { AtualizarEmTempoReal } from "@/components/staff/atualizar-em-tempo-real";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { exigirAcesso } from "@/lib/auth/dal";
-import type { Permissao } from "@/lib/auth/papeis";
+import { exigirPermissao } from "@/lib/auth/dal";
+import { type Permissao, PERMISSOES_INICIO } from "@/lib/auth/papeis";
 import { formatarBRL } from "@/lib/dinheiro";
 import { dataHoraLocal } from "@/lib/tempo";
 
@@ -74,7 +74,8 @@ async function StatusCaixa({ restauranteId, fuso, permissoes }: { restauranteId:
 }
 
 export default async function PainelPage() {
-  const acesso = await exigirAcesso("painel");
+  // Quem só atende mesas não tem Início: vai direto para as Mesas.
+  const acesso = await exigirPermissao("painel", ...PERMISSOES_INICIO);
 
   return (
     <main className="flex flex-col gap-6 p-4 md:p-6">

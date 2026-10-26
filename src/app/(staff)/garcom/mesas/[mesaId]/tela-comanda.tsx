@@ -739,10 +739,10 @@ export function TelaComanda({ mesaId, comanda, podeGerenciar, podeEstornar, fuso
   // Fecha quando está paga; se todos os itens foram cancelados (total zero), fecha sem pagamento.
   const podeFechar = comanda.itens.length > 0 && comanda.pago >= comanda.total;
   const itensAtivos = comanda.itens.filter((i) => !i.cancelado);
-  const voltarAoMapa = () => router.push(origem === "painel" ? "/painel/comandas" : "/garcom");
+  const voltarAoMapa = () => router.push("/painel/comandas");
 
   const painel = origem === "painel";
-  const linkLancar = painel ? `/painel/comandas/${mesaId}/lancar` : `/garcom/mesas/${mesaId}/lancar`;
+  const linkLancar = `/painel/comandas/${mesaId}/lancar`;
 
   return (
     <div

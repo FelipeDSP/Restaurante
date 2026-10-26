@@ -158,10 +158,12 @@ export function AlertaPedidos({ restauranteId }: { restauranteId: string }) {
       <button
         type="button"
         onClick={ativarSom}
+        aria-label="Ativar som dos pedidos"
         className="flex h-11 items-center gap-2 rounded-full bg-black/15 px-3 text-sm font-semibold hover:bg-black/25"
       >
         <BellOff className="size-5" aria-hidden />
-        Ativar som
+        {/* No celular só o ícone: o nome do restaurante precisa do espaço. */}
+        <span className="hidden sm:inline">Ativar som</span>
       </button>
     );
   }

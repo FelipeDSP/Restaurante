@@ -99,11 +99,10 @@ export default async function DeliveryPage() {
       <AtualizarEmTempoReal restauranteId={acesso.restaurante.id} tabelas={["pedidos", "pagamentos", "tarefas_producao"]} />
       <div>
         <h1 className="text-2xl font-semibold">Delivery</h1>
-        <p className="text-sm text-muted-foreground">
-          {sessao
-            ? "Novos pedidos chegam sozinhos, com aviso sonoro (toque no sino no topo para ativar o som). No computador, arraste o cartão para a próxima coluna."
-            : "Caixa fechado: o site não recebe pedidos até o caixa ser aberto."}
-        </p>
+        {/* Só o que importa agora: com o caixa fechado, o site não recebe pedidos. */}
+        {!sessao ? (
+          <p className="text-sm font-medium text-destructive">Caixa fechado: o site não recebe pedidos até o caixa ser aberto.</p>
+        ) : null}
       </div>
       <QuadroDelivery pedidos={pedidos} entregadores={entregadores} />
     </main>

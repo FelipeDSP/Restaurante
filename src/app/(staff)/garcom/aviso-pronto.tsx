@@ -51,7 +51,7 @@ export function AvisoPronto({ restauranteId, membroId }: { restauranteId: string
       toast.success(`Mesa ${pedido.comanda.mesa?.numero ?? ""}: pedido nº ${pedido.numero} pronto`, {
         description: "Pode levar para a mesa.",
         duration: Infinity,
-        action: { label: "Ver mesa", onClick: () => router.push(`/garcom/mesas/${mesaId}`) },
+        action: { label: "Ver mesa", onClick: () => router.push(`/painel/comandas/${mesaId}`) },
         cancel: { label: "Ok", onClick: () => {} },
       });
     },

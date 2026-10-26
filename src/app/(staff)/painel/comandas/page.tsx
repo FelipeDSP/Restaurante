@@ -12,8 +12,8 @@ import { caixaEstaAberto, carregarMapa, type MesaNoMapa } from "../../garcom/dad
 
 export const metadata: Metadata = { title: "Mesas" };
 
-// Mapa de mesas do painel: o mesmo do app do garçom, largo e com o que o caixa precisa ver
-// (garçom, tempo, total e quanto falta). Tocar abre a mesa (livre: abrir; ocupada: a comanda).
+// Mapa de mesas (o app de toda a equipe): 3 por linha no celular, mais no computador. Ocupada fica
+// na cor do restaurante e conta pedida em amarelo, para achar de longe; tocar abre a mesa.
 function CartaoMesa({ mesa }: { mesa: MesaNoMapa }) {
   const falta = Math.max(0, mesa.total - mesa.pago);
   return (
@@ -21,10 +21,10 @@ function CartaoMesa({ mesa }: { mesa: MesaNoMapa }) {
       href={`/painel/comandas/${mesa.id}`}
       aria-label={`Mesa ${mesa.numero}: ${NOME_STATUS_MESA[mesa.status]}${mesa.pedidosProntos > 0 ? ", prato pronto para servir" : ""}`}
       className={cn(
-        "relative flex min-h-32 flex-col gap-2 rounded-xl border-2 p-3 transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
+        "relative flex min-h-28 flex-col justify-between gap-2 rounded-xl border-2 p-3 transition-transform active:scale-95 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none sm:min-h-32",
         mesa.status === "livre" && "border-dashed border-border bg-background text-muted-foreground hover:border-solid hover:bg-muted/40",
-        mesa.status === "aberta" && "border-[var(--cor-primaria)] bg-background hover:bg-muted/40",
-        mesa.status === "conta_pedida" && "border-amber-500 bg-amber-50 hover:bg-amber-100",
+        mesa.status === "aberta" && "border-[var(--cor-primaria)] bg-[var(--cor-primaria)] text-[var(--cor-primaria-contraste)]",
+        mesa.status === "conta_pedida" && "border-amber-500 bg-amber-300 text-amber-950",
       )}
     >
       {mesa.pedidosProntos > 0 ? (
@@ -32,33 +32,23 @@ function CartaoMesa({ mesa }: { mesa: MesaNoMapa }) {
           Pronto
         </span>
       ) : null}
-      <div className="flex items-start justify-between gap-2">
-        <span className={cn("leading-tight font-bold break-words text-foreground", mesa.numero.length > 3 ? "text-lg" : "text-2xl leading-none")}>
-          {mesa.numero}
-        </span>
-        <span
-          className={cn(
-            "shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold",
-            mesa.status === "aberta" && "bg-[var(--cor-primaria)] text-[var(--cor-primaria-contraste)]",
-            mesa.status === "conta_pedida" && "bg-amber-300 text-amber-950",
-            mesa.status === "livre" && "bg-muted",
-          )}
-        >
-          {NOME_STATUS_MESA[mesa.status]}
-        </span>
-      </div>
-      {mesa.status !== "livre" ? (
-        <div className="mt-auto flex flex-col gap-0.5 text-sm">
-          <span className="truncate text-muted-foreground">
-            {mesa.garcom ?? "—"}
-            {mesa.abertaEm ? ` · ${tempoDesde(mesa.abertaEm)}` : ""}
-          </span>
-          <span className="flex items-baseline justify-between gap-2">
-            <span className="text-lg font-semibold tabular-nums">{formatarBRL(mesa.total)}</span>
-            {mesa.pago > 0 ? <span className="text-xs tabular-nums text-muted-foreground">falta {formatarBRL(falta)}</span> : null}
-          </span>
-        </div>
-      ) : null}
+      {/* Nomes longos ("Varanda 1") em fonte menor para não quebrar no meio da palavra. */}
+      <span className={cn("leading-tight font-bold break-words", mesa.status === "livre" && "text-foreground", mesa.numero.length > 3 ? "text-base sm:text-lg" : "text-2xl leading-none")}>
+        {mesa.numero}
+      </span>
+      <span className="flex flex-col gap-0.5 text-xs leading-tight sm:text-sm">
+        <span className="font-semibold">{NOME_STATUS_MESA[mesa.status]}</span>
+        {mesa.status !== "livre" ? (
+          <>
+            <span className="font-semibold tabular-nums">{formatarBRL(mesa.total)}</span>
+            {mesa.pago > 0 ? <span className="tabular-nums opacity-80">falta {formatarBRL(falta)}</span> : null}
+            <span className="truncate opacity-80">
+              {mesa.abertaEm ? tempoDesde(mesa.abertaEm) : ""}
+              <span className="hidden sm:inline">{mesa.garcom ? ` · ${mesa.garcom}` : ""}</span>
+            </span>
+          </>
+        ) : null}
+      </span>
     </Link>
   );
 }
@@ -75,7 +65,8 @@ export default async function MesasPainelPage() {
       <AtualizarEmTempoReal restauranteId={acesso.restaurante.id} tabelas={["comandas", "pagamentos", "tarefas_producao", "caixa_sessoes"]} />
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-semibold">Mesas</h1>
+          {/* Com a aba Praças, o título já está nas abas (Mesas | Praças). */}
+          <h1 className={acesso.permissoes.includes("garcom_app") ? "sr-only" : "text-2xl font-semibold"}>Mesas</h1>
           <p className="text-sm text-muted-foreground">
             {ocupadas.length} de {mesas.length} ocupadas
             {contaPedida > 0 ? ` · ${contaPedida} com conta pedida` : ""} · {formatarBRL(aReceber)} a receber
@@ -102,7 +93,7 @@ export default async function MesasPainelPage() {
           ) : null}
         </p>
       ) : (
-        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        <ul className="grid grid-cols-3 gap-3 lg:grid-cols-4 xl:grid-cols-5">
           {mesas.map((mesa) => (
             <li key={mesa.id}>
               <CartaoMesa mesa={mesa} />
