@@ -1,58 +1,84 @@
 import type { Metadata } from "next";
-import { Plus } from "lucide-react";
 import Link from "next/link";
 
 import { AtualizarEmTempoReal } from "@/components/staff/atualizar-em-tempo-real";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { exigirPermissao } from "@/lib/auth/dal";
 import { formatarBRL } from "@/lib/dinheiro";
-import { createClient } from "@/lib/supabase/server";
+import { NOME_STATUS_MESA } from "@/lib/rotulos";
 import { tempoDesde } from "@/lib/tempo";
 import { cn } from "@/lib/utils";
 
-import { caixaEstaAberto } from "../../garcom/dados";
+import { caixaEstaAberto, carregarMapa, type MesaNoMapa } from "../../garcom/dados";
 
-export const metadata: Metadata = { title: "Comandas" };
+export const metadata: Metadata = { title: "Mesas" };
 
-export default async function ComandasPage() {
-  const acesso = await exigirPermissao("painel", "comandas_painel");
-  const supabase = await createClient();
+// Mapa de mesas do painel: o mesmo do app do garçom, largo e com o que o caixa precisa ver
+// (garçom, tempo, total e quanto falta). Tocar abre a mesa (livre: abrir; ocupada: a comanda).
+function CartaoMesa({ mesa }: { mesa: MesaNoMapa }) {
+  const falta = Math.max(0, mesa.total - mesa.pago);
+  return (
+    <Link
+      href={`/painel/comandas/${mesa.id}`}
+      aria-label={`Mesa ${mesa.numero}: ${NOME_STATUS_MESA[mesa.status]}${mesa.pedidosProntos > 0 ? ", prato pronto para servir" : ""}`}
+      className={cn(
+        "relative flex min-h-32 flex-col gap-2 rounded-xl border-2 p-3 transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
+        mesa.status === "livre" && "border-dashed border-border bg-background text-muted-foreground hover:border-solid hover:bg-muted/40",
+        mesa.status === "aberta" && "border-[var(--cor-primaria)] bg-background hover:bg-muted/40",
+        mesa.status === "conta_pedida" && "border-amber-500 bg-amber-50 hover:bg-amber-100",
+      )}
+    >
+      {mesa.pedidosProntos > 0 ? (
+        <span className="absolute -top-2 -right-2 rounded-full bg-green-600 px-2 py-0.5 text-xs font-bold text-white shadow ring-2 ring-background">
+          Pronto
+        </span>
+      ) : null}
+      <div className="flex items-start justify-between gap-2">
+        <span className={cn("leading-tight font-bold break-words text-foreground", mesa.numero.length > 3 ? "text-lg" : "text-2xl leading-none")}>
+          {mesa.numero}
+        </span>
+        <span
+          className={cn(
+            "shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold",
+            mesa.status === "aberta" && "bg-[var(--cor-primaria)] text-[var(--cor-primaria-contraste)]",
+            mesa.status === "conta_pedida" && "bg-amber-300 text-amber-950",
+            mesa.status === "livre" && "bg-muted",
+          )}
+        >
+          {NOME_STATUS_MESA[mesa.status]}
+        </span>
+      </div>
+      {mesa.status !== "livre" ? (
+        <div className="mt-auto flex flex-col gap-0.5 text-sm">
+          <span className="truncate text-muted-foreground">
+            {mesa.garcom ?? "—"}
+            {mesa.abertaEm ? ` · ${tempoDesde(mesa.abertaEm)}` : ""}
+          </span>
+          <span className="flex items-baseline justify-between gap-2">
+            <span className="text-lg font-semibold tabular-nums">{formatarBRL(mesa.total)}</span>
+            {mesa.pago > 0 ? <span className="text-xs tabular-nums text-muted-foreground">falta {formatarBRL(falta)}</span> : null}
+          </span>
+        </div>
+      ) : null}
+    </Link>
+  );
+}
 
-  const [{ data, error }, caixaAberto] = await Promise.all([
-    supabase
-      .from("comandas")
-      .select(
-        `id, status, total, aberta_em, pessoas,
-         mesa:mesas!comandas_restaurante_id_mesa_id_fkey(id, numero, ordem),
-         garcom:membros!comandas_restaurante_id_garcom_id_fkey(nome),
-         pagamentos(valor, estornado_em)`,
-      )
-      .eq("restaurante_id", acesso.restaurante.id)
-      .in("status", ["aberta", "conta_pedida"])
-      .order("aberta_em"),
-    caixaEstaAberto(acesso.restaurante.id),
-  ]);
-  if (error) throw new Error(error.message);
-
-  const comandas = data
-    .map((c) => {
-      const pago = c.pagamentos.filter((p) => !p.estornado_em).reduce((soma, p) => soma + p.valor, 0);
-      return { ...c, pago, falta: Math.max(0, c.total - pago) };
-    })
-    // Conta pedida primeiro: é o que o caixa precisa atender agora.
-    .sort((a, b) => Number(b.status === "conta_pedida") - Number(a.status === "conta_pedida"));
-
-  const totalEmAberto = comandas.reduce((soma, c) => soma + c.falta, 0);
+export default async function MesasPainelPage() {
+  const acesso = await exigirPermissao("painel", "comandas_painel", "garcom_app");
+  const [mesas, caixaAberto] = await Promise.all([carregarMapa(acesso.restaurante.id), caixaEstaAberto(acesso.restaurante.id)]);
+  const ocupadas = mesas.filter((m) => m.status !== "livre");
+  const aReceber = ocupadas.reduce((soma, m) => soma + Math.max(0, m.total - m.pago), 0);
+  const contaPedida = ocupadas.filter((m) => m.status === "conta_pedida").length;
 
   return (
-    <main className="flex flex-col gap-6 p-4 md:p-6">
-      <AtualizarEmTempoReal restauranteId={acesso.restaurante.id} tabelas={["comandas", "pagamentos"]} />
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
+    <main className="flex flex-col gap-5 p-4 md:p-6">
+      <AtualizarEmTempoReal restauranteId={acesso.restaurante.id} tabelas={["comandas", "pagamentos", "tarefas_producao", "caixa_sessoes"]} />
+      <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-semibold">Comandas abertas</h1>
-          <p className="text-muted-foreground">
-            {comandas.length} {comandas.length === 1 ? "comanda" : "comandas"} · {formatarBRL(totalEmAberto)} a receber
+          <h1 className="text-2xl font-semibold">Mesas</h1>
+          <p className="text-sm text-muted-foreground">
+            {ocupadas.length} de {mesas.length} ocupadas
+            {contaPedida > 0 ? ` · ${contaPedida} com conta pedida` : ""} · {formatarBRL(aReceber)} a receber
           </p>
         </div>
         {!caixaAberto ? (
@@ -63,46 +89,23 @@ export default async function ComandasPage() {
           ) : (
             <p className="text-sm font-medium text-destructive">Caixa fechado</p>
           )
-        ) : acesso.permissoes.includes("garcom_app") ? (
-          <Button className="h-11" nativeButton={false} render={<Link href="/garcom" />}>
-            <Plus />
-            Abrir mesa
-          </Button>
         ) : null}
       </div>
 
-      {comandas.length === 0 ? (
-        <p className="text-muted-foreground">Nenhuma comanda aberta no momento.</p>
+      {mesas.length === 0 ? (
+        <p className="text-muted-foreground">
+          Nenhuma mesa cadastrada.{" "}
+          {acesso.permissoes.includes("mesas") ? (
+            <Link href="/painel/mesas" className="font-medium text-foreground underline underline-offset-4">
+              Cadastrar mesas
+            </Link>
+          ) : null}
+        </p>
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {comandas.map((c) => (
-            <li key={c.id}>
-              <Link
-                href={`/painel/comandas/${c.mesa?.id}`}
-                className={cn(
-                  "flex h-full flex-col gap-2 rounded-xl border-2 p-4 transition-colors hover:bg-muted/40 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
-                  c.status === "conta_pedida" ? "border-amber-400 bg-amber-50" : "border-border",
-                )}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <span className="text-xl font-bold">Mesa {c.mesa?.numero}</span>
-                  {c.status === "conta_pedida" ? (
-                    <Badge className="bg-amber-300 text-amber-950">Conta pedida</Badge>
-                  ) : (
-                    <Badge variant="outline">Aberta</Badge>
-                  )}
-                </div>
-                <span className="text-sm text-muted-foreground">
-                  {c.garcom?.nome ?? "—"} · {tempoDesde(c.aberta_em)}
-                  {c.pessoas ? ` · ${c.pessoas} pessoas` : ""}
-                </span>
-                <div className="mt-auto flex items-baseline justify-between gap-2">
-                  <span className="text-lg font-semibold tabular-nums">{formatarBRL(c.total)}</span>
-                  {c.pago > 0 ? (
-                    <span className="text-sm tabular-nums text-muted-foreground">falta {formatarBRL(c.falta)}</span>
-                  ) : null}
-                </div>
-              </Link>
+        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          {mesas.map((mesa) => (
+            <li key={mesa.id}>
+              <CartaoMesa mesa={mesa} />
             </li>
           ))}
         </ul>

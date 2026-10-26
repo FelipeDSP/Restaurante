@@ -140,6 +140,16 @@ export async function exigirPermissao(area: Area, ...permissoes: Permissao[]): P
   return acesso;
 }
 
+// Ação usada em mais de uma área (ex.: a mesa, no app do garçom e no painel): basta uma das permissões.
+export async function exigirAlgumaPermissao(...permissoes: Permissao[]): Promise<Acesso> {
+  const { usuario, vinculos, ativo } = await obterContexto();
+  if (!usuario) redirect("/login");
+  if (vinculos.length === 0) redirect("/sem-acesso");
+  if (!ativo) redirect("/selecionar");
+  if (!permissoes.some((p) => ativo.permissoes.includes(p))) redirect(rotaInicial(ativo.permissoes));
+  return { ...ativo, usuario, vinculos };
+}
+
 export function temPermissao(acesso: Pick<Vinculo, "permissoes">, ...permissoes: Permissao[]): boolean {
   return permissoes.some((p) => acesso.permissoes.includes(p));
 }

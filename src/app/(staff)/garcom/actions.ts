@@ -4,17 +4,18 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 
 import { falha, mensagemErroBanco, type ResultadoAcao, sucesso } from "@/lib/acoes";
-import { exigirAcesso } from "@/lib/auth/dal";
+import { exigirAcesso, exigirAlgumaPermissao } from "@/lib/auth/dal";
 import { formatarBRL } from "@/lib/dinheiro";
 import { novoRegistro } from "@/lib/supabase/insercao";
 import { createClient } from "@/lib/supabase/server";
 import { id } from "@/lib/validacao";
 
-// Todas as ações filtram pelo restaurante ativo; a RLS e os triggers fazem a validação final
+// A mesa (abrir, lançar, cobrar, fechar) é do app do garçom e também do painel (Mesas): basta uma das
+// duas permissões. Todas as ações filtram pelo restaurante ativo; a RLS e os triggers fazem a validação final
 // (caixa aberto, comanda aberta, preço do cadastro, quem registrou).
 
 export async function abrirComanda(mesaId: string, pessoas: number | null): Promise<ResultadoAcao> {
-  const acesso = await exigirAcesso("garcom");
+  const acesso = await exigirAlgumaPermissao("garcom_app", "comandas_painel");
   const dados = z
     .object({ mesaId: id, pessoas: z.number().int().min(1).max(100).nullable() })
     .safeParse({ mesaId, pessoas });
@@ -52,7 +53,7 @@ export async function lancarItens(
   // totalEsperado: o total mostrado na tela (preço que mudou é avisado, não cobrado em silêncio).
   envio?: { lote: string; totalEsperado: number },
 ): Promise<ResultadoAcao> {
-  await exigirAcesso("garcom");
+  await exigirAlgumaPermissao("garcom_app", "comandas_painel");
   if (!id.safeParse(comandaId).success) return falha("Comanda inválida.");
   const envioOk = z.object({ lote: id, totalEsperado: z.number().int().min(0) }).optional().safeParse(envio);
   if (!envioOk.success) return falha("Dados inválidos.");
@@ -81,7 +82,7 @@ export async function lancarItens(
 }
 
 export async function alterarItem(itemId: string, quantidade: number, observacao: string): Promise<ResultadoAcao> {
-  const acesso = await exigirAcesso("garcom");
+  const acesso = await exigirAlgumaPermissao("garcom_app", "comandas_painel");
   const dados = z
     .object({ itemId: id, quantidade: z.number().int().min(1).max(99), observacao: z.string().trim().max(300) })
     .safeParse({ itemId, quantidade, observacao });
@@ -100,7 +101,7 @@ export async function alterarItem(itemId: string, quantidade: number, observacao
 }
 
 export async function cancelarItem(itemId: string, motivo: string): Promise<ResultadoAcao> {
-  const acesso = await exigirAcesso("garcom");
+  const acesso = await exigirAlgumaPermissao("garcom_app", "comandas_painel");
   const dados = z
     .object({ itemId: id, motivo: z.string().trim().min(3, "Informe o motivo.").max(500) })
     .safeParse({ itemId, motivo });
@@ -119,7 +120,7 @@ export async function cancelarItem(itemId: string, motivo: string): Promise<Resu
 }
 
 export async function alterarStatusConta(comandaId: string, contaPedida: boolean): Promise<ResultadoAcao> {
-  const acesso = await exigirAcesso("garcom");
+  const acesso = await exigirAlgumaPermissao("garcom_app", "comandas_painel");
   if (!id.safeParse(comandaId).success) return falha("Comanda inválida.");
 
   const supabase = await createClient();
@@ -143,7 +144,7 @@ export async function alterarStatusConta(comandaId: string, contaPedida: boolean
 }
 
 export async function imprimirConta(comandaId: string): Promise<ResultadoAcao> {
-  await exigirAcesso("garcom");
+  await exigirAlgumaPermissao("garcom_app", "comandas_painel");
   if (!id.safeParse(comandaId).success) return falha("Comanda inválida.");
 
   const supabase = await createClient();
@@ -156,7 +157,7 @@ export async function imprimirConta(comandaId: string): Promise<ResultadoAcao> {
 const FORMAS = ["dinheiro", "pix", "credito", "debito", "outro"] as const;
 
 export async function registrarPagamento(comandaId: string, valor: number, forma: string): Promise<ResultadoAcao> {
-  const acesso = await exigirAcesso("garcom");
+  const acesso = await exigirAlgumaPermissao("garcom_app", "comandas_painel");
   const dados = z
     .object({ comandaId: id, valor: z.number().int().min(1, "Informe o valor."), forma: z.enum(FORMAS) })
     .safeParse({ comandaId, valor, forma });
@@ -181,7 +182,7 @@ export async function registrarPagamento(comandaId: string, valor: number, forma
 // Um insert com várias linhas é uma transação: o trigger confere cada parte contra o que falta
 // (somando as anteriores do mesmo envio) e, se uma passar do saldo, nenhuma é gravada.
 export async function registrarPagamentos(comandaId: string, partes: { valor: number; forma: string }[]): Promise<ResultadoAcao> {
-  const acesso = await exigirAcesso("garcom");
+  const acesso = await exigirAlgumaPermissao("garcom_app", "comandas_painel");
   const dados = z
     .object({
       comandaId: id,
@@ -217,7 +218,7 @@ export async function registrarPagamentos(comandaId: string, partes: { valor: nu
 
 // Chegou ou saiu gente da mesa: muda a quantidade de pessoas da comanda aberta.
 export async function alterarPessoas(comandaId: string, pessoas: number): Promise<ResultadoAcao> {
-  const acesso = await exigirAcesso("garcom");
+  const acesso = await exigirAlgumaPermissao("garcom_app", "comandas_painel");
   const dados = z
     .object({ comandaId: id, pessoas: z.number().int().min(1, "Pelo menos 1 pessoa.").max(100, "Máximo de 100 pessoas.") })
     .safeParse({ comandaId, pessoas });
@@ -240,7 +241,7 @@ export async function alterarPessoas(comandaId: string, pessoas: number): Promis
 
 // Tirar ou voltar a cobrar o serviço ou o couvert de uma mesa (ex.: cliente não quer pagar os 10%).
 export async function alterarCobranca(comandaId: string, tipo: "servico" | "couvert", cobrar: boolean): Promise<ResultadoAcao> {
-  const acesso = await exigirAcesso("garcom");
+  const acesso = await exigirAlgumaPermissao("garcom_app", "comandas_painel");
   const dados = z
     .object({ comandaId: id, tipo: z.enum(["servico", "couvert"]), cobrar: z.boolean() })
     .safeParse({ comandaId, tipo, cobrar });
@@ -263,7 +264,7 @@ export async function alterarCobranca(comandaId: string, tipo: "servico" | "couv
 }
 
 export async function estornarPagamento(pagamentoId: string, motivo: string): Promise<ResultadoAcao> {
-  const acesso = await exigirAcesso("garcom");
+  const acesso = await exigirAlgumaPermissao("garcom_app", "comandas_painel");
   if (!acesso.permissoes.includes("caixa_estornar")) return falha("Sem permissão para estornar.");
   const dados = z
     .object({ pagamentoId: id, motivo: z.string().trim().min(3, "Informe o motivo do estorno.").max(500) })
@@ -283,7 +284,7 @@ export async function estornarPagamento(pagamentoId: string, motivo: string): Pr
 }
 
 export async function fecharComanda(comandaId: string): Promise<ResultadoAcao> {
-  const acesso = await exigirAcesso("garcom");
+  const acesso = await exigirAlgumaPermissao("garcom_app", "comandas_painel");
   if (!id.safeParse(comandaId).success) return falha("Comanda inválida.");
 
   const supabase = await createClient();
@@ -299,7 +300,7 @@ export async function fecharComanda(comandaId: string): Promise<ResultadoAcao> {
 }
 
 export async function cancelarComanda(comandaId: string): Promise<ResultadoAcao> {
-  const acesso = await exigirAcesso("garcom");
+  const acesso = await exigirAlgumaPermissao("garcom_app", "comandas_painel");
   if (!acesso.permissoes.includes("comandas_gerenciar")) return falha("Sem permissão para cancelar a comanda.");
   if (!id.safeParse(comandaId).success) return falha("Comanda inválida.");
 

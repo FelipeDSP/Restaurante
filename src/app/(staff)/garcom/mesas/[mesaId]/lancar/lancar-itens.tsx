@@ -205,12 +205,15 @@ export function LancarItens({
   comandaId,
   destino,
   cardapio,
+  largo = false,
 }: {
   mesaId: string;
   comandaId: string;
   // Para onde ir depois de enviar (comanda no app do garçom ou no painel).
   destino: string;
   cardapio: CategoriaCardapio[];
+  // Painel no computador: cardápio e pedido lado a lado (no celular continua igual ao app).
+  largo?: boolean;
 }) {
   const router = useRouter();
   const [categoriaAtiva, setCategoriaAtiva] = useState(cardapio[0]?.id ?? "");
@@ -309,80 +312,127 @@ export function LancarItens({
     );
   }
 
+  // Lista do que vai ser enviado: na revisão (celular) e ao lado do cardápio (painel largo).
+  const listaDoPedido = (
+    <ul className="flex flex-1 flex-col divide-y overflow-y-auto px-4">
+      {selecionadas.map(([chave, linha]) => {
+        const produto = produtosPorId.get(linha.produtoId);
+        return (
+          <li key={chave} className="flex items-center gap-3 py-3">
+            <span className="flex min-w-0 flex-1 flex-col text-sm">
+              <span className="font-medium">{produto?.nome}</span>
+              {linha.adicionais.length > 0 ? <span className="text-muted-foreground">{resumoAdicionais(linha.adicionais)}</span> : null}
+              {linha.observacao ? <span className="text-muted-foreground">Obs.: {linha.observacao}</span> : null}
+              {linha.paraViagem ? <span className="text-xs font-bold text-violet-700 uppercase">Pra viagem</span> : null}
+              <span className="tabular-nums text-muted-foreground">
+                {formatarBRL(((produto?.preco ?? 0) + precoDasOpcoes(linha.adicionais)) * linha.quantidade)}
+              </span>
+            </span>
+            <Contador rotulo={produto?.nome ?? ""} quantidade={linha.quantidade} aoMudar={(q) => mudarQuantidade(chave, q)} />
+          </li>
+        );
+      })}
+      {selecionadas.length === 0 ? <li className="py-6 text-center text-muted-foreground">Nenhum item escolhido.</li> : null}
+    </ul>
+  );
+
   return (
-    <div className="flex flex-1 flex-col gap-3 pb-28">
-      {deOutraComanda.length > 0 ? (
-        <div role="alert" className="flex flex-col gap-2 rounded-xl border-2 border-amber-400 bg-amber-50 p-3 text-sm text-amber-950">
-          <p className="font-semibold">
-            Itens montados para a comanda anterior desta mesa (fechada por outra pessoa):{" "}
-            {deOutraComanda.map((l) => `${l.quantidade}× ${produtosPorId.get(l.produtoId)?.nome ?? ""}`).join(", ")}.
-          </p>
-          <div className="flex gap-2">
-            <Button type="button" className="h-11 flex-1" onClick={() => setRascunho((r) => ({ ...r, comandaId }))}>
-              Usar nesta comanda
-            </Button>
-            <Button type="button" variant="outline" className="h-11 flex-1" onClick={limparLinhas}>
-              Descartar
-            </Button>
+    <div
+      className={cn(
+        "flex flex-1 flex-col gap-3 pb-28",
+        largo && "lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-6 lg:pb-0",
+      )}
+    >
+      <div className="flex min-w-0 flex-col gap-3">
+        {deOutraComanda.length > 0 ? (
+          <div role="alert" className="flex flex-col gap-2 rounded-xl border-2 border-amber-400 bg-amber-50 p-3 text-sm text-amber-950">
+            <p className="font-semibold">
+              Itens montados para a comanda anterior desta mesa (fechada por outra pessoa):{" "}
+              {deOutraComanda.map((l) => `${l.quantidade}× ${produtosPorId.get(l.produtoId)?.nome ?? ""}`).join(", ")}.
+            </p>
+            <div className="flex gap-2">
+              <Button type="button" className="h-11 flex-1" onClick={() => setRascunho((r) => ({ ...r, comandaId }))}>
+                Usar nesta comanda
+              </Button>
+              <Button type="button" variant="outline" className="h-11 flex-1" onClick={limparLinhas}>
+                Descartar
+              </Button>
+            </div>
           </div>
+        ) : null}
+        <div className="relative">
+          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+          <Input
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder="Buscar produto"
+            className="h-11 pl-9"
+            aria-label="Buscar produto"
+            type="search"
+          />
         </div>
-      ) : null}
-      <div className="relative">
-        <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-        <Input
-          value={busca}
-          onChange={(e) => setBusca(e.target.value)}
-          placeholder="Buscar produto"
-          className="h-11 pl-9"
-          aria-label="Buscar produto"
-          type="search"
-        />
+
+        {!busca ? (
+          <div role="tablist" aria-label="Categorias" className="-mx-4 flex gap-2 overflow-x-auto sem-barra-rolagem px-4 pb-1">
+            {cardapio.map((c) => {
+              const ids = new Set(c.produtos.map((p) => p.id));
+              const naCategoria = selecionadas.reduce((soma, [, l]) => soma + (ids.has(l.produtoId) ? l.quantidade : 0), 0);
+              return (
+                <Button
+                  key={c.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={c.id === categoriaAtiva}
+                  variant={c.id === categoriaAtiva ? "default" : "outline"}
+                  className="h-11 shrink-0 rounded-full px-4"
+                  onClick={() => setCategoriaAtiva(c.id)}
+                >
+                  {c.nome}
+                  {naCategoria > 0 ? <span className="ml-1 rounded-full bg-background/30 px-1.5 text-xs">{naCategoria}</span> : null}
+                </Button>
+              );
+            })}
+          </div>
+        ) : null}
+
+        <ul className={cn("flex flex-col gap-2", largo && "xl:grid xl:grid-cols-2")}>
+          {visiveis.map((produto) =>
+            produto.grupos.length > 0 ? (
+              <LinhaProdutoComOpcoes
+                key={produto.id}
+                produto={produto}
+                linhas={selecionadas.filter(([, l]) => l.produtoId === produto.id)}
+                aoEscolher={() => setEscolhendo(produto)}
+                aoMudarQuantidade={mudarQuantidade}
+              />
+            ) : (
+              <LinhaProdutoSimples
+                key={produto.id}
+                produto={produto}
+                linha={linhas[chaveDaEscolha(produto.id, [])]}
+                aoMudar={(linha) => definirLinha(chaveDaEscolha(produto.id, []), linha)}
+              />
+            ),
+          )}
+          {visiveis.length === 0 ? <li className="py-6 text-center text-muted-foreground">Nenhum produto encontrado.</li> : null}
+        </ul>
       </div>
 
-      {!busca ? (
-        <div role="tablist" aria-label="Categorias" className="-mx-4 flex gap-2 overflow-x-auto sem-barra-rolagem px-4 pb-1">
-          {cardapio.map((c) => {
-            const ids = new Set(c.produtos.map((p) => p.id));
-            const naCategoria = selecionadas.reduce((soma, [, l]) => soma + (ids.has(l.produtoId) ? l.quantidade : 0), 0);
-            return (
-              <Button
-                key={c.id}
-                type="button"
-                role="tab"
-                aria-selected={c.id === categoriaAtiva}
-                variant={c.id === categoriaAtiva ? "default" : "outline"}
-                className="h-11 shrink-0 rounded-full px-4"
-                onClick={() => setCategoriaAtiva(c.id)}
-              >
-                {c.nome}
-                {naCategoria > 0 ? <span className="ml-1 rounded-full bg-background/30 px-1.5 text-xs">{naCategoria}</span> : null}
-              </Button>
-            );
-          })}
-        </div>
+      {largo ? (
+        <aside aria-label="Pedido" className="hidden lg:sticky lg:top-24 lg:flex lg:max-h-[calc(100dvh-8rem)] lg:flex-col lg:rounded-xl lg:border lg:bg-background">
+          <h2 className="border-b p-4 text-lg font-bold">Pedido</h2>
+          {listaDoPedido}
+          <div className="border-t p-4">
+            <Button type="button" className="h-12 w-full justify-between text-base" disabled={totalItens === 0 || pendente} onClick={enviar}>
+              <span className="flex items-center gap-2">
+                <Send />
+                {pendente ? "Enviando..." : totalItens === 0 ? "Escolha os itens" : `Enviar ${totalItens} ${totalItens === 1 ? "item" : "itens"}`}
+              </span>
+              <span className="tabular-nums">{formatarBRL(totalValor)}</span>
+            </Button>
+          </div>
+        </aside>
       ) : null}
-
-      <ul className="flex flex-col gap-2">
-        {visiveis.map((produto) =>
-          produto.grupos.length > 0 ? (
-            <LinhaProdutoComOpcoes
-              key={produto.id}
-              produto={produto}
-              linhas={selecionadas.filter(([, l]) => l.produtoId === produto.id)}
-              aoEscolher={() => setEscolhendo(produto)}
-              aoMudarQuantidade={mudarQuantidade}
-            />
-          ) : (
-            <LinhaProdutoSimples
-              key={produto.id}
-              produto={produto}
-              linha={linhas[chaveDaEscolha(produto.id, [])]}
-              aoMudar={(linha) => definirLinha(chaveDaEscolha(produto.id, []), linha)}
-            />
-          ),
-        )}
-        {visiveis.length === 0 ? <li className="py-6 text-center text-muted-foreground">Nenhum produto encontrado.</li> : null}
-      </ul>
 
       <EscolherOpcoes
         produto={escolhendo}
@@ -417,26 +467,7 @@ export function LancarItens({
                 <X className="size-5" />
               </Dialog.Close>
             </div>
-            <ul className="flex flex-1 flex-col divide-y overflow-y-auto px-4">
-              {selecionadas.map(([chave, linha]) => {
-                const produto = produtosPorId.get(linha.produtoId);
-                return (
-                  <li key={chave} className="flex items-center gap-3 py-3">
-                    <span className="flex min-w-0 flex-1 flex-col text-sm">
-                      <span className="font-medium">{produto?.nome}</span>
-                      {linha.adicionais.length > 0 ? <span className="text-muted-foreground">{resumoAdicionais(linha.adicionais)}</span> : null}
-                      {linha.observacao ? <span className="text-muted-foreground">Obs.: {linha.observacao}</span> : null}
-                      {linha.paraViagem ? <span className="text-xs font-bold text-violet-700 uppercase">Pra viagem</span> : null}
-                      <span className="tabular-nums text-muted-foreground">
-                        {formatarBRL(((produto?.preco ?? 0) + precoDasOpcoes(linha.adicionais)) * linha.quantidade)}
-                      </span>
-                    </span>
-                    <Contador rotulo={produto?.nome ?? ""} quantidade={linha.quantidade} aoMudar={(q) => mudarQuantidade(chave, q)} />
-                  </li>
-                );
-              })}
-              {selecionadas.length === 0 ? <li className="py-6 text-center text-muted-foreground">Nenhum item escolhido.</li> : null}
-            </ul>
+            {listaDoPedido}
             <div className="border-t p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
               <Button
                 type="button"
@@ -458,7 +489,7 @@ export function LancarItens({
         </Dialog.Portal>
       </Dialog.Root>
 
-      <div className="fixed inset-x-0 bottom-0 z-10 border-t bg-background/95 p-3 backdrop-blur">
+      <div className={cn("fixed inset-x-0 bottom-0 z-10 border-t bg-background/95 p-3 backdrop-blur", largo && "lg:hidden")}>
         <div className="mx-auto flex max-w-md gap-2">
           <Button
             type="button"

@@ -741,205 +741,223 @@ export function TelaComanda({ mesaId, comanda, podeGerenciar, podeEstornar, fuso
   const itensAtivos = comanda.itens.filter((i) => !i.cancelado);
   const voltarAoMapa = () => router.push(origem === "painel" ? "/painel/comandas" : "/garcom");
 
+  const painel = origem === "painel";
+  const linkLancar = painel ? `/painel/comandas/${mesaId}/lancar` : `/garcom/mesas/${mesaId}/lancar`;
+
   return (
-    <div className="flex flex-1 flex-col gap-5 pb-44">
-      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-        {comanda.status === "conta_pedida" ? (
-          <Badge className="bg-amber-300 text-amber-950">Conta pedida</Badge>
-        ) : (
-          <Badge>Ocupada</Badge>
-        )}
-        <span>desde {horaLocal(comanda.abertaEm, fusoHorario)}</span>
-        <EditarPessoas comandaId={comanda.id} pessoas={comanda.pessoas} />
-        {comanda.garcom ? <span>· {comanda.garcom}</span> : null}
+    <div
+      className={cn(
+        "flex flex-1 flex-col gap-5 pb-44",
+        // Painel no computador: itens à esquerda; totais, pagamento e ações à direita (sem barra fixa).
+        painel && "lg:grid lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start lg:gap-6 lg:pb-0",
+      )}
+    >
+      <div className="flex min-w-0 flex-col gap-5">
+        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          {comanda.status === "conta_pedida" ? (
+            <Badge className="bg-amber-300 text-amber-950">Conta pedida</Badge>
+          ) : (
+            <Badge>Ocupada</Badge>
+          )}
+          <span>desde {horaLocal(comanda.abertaEm, fusoHorario)}</span>
+          <EditarPessoas comandaId={comanda.id} pessoas={comanda.pessoas} />
+          {comanda.garcom ? <span>· {comanda.garcom}</span> : null}
+        </div>
+
+        <section aria-labelledby="titulo-itens">
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <h2 id="titulo-itens" className="text-lg font-semibold">
+              Itens
+            </h2>
+            {comanda.itens.length > 0 ? (
+              <div className="flex rounded-lg border p-0.5 text-sm" role="group" aria-label="Como ver os itens">
+                {(["pedidos", "resumo"] as const).map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    aria-pressed={visao === v}
+                    onClick={() => setVisao(v)}
+                    className={cn("min-h-9 rounded-md px-3", visao === v ? "bg-muted font-semibold" : "text-muted-foreground")}
+                  >
+                    {v === "pedidos" ? "Por pedido" : "Tudo junto"}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+          {comanda.itens.length === 0 ? (
+            <p className="py-4 text-muted-foreground">Nenhum item lançado ainda.</p>
+          ) : visao === "resumo" ? (
+            <ResumoItens itens={comanda.itens} />
+          ) : (
+            <ol className="flex flex-col gap-3">
+              {agruparPorPedido(comanda.itens).map((g) => (
+                <li key={g.numero} className="rounded-xl border">
+                  <div className="flex items-center justify-between gap-2 border-b bg-muted/40 px-3 py-2 text-sm">
+                    <span className="font-semibold">
+                      Pedido nº {g.numero} · {horaLocal(g.criadoEm, fusoHorario)}
+                      {g.autor ? <span className="font-normal text-muted-foreground"> · {g.autor}</span> : null}
+                    </span>
+                    <span className="font-semibold tabular-nums">{formatarBRL(g.total)}</span>
+                  </div>
+                  <ul className="divide-y px-3">
+                    {g.itens.map((item) => (
+                      <LinhaItem key={item.id} item={item} editavel />
+                    ))}
+                  </ul>
+                </li>
+              ))}
+            </ol>
+          )}
+        </section>
       </div>
 
-      <section aria-labelledby="titulo-itens">
-        <div className="mb-1 flex items-center justify-between gap-2">
-          <h2 id="titulo-itens" className="text-lg font-semibold">
-            Itens
-          </h2>
-          {comanda.itens.length > 0 ? (
-            <div className="flex rounded-lg border p-0.5 text-sm" role="group" aria-label="Como ver os itens">
-              {(["pedidos", "resumo"] as const).map((v) => (
-                <button
-                  key={v}
-                  type="button"
-                  aria-pressed={visao === v}
-                  onClick={() => setVisao(v)}
-                  className={cn("min-h-9 rounded-md px-3", visao === v ? "bg-muted font-semibold" : "text-muted-foreground")}
-                >
-                  {v === "pedidos" ? "Por pedido" : "Tudo junto"}
-                </button>
-              ))}
+      <div className={cn("flex flex-col gap-5", painel && "lg:sticky lg:top-24")}>
+        <section aria-label="Totais" className="flex flex-col gap-1 rounded-xl bg-muted/60 p-4">
+          <Cobrancas comandaId={comanda.id} pessoas={comanda.pessoas} cobranca={comanda.cobranca} />
+          <div className="flex justify-between text-lg font-semibold">
+            <span>Total</span>
+            <span className="tabular-nums">{formatarBRL(comanda.total)}</span>
+          </div>
+          <div className="flex justify-between text-sm text-muted-foreground">
+            <span>Pago</span>
+            <span className="tabular-nums">{formatarBRL(comanda.pago)}</span>
+          </div>
+          {pagoAMais > 0 ? (
+            <div className="flex justify-between font-semibold text-amber-800">
+              <span>Pago a mais (estorne o excedente)</span>
+              <span className="tabular-nums">{formatarBRL(pagoAMais)}</span>
             </div>
-          ) : null}
-        </div>
-        {comanda.itens.length === 0 ? (
-          <p className="py-4 text-muted-foreground">Nenhum item lançado ainda.</p>
-        ) : visao === "resumo" ? (
-          <ResumoItens itens={comanda.itens} />
-        ) : (
-          <ol className="flex flex-col gap-3">
-            {agruparPorPedido(comanda.itens).map((g) => (
-              <li key={g.numero} className="rounded-xl border">
-                <div className="flex items-center justify-between gap-2 border-b bg-muted/40 px-3 py-2 text-sm">
-                  <span className="font-semibold">
-                    Pedido nº {g.numero} · {horaLocal(g.criadoEm, fusoHorario)}
-                    {g.autor ? <span className="font-normal text-muted-foreground"> · {g.autor}</span> : null}
-                  </span>
-                  <span className="font-semibold tabular-nums">{formatarBRL(g.total)}</span>
-                </div>
-                <ul className="divide-y px-3">
-                  {g.itens.map((item) => (
-                    <LinhaItem key={item.id} item={item} editavel />
-                  ))}
-                </ul>
-              </li>
-            ))}
-          </ol>
-        )}
-      </section>
-
-      <section aria-label="Totais" className="flex flex-col gap-1 rounded-xl bg-muted/60 p-4">
-        <Cobrancas comandaId={comanda.id} pessoas={comanda.pessoas} cobranca={comanda.cobranca} />
-        <div className="flex justify-between text-lg font-semibold">
-          <span>Total</span>
-          <span className="tabular-nums">{formatarBRL(comanda.total)}</span>
-        </div>
-        <div className="flex justify-between text-sm text-muted-foreground">
-          <span>Pago</span>
-          <span className="tabular-nums">{formatarBRL(comanda.pago)}</span>
-        </div>
-        {pagoAMais > 0 ? (
-          <div className="flex justify-between font-semibold text-amber-800">
-            <span>Pago a mais (estorne o excedente)</span>
-            <span className="tabular-nums">{formatarBRL(pagoAMais)}</span>
-          </div>
-        ) : (
-          <div className={cn("flex justify-between font-semibold", quitada ? "text-green-700" : comanda.total === 0 ? "text-muted-foreground" : "text-destructive")}>
-            <span>{quitada ? "Quitada" : "Falta"}</span>
-            <span className="tabular-nums">{formatarBRL(falta)}</span>
-          </div>
-        )}
-      </section>
-
-      {comanda.pagamentos.length > 0 ? (
-        <section aria-labelledby="titulo-pagamentos">
-          <h2 id="titulo-pagamentos" className="mb-1 text-lg font-semibold">
-            Pagamentos
-          </h2>
-          <ul className="divide-y">
-            {comanda.pagamentos.map((p) => (
-              <LinhaPagamento key={p.id} pagamento={p} podeEstornar={podeEstornar} fusoHorario={fusoHorario} />
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
-      {pagando ? (
-        <PainelPagamento
-          comandaId={comanda.id}
-          total={comanda.total}
-          falta={falta}
-          pessoas={comanda.pessoas}
-          itens={comanda.itens}
-          cobranca={comanda.cobranca}
-          aoFechar={() => setPagando(false)}
-        />
-      ) : null}
-
-      {podeGerenciar && itensAtivos.length === 0 && comanda.pago === 0 ? (
-        <Button
-          type="button"
-          variant="ghost"
-          className="self-start text-destructive"
-          disabled={pendente}
-          onClick={() => executar(() => cancelarComanda(comanda.id), voltarAoMapa)}
-        >
-          Cancelar comanda (abriu por engano)
-        </Button>
-      ) : null}
-
-      <div className="fixed inset-x-0 bottom-0 z-10 border-t bg-background/95 p-3 backdrop-blur">
-        <div className="mx-auto grid max-w-md grid-cols-2 gap-2">
-          <Button className="h-14 text-base" nativeButton={false} render={<Link href={`/garcom/mesas/${mesaId}/lancar${origem === "painel" ? "?voltar=painel" : ""}`} />}>
-            <UtensilsCrossed />
-            Lançar itens
-          </Button>
-          {podeFechar ? (
-            <Button
-              type="button"
-              className={cn(
-                "h-14 text-base text-white",
-                confirmarFechar ? "bg-green-900 ring-4 ring-green-300 hover:bg-green-900" : "bg-green-700 hover:bg-green-800",
-              )}
-              disabled={pendente}
-              onClick={() =>
-                confirmarFechar ? executar(() => fecharComanda(comanda.id), voltarAoMapa) : setConfirmarFechar(true)
-              }
-            >
-              <Check />
-              {confirmarFechar ? "Toque de novo para fechar" : "Fechar comanda"}
-            </Button>
-          ) : comanda.status === "aberta" ? (
-            <Button
-              type="button"
-              variant="outline"
-              className="h-14 text-base"
-              disabled={pendente || itensAtivos.length === 0}
-              onClick={() => executar(() => alterarStatusConta(comanda.id, true))}
-            >
-              <ReceiptText />
-              Pedir conta
-            </Button>
           ) : (
-            <Button
-              type="button"
-              variant="outline"
-              className="h-14 text-base"
-              disabled={pendente || pagando}
-              onClick={() => setPagando(true)}
-            >
-              <Wallet />
-              Pagamento
-            </Button>
+            <div className={cn("flex justify-between font-semibold", quitada ? "text-green-700" : comanda.total === 0 ? "text-muted-foreground" : "text-destructive")}>
+              <span>{quitada ? "Quitada" : "Falta"}</span>
+              <span className="tabular-nums">{formatarBRL(falta)}</span>
+            </div>
           )}
-          {comanda.status === "conta_pedida" ? (
-            <Button
-              type="button"
-              variant="ghost"
-              className="h-10 text-sm"
-              disabled={pendente}
-              onClick={() => executar(() => imprimirConta(comanda.id))}
-            >
-              <Printer />
-              Imprimir conta
+        </section>
+
+        {comanda.pagamentos.length > 0 ? (
+          <section aria-labelledby="titulo-pagamentos">
+            <h2 id="titulo-pagamentos" className="mb-1 text-lg font-semibold">
+              Pagamentos
+            </h2>
+            <ul className="divide-y">
+              {comanda.pagamentos.map((p) => (
+                <LinhaPagamento key={p.id} pagamento={p} podeEstornar={podeEstornar} fusoHorario={fusoHorario} />
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
+        {pagando ? (
+          <PainelPagamento
+            comandaId={comanda.id}
+            total={comanda.total}
+            falta={falta}
+            pessoas={comanda.pessoas}
+            itens={comanda.itens}
+            cobranca={comanda.cobranca}
+            aoFechar={() => setPagando(false)}
+          />
+        ) : null}
+
+        {podeGerenciar && itensAtivos.length === 0 && comanda.pago === 0 ? (
+          <Button
+            type="button"
+            variant="ghost"
+            className="self-start text-destructive"
+            disabled={pendente}
+            onClick={() => executar(() => cancelarComanda(comanda.id), voltarAoMapa)}
+          >
+            Cancelar comanda (abriu por engano)
+          </Button>
+        ) : null}
+
+        <div
+          className={cn(
+            "fixed inset-x-0 bottom-0 z-10 border-t bg-background/95 p-3 backdrop-blur",
+            painel && "lg:static lg:z-auto lg:rounded-xl lg:border lg:bg-background lg:backdrop-blur-none",
+          )}
+        >
+          <div className={cn("mx-auto grid max-w-md grid-cols-2 gap-2", painel && "lg:max-w-none")}>
+            <Button className="h-14 text-base" nativeButton={false} render={<Link href={linkLancar} />}>
+              <UtensilsCrossed />
+              Lançar itens
             </Button>
-          ) : null}
-          {comanda.status === "conta_pedida" && !podeFechar ? (
-            <Button
-              type="button"
-              variant="ghost"
-              className="h-10 text-sm"
-              disabled={pendente}
-              onClick={() => executar(() => alterarStatusConta(comanda.id, false))}
-            >
-              Voltar para aberta
-            </Button>
-          ) : null}
-          {comanda.status === "aberta" && !quitada && itensAtivos.length > 0 ? (
-            <Button
-              type="button"
-              variant="ghost"
-              className="col-span-2 h-10 text-sm"
-              disabled={pendente || pagando}
-              onClick={() => setPagando(true)}
-            >
-              <Wallet />
-              Registrar pagamento
-            </Button>
-          ) : null}
+            {podeFechar ? (
+              <Button
+                type="button"
+                className={cn(
+                  "h-14 text-base text-white",
+                  confirmarFechar ? "bg-green-900 ring-4 ring-green-300 hover:bg-green-900" : "bg-green-700 hover:bg-green-800",
+                )}
+                disabled={pendente}
+                onClick={() =>
+                  confirmarFechar ? executar(() => fecharComanda(comanda.id), voltarAoMapa) : setConfirmarFechar(true)
+                }
+              >
+                <Check />
+                {confirmarFechar ? "Toque de novo para fechar" : "Fechar comanda"}
+              </Button>
+            ) : comanda.status === "aberta" ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="h-14 text-base"
+                disabled={pendente || itensAtivos.length === 0}
+                onClick={() => executar(() => alterarStatusConta(comanda.id, true))}
+              >
+                <ReceiptText />
+                Pedir conta
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                className="h-14 text-base"
+                disabled={pendente || pagando}
+                onClick={() => setPagando(true)}
+              >
+                <Wallet />
+                Pagamento
+              </Button>
+            )}
+            {comanda.status === "conta_pedida" ? (
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-10 text-sm"
+                disabled={pendente}
+                onClick={() => executar(() => imprimirConta(comanda.id))}
+              >
+                <Printer />
+                Imprimir conta
+              </Button>
+            ) : null}
+            {comanda.status === "conta_pedida" && !podeFechar ? (
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-10 text-sm"
+                disabled={pendente}
+                onClick={() => executar(() => alterarStatusConta(comanda.id, false))}
+              >
+                Voltar para aberta
+              </Button>
+            ) : null}
+            {comanda.status === "aberta" && !quitada && itensAtivos.length > 0 ? (
+              <Button
+                type="button"
+                variant="ghost"
+                className="col-span-2 h-10 text-sm"
+                disabled={pendente || pagando}
+                onClick={() => setPagando(true)}
+              >
+                <Wallet />
+                Registrar pagamento
+              </Button>
+            ) : null}
+          </div>
         </div>
       </div>
     </div>

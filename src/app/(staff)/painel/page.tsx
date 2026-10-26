@@ -57,9 +57,9 @@ async function StatusCaixa({ restauranteId, fuso, permissoes }: { restauranteId:
           </div>
         </dl>
         <div className="flex flex-wrap gap-2">
-          {permissoes.includes("comandas_painel") ? (
+          {permissoes.includes("comandas_painel") || permissoes.includes("garcom_app") ? (
             <Button className="h-11" nativeButton={false} render={<Link href="/painel/comandas" />}>
-              Ver comandas
+              Ver mesas
             </Button>
           ) : null}
           {permissoes.includes("caixa_operar") ? (

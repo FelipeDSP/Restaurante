@@ -65,7 +65,7 @@ export default async function GarcomPage() {
       </div>
       {!caixaAberto ? <AvisoCaixaFechado /> : null}
       {mesas.length === 0 ? (
-        <p className="text-muted-foreground">Nenhuma mesa cadastrada. O dono cadastra em Painel › Mesas.</p>
+        <p className="text-muted-foreground">Nenhuma mesa cadastrada. O dono cadastra em Painel › Cadastro de mesas.</p>
       ) : (
         <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4">
           {mesas.map((mesa) => (

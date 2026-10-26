@@ -25,6 +25,8 @@ export type MesaNoMapa = {
   status: StatusMesa;
   comandaId: string | null;
   total: number;
+  // Pago até agora (pagamentos não estornados): o painel mostra quanto falta.
+  pago: number;
   abertaEm: string | null;
   garcom: string | null;
   // Pedidos da mesa que a cozinha acabou de terminar (esperando o garçom levar).
@@ -55,7 +57,7 @@ export async function carregarMapa(restauranteId: string): Promise<MesaNoMapa[]>
     supabase
       .from("comandas")
       .select(
-        "id, mesa_id, status, total, aberta_em, garcom:membros!comandas_restaurante_id_garcom_id_fkey(nome), pedidos(status, tarefas_producao(status, pronto_em))",
+        "id, mesa_id, status, total, aberta_em, garcom:membros!comandas_restaurante_id_garcom_id_fkey(nome), pedidos(status, tarefas_producao(status, pronto_em)), pagamentos(valor, estornado_em)",
       )
       .eq("restaurante_id", restauranteId)
       .in("status", ["aberta", "conta_pedida"]),
@@ -73,6 +75,7 @@ export async function carregarMapa(restauranteId: string): Promise<MesaNoMapa[]>
       status: comanda ? (comanda.status as StatusMesa) : "livre",
       comandaId: comanda?.id ?? null,
       total: comanda?.total ?? 0,
+      pago: (comanda?.pagamentos ?? []).filter((p) => !p.estornado_em).reduce((soma, p) => soma + p.valor, 0),
       abertaEm: comanda?.aberta_em ?? null,
       garcom: comanda?.garcom?.nome ?? null,
       pedidosProntos: (comanda?.pedidos ?? []).filter(

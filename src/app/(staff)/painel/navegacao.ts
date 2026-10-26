@@ -22,11 +22,10 @@ export const GRUPOS: GrupoNavegacao[] = ["Operação", "Cadastros", "Ajustes"];
 export const NAVEGACAO: ItemNavegacao[] = [
   { href: "/painel", rotulo: "Início", grupo: "Operação", acesso: "painel" },
   { href: "/painel/delivery", rotulo: "Delivery", grupo: "Operação", acesso: ["delivery"] },
-  { href: "/painel/comandas", rotulo: "Comandas", grupo: "Operação", acesso: ["comandas_painel"] },
+  // Mapa de mesas no próprio painel (abrir, lançar, cobrar, fechar), largo para o computador.
+  { href: "/painel/comandas", rotulo: "Mesas", grupo: "Operação", acesso: ["comandas_painel", "garcom_app"] },
   { href: "/painel/caixa", rotulo: "Caixa", grupo: "Operação", acesso: ["caixa_operar"] },
   { href: "/painel/relatorios", rotulo: "Relatórios", grupo: "Operação", acesso: ["relatorios"] },
-  // O mesmo app do garçom (abrir mesa, lançar, cobrar, fechar), para quem também atende mesas.
-  { href: "/garcom", rotulo: "App do garçom", grupo: "Operação", acesso: ["garcom_app"] },
   { href: "/cozinha", rotulo: "Tela da cozinha", grupo: "Operação", acesso: ["cozinha_tela"] },
   {
     href: "/painel/produtos",
@@ -39,7 +38,7 @@ export const NAVEGACAO: ItemNavegacao[] = [
       { href: "/painel/adicionais", rotulo: "Adicionais" },
     ],
   },
-  { href: "/painel/mesas", rotulo: "Mesas", grupo: "Cadastros", acesso: ["mesas"] },
+  { href: "/painel/mesas", rotulo: "Cadastro de mesas", grupo: "Cadastros", acesso: ["mesas"] },
   { href: "/painel/cupons", rotulo: "Cupons", grupo: "Cadastros", acesso: ["cupons"] },
   {
     href: "/painel/equipe",
