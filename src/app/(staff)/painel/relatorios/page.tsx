@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 
 import { BaixarCsv } from "./baixar-csv";
 import { carregarRelatorio, dataCurta, PERIODOS, periodoAnterior, resolverPeriodo } from "./dados";
-import { BarraCelula, Barras, Colunas, CORES, Kpi, Painel, Rosca, variacao, Vazio } from "./graficos";
+import { BarraCelula, Barras, Colunas, Kpi, MARCA, Painel, Rosca, variacao, Vazio } from "./graficos";
 
 export const metadata: Metadata = { title: "Relatórios" };
 
@@ -119,18 +119,18 @@ export default async function RelatoriosPage(props: PageProps<"/painel/relatorio
                 rotulo="Vendido"
                 valor={formatarBRL(r.vendido)}
                 icone={Wallet}
+                destaque
                 delta={variacao(r.vendido, base?.vendido ?? null)}
                 detalhe={`${formatarBRL(mediaNoite)} por noite`}
               />
             </div>
-            <Kpi rotulo="Contas" valor={String(r.contas)} icone={Receipt} cor={CORES[0]} delta={variacao(r.contas, base?.contas ?? null)} />
-            <Kpi rotulo="Ticket médio" valor={formatarBRL(ticket)} icone={TrendingUp} cor={CORES[3]} delta={variacao(ticket, ticketAntes)} />
-            <Kpi rotulo="Itens vendidos" valor={String(r.itens)} icone={Utensils} cor={CORES[2]} delta={variacao(r.itens, base?.itens ?? null)} />
+            <Kpi rotulo="Contas" valor={String(r.contas)} icone={Receipt} delta={variacao(r.contas, base?.contas ?? null)} />
+            <Kpi rotulo="Ticket médio" valor={formatarBRL(ticket)} icone={TrendingUp} delta={variacao(ticket, ticketAntes)} />
+            <Kpi rotulo="Itens vendidos" valor={String(r.itens)} icone={Utensils} delta={variacao(r.itens, base?.itens ?? null)} />
             <Kpi
               rotulo="Cancelado"
               valor={formatarBRL(cancelados)}
               icone={Ban}
-              cor={CORES[4]}
               delta={variacao(cancelados, canceladosAntes)}
               quedaEhBoa
               detalhe={plural(r.pedidos_cancelados.quantidade + r.itens_cancelados.quantidade, "cancelamento", "cancelamentos")}
@@ -165,13 +165,9 @@ export default async function RelatoriosPage(props: PageProps<"/painel/relatorio
 
             <Painel titulo="Destaques">
               <ul className="grid gap-2">
-                {destaques.map((d, i) => (
+                {destaques.map((d) => (
                   <li key={d.rotulo} className="flex items-center gap-3 rounded-xl bg-muted/60 p-3">
-                    <span
-                      className="grid size-9 shrink-0 place-items-center rounded-lg text-white"
-                      style={{ backgroundColor: [CORES[5], CORES[1], CORES[0], CORES[2]][i % 4] }}
-                      aria-hidden
-                    >
+                    <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[var(--cor-primaria)] text-[var(--cor-primaria-contraste)]" aria-hidden>
                       <d.icone className="size-5" />
                     </span>
                     <span className="min-w-0 flex-1">
@@ -221,7 +217,6 @@ export default async function RelatoriosPage(props: PageProps<"/painel/relatorio
                 <Vazio>Sem pedidos.</Vazio>
               ) : (
                 <Colunas
-                  cor={CORES[2]}
                   // Ordem da noite: madrugada (0h a 5h) depois das 23h.
                   colunas={[...r.por_hora]
                     .sort((x, y) => ((x.hora + 18) % 24) - ((y.hora + 18) % 24))
@@ -239,7 +234,6 @@ export default async function RelatoriosPage(props: PageProps<"/painel/relatorio
                 <Vazio>Sem vendas.</Vazio>
               ) : (
                 <Barras
-                  cor={CORES[0]}
                   linhas={r.por_dia_semana.map((d) => ({
                     chave: String(d.dia),
                     rotulo: DIAS_SEMANA[d.dia],
@@ -297,9 +291,8 @@ export default async function RelatoriosPage(props: PageProps<"/painel/relatorio
                           <span
                             className={cn(
                               "grid size-6 place-items-center rounded-full text-xs font-semibold tabular-nums",
-                              i < 3 ? "text-white" : "text-muted-foreground",
+                              i < 3 ? "bg-[var(--cor-primaria)] text-[var(--cor-primaria-contraste)]" : "text-muted-foreground",
                             )}
-                            style={i < 3 ? { backgroundColor: ["#ca8a04", "#64748b", "#b45309"][i] } : undefined}
                           >
                             {i + 1}
                           </span>
@@ -310,13 +303,13 @@ export default async function RelatoriosPage(props: PageProps<"/painel/relatorio
                         </td>
                         <td className="py-2 text-right tabular-nums">
                           <span className="flex items-center justify-end gap-2">
-                            {ordem === "quantidade" ? <BarraCelula valor={p.quantidade} maior={maiorProduto} cor={CORES[1]} /> : null}
+                            {ordem === "quantidade" ? <BarraCelula valor={p.quantidade} maior={maiorProduto} cor={MARCA} /> : null}
                             {p.quantidade}
                           </span>
                         </td>
                         <td className="py-2 text-right tabular-nums">
                           <span className="flex items-center justify-end gap-2">
-                            {ordem === "valor" ? <BarraCelula valor={p.total} maior={maiorProduto} cor={CORES[0]} /> : null}
+                            {ordem === "valor" ? <BarraCelula valor={p.total} maior={maiorProduto} cor={MARCA} /> : null}
                             {formatarBRL(p.total)}
                           </span>
                         </td>
@@ -344,9 +337,9 @@ export default async function RelatoriosPage(props: PageProps<"/painel/relatorio
                 <Vazio>Nenhuma comanda fechada.</Vazio>
               ) : (
                 <ul className="flex flex-col gap-3">
-                  {r.garcons.map((g, i) => (
+                  {r.garcons.map((g) => (
                     <li key={g.nome} className="flex items-center gap-3 text-sm">
-                      <Iniciais nome={g.nome} cor={CORES[i % CORES.length]} />
+                      <Iniciais nome={g.nome} />
                       <span className="flex min-w-0 flex-1 flex-col gap-1">
                         <span className="flex items-baseline justify-between gap-2">
                           <span className="truncate font-medium">{g.nome}</span>
@@ -355,7 +348,7 @@ export default async function RelatoriosPage(props: PageProps<"/painel/relatorio
                         <span className="h-2 rounded-full bg-muted" aria-hidden>
                           <span
                             className="block h-2 rounded-full"
-                            style={{ width: `${Math.max(3, (g.vendido / maiorGarcom) * 100)}%`, backgroundColor: CORES[i % CORES.length] }}
+                            style={{ width: `${Math.max(3, (g.vendido / maiorGarcom) * 100)}%`, backgroundColor: MARCA }}
                           />
                         </span>
                         <span className="text-xs text-muted-foreground">
@@ -386,9 +379,9 @@ export default async function RelatoriosPage(props: PageProps<"/painel/relatorio
             {r.entregadores.length > 0 ? (
               <Painel titulo="Entregadores">
                 <ul className="flex flex-col gap-3">
-                  {r.entregadores.map((e, i) => (
+                  {r.entregadores.map((e) => (
                     <li key={e.nome} className="flex items-center gap-3 text-sm">
-                      <Iniciais nome={e.nome} cor={CORES[(i + 1) % CORES.length]} />
+                      <Iniciais nome={e.nome} />
                       <span className="flex min-w-0 flex-1 flex-col gap-1">
                         <span className="flex items-baseline justify-between gap-2">
                           <span className="truncate font-medium">{e.nome}</span>
@@ -400,7 +393,7 @@ export default async function RelatoriosPage(props: PageProps<"/painel/relatorio
                         <span className="h-2 rounded-full bg-muted" aria-hidden>
                           <span
                             className="block h-2 rounded-full"
-                            style={{ width: `${Math.max(3, (e.entregas / maiorEntregador) * 100)}%`, backgroundColor: CORES[(i + 1) % CORES.length] }}
+                            style={{ width: `${Math.max(3, (e.entregas / maiorEntregador) * 100)}%`, backgroundColor: MARCA }}
                           />
                         </span>
                         <span className="text-xs text-muted-foreground">{plural(e.entregas, "entrega", "entregas")}</span>
@@ -427,7 +420,7 @@ function Etiqueta({ rotulo, valor }: { rotulo: string; valor: string }) {
   );
 }
 
-function Iniciais({ nome, cor }: { nome: string; cor: string }) {
+function Iniciais({ nome }: { nome: string }) {
   const letras = nome
     .split(/\s+/)
     .filter((p) => /^\p{L}/u.test(p))
@@ -435,7 +428,10 @@ function Iniciais({ nome, cor }: { nome: string; cor: string }) {
     .map((p) => p[0].toUpperCase())
     .join("");
   return (
-    <span className="grid size-9 shrink-0 place-items-center rounded-full text-xs font-semibold text-white" style={{ backgroundColor: cor }} aria-hidden>
+    <span
+      className="grid size-9 shrink-0 place-items-center rounded-full bg-[var(--cor-primaria)] text-xs font-semibold text-[var(--cor-primaria-contraste)]"
+      aria-hidden
+    >
       {letras || "?"}
     </span>
   );

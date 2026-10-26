@@ -7,8 +7,9 @@ import { cn } from "@/lib/utils";
 
 // Gráficos dos relatórios em CSS/SVG puro (sem biblioteca), renderizados no servidor.
 
-// Paleta dos gráficos (independente da cor da marca, para as fatias se distinguirem).
-export const CORES = ["#2563eb", "#f97316", "#0d9488", "#9333ea", "#e11d48", "#ca8a04", "#64748b"];
+// Tons da cor do restaurante (fatias e legendas): a própria cor e misturas com branco.
+export const MARCA = "var(--cor-primaria)";
+export const CORES = [100, 70, 45, 85, 58, 32, 92].map((p) => (p === 100 ? MARCA : `color-mix(in oklch, ${MARCA} ${p}%, white)`));
 
 // Variação em relação ao período anterior; null quando não há base para comparar.
 export function variacao(atual: number, anterior: number | null): number | null {
@@ -21,7 +22,7 @@ export function Kpi({
   valor,
   detalhe,
   icone: Icone,
-  cor,
+  destaque = false,
   delta,
   quedaEhBoa = false,
 }: {
@@ -29,33 +30,38 @@ export function Kpi({
   valor: string;
   detalhe?: string;
   icone: LucideIcon;
-  // Fundo do cartão (texto branco). Sem cor: usa a cor da marca.
-  cor?: string;
+  // Cartão principal: preenchido com a cor do restaurante.
+  destaque?: boolean;
   delta: number | null;
   quedaEhBoa?: boolean;
 }) {
-  const marca = !cor;
   return (
     <div
       className={cn(
         "relative flex flex-col gap-1 overflow-hidden rounded-2xl p-4 shadow-sm",
-        marca ? "bg-[var(--cor-primaria)] text-[var(--cor-primaria-contraste)]" : "text-white",
+        destaque ? "bg-[var(--cor-primaria)] text-[var(--cor-primaria-contraste)]" : "border bg-background",
       )}
-      style={cor ? { backgroundColor: cor } : undefined}
     >
       <div className="flex items-start justify-between gap-2">
-        <p className="text-sm font-medium opacity-90">{rotulo}</p>
-        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-white/20" aria-hidden>
+        <p className={cn("text-sm font-medium", destaque ? "opacity-90" : "text-muted-foreground")}>{rotulo}</p>
+        <span
+          className={cn(
+            "grid size-9 shrink-0 place-items-center rounded-xl",
+            destaque ? "bg-white/20" : "bg-[var(--cor-primaria)] text-[var(--cor-primaria-contraste)]",
+          )}
+          aria-hidden
+        >
           <Icone className="size-5" />
         </span>
       </div>
       <p className="text-2xl font-bold tracking-tight tabular-nums sm:text-3xl">{valor}</p>
-      <div className="flex min-h-5 flex-wrap items-center gap-x-2 text-xs opacity-90">
+      <div className={cn("flex min-h-5 flex-wrap items-center gap-x-2 text-xs", destaque ? "opacity-90" : "text-muted-foreground")}>
         {delta !== null ? (
           <span
             className={cn(
               "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 font-semibold",
-              delta === 0 ? "bg-white/20" : (delta > 0) !== quedaEhBoa ? "bg-white/25" : "bg-black/20",
+              destaque ? "bg-white/20" : "bg-muted text-foreground",
+              delta !== 0 && (delta > 0) === quedaEhBoa && "opacity-70",
             )}
             title="Em relação ao período anterior do mesmo tamanho"
           >
@@ -66,8 +72,7 @@ export function Kpi({
         ) : null}
         {detalhe ? <span>{detalhe}</span> : null}
       </div>
-      {/* Detalhe gráfico do cartão. */}
-      <span className="pointer-events-none absolute -right-6 -bottom-8 size-24 rounded-full bg-white/10" aria-hidden />
+      {destaque ? <span className="pointer-events-none absolute -right-6 -bottom-8 size-24 rounded-full bg-white/10" aria-hidden /> : null}
     </div>
   );
 }
@@ -184,7 +189,7 @@ export function Barras({ linhas, cor }: { linhas: { chave: string; rotulo: strin
   const maior = Math.max(...linhas.map((l) => l.valor), 1);
   return (
     <ul className="flex flex-col gap-3">
-      {linhas.map((l, i) => (
+      {linhas.map((l) => (
         <li key={l.chave} className="flex flex-col gap-1 text-sm">
           <div className="flex items-baseline justify-between gap-2">
             <span className="truncate font-medium">{l.rotulo}</span>
@@ -196,7 +201,7 @@ export function Barras({ linhas, cor }: { linhas: { chave: string; rotulo: strin
           <span className="h-2.5 rounded-full bg-muted" aria-hidden>
             <span
               className="block h-2.5 rounded-full"
-              style={{ width: `${l.valor > 0 ? Math.max(2, (l.valor / maior) * 100) : 0}%`, backgroundColor: cor ?? CORES[i % CORES.length] }}
+              style={{ width: `${l.valor > 0 ? Math.max(2, (l.valor / maior) * 100) : 0}%`, backgroundColor: cor ?? MARCA }}
             />
           </span>
         </li>
