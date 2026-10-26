@@ -60,7 +60,9 @@ export function ChamarGarcom({ restauranteId, membroId }: { restauranteId: strin
         <Megaphone className="size-5" aria-hidden />
         <span className="hidden md:inline">Chamar garçom</span>
       </Dialog.Trigger>
-      <Dialog.Portal container={ancora?.parentElement ?? undefined}>
+      {/* Fora do topo (que fica numa camada abaixo da barra de abas do celular), mas dentro da tela
+          do restaurante, para herdar as cores da marca. */}
+      <Dialog.Portal container={ancora?.closest("header")?.parentElement ?? ancora?.parentElement ?? undefined}>
         <Dialog.Backdrop className="fixed inset-0 z-40 bg-black/50" />
         <Dialog.Popup className="fixed inset-x-0 bottom-0 z-40 flex max-h-[90dvh] flex-col gap-4 overflow-y-auto rounded-t-2xl bg-background p-5 text-foreground shadow-xl outline-none sm:inset-x-auto sm:top-1/2 sm:bottom-auto sm:left-1/2 sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl">
           <div className="flex items-center justify-between gap-2">
