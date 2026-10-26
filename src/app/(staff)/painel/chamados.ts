@@ -32,6 +32,8 @@ export async function garconsParaChamar(): Promise<GarcomParaChamar[]> {
   const aguardando = new Set((abertos ?? []).map((c) => c.garcom_id));
   // Quem atende mesas: tem o app do garçom (pela função ou dado só a ela).
   return (garcons ?? [])
+    // Quem chama não aparece na lista (um garçom com acesso ao painel não chama a si mesmo).
+    .filter((g) => g.id !== acesso.membroId)
     .filter((g) => ehPapel(g.papel) && permissoesEfetivas(g.papel, g.funcao?.permissoes, g.permissoes_extras, g.permissoes_removidas).includes("garcom_app"))
     .map((g) => ({ id: g.id, nome: g.nome, aguardando: aguardando.has(g.id) }));
 }
