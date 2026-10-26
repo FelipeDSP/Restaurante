@@ -29,18 +29,20 @@ export function AvisoPronto({ restauranteId, membroId }: { restauranteId: string
     restauranteId,
     ["tarefas_producao"],
     async (mudanca) => {
-      const tarefa = mudanca.new as { pedido_id?: string; status?: string };
-      if (tarefa.status !== "pronto" || !tarefa.pedido_id || avisados.current.has(tarefa.pedido_id)) return;
+      const tarefa = mudanca.new as { pedido_id?: string; status?: string; retirada?: boolean };
+      // Retirado pelo garçom ("Retirei"): ele já está com o prato, não precisa de aviso.
+      if (tarefa.status !== "pronto" || tarefa.retirada || !tarefa.pedido_id || avisados.current.has(tarefa.pedido_id)) return;
 
       const supabase = createClient();
       const { data: pedido } = await supabase
         .from("pedidos")
-        .select("numero, origem, comanda:comandas(garcom_id, mesa_id, mesa:mesas(numero)), tarefas_producao(status)")
+        .select("numero, origem, comanda:comandas(garcom_id, mesa_id, mesa:mesas(numero)), tarefas_producao(status, retirada)")
         .eq("id", tarefa.pedido_id)
         .eq("restaurante_id", restauranteId)
         .maybeSingle();
       if (!pedido || pedido.origem !== "mesa" || !pedido.comanda) return;
       if (pedido.tarefas_producao.some((t) => t.status === "pendente")) return; // ainda falta praça
+      if (pedido.tarefas_producao.every((t) => t.retirada)) return; // já entregue
       if (pedido.comanda.garcom_id && pedido.comanda.garcom_id !== membroId) return;
       if (avisados.current.has(tarefa.pedido_id)) return;
       avisados.current.add(tarefa.pedido_id);

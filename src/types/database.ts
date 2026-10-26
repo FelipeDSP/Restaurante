@@ -990,13 +990,13 @@ isOneToOne: false
                   ]
                 },"tarefas_producao": {
                   Row: {
-                    "criado_em": string,"estacao_id": string,"id": string,"pedido_id": string,"pronto_em": string | null,"pronto_por": string | null,"restaurante_id": string,"status": string
+                    "criado_em": string,"estacao_id": string,"id": string,"pedido_id": string,"pronto_em": string | null,"pronto_por": string | null,"restaurante_id": string,"retirada": boolean,"status": string
                   }
                   Insert: {
-                    "criado_em"?: string,"estacao_id": string,"id"?: string,"pedido_id": string,"pronto_em"?: string | null,"pronto_por"?: string | null,"restaurante_id": string,"status"?: string
+                    "criado_em"?: string,"estacao_id": string,"id"?: string,"pedido_id": string,"pronto_em"?: string | null,"pronto_por"?: string | null,"restaurante_id": string,"retirada"?: boolean,"status"?: string
                   }
                   Update: {
-                    "criado_em"?: string,"estacao_id"?: string,"id"?: string,"pedido_id"?: string,"pronto_em"?: string | null,"pronto_por"?: string | null,"restaurante_id"?: string,"status"?: string
+                    "criado_em"?: string,"estacao_id"?: string,"id"?: string,"pedido_id"?: string,"pronto_em"?: string | null,"pronto_por"?: string | null,"restaurante_id"?: string,"retirada"?: boolean,"status"?: string
                   }
                   Relationships: [
                     {

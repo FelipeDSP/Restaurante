@@ -22,6 +22,7 @@ import {
   alterarStatusConta,
   cancelarComanda,
   cancelarItem,
+  entregarPedido,
   estornarPagamento,
   fecharComanda,
   imprimirConta,
@@ -104,9 +105,14 @@ function LinhaItem({ item, editavel }: { item: ItemComanda; editavel: boolean })
           ) : null}
           {item.paraViagem ? <span className="text-xs font-bold text-violet-700 uppercase">Pra viagem</span> : null}
           {item.preparo === "pronto" ? (
-            <span className="mt-0.5 w-fit rounded-full bg-green-600 px-2 py-0.5 text-xs font-bold text-white">Pronto p/ servir</span>
+            <span className="mt-0.5 w-fit rounded-full bg-green-600 px-2 py-0.5 text-xs font-bold text-white">Pronto · levar</span>
           ) : item.preparo === "na_cozinha" ? (
             <span className="text-xs font-medium text-muted-foreground">Na cozinha</span>
+          ) : item.preparo === "entregue" ? (
+            <span className="flex items-center gap-1 text-xs font-medium text-green-700">
+              <Check className="size-3.5" aria-hidden />
+              Entregue
+            </span>
           ) : null}
           {item.observacao ? <span className="text-sm text-muted-foreground">Obs.: {item.observacao}</span> : null}
         </span>
@@ -628,9 +634,9 @@ function Cobrancas({ comandaId, pessoas, cobranca }: { comandaId: string; pessoa
 
 // Histórico da mesa: um grupo por pedido (cada lançamento do garçom), na ordem em que saíram.
 function agruparPorPedido(itens: ItemComanda[]) {
-  const grupos = new Map<number, { numero: number; criadoEm: string; autor: string | null; total: number; itens: ItemComanda[] }>();
+  const grupos = new Map<number, { pedidoId: string; numero: number; criadoEm: string; autor: string | null; total: number; itens: ItemComanda[] }>();
   for (const i of itens) {
-    const g = grupos.get(i.pedidoNumero) ?? { numero: i.pedidoNumero, criadoEm: i.pedidoCriadoEm, autor: i.pedidoAutor, total: 0, itens: [] };
+    const g = grupos.get(i.pedidoNumero) ?? { pedidoId: i.pedidoId, numero: i.pedidoNumero, criadoEm: i.pedidoCriadoEm, autor: i.pedidoAutor, total: 0, itens: [] };
     g.itens.push(i);
     if (!i.cancelado) g.total += i.total;
     grupos.set(i.pedidoNumero, g);
@@ -805,6 +811,21 @@ export function TelaComanda({ mesaId, comanda, podeGerenciar, podeEstornar, fuso
                       <LinhaItem key={item.id} item={item} editavel />
                     ))}
                   </ul>
+                  {/* Pronto na cozinha e levado à mesa: o garçom marca ao servir. */}
+                  {g.itens.some((i) => !i.cancelado && i.preparo === "pronto") ? (
+                    <div className="border-t px-3 py-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-11 w-full border-green-600 text-green-800 hover:bg-green-50"
+                        disabled={pendente}
+                        onClick={() => executar(() => entregarPedido(g.pedidoId))}
+                      >
+                        <Check />
+                        Entreguei na mesa
+                      </Button>
+                    </div>
+                  ) : null}
                 </li>
               ))}
             </ol>

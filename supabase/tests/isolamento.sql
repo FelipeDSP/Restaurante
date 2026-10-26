@@ -2153,6 +2153,57 @@ begin
 end;
 $$;
 
+-- ======================================================================
+-- Entregue na mesa (tickets das praças)
+-- ======================================================================
+do $$
+declare
+  a constant uuid := md5('brasa-espetinhos')::uuid;
+  v_tarefa uuid;
+  r record;
+begin
+  perform pg_temp.admin();
+  select id into v_tarefa from public.tarefas_producao where restaurante_id = a limit 1;
+  if v_tarefa is null then
+    perform pg_temp.ok(true, 'entregue: sem ticket no seed (pulado)');
+    return;
+  end if;
+  update public.tarefas_producao set status = 'pendente' where id = v_tarefa;
+
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  update public.tarefas_producao set retirada = true where id = v_tarefa;
+  perform pg_temp.admin();
+  perform pg_temp.ok(not (select retirada from public.tarefas_producao where id = v_tarefa), 'entregue: ticket em preparo não fica entregue');
+
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  update public.tarefas_producao set status = 'pronto', retirada = true where id = v_tarefa;
+  perform pg_temp.admin();
+  select status, retirada into r from public.tarefas_producao where id = v_tarefa;
+  perform pg_temp.ok(r.status = 'pronto' and r.retirada, 'entregue: "Retirei" deixa pronto e entregue');
+
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  update public.tarefas_producao set retirada = false where id = v_tarefa;
+  perform pg_temp.admin();
+  perform pg_temp.ok((select retirada from public.tarefas_producao where id = v_tarefa), 'entregue: não volta atrás sozinho');
+
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  update public.tarefas_producao set status = 'pendente' where id = v_tarefa;
+  perform pg_temp.admin();
+  perform pg_temp.ok(not (select retirada from public.tarefas_producao where id = v_tarefa), 'entregue: "Desfazer" volta para preparo e apaga');
+
+  update public.tarefas_producao set status = 'pronto' where id = v_tarefa;
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  update public.tarefas_producao set retirada = true where id = v_tarefa;
+  perform pg_temp.admin();
+  perform pg_temp.ok((select retirada from public.tarefas_producao where id = v_tarefa), 'entregue: "Entreguei" marca pedido já pronto');
+
+  perform pg_temp.entrar('dono.burger@exemplo.com');
+  update public.tarefas_producao set retirada = false where id = v_tarefa;
+  perform pg_temp.admin();
+  perform pg_temp.ok((select retirada from public.tarefas_producao where id = v_tarefa), 'entregue: outro restaurante não mexe');
+end;
+$$;
+
 select n, ok, teste from resultado order by n;
 select count(*) filter (where not ok) as falhas, count(*) as total from resultado;
 

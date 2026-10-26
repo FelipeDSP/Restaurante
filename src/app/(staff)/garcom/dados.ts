@@ -6,17 +6,27 @@ import { createClient } from "@/lib/supabase/server";
 
 export type StatusMesa = "livre" | "aberta" | "conta_pedida";
 
-// Prato pronto fica em destaque por um tempo (não há etapa "servido"); depois some sozinho.
+// No mapa, o selo "Pronto" de prato que ninguém marcou como entregue some sozinho depois de um tempo.
 const DESTAQUE_PRONTO_MS = 20 * 60_000;
 
-export type Preparo = "na_cozinha" | "pronto" | null;
+export type Preparo = "na_cozinha" | "pronto" | "entregue" | null;
 
-// Situação de um pedido na cozinha a partir dos tickets das praças.
-function preparoDoPedido(tarefas: { status: string; pronto_em: string | null }[], agora: number): Preparo {
+type Ticket = { status: string; pronto_em: string | null; retirada: boolean };
+
+// Situação de um pedido a partir dos tickets das praças: entregue quando o último ticket a ficar
+// pronto foi retirado pelo garçom ("Retirei" nas Praças) ou marcado "Entreguei" na comanda.
+function preparoDoPedido(tarefas: Ticket[]): Preparo {
   if (tarefas.length === 0) return null;
   if (tarefas.some((t) => t.status === "pendente")) return "na_cozinha";
+  const ultimo = [...tarefas].sort((a, b) => (b.pronto_em ?? "").localeCompare(a.pronto_em ?? ""))[0];
+  return ultimo.retirada ? "entregue" : "pronto";
+}
+
+// Pronto esperando o garçom, há pouco tempo (selo verde no mapa).
+function prontoParaServir(tarefas: Ticket[], agora: number): boolean {
+  if (preparoDoPedido(tarefas) !== "pronto") return false;
   const ultimo = Math.max(...tarefas.map((t) => (t.pronto_em ? new Date(t.pronto_em).getTime() : 0)));
-  return agora - ultimo < DESTAQUE_PRONTO_MS ? "pronto" : null;
+  return agora - ultimo < DESTAQUE_PRONTO_MS;
 }
 
 export type MesaNoMapa = {
@@ -57,7 +67,7 @@ export async function carregarMapa(restauranteId: string): Promise<MesaNoMapa[]>
     supabase
       .from("comandas")
       .select(
-        "id, mesa_id, status, total, aberta_em, garcom:membros!comandas_restaurante_id_garcom_id_fkey(nome), pedidos(status, tarefas_producao(status, pronto_em)), pagamentos(valor, estornado_em)",
+        "id, mesa_id, status, total, aberta_em, garcom:membros!comandas_restaurante_id_garcom_id_fkey(nome), pedidos(status, tarefas_producao(status, pronto_em, retirada)), pagamentos(valor, estornado_em)",
       )
       .eq("restaurante_id", restauranteId)
       .in("status", ["aberta", "conta_pedida"]),
@@ -79,7 +89,7 @@ export async function carregarMapa(restauranteId: string): Promise<MesaNoMapa[]>
       abertaEm: comanda?.aberta_em ?? null,
       garcom: comanda?.garcom?.nome ?? null,
       pedidosProntos: (comanda?.pedidos ?? []).filter(
-        (p) => p.status !== "cancelado" && preparoDoPedido(p.tarefas_producao, agora) === "pronto",
+        (p) => p.status !== "cancelado" && prontoParaServir(p.tarefas_producao, agora),
       ).length,
     };
   });
@@ -87,6 +97,7 @@ export async function carregarMapa(restauranteId: string): Promise<MesaNoMapa[]>
 
 export type ItemComanda = {
   id: string;
+  pedidoId: string;
   pedidoNumero: number;
   // Cada lançamento ("rodada") da mesa: quando e por quem, para o histórico por pedido.
   pedidoCriadoEm: string;
@@ -156,7 +167,7 @@ export async function carregarComandaDaMesa(restauranteId: string, mesaId: strin
     .select(
       `id, status, pessoas, total, aberta_em, subtotal, servico_percentual, cobrar_servico, servico, couvert_unitario, cobrar_couvert, couvert,
        garcom:membros!comandas_restaurante_id_garcom_id_fkey(nome),
-       pedidos(numero, status, criado_em, autor:membros!pedidos_restaurante_id_criado_por_fkey(nome), tarefas_producao(status, pronto_em), itens_pedido(id, nome_produto, preco_unitario, preco_adicionais, adicionais, etapas, para_viagem, quantidade, observacao, total, criado_em, cancelado_em, motivo_cancelamento)),
+       pedidos(id, numero, status, criado_em, autor:membros!pedidos_restaurante_id_criado_por_fkey(nome), tarefas_producao(status, pronto_em, retirada), itens_pedido(id, nome_produto, preco_unitario, preco_adicionais, adicionais, etapas, para_viagem, quantidade, observacao, total, criado_em, cancelado_em, motivo_cancelamento)),
        pagamentos(id, valor, forma, criado_em, estornado_em, motivo_estorno, registrado:membros!pagamentos_restaurante_id_registrado_por_fkey(nome))`,
     )
     .eq("restaurante_id", restauranteId)
@@ -166,13 +177,13 @@ export async function carregarComandaDaMesa(restauranteId: string, mesaId: strin
   if (error) throw new Error(error.message);
   if (!c) return null;
 
-  const agora = Date.now();
   const itens: ItemComanda[] = c.pedidos
     .filter((p) => p.status !== "cancelado")
     .flatMap((p) => {
-      const preparo = preparoDoPedido(p.tarefas_producao, agora);
+      const preparo = preparoDoPedido(p.tarefas_producao);
       return p.itens_pedido.map((i) => ({
         id: i.id,
+        pedidoId: p.id,
         pedidoNumero: p.numero,
         pedidoCriadoEm: p.criado_em,
         pedidoAutor: p.autor?.nome ?? null,

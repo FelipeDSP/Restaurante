@@ -324,9 +324,10 @@ export async function marcarTicketPraca(tarefaId: string, status: "pronto" | "pe
   if (!id.safeParse(tarefaId).success || (status !== "pronto" && status !== "pendente")) return falha("Ticket inválido.");
 
   const supabase = await createClient();
+  // "Retirei": o garçom já está com o prato, então já conta como entregue na mesa.
   const { data, error } = await supabase
     .from("tarefas_producao")
-    .update({ status })
+    .update({ status, retirada: status === "pronto" })
     .eq("id", tarefaId)
     .eq("restaurante_id", acesso.restaurante.id)
     .select("id");
@@ -335,6 +336,24 @@ export async function marcarTicketPraca(tarefaId: string, status: "pronto" | "pe
 
   refresh();
   return status === "pronto" ? sucesso("Marcado como pronto.") : sucesso("Voltou para preparo.");
+}
+
+// Pedido pronto levado à mesa ("Entreguei" na comanda): os tickets dele ficam como entregues.
+export async function entregarPedido(pedidoId: string): Promise<ResultadoAcao> {
+  const acesso = await exigirAlgumaPermissao("garcom_app", "comandas_painel");
+  if (!id.safeParse(pedidoId).success) return falha("Pedido inválido.");
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("tarefas_producao")
+    .update({ retirada: true })
+    .eq("pedido_id", pedidoId)
+    .eq("restaurante_id", acesso.restaurante.id)
+    .eq("status", "pronto")
+    .select("id");
+  if (error) return falha(mensagemErroBanco(error));
+  if (!data.length) return falha("Esse pedido ainda não está pronto.");
+  refresh();
+  return sucesso();
 }
 
 // O garçom responde ao chamado do painel ("Vou"): quem chamou recebe o aviso; a hora vem do banco.
