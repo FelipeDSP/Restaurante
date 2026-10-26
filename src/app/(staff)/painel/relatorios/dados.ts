@@ -13,6 +13,8 @@ export type Relatorio = {
   contas: number;
   itens: number;
   taxas_entrega: number;
+  servico: number;
+  couvert: number;
   pedidos_cancelados: { quantidade: number; valor: number };
   itens_cancelados: { quantidade: number; valor: number };
   estornos: { quantidade: number; valor: number };
@@ -23,7 +25,7 @@ export type Relatorio = {
   por_forma: { forma: string; quantidade: number; valor: number }[];
   produtos: { produto_id: string; nome: string; categoria: string | null; quantidade: number; total: number }[];
   bairros: { nome: string; pedidos: number; vendido: number; taxas: number }[];
-  garcons: { nome: string; comandas: number; vendido: number; pessoas: number | null }[];
+  garcons: { nome: string; comandas: number; vendido: number; pessoas: number | null; servico: number }[];
 };
 
 export async function carregarRelatorio(restauranteId: string, de: string, ate: string): Promise<Relatorio> {

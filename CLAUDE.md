@@ -177,6 +177,11 @@ Já existe (editar pedido de delivery):
 - Dono e caixa editam um delivery em andamento ("Editar" no cartão do painel): itens (tirar/pôr, com opções), cliente, endereço, bairro/taxa, forma de pagamento/troco e observação. Só pela RPC `editar_pedido_delivery` (marca a transação com `rest.edicao_pedido`; fora dela os campos e os itens do delivery continuam travados pelos triggers). O banco recalcula o total, recusa troco menor que o total, total abaixo do já pago e pedido sem itens.
 - Cada mudança vira uma linha em `pedidos_alteracoes` (só dono/caixa leem), mostrada nos detalhes do cartão com o selo "Editado". Item novo vai para a cozinha pelo trigger; item tirado sai como cancelamento na impressora se já tinha sido impresso.
 
+Já existe (taxa de serviço e couvert, só nas mesas):
+- Configuração em Painel › Restaurante ("Mesas: serviço e couvert"): `restaurantes.servico_percentual` (0 = não cobra), `couvert_valor` por pessoa e `couvert_dias` (0 = domingo, fuso do restaurante).
+- A comanda congela `servico_percentual` e `couvert_unitario` ao abrir; `comandas.subtotal` (itens) + `servico` + `couvert` = `total` (o total a pagar, usado por pagamento e fechamento). Garçom/caixa tiram ou voltam a cobrar com `cobrar_servico`/`cobrar_couvert` (`alterarCobranca`); o banco recusa se o total ficar abaixo do já pago.
+- Calculadora por item soma o serviço proporcional e um couvert; a conta impressa mostra subtotal, serviço e couvert. Resumo do caixa e relatórios mostram serviço e couvert à parte do "vendido"; por garçom, o serviço gerado.
+
 Já existe (avisos no celular do cliente, Web Push):
 - Na página de acompanhamento, "Avisar quando o pedido mudar" pede permissão, registra `/sw.js` (só avisos, sem cache) e manda a inscrição para `/api/pedidos/[id]/avisos` (aceita só serviços de push dos navegadores: FCM, Mozilla, Apple, Windows). Tabela `pedidos_avisos` só a chave secreta lê e grava.
 - O painel avisa depois de aceitar, saiu para entrega, entregar e cancelar (`after(() => avisarCliente(id))`, `src/lib/avisos-push.ts`); o status vem do banco. Pedido terminado apaga as inscrições.

@@ -238,6 +238,30 @@ export async function alterarPessoas(comandaId: string, pessoas: number): Promis
   return sucesso(`Mesa com ${dados.data.pessoas} ${dados.data.pessoas === 1 ? "pessoa" : "pessoas"}.`);
 }
 
+// Tirar ou voltar a cobrar o serviço ou o couvert de uma mesa (ex.: cliente não quer pagar os 10%).
+export async function alterarCobranca(comandaId: string, tipo: "servico" | "couvert", cobrar: boolean): Promise<ResultadoAcao> {
+  const acesso = await exigirAcesso("garcom");
+  const dados = z
+    .object({ comandaId: id, tipo: z.enum(["servico", "couvert"]), cobrar: z.boolean() })
+    .safeParse({ comandaId, tipo, cobrar });
+  if (!dados.success) return falha("Dados inválidos.");
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("comandas")
+    .update(dados.data.tipo === "servico" ? { cobrar_servico: dados.data.cobrar } : { cobrar_couvert: dados.data.cobrar })
+    .eq("id", dados.data.comandaId)
+    .eq("restaurante_id", acesso.restaurante.id)
+    .in("status", ["aberta", "conta_pedida"])
+    .select("id");
+  if (error) return falha(mensagemErroBanco(error));
+  if (!data.length) return falha("Comanda não encontrada ou já fechada.");
+
+  refresh();
+  const nome = dados.data.tipo === "servico" ? "Serviço" : "Couvert";
+  return sucesso(dados.data.cobrar ? `${nome} cobrado.` : `${nome} retirado.`);
+}
+
 export async function estornarPagamento(pagamentoId: string, motivo: string): Promise<ResultadoAcao> {
   const acesso = await exigirAcesso("garcom");
   if (acesso.papel === "garcom") return falha("Só o caixa ou o dono podem estornar.");

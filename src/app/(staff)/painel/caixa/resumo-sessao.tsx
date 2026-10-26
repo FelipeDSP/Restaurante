@@ -6,11 +6,12 @@ import { cn } from "@/lib/utils";
 
 import { dinheiroEsperado, type ResumoCaixa } from "./dados";
 
-function Indicador({ rotulo, valor, destaque }: { rotulo: string; valor: string; destaque?: boolean }) {
+function Indicador({ rotulo, valor, destaque, detalhe }: { rotulo: string; valor: string; destaque?: boolean; detalhe?: string }) {
   return (
     <div className={cn("rounded-xl border p-4", destaque && "border-[var(--cor-primaria)]")}>
       <p className="text-sm text-muted-foreground">{rotulo}</p>
       <p className="text-2xl font-bold tabular-nums">{valor}</p>
+      {detalhe ? <p className="text-xs text-muted-foreground">{detalhe}</p> : null}
     </div>
   );
 }
@@ -62,7 +63,18 @@ export function ResumoSessao({ resumo, fusoHorario }: { resumo: ResumoCaixa; fus
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Indicador rotulo="Total vendido" valor={formatarBRL(resumo.total_vendido)} destaque />
+        <Indicador
+          rotulo="Total vendido"
+          valor={formatarBRL(resumo.total_vendido)}
+          destaque
+          detalhe={
+            resumo.servico || resumo.couvert
+              ? [resumo.servico ? `+ serviço ${formatarBRL(resumo.servico)}` : "", resumo.couvert ? `+ couvert ${formatarBRL(resumo.couvert)}` : ""]
+                  .filter(Boolean)
+                  .join(" · ")
+              : undefined
+          }
+        />
         <Indicador rotulo="Total recebido" valor={formatarBRL(resumo.total_recebido)} destaque />
         <Indicador rotulo="Itens vendidos" valor={String(resumo.quantidade_itens)} />
         <Indicador rotulo="Comandas fechadas" valor={String(resumo.comandas.fechadas)} />

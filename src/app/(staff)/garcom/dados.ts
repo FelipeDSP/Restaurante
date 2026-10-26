@@ -121,6 +121,16 @@ export type DetalheComanda = {
   itens: ItemComanda[];
   pagamentos: PagamentoComanda[];
   pago: number;
+  // Total = subtotal (itens) + serviço + couvert. Percentual e couvert por pessoa vêm da abertura da mesa.
+  cobranca: {
+    subtotal: number;
+    servicoPercentual: number;
+    cobrarServico: boolean;
+    servico: number;
+    couvertUnitario: number;
+    cobrarCouvert: boolean;
+    couvert: number;
+  };
 };
 
 export async function carregarMesa(restauranteId: string, mesaId: string) {
@@ -141,7 +151,7 @@ export async function carregarComandaDaMesa(restauranteId: string, mesaId: strin
   const { data: c, error } = await supabase
     .from("comandas")
     .select(
-      `id, status, pessoas, total, aberta_em,
+      `id, status, pessoas, total, aberta_em, subtotal, servico_percentual, cobrar_servico, servico, couvert_unitario, cobrar_couvert, couvert,
        garcom:membros!comandas_restaurante_id_garcom_id_fkey(nome),
        pedidos(numero, status, criado_em, autor:membros!pedidos_restaurante_id_criado_por_fkey(nome), tarefas_producao(status, pronto_em), itens_pedido(id, nome_produto, preco_unitario, preco_adicionais, adicionais, etapas, para_viagem, quantidade, observacao, total, criado_em, cancelado_em, motivo_cancelamento)),
        pagamentos(id, valor, forma, criado_em, estornado_em, motivo_estorno, registrado:membros!pagamentos_restaurante_id_registrado_por_fkey(nome))`,
@@ -201,6 +211,15 @@ export async function carregarComandaDaMesa(restauranteId: string, mesaId: strin
     itens,
     pagamentos,
     pago: pagamentos.filter((p) => !p.estornado).reduce((soma, p) => soma + p.valor, 0),
+    cobranca: {
+      subtotal: c.subtotal,
+      servicoPercentual: c.servico_percentual,
+      cobrarServico: c.cobrar_servico,
+      servico: c.servico,
+      couvertUnitario: c.couvert_unitario,
+      cobrarCouvert: c.cobrar_couvert,
+      couvert: c.couvert,
+    },
   };
 }
 

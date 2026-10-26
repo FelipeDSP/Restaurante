@@ -237,13 +237,13 @@ isOneToOne: false
                   ]
                 },"comandas": {
                   Row: {
-                    "aberta_em": string,"caixa_sessao_id": string,"fechada_em": string | null,"fechada_por": string | null,"garcom_id": string | null,"id": string,"mesa_id": string,"pessoas": number | null,"restaurante_id": string,"status": string,"total": number
+                    "aberta_em": string,"caixa_sessao_id": string,"cobrar_couvert": boolean,"cobrar_servico": boolean,"couvert": number,"couvert_unitario": number,"fechada_em": string | null,"fechada_por": string | null,"garcom_id": string | null,"id": string,"mesa_id": string,"pessoas": number | null,"restaurante_id": string,"servico": number,"servico_percentual": number,"status": string,"subtotal": number,"total": number
                   }
                   Insert: {
-                    "aberta_em"?: string,"caixa_sessao_id": string,"fechada_em"?: string | null,"fechada_por"?: string | null,"garcom_id"?: string | null,"id"?: string,"mesa_id": string,"pessoas"?: number | null,"restaurante_id": string,"status"?: string,"total"?: number
+                    "aberta_em"?: string,"caixa_sessao_id": string,"cobrar_couvert"?: boolean,"cobrar_servico"?: boolean,"couvert"?: number,"couvert_unitario"?: number,"fechada_em"?: string | null,"fechada_por"?: string | null,"garcom_id"?: string | null,"id"?: string,"mesa_id": string,"pessoas"?: number | null,"restaurante_id": string,"servico"?: number,"servico_percentual"?: number,"status"?: string,"subtotal"?: number,"total"?: number
                   }
                   Update: {
-                    "aberta_em"?: string,"caixa_sessao_id"?: string,"fechada_em"?: string | null,"fechada_por"?: string | null,"garcom_id"?: string | null,"id"?: string,"mesa_id"?: string,"pessoas"?: number | null,"restaurante_id"?: string,"status"?: string,"total"?: number
+                    "aberta_em"?: string,"caixa_sessao_id"?: string,"cobrar_couvert"?: boolean,"cobrar_servico"?: boolean,"couvert"?: number,"couvert_unitario"?: number,"fechada_em"?: string | null,"fechada_por"?: string | null,"garcom_id"?: string | null,"id"?: string,"mesa_id"?: string,"pessoas"?: number | null,"restaurante_id"?: string,"servico"?: number,"servico_percentual"?: number,"status"?: string,"subtotal"?: number,"total"?: number
                   }
                   Relationships: [
                     {
@@ -847,13 +847,13 @@ isOneToOne: false
                   ]
                 },"restaurantes": {
                   Row: {
-                    "aceita_delivery": boolean,"ativo": boolean,"cor_primaria": string,"cor_secundaria": string,"criado_em": string,"endereco": NonNullable<Json>,"excluido_em": string | null,"fuso_horario": string,"horarios": NonNullable<Json>,"id": string,"logo_url": string | null,"nome": string,"pedido_minimo": number,"slug": string,"taxa_entrega_fixa": number,"taxa_entrega_modo": string,"telefone": string | null,"tempo_estimado_entrega_min": number | null,"whatsapp": string | null
+                    "aceita_delivery": boolean,"ativo": boolean,"cor_primaria": string,"cor_secundaria": string,"couvert_dias": (number)[],"couvert_valor": number,"criado_em": string,"endereco": NonNullable<Json>,"excluido_em": string | null,"fuso_horario": string,"horarios": NonNullable<Json>,"id": string,"logo_url": string | null,"nome": string,"pedido_minimo": number,"servico_percentual": number,"slug": string,"taxa_entrega_fixa": number,"taxa_entrega_modo": string,"telefone": string | null,"tempo_estimado_entrega_min": number | null,"whatsapp": string | null
                   }
                   Insert: {
-                    "aceita_delivery"?: boolean,"ativo"?: boolean,"cor_primaria"?: string,"cor_secundaria"?: string,"criado_em"?: string,"endereco"?: NonNullable<Json>,"excluido_em"?: string | null,"fuso_horario"?: string,"horarios"?: NonNullable<Json>,"id"?: string,"logo_url"?: string | null,"nome": string,"pedido_minimo"?: number,"slug": string,"taxa_entrega_fixa"?: number,"taxa_entrega_modo"?: string,"telefone"?: string | null,"tempo_estimado_entrega_min"?: number | null,"whatsapp"?: string | null
+                    "aceita_delivery"?: boolean,"ativo"?: boolean,"cor_primaria"?: string,"cor_secundaria"?: string,"couvert_dias"?: (number)[],"couvert_valor"?: number,"criado_em"?: string,"endereco"?: NonNullable<Json>,"excluido_em"?: string | null,"fuso_horario"?: string,"horarios"?: NonNullable<Json>,"id"?: string,"logo_url"?: string | null,"nome": string,"pedido_minimo"?: number,"servico_percentual"?: number,"slug": string,"taxa_entrega_fixa"?: number,"taxa_entrega_modo"?: string,"telefone"?: string | null,"tempo_estimado_entrega_min"?: number | null,"whatsapp"?: string | null
                   }
                   Update: {
-                    "aceita_delivery"?: boolean,"ativo"?: boolean,"cor_primaria"?: string,"cor_secundaria"?: string,"criado_em"?: string,"endereco"?: NonNullable<Json>,"excluido_em"?: string | null,"fuso_horario"?: string,"horarios"?: NonNullable<Json>,"id"?: string,"logo_url"?: string | null,"nome"?: string,"pedido_minimo"?: number,"slug"?: string,"taxa_entrega_fixa"?: number,"taxa_entrega_modo"?: string,"telefone"?: string | null,"tempo_estimado_entrega_min"?: number | null,"whatsapp"?: string | null
+                    "aceita_delivery"?: boolean,"ativo"?: boolean,"cor_primaria"?: string,"cor_secundaria"?: string,"couvert_dias"?: (number)[],"couvert_valor"?: number,"criado_em"?: string,"endereco"?: NonNullable<Json>,"excluido_em"?: string | null,"fuso_horario"?: string,"horarios"?: NonNullable<Json>,"id"?: string,"logo_url"?: string | null,"nome"?: string,"pedido_minimo"?: number,"servico_percentual"?: number,"slug"?: string,"taxa_entrega_fixa"?: number,"taxa_entrega_modo"?: string,"telefone"?: string | null,"tempo_estimado_entrega_min"?: number | null,"whatsapp"?: string | null
                   }
                   Relationships: [
                     

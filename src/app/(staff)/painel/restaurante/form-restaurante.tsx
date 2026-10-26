@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { textoDeCentavos } from "@/lib/dinheiro";
 import { FUSOS, type Horarios, lerHorarios } from "@/lib/horarios";
 import type { ResultadoAcao } from "@/lib/acoes";
+import { cn } from "@/lib/utils";
 
 import { salvarRestaurante } from "./actions";
 import { EditorHorarios } from "./editor-horarios";
@@ -34,7 +35,12 @@ export type DadosRestaurante = {
   // fixa: um valor só (o cliente informa CEP e endereço); bairro: lista em Bairros de entrega.
   taxa_entrega_modo: "fixa" | "bairro";
   taxa_entrega_fixa: number;
+  servico_percentual: number;
+  couvert_valor: number;
+  couvert_dias: number[];
 };
+
+const DIAS_SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 function horariosEnviados(estado: ResultadoAcao): Horarios | null {
   const texto = estado?.valores?.horarios;
@@ -53,6 +59,11 @@ export function FormRestaurante({ restaurante }: { restaurante: DadosRestaurante
   const [modoTaxa, setModoTaxa] = useState(restaurante.taxa_entrega_modo);
   const [corPrimaria, setCorPrimaria] = useState(restaurante.cor_primaria);
   const [corSecundaria, setCorSecundaria] = useState(restaurante.cor_secundaria);
+  const [diasCouvert, setDiasCouvert] = useState<number[]>(
+    estado?.valores?.couvert_dias !== undefined
+      ? estado.valores.couvert_dias.split(",").filter(Boolean).map(Number)
+      : restaurante.couvert_dias,
+  );
   const e = restaurante.endereco;
 
   return (
@@ -248,6 +259,60 @@ export function FormRestaurante({ restaurante }: { restaurante: DadosRestaurante
             />
             <ErroCampo estado={estado} campo="tempo_estimado_entrega_min" />
           </Campo>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Mesas: serviço e couvert</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4 sm:grid-cols-2">
+          <Campo rotulo="Taxa de serviço (%)" htmlFor="servico_percentual" dica="0 = não cobra">
+            <Input
+              id="servico_percentual"
+              name="servico_percentual"
+              type="number"
+              min={0}
+              max={30}
+              inputMode="numeric"
+              defaultValue={valorCampo(estado, "servico_percentual", restaurante.servico_percentual)}
+              className="h-10 max-w-32"
+            />
+            <ErroCampo estado={estado} campo="servico_percentual" />
+          </Campo>
+          <Campo rotulo="Couvert por pessoa (R$)" htmlFor="couvert_valor" dica="0,00 = não cobra">
+            <Input
+              id="couvert_valor"
+              name="couvert_valor"
+              inputMode="decimal"
+              defaultValue={valorCampo(estado, "couvert_valor", textoDeCentavos(restaurante.couvert_valor))}
+              className="h-10 max-w-32"
+            />
+            <ErroCampo estado={estado} campo="couvert_valor" />
+          </Campo>
+          <fieldset className="flex flex-col gap-2 sm:col-span-2">
+            <legend className="mb-1 text-sm font-medium">Dias com couvert</legend>
+            <input type="hidden" name="couvert_dias" value={diasCouvert.join(",")} />
+            <div className="flex flex-wrap gap-2">
+              {DIAS_SEMANA.map((rotulo, dia) => {
+                const marcado = diasCouvert.includes(dia);
+                return (
+                  <button
+                    key={rotulo}
+                    type="button"
+                    aria-pressed={marcado}
+                    onClick={() => setDiasCouvert((d) => (marcado ? d.filter((x) => x !== dia) : [...d, dia].sort()))}
+                    className={cn(
+                      "min-h-10 min-w-14 rounded-full border px-3 text-sm font-medium",
+                      marcado ? "border-[var(--cor-primaria-texto)] bg-[var(--cor-primaria)] text-[var(--cor-primaria-contraste)]" : "hover:bg-muted",
+                    )}
+                  >
+                    {rotulo}
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
         </CardContent>
       </Card>
 

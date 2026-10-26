@@ -30,6 +30,9 @@ export type ResumoCaixa = {
   suprimentos: number;
   movimentos: { tipo: "sangria" | "suprimento"; valor: number; motivo: string; em: string; por: string | null }[];
   total_vendido: number;
+  // Mesas: taxa de serviço e couvert (fora do "vendido").
+  servico: number;
+  couvert: number;
   quantidade_itens: number;
   por_forma: (Valor & { forma: string })[];
   por_origem: (Valor & { origem: string })[];

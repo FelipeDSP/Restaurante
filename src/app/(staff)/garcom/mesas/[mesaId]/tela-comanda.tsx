@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 
 import {
   alterarItem,
+  alterarCobranca,
   alterarPessoas,
   alterarStatusConta,
   cancelarComanda,
@@ -197,10 +198,24 @@ function LinhaItem({ item, editavel }: { item: ItemComanda; editavel: boolean })
 
 // Calculadora da conta separada: marca o que cada um consumiu (quantas unidades de cada item)
 // e mostra quanto a pessoa paga. Não grava nada; o valor vai para o pagamento.
-function CalculadoraItens({ itens, aoUsar }: { itens: ItemComanda[]; aoUsar: (valor: number) => void }) {
+function CalculadoraItens({
+  itens,
+  servicoPercentual,
+  couvertPorPessoa,
+  aoUsar,
+}: {
+  itens: ItemComanda[];
+  // Só o que está sendo cobrado na mesa (0 quando foi retirado).
+  servicoPercentual: number;
+  couvertPorPessoa: number;
+  aoUsar: (valor: number) => void;
+}) {
   const [escolhidos, setEscolhidos] = useState<Record<string, number>>({});
   const ativos = itens.filter((i) => !i.cancelado);
-  const total = ativos.reduce((soma, i) => soma + (escolhidos[i.id] ?? 0) * i.precoUnitario, 0);
+  const consumo = ativos.reduce((soma, i) => soma + (escolhidos[i.id] ?? 0) * i.precoUnitario, 0);
+  const servico = Math.round((consumo * servicoPercentual) / 100);
+  const couvert = consumo > 0 ? couvertPorPessoa : 0;
+  const total = consumo + servico + couvert;
   const mudar = (item: ItemComanda, n: number) =>
     setEscolhidos((e) => ({ ...e, [item.id]: Math.max(0, Math.min(item.quantidade, n)) }));
 
@@ -249,7 +264,16 @@ function CalculadoraItens({ itens, aoUsar }: { itens: ItemComanda[]; aoUsar: (va
         })}
       </ul>
       <div className="flex items-center justify-between gap-2">
-        <span className="text-lg font-bold tabular-nums">{formatarBRL(total)}</span>
+        <span className="flex flex-col">
+          <span className="text-lg font-bold tabular-nums">{formatarBRL(total)}</span>
+          {servico > 0 || couvert > 0 ? (
+            <span className="text-xs text-muted-foreground">
+              {formatarBRL(consumo)}
+              {servico > 0 ? ` + serviço ${formatarBRL(servico)}` : ""}
+              {couvert > 0 ? ` + couvert ${formatarBRL(couvert)}` : ""}
+            </span>
+          ) : null}
+        </span>
         <div className="flex gap-2">
           <Button type="button" variant="ghost" className="h-11" disabled={total === 0} onClick={() => setEscolhidos({})}>
             Limpar
@@ -279,6 +303,7 @@ function PainelPagamento({
   falta,
   pessoas,
   itens,
+  cobranca,
   aoFechar,
 }: {
   comandaId: string;
@@ -286,6 +311,7 @@ function PainelPagamento({
   falta: number;
   pessoas: number | null;
   itens: ItemComanda[];
+  cobranca: DetalheComanda["cobranca"];
   aoFechar: () => void;
 }) {
   // Uma ou mais formas (pagamento combinado: parte no Pix, parte no cartão...).
@@ -374,6 +400,8 @@ function PainelPagamento({
           {calculando ? (
             <CalculadoraItens
               itens={itens}
+              servicoPercentual={cobranca.cobrarServico ? cobranca.servicoPercentual : 0}
+              couvertPorPessoa={cobranca.cobrarCouvert ? cobranca.couvertUnitario : 0}
               aoUsar={(valor) => {
                 usarValor(Math.min(valor, falta), true);
                 setCalculando(false);
@@ -563,6 +591,41 @@ function LinhaPagamento({
   );
 }
 
+// Serviço e couvert da mesa: aparecem só quando o restaurante cobra; tirar/cobrar de novo com um toque.
+function Cobrancas({ comandaId, pessoas, cobranca }: { comandaId: string; pessoas: number | null; cobranca: DetalheComanda["cobranca"] }) {
+  const { pendente, executar } = useAcao();
+  if (cobranca.servicoPercentual === 0 && cobranca.couvertUnitario === 0) return null;
+  const linha = (rotulo: string, valor: number, cobrando: boolean, tipo: "servico" | "couvert") => (
+    <div className="flex items-center justify-between gap-2 text-sm">
+      <span className={cn(!cobrando && "text-muted-foreground line-through")}>{rotulo}</span>
+      <span className="flex items-center gap-1">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={pendente}
+          onClick={() => executar(() => alterarCobranca(comandaId, tipo, !cobrando))}
+        >
+          {cobrando ? "Tirar" : "Cobrar"}
+        </Button>
+        <span className="w-20 text-right tabular-nums">{cobrando ? formatarBRL(valor) : "—"}</span>
+      </span>
+    </div>
+  );
+  return (
+    <>
+      <div className="flex justify-between text-sm">
+        <span>Itens</span>
+        <span className="tabular-nums">{formatarBRL(cobranca.subtotal)}</span>
+      </div>
+      {cobranca.servicoPercentual > 0 ? linha(`Serviço (${cobranca.servicoPercentual}%)`, cobranca.servico, cobranca.cobrarServico, "servico") : null}
+      {cobranca.couvertUnitario > 0
+        ? linha(`Couvert (${pessoas ?? 0} × ${formatarBRL(cobranca.couvertUnitario)})`, cobranca.couvert, cobranca.cobrarCouvert, "couvert")
+        : null}
+    </>
+  );
+}
+
 // Histórico da mesa: um grupo por pedido (cada lançamento do garçom), na ordem em que saíram.
 function agruparPorPedido(itens: ItemComanda[]) {
   const grupos = new Map<number, { numero: number; criadoEm: string; autor: string | null; total: number; itens: ItemComanda[] }>();
@@ -737,6 +800,7 @@ export function TelaComanda({ mesaId, comanda, podeGerenciar, fusoHorario, orige
       </section>
 
       <section aria-label="Totais" className="flex flex-col gap-1 rounded-xl bg-muted/60 p-4">
+        <Cobrancas comandaId={comanda.id} pessoas={comanda.pessoas} cobranca={comanda.cobranca} />
         <div className="flex justify-between text-lg font-semibold">
           <span>Total</span>
           <span className="tabular-nums">{formatarBRL(comanda.total)}</span>
@@ -778,6 +842,7 @@ export function TelaComanda({ mesaId, comanda, podeGerenciar, fusoHorario, orige
           falta={falta}
           pessoas={comanda.pessoas}
           itens={comanda.itens}
+          cobranca={comanda.cobranca}
           aoFechar={() => setPagando(false)}
         />
       ) : null}

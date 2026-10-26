@@ -98,7 +98,7 @@ async function documentoConta(supabase: Cliente, comandaId: string, r: Restauran
   const { data: c, error } = await supabase
     .from("comandas")
     .select(
-      `id, pessoas, total, aberta_em,
+      `id, pessoas, total, aberta_em, subtotal, servico, servico_percentual, couvert, couvert_unitario,
        mesa:mesas!comandas_restaurante_id_mesa_id_fkey(numero),
        pedidos(status, itens_pedido(quantidade, nome_produto, adicionais, total, cancelado_em, criado_em)),
        pagamentos(valor, estornado_em)`,
@@ -126,7 +126,15 @@ async function documentoConta(supabase: Cliente, comandaId: string, r: Restauran
     const adicionais = lerAdicionais(i.adicionais);
     if (adicionais.length > 0) linhas.push({ tipo: "texto", texto: `   ${resumoAdicionais(adicionais)}` });
   }
-  linhas.push({ tipo: "separador" }, { tipo: "colunas", esquerda: "TOTAL", direita: formatarBRL(c.total), negrito: true, grande: true });
+  linhas.push({ tipo: "separador" });
+  if (c.servico > 0 || c.couvert > 0) {
+    linhas.push({ tipo: "colunas", esquerda: "Subtotal", direita: formatarBRL(c.subtotal) });
+    if (c.servico > 0) linhas.push({ tipo: "colunas", esquerda: `Serviço (${c.servico_percentual}%)`, direita: formatarBRL(c.servico) });
+    if (c.couvert > 0) {
+      linhas.push({ tipo: "colunas", esquerda: `Couvert (${c.pessoas ?? 0} x ${formatarBRL(c.couvert_unitario)})`, direita: formatarBRL(c.couvert) });
+    }
+  }
+  linhas.push({ tipo: "colunas", esquerda: "TOTAL", direita: formatarBRL(c.total), negrito: true, grande: true });
   if (pago > 0) {
     linhas.push({ tipo: "colunas", esquerda: "Pago", direita: formatarBRL(pago) });
     linhas.push({ tipo: "colunas", esquerda: "Falta", direita: formatarBRL(Math.max(0, c.total - pago)), negrito: true });

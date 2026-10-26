@@ -120,7 +120,17 @@ export default async function RelatoriosPage(props: PageProps<"/painel/relatorio
       ) : (
         <>
           <section aria-label="Números do período" className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-            <Indicador rotulo="Vendido" valor={formatarBRL(r.vendido)} detalhe={`Média de ${formatarBRL(mediaNoite)} por noite`} />
+            <Indicador
+              rotulo="Vendido"
+              valor={formatarBRL(r.vendido)}
+              detalhe={[
+                `Média de ${formatarBRL(mediaNoite)} por noite`,
+                r.servico ? `+ serviço ${formatarBRL(r.servico)}` : "",
+                r.couvert ? `+ couvert ${formatarBRL(r.couvert)}` : "",
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            />
             <Indicador rotulo="Contas" valor={String(r.contas)} detalhe="Comandas fechadas + pedidos de delivery" />
             <Indicador rotulo="Ticket médio" valor={formatarBRL(ticket)} />
             <Indicador rotulo="Itens vendidos" valor={String(r.itens)} detalhe={r.taxas_entrega ? `Taxas de entrega: ${formatarBRL(r.taxas_entrega)}` : undefined} />
@@ -345,6 +355,7 @@ export default async function RelatoriosPage(props: PageProps<"/painel/relatorio
                         <th className="pb-2 text-right font-medium">Comandas</th>
                         <th className="pb-2 text-right font-medium">Vendido</th>
                         <th className="pb-2 text-right font-medium">Ticket</th>
+                        {r.servico ? <th className="pb-2 text-right font-medium">Serviço</th> : null}
                       </tr>
                     </thead>
                     <tbody>
@@ -356,6 +367,7 @@ export default async function RelatoriosPage(props: PageProps<"/painel/relatorio
                           <td className="py-2 text-right tabular-nums text-muted-foreground">
                             {formatarBRL(g.comandas ? Math.round(g.vendido / g.comandas) : 0)}
                           </td>
+                          {r.servico ? <td className="py-2 text-right tabular-nums">{formatarBRL(g.servico ?? 0)}</td> : null}
                         </tr>
                       ))}
                     </tbody>

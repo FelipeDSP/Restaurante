@@ -15,7 +15,7 @@ export default async function RestaurantePage() {
   const { data: r, error } = await supabase
     .from("restaurantes")
     .select(
-      "id, slug, nome, telefone, whatsapp, endereco, cor_primaria, cor_secundaria, logo_url, fuso_horario, horarios, aceita_delivery, pedido_minimo, tempo_estimado_entrega_min, taxa_entrega_modo, taxa_entrega_fixa",
+      "id, slug, nome, telefone, whatsapp, endereco, cor_primaria, cor_secundaria, logo_url, fuso_horario, horarios, aceita_delivery, pedido_minimo, tempo_estimado_entrega_min, taxa_entrega_modo, taxa_entrega_fixa, servico_percentual, couvert_valor, couvert_dias",
     )
     .eq("id", acesso.restaurante.id)
     .single();

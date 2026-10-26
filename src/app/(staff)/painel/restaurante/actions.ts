@@ -55,6 +55,13 @@ export async function salvarRestaurante(_estado: ResultadoAcao, formData: FormDa
     taxa_entrega_modo: z.enum(["fixa", "bairro"]),
     taxa_entrega_fixa: dinheiro("Taxa de entrega"),
     tempo_estimado_entrega_min: inteiroOpcional,
+    servico_percentual: z.coerce.number().int("Taxa de serviço: use um número inteiro.").min(0).max(30, "Taxa de serviço: no máximo 30%."),
+    couvert_valor: dinheiro("Couvert"),
+    // "0,5,6" = domingo, sexta e sábado.
+    couvert_dias: z.preprocess(
+      (v) => (typeof v === "string" && v ? v.split(",").map(Number) : []),
+      z.array(z.number().int().min(0).max(6)).max(7),
+    ),
   });
 
   const dados = schema.safeParse(dadosDoFormulario(formData));

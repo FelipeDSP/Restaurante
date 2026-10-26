@@ -1699,6 +1699,79 @@ begin
 end;
 $$;
 
+-- ======================================================================
+-- Taxa de serviço e couvert
+-- ======================================================================
+do $$
+declare
+  a constant uuid := md5('brasa-espetinhos')::uuid;
+  v_comanda uuid;
+  v_produto uuid;
+  c record;
+  n integer;
+begin
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  update public.restaurantes set servico_percentual = 10, couvert_valor = 500, couvert_dias = '{0,1,2,3,4,5,6}' where id = a;
+
+  perform pg_temp.entrar('caixa.brasa@exemplo.com');
+  if not exists (select 1 from public.caixa_sessoes where restaurante_id = a and fechada_em is null) then
+    insert into public.caixa_sessoes (restaurante_id, valor_inicial) values (a, 0);
+  end if;
+
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  insert into public.comandas (restaurante_id, mesa_id, pessoas)
+  select a, m.id, 2 from public.mesas m
+  where m.restaurante_id = a and m.ativa
+    and not exists (select 1 from public.comandas x where x.mesa_id = m.id and x.status in ('aberta', 'conta_pedida'))
+  order by m.ordem limit 1
+  returning id into v_comanda;
+  select id into v_produto from public.produtos p
+  where restaurante_id = a and disponivel and preco = 1000
+    and not exists (select 1 from public.produtos_grupos_adicionais g where g.produto_id = p.id) limit 1;
+  if v_produto is null then
+    perform pg_temp.admin();
+    insert into public.produtos (restaurante_id, categoria_id, nome, preco)
+    select a, id, 'Teste serviço', 1000 from public.categorias where restaurante_id = a limit 1 returning id into v_produto;
+    perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  end if;
+  perform public.lancar_itens_comanda(v_comanda, jsonb_build_array(jsonb_build_object('produto_id', v_produto, 'quantidade', 3)));
+
+  select * into c from public.comandas where id = v_comanda;
+  perform pg_temp.ok(c.subtotal = 3000 and c.servico = 300 and c.couvert = 1000 and c.total = 4300,
+    'serviço: 10% sobre os itens e couvert por pessoa no total');
+
+  update public.comandas set pessoas = 3 where id = v_comanda;
+  select * into c from public.comandas where id = v_comanda;
+  perform pg_temp.ok(c.couvert = 1500 and c.total = 4800, 'serviço: couvert acompanha as pessoas');
+
+  update public.comandas set cobrar_servico = false where id = v_comanda;
+  select * into c from public.comandas where id = v_comanda;
+  perform pg_temp.ok(c.servico = 0 and c.total = 4500, 'serviço: garçom tira o serviço a pedido do cliente');
+
+  -- Configuração nova não muda a mesa aberta.
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  update public.restaurantes set servico_percentual = 20 where id = a;
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  update public.comandas set cobrar_servico = true where id = v_comanda;
+  select * into c from public.comandas where id = v_comanda;
+  perform pg_temp.ok(c.servico = 300, 'serviço: percentual congelado na abertura da mesa');
+
+  -- Pago o total, tirar o serviço deixaria o total abaixo do pago.
+  insert into public.pagamentos (restaurante_id, comanda_id, valor, forma) values (a, v_comanda, c.total, 'pix');
+  begin
+    update public.comandas set cobrar_servico = false where id = v_comanda;
+    perform pg_temp.ok(false, 'serviço: não tira depois de pago');
+  exception when others then
+    perform pg_temp.ok(true, 'serviço: não tira depois de pago');
+  end;
+  update public.comandas set status = 'fechada' where id = v_comanda;
+  select count(*) into n from public.comandas where id = v_comanda and status = 'fechada' and servico = 300;
+  perform pg_temp.ok(n = 1, 'serviço: comanda fecha com serviço e couvert pagos');
+
+  perform pg_temp.admin();
+end;
+$$;
+
 select n, ok, teste from resultado order by n;
 select count(*) filter (where not ok) as falhas, count(*) as total from resultado;
 
