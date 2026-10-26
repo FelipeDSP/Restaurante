@@ -14,6 +14,7 @@ import { urlIcone } from "@/lib/icone";
 import { createClient } from "@/lib/supabase/server";
 
 import { AvisoAssinatura } from "./aviso-assinatura";
+import { ChamarGarcom } from "./chamar-garcom";
 import { AbasSecao, MenuCelular, MenuLateral } from "./menu-painel";
 import { NAVEGACAO } from "./navegacao";
 
@@ -63,6 +64,7 @@ export default async function PainelLayout({ children }: LayoutProps<"/painel">)
                 <span className="hidden sm:inline">Admin</span>
               </Link>
             ) : null}
+            <ChamarGarcom restauranteId={acesso.restaurante.id} membroId={acesso.membroId} />
             <AlertaPedidos restauranteId={acesso.restaurante.id} />
             <MenuUsuario
               nome={acesso.nome}

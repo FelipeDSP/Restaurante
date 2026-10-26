@@ -335,3 +335,19 @@ export async function marcarTicketPraca(tarefaId: string, status: "pronto" | "pe
   refresh();
   return status === "pronto" ? sucesso("Marcado como pronto.") : sucesso("Voltou para preparo.");
 }
+
+// O garçom responde ao chamado do painel ("Vou"): quem chamou recebe o aviso; a hora vem do banco.
+export async function atenderChamado(chamadoId: string): Promise<ResultadoAcao> {
+  const acesso = await exigirAcesso("garcom");
+  if (!id.safeParse(chamadoId).success) return falha("Chamado inválido.");
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("chamados_garcom")
+    .update({ atendido_em: new Date().toISOString() })
+    .eq("id", chamadoId)
+    .eq("restaurante_id", acesso.restaurante.id)
+    .eq("garcom_id", acesso.membroId)
+    .is("atendido_em", null);
+  if (error) return falha(mensagemErroBanco(error));
+  return sucesso();
+}

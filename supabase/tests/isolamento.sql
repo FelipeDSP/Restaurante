@@ -1920,6 +1920,78 @@ begin
 end;
 $$;
 
+-- ======================================================================
+-- Chamar garçom
+-- ======================================================================
+do $$
+declare
+  a constant uuid := md5('brasa-espetinhos')::uuid;
+  v_g1 uuid;
+  v_g2 uuid;
+  v_dono uuid;
+  v_outro uuid;
+  v_chamado uuid;
+  n integer;
+begin
+  perform pg_temp.admin();
+  select id into v_g1 from public.membros where restaurante_id = a and nome = 'Garçom 1 (brasa)';
+  select id into v_g2 from public.membros where restaurante_id = a and nome = 'Garçom 2 (brasa)';
+  select id into v_dono from public.membros where restaurante_id = a and papel = 'dono' limit 1;
+  select id into v_outro from public.membros where restaurante_id <> a and papel = 'garcom' limit 1;
+
+  perform pg_temp.entrar('caixa.brasa@exemplo.com');
+  insert into public.chamados_garcom (restaurante_id, garcom_id, recado) values (a, v_g1, '  Vir ao caixa ') returning id into v_chamado;
+  perform pg_temp.admin();
+  select count(*) into n from public.chamados_garcom
+  where id = v_chamado and recado = 'Vir ao caixa' and chamado_por is not null and atendido_em is null;
+  perform pg_temp.ok(n = 1, 'chamado: caixa chama e o banco grava quem chamou');
+
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  begin
+    insert into public.chamados_garcom (restaurante_id, garcom_id) values (a, v_g2);
+    perform pg_temp.ok(false, 'chamado: garçom não chama');
+  exception when others then
+    perform pg_temp.ok(true, 'chamado: garçom não chama');
+  end;
+
+  perform pg_temp.entrar('caixa.brasa@exemplo.com');
+  begin
+    insert into public.chamados_garcom (restaurante_id, garcom_id) values (a, v_dono);
+    perform pg_temp.ok(false, 'chamado: só para garçom');
+  exception when others then
+    perform pg_temp.ok(true, 'chamado: só para garçom');
+  end;
+  begin
+    insert into public.chamados_garcom (restaurante_id, garcom_id) values (a, v_outro);
+    perform pg_temp.ok(false, 'chamado: garçom de outro restaurante');
+  exception when others then
+    perform pg_temp.ok(true, 'chamado: garçom de outro restaurante');
+  end;
+
+  -- O outro garçom não vê nem atende o chamado.
+  perform pg_temp.entrar('garcom2.brasa@exemplo.com');
+  select count(*) into n from public.chamados_garcom where id = v_chamado;
+  perform pg_temp.ok(n = 0, 'chamado: outro garçom não vê');
+  update public.chamados_garcom set atendido_em = now() where id = v_chamado;
+  perform pg_temp.admin();
+  select count(*) into n from public.chamados_garcom where id = v_chamado and atendido_em is null;
+  perform pg_temp.ok(n = 1, 'chamado: outro garçom não atende');
+
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  select count(*) into n from public.chamados_garcom where id = v_chamado;
+  perform pg_temp.ok(n = 1, 'chamado: garçom vê o dele');
+  update public.chamados_garcom set atendido_em = '2000-01-01' where id = v_chamado;
+  perform pg_temp.admin();
+  select count(*) into n from public.chamados_garcom where id = v_chamado and atendido_em > now() - interval '1 minute';
+  perform pg_temp.ok(n = 1, 'chamado: garçom atende e a hora vem do banco');
+
+  perform pg_temp.entrar('dono.burger@exemplo.com');
+  select count(*) into n from public.chamados_garcom where restaurante_id = a;
+  perform pg_temp.ok(n = 0, 'chamado: outro restaurante não vê');
+  perform pg_temp.admin();
+end;
+$$;
+
 select n, ok, teste from resultado order by n;
 select count(*) filter (where not ok) as falhas, count(*) as total from resultado;
 

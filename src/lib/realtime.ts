@@ -12,7 +12,8 @@ export type TabelaRealtime =
   | "pedidos"
   | "tarefas_producao"
   | "fila_impressao"
-  | "caixa_sessoes";
+  | "caixa_sessoes"
+  | "chamados_garcom";
 type Evento = "*" | "INSERT" | "UPDATE" | "DELETE";
 export type MudancaRealtime = RealtimePostgresChangesPayload<Record<string, unknown>>;
 

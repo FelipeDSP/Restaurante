@@ -173,6 +173,43 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"chamados_garcom": {
+                  Row: {
+                    "atendido_em": string | null,"chamado_por": string | null,"criado_em": string,"garcom_id": string,"id": string,"recado": string | null,"restaurante_id": string
+                  }
+                  Insert: {
+                    "atendido_em"?: string | null,"chamado_por"?: string | null,"criado_em"?: string,"garcom_id": string,"id"?: string,"recado"?: string | null,"restaurante_id": string
+                  }
+                  Update: {
+                    "atendido_em"?: string | null,"chamado_por"?: string | null,"criado_em"?: string,"garcom_id"?: string,"id"?: string,"recado"?: string | null,"restaurante_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "chamados_garcom_restaurante_id_chamado_por_fkey"
+      columns: ["restaurante_id","chamado_por"]
+isOneToOne: false
+      referencedRelation: "membros"
+      referencedColumns: ["restaurante_id","id"]
+    },{
+      foreignKeyName: "chamados_garcom_restaurante_id_fkey"
+      columns: ["restaurante_id"]
+isOneToOne: false
+      referencedRelation: "restaurantes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "chamados_garcom_restaurante_id_fkey"
+      columns: ["restaurante_id"]
+isOneToOne: false
+      referencedRelation: "restaurantes_publicos"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "chamados_garcom_restaurante_id_garcom_id_fkey"
+      columns: ["restaurante_id","garcom_id"]
+isOneToOne: false
+      referencedRelation: "membros"
+      referencedColumns: ["restaurante_id","id"]
+    }
+                  ]
                 },"clientes": {
                   Row: {
                     "criado_em": string,"id": string,"nome": string,"restaurante_id": string,"telefone": string,"user_id": string

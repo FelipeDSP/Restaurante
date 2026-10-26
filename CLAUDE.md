@@ -199,6 +199,11 @@ Já existe (avisos no celular do cliente, Web Push):
 - iPhone: só com o site na tela de início (iOS 16.4+). O site do restaurante tem manifest próprio (`/pwa/[id]/manifest?app=site`, sem start_url: abre a página de onde foi instalado).
 - Sem depender de outro produto (decisão do cliente): WhatsApp/Chatyou só como integração opcional no futuro.
 
+Já existe (chamar garçom):
+- Botão "Chamar garçom" no topo do painel (dono e caixa; `painel/chamar-garcom.tsx`): escolhe o garçom e um recado (atalhos ou texto, até 120 letras). Grava em `chamados_garcom` (só dono/caixa criam; quem chamou e a hora vêm do trigger; só para membro ativo com papel `garcom`; até 20 por minuto por restaurante).
+- App do garçom (`garcom/aviso-chamado.tsx`): vibra, bipa e mostra o aviso até ele tocar em "Vou" (`atenderChamado`, só o próprio garçom; a hora vem do banco); repete a cada 20 s algumas vezes. Ao abrir o app, mostra os chamados sem resposta dos últimos 30 min. Quem chamou recebe "Fulano está indo" (tempo real).
+- O garçom vê só os chamados dele. iPhone não vibra (Safari não deixa); com o app fechado não há aviso (push para a equipe fica para depois).
+
 ## Acesso público (anon)
 
 - Leitura de `restaurantes` (apenas colunas públicas, via view `restaurantes_publicos`), `categorias` ativas, `produtos` disponíveis para delivery e `bairros_entrega` ativos, somente de restaurantes ativos.

@@ -10,6 +10,7 @@ import { NOME_PAPEL, podeAcessar } from "@/lib/auth/papeis";
 import { estiloMarca } from "@/lib/cores";
 import { urlIcone } from "@/lib/icone";
 
+import { AvisoChamado } from "./aviso-chamado";
 import { AvisoPronto } from "./aviso-pronto";
 import { NavegacaoGarcom } from "./navegacao-garcom";
 
@@ -69,6 +70,7 @@ export default async function GarcomLayout({ children }: LayoutProps<"/garcom">)
         <FaixaConexao />
       </header>
       <AvisoPronto restauranteId={acesso.restaurante.id} membroId={acesso.membroId} />
+      <AvisoChamado restauranteId={acesso.restaurante.id} membroId={acesso.membroId} />
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col">{children}</div>
       <NavegacaoGarcom />
     </div>
