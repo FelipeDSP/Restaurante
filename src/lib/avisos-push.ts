@@ -51,13 +51,13 @@ export async function avisarInscricaoNova(pedidoId: string, inscricao: Inscricao
   if (!c || !admin) return false;
   const { data: pedido } = await admin
     .from("pedidos")
-    .select("id, numero, restaurante:restaurantes!inner(id, slug, nome, logo_url, cor_primaria)")
+    .select("id, restaurante:restaurantes!inner(id, slug, nome, logo_url, cor_primaria)")
     .eq("id", pedidoId)
     .maybeSingle();
   if (!pedido) return false;
   const r = pedido.restaurante;
   const carga = JSON.stringify({
-    titulo: `${r.nome} · pedido nº ${pedido.numero}`,
+    titulo: r.nome,
     corpo: "Avisos ligados. Vamos te avisar aqui quando o pedido mudar.",
     url: `/${r.slug}/pedido/${pedido.id}`,
     icone: urlIcone({ id: r.id, nome: r.nome, corPrimaria: r.cor_primaria, logoUrl: r.logo_url }, 192),
@@ -87,7 +87,7 @@ export async function avisarCliente(pedidoId: string): Promise<void> {
   try {
     const { data: pedido } = await admin
       .from("pedidos")
-      .select("id, numero, status, origem, restaurante:restaurantes!inner(id, slug, nome, logo_url, cor_primaria)")
+      .select("id, status, origem, restaurante:restaurantes!inner(id, slug, nome, logo_url, cor_primaria)")
       .eq("id", pedidoId)
       .maybeSingle();
     if (!pedido || pedido.origem !== "delivery") return;
@@ -103,7 +103,7 @@ export async function avisarCliente(pedidoId: string): Promise<void> {
 
     const r = pedido.restaurante;
     const carga = JSON.stringify({
-      titulo: `${r.nome} · pedido nº ${pedido.numero}`,
+      titulo: r.nome,
       corpo,
       url: `/${r.slug}/pedido/${pedido.id}`,
       icone: urlIcone({ id: r.id, nome: r.nome, corPrimaria: r.cor_primaria, logoUrl: r.logo_url }, 192),
