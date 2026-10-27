@@ -12,6 +12,24 @@ import { createClient } from "@/lib/supabase/client";
 // Conferência de reserva: pega o pedido que chegou enquanto o tempo real estava caído
 // e repete o bipe enquanto houver delivery esperando o aceite.
 const CONFERIR_MS = 30_000;
+// Som desligado pela pessoa: lembrado no aparelho.
+const CHAVE_MUDO = "alerta-pedidos:mudo";
+
+function lerMudo() {
+  try {
+    return localStorage.getItem(CHAVE_MUDO) === "1";
+  } catch {
+    return false;
+  }
+}
+function gravarMudo(mudo: boolean) {
+  try {
+    if (mudo) localStorage.setItem(CHAVE_MUDO, "1");
+    else localStorage.removeItem(CHAVE_MUDO);
+  } catch {
+    // armazenamento bloqueado: só não lembra
+  }
+}
 
 type PedidoNovo = { id: string; numero: number | null; cliente_nome: string | null };
 
@@ -21,13 +39,19 @@ export function AlertaPedidos({ restauranteId }: { restauranteId: string }) {
   const router = useRouter();
   const audio = useRef<AudioContext | null>(null);
   const [somAtivo, setSomAtivo] = useState(false);
+  const [mudo, setMudo] = useState(false);
+  const mudoAtual = useRef(false);
   const [novos, setNovos] = useState(0);
   // Pedidos "recebido" já avisados (null até a primeira conferência, que não avisa nada).
   const avisados = useRef<Set<string> | null>(null);
   const prontosAvisados = useRef(new Set<string>());
 
-  // Qualquer interação com a página já libera o som.
+  // Qualquer interação com a página já libera o som (se a pessoa não desligou).
   useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      mudoAtual.current = lerMudo();
+      setMudo(mudoAtual.current);
+    });
     const liberar = () => {
       audio.current ??= new AudioContext();
       void audio.current.resume().then(() => setSomAtivo(audio.current?.state === "running"));
@@ -37,6 +61,7 @@ export function AlertaPedidos({ restauranteId }: { restauranteId: string }) {
     return () => {
       window.removeEventListener("pointerdown", liberar);
       window.removeEventListener("keydown", liberar);
+      cancelAnimationFrame(id);
     };
   }, []);
 
@@ -56,7 +81,7 @@ export function AlertaPedidos({ restauranteId }: { restauranteId: string }) {
   }, [novos]);
 
   const bipar = () => {
-    if (audio.current?.state === "running") tocarAlerta(audio.current);
+    if (!mudoAtual.current && audio.current?.state === "running") tocarAlerta(audio.current);
   };
 
   const avisar = useCallback(
@@ -145,7 +170,10 @@ export function AlertaPedidos({ restauranteId }: { restauranteId: string }) {
     "UPDATE",
   );
 
-  function ativarSom() {
+  function ligarSom() {
+    mudoAtual.current = false;
+    setMudo(false);
+    gravarMudo(false);
     audio.current ??= new AudioContext();
     void audio.current.resume().then(() => {
       setSomAtivo(audio.current?.state === "running");
@@ -153,29 +181,35 @@ export function AlertaPedidos({ restauranteId }: { restauranteId: string }) {
     });
   }
 
-  if (!somAtivo) {
+  function desligarSom() {
+    mudoAtual.current = true;
+    setMudo(true);
+    gravarMudo(true);
+    toast.info("Som dos pedidos desligado.");
+  }
+
+  if (!somAtivo || mudo) {
     return (
       <button
         type="button"
-        onClick={ativarSom}
-        aria-label="Ativar som dos pedidos"
-        className="flex h-11 items-center gap-2 rounded-full bg-black/15 px-3 text-sm font-semibold hover:bg-black/25"
+        onClick={ligarSom}
+        aria-label="Ligar som dos pedidos"
+        title="Som desligado: toque para ligar"
+        className="flex size-11 items-center justify-center rounded-full hover:bg-black/10"
       >
         <BellOff className="size-5" aria-hidden />
-        {/* No celular só o ícone: o nome do restaurante precisa do espaço. */}
-        <span className="hidden sm:inline">Ativar som</span>
       </button>
     );
   }
   return (
     <button
       type="button"
-      onClick={ativarSom}
-      aria-label="Alerta sonoro de pedidos ativado (tocar teste)"
-      title="Alerta sonoro ativado — clique para testar"
+      onClick={desligarSom}
+      aria-label="Som dos pedidos ligado: toque para desligar"
+      title="Som ligado: toque para desligar"
       className="flex size-11 items-center justify-center rounded-full hover:bg-black/10"
     >
-      <Bell className="size-5" />
+      <Bell className="size-5" aria-hidden />
     </button>
   );
 }
