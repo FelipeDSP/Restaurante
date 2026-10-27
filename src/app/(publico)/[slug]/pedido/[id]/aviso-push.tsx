@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button";
 type Estado = "carregando" | "sem-suporte" | "iphone" | "desligado" | "ligado" | "bloqueado";
 
 const chaveLocal = (pedidoId: string) => `aviso-pedido:${pedidoId}`;
+// Ligou uma vez neste aparelho: os próximos pedidos já ligam sozinhos (até tocar em "Desligar").
+const CHAVE_SEMPRE = "avisos-pedidos:sempre";
 
 function lerLocal(chave: string) {
   try {
@@ -47,14 +49,20 @@ export function AvisoPush({ pedidoId, chavePublica }: { pedidoId: string; chaveP
 
   // Navegador e permissão só existem no aparelho.
   useEffect(() => {
-    const id = requestAnimationFrame(() => setEstado(estadoInicial(pedidoId)));
+    const id = requestAnimationFrame(() => {
+      const inicial = estadoInicial(pedidoId);
+      setEstado(inicial);
+      // Já autorizou antes: liga sozinho, sem perguntar e sem aviso de teste.
+      if (inicial === "desligado" && Notification.permission === "granted" && lerLocal(CHAVE_SEMPRE)) void ligar(true);
+    });
     return () => cancelAnimationFrame(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- só ao abrir o pedido
   }, [pedidoId]);
 
-  async function ligar() {
+  async function ligar(automatico = false) {
     setOcupado(true);
     try {
-      const permissao = await Notification.requestPermission();
+      const permissao = automatico ? Notification.permission : await Notification.requestPermission();
       if (permissao !== "granted") {
         setEstado(permissao === "denied" ? "bloqueado" : "desligado");
         return;
@@ -67,15 +75,18 @@ export function AvisoPush({ pedidoId, chavePublica }: { pedidoId: string; chaveP
       const resposta = await fetch(`/api/pedidos/${pedidoId}/avisos`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(inscricao.toJSON()),
+        body: JSON.stringify({ ...inscricao.toJSON(), teste: !automatico }),
       });
       if (!resposta.ok) {
+        if (automatico) return;
         const corpo = (await resposta.json().catch(() => null)) as { erro?: string } | null;
         toast.error(corpo?.erro ?? "Não foi possível ligar os avisos.");
         return;
       }
       gravarLocal(chaveLocal(pedidoId), inscricao.endpoint);
+      gravarLocal(CHAVE_SEMPRE, "1");
       setEstado("ligado");
+      if (automatico) return;
       const corpo = (await resposta.json().catch(() => null)) as { enviado?: boolean } | null;
       toast.success(
         corpo?.enviado
@@ -84,7 +95,7 @@ export function AvisoPush({ pedidoId, chavePublica }: { pedidoId: string; chaveP
         { duration: 8000 },
       );
     } catch {
-      toast.error("Não foi possível ligar os avisos neste navegador.");
+      if (!automatico) toast.error("Não foi possível ligar os avisos neste navegador.");
     } finally {
       setOcupado(false);
     }
@@ -105,6 +116,7 @@ export function AvisoPush({ pedidoId, chavePublica }: { pedidoId: string; chaveP
       // sem internet: o aviso some sozinho quando o pedido termina
     }
     gravarLocal(chaveLocal(pedidoId), null);
+    gravarLocal(CHAVE_SEMPRE, null);
     setEstado("desligado");
     setOcupado(false);
   }
@@ -114,7 +126,7 @@ export function AvisoPush({ pedidoId, chavePublica }: { pedidoId: string; chaveP
   return (
     <section className="flex flex-wrap items-center gap-3 rounded-xl bg-background p-4 shadow-sm">
       {estado === "desligado" ? (
-        <Button className="h-11 w-full" disabled={ocupado} onClick={ligar}>
+        <Button className="h-11 w-full" disabled={ocupado} onClick={() => void ligar()}>
           <Bell />
           Avisar quando o pedido mudar
         </Button>

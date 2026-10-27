@@ -10,6 +10,8 @@ import { id } from "@/lib/validacao";
 const inscricao = z.object({
   endpoint: z.string().max(1000).refine(enderecoDeAvisoValido, "Endereço de aviso inválido."),
   keys: z.object({ p256dh: z.string().min(20).max(200), auth: z.string().min(8).max(100) }),
+  // Falso quando o site liga sozinho (o cliente já tinha ligado antes): sem aviso de teste.
+  teste: z.boolean().optional(),
 });
 const MAXIMO_POR_PEDIDO = 5;
 
@@ -58,6 +60,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/pedidos/[id
   );
   if (error) return resposta(500, "Não foi possível ligar os avisos.");
   // Aviso de teste na hora: o cliente vê se o celular recebe.
+  if (dados.data.teste === false) return Response.json({ enviado: false });
   const enviado = await avisarInscricaoNova(pedido.id, {
     endpoint: dados.data.endpoint,
     p256dh: dados.data.keys.p256dh,
