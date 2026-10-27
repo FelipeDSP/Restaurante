@@ -56,7 +56,9 @@ export async function GET(request: Request, ctx: RouteContext<"/pwa/[restaurante
     description: `Equipe · ${restaurante.nome}`,
     // Abre na área da pessoa (o painel manda quem só atende mesas para as Mesas).
     start_url: "/painel",
-    scope: "/",
+    // Só o painel: com "/" o app da equipe cobria o site do cliente e, no Android, os avisos do
+    // pedido (Web Push) iam para ele e abriam o painel em vez do acompanhamento.
+    scope: "/painel",
     display: "standalone",
     orientation: "portrait",
     lang: "pt-BR",
