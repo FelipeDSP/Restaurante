@@ -36,7 +36,7 @@ export type PedidoDelivery = {
   cupom: { codigo: string; tipo: string; valor: number } | null;
   total: number;
   pago: number;
-  // Praças da cozinha que ainda não marcaram pronto: enquanto houver, quem marca "Pronto" é a cozinha.
+  // Praças da cozinha que ainda não marcaram pronto (só informa; o painel pode marcar pronto mesmo assim).
   pracasPendentes: number;
   motivoCancelamento: string | null;
   // Mudanças feitas depois do pedido (editar pedido), da mais antiga para a mais nova.
@@ -91,7 +91,7 @@ export function CartaoPedido({ pedido, entregadores, modoInicial = "normal", aoS
   const telefone = pedido.clienteTelefone.replace(/\D/g, "");
   const whatsapp = telefone.length <= 11 ? `55${telefone}` : telefone;
   const naCozinha = pedido.status === "em_preparo" && pedido.pracasPendentes > 0;
-  const proximo = naCozinha ? undefined : PROXIMO[pedido.status];
+  const proximo = PROXIMO[pedido.status];
 
   const resumoEndereco = [[e.rua, e.numero].filter(Boolean).join(", "), pedido.bairro].filter(Boolean).join(" · ");
 

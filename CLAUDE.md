@@ -115,6 +115,7 @@ Já existe (app de impressão, fase 3):
 ## Papéis, funções e permissões
 
 - `dono` (`membros.papel = 'dono'`): tudo, sempre. Equipe (Pessoas e Funções) e Assinatura são só dele.
+- **O dono não é impedido** (decisão do cliente em 27/10): o que ele quer fazer, faz. Fecha o caixa com mesa aberta ou delivery em andamento (aviso mostra o que fica; passa para o próximo caixa; migração `dono_fecha_caixa`). No quadro do delivery, qualquer um com `delivery` marca Pronto mesmo com praça pendente (o banco encerra os tickets). Trava só para o resto da equipe ou para manter o dinheiro certo.
 - Resto da equipe (`papel = 'equipe'`; `caixa`/`garcom`/`cozinha` ficam em cadastros antigos, sem efeito): vale a **função** (`membros.funcao_id` → `funcoes`, por restaurante) mais o ajuste da pessoa: `permissoes_extras` (dadas só a ela) e `permissoes_removidas` (tiradas só dela). Permissões = (da função + extras) − removidas.
 - Todo restaurante nasce com as funções Caixa, Garçom e Cozinha (`funcoes.padrao`, trigger em `restaurantes`), iguais ao que os papéis faziam; o dono edita e cria outras (ex.: Gerente) em Painel › Equipe › Funções. Função com gente não é excluída.
 - Permissões (lista em `src/lib/auth/papeis.ts` e `rest_privado.permissoes_validas()`):

@@ -42,7 +42,9 @@ export default async function CaixaPage() {
         <>
           <ResumoSessao resumo={resumo} fusoHorario={fuso} />
           <MovimentoCaixa />
-          <FecharCaixa sessaoId={aberta.id} esperado={dinheiroEsperado(resumo)} pendencias={pendencias ?? { comandas: [], deliveries: [] }} />
+          <FecharCaixa sessaoId={aberta.id} esperado={dinheiroEsperado(resumo)} pendencias={pendencias ?? { comandas: [], deliveries: [] }}
+            dono={acesso.papel === "dono"}
+          />
         </>
       ) : (
         <AbrirCaixa />

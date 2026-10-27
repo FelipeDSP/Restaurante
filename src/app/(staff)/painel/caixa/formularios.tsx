@@ -111,10 +111,13 @@ export function FecharCaixa({
   sessaoId,
   esperado,
   pendencias,
+  dono,
 }: {
   sessaoId: string;
   esperado: number;
   pendencias: PendenciasFechamento;
+  // O dono fecha mesmo com pendências (elas passam para o próximo caixa).
+  dono: boolean;
 }) {
   const [estado, acao] = useActionState(fecharCaixa.bind(null, sessaoId), undefined);
   useAvisoResultado(estado);
@@ -122,7 +125,8 @@ export function FecharCaixa({
   const [confirmando, setConfirmando] = useState(false);
   const contado = contadoTexto ? centavosDeTexto(contadoTexto) : null;
   const diferenca = contado === null ? null : contado - esperado;
-  const bloqueado = pendencias.comandas.length > 0 || pendencias.deliveries.length > 0;
+  const pendente = pendencias.comandas.length > 0 || pendencias.deliveries.length > 0;
+  const bloqueado = pendente && !dono;
   const textoDiferenca =
     diferenca === null
       ? ""
@@ -136,9 +140,11 @@ export function FecharCaixa({
         <CardTitle>Fechar caixa</CardTitle>
       </CardHeader>
       <CardContent>
-        {bloqueado ? (
+        {pendente ? (
           <div role="status" className="mb-4 flex flex-col gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-            <p className="font-semibold">Antes de fechar o caixa, finalize:</p>
+            <p className="font-semibold">
+              {dono ? "Ainda em aberto (se fechar agora, passam para o próximo caixa):" : "Antes de fechar o caixa, finalize:"}
+            </p>
             <ul className="flex flex-col gap-1">
               {pendencias.comandas.map((c) => (
                 <li key={c.mesaId}>
