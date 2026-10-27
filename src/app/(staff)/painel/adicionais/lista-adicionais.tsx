@@ -40,18 +40,17 @@ export type Grupo = {
   produtos: { id: string; nome: string }[];
 };
 
-// Os três jeitos mais comuns; qualquer outro mínimo/máximo fica em "Personalizar".
+// Os jeitos mais comuns; qualquer outro mínimo/máximo fica em "Personalizar".
 const MODELOS = [
-  { rotulo: "Obrigatório, escolhe 1", minimo: 1, maximo: 1 },
-  { rotulo: "Opcional, escolhe 1", minimo: 0, maximo: 1 },
-  { rotulo: "Opcional, escolhe vários", minimo: 0, maximo: 5 },
+  { rotulo: "Obrigatório, escolhe 1", minimo: 1, maximo: 1, varios: false },
+  { rotulo: "Obrigatório, escolhe vários", minimo: 1, maximo: 5, varios: true },
+  { rotulo: "Opcional, escolhe 1", minimo: 0, maximo: 1, varios: false },
+  { rotulo: "Opcional, escolhe vários", minimo: 0, maximo: 5, varios: true },
 ];
 
 function modeloDe(min: number, max: number) {
-  if (min === 1 && max === 1) return 0;
-  if (min === 0 && max === 1) return 1;
-  if (min === 0 && max > 1) return 2;
-  return null;
+  const i = MODELOS.findIndex((m) => m.minimo === min && (m.varios ? max > 1 : max === 1));
+  return i === -1 ? null : i;
 }
 
 function CamposRegra({
@@ -91,7 +90,7 @@ function CamposRegra({
           </button>
         ))}
       </div>
-      {modelo === 2 ? (
+      {modelo !== null && MODELOS[modelo].varios ? (
         <label className="flex items-center gap-2 text-sm font-medium">
           Até
           <Input
