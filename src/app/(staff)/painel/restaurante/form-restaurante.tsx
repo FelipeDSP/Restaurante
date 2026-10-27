@@ -1,7 +1,5 @@
 "use client";
 
-import { ExternalLink } from "lucide-react";
-import Link from "next/link";
 import { useActionState, useState } from "react";
 
 import { BotaoEnviar, Campo, ErroCampo, marcadoCampo, Selecao, useAvisoResultado, valorCampo } from "@/components/staff/formulario";
@@ -105,12 +103,8 @@ export function FormRestaurante({ restaurante }: { restaurante: DadosRestaurante
       </Card>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-3">
+        <CardHeader>
           <CardTitle>Marca</CardTitle>
-          <Link href={`/${restaurante.slug}`} target="_blank" className="inline-flex items-center gap-1 text-sm font-medium underline underline-offset-4">
-            Ver meu site
-            <ExternalLink className="size-3.5" aria-hidden />
-          </Link>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">

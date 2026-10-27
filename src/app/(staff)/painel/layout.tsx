@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { ShieldCheck } from "lucide-react";
+import { Globe, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 
 import { AlertaPedidos } from "@/components/staff/alerta-pedidos";
@@ -78,6 +78,16 @@ export default async function PainelLayout({ children }: LayoutProps<"/painel">)
                 <span className="hidden sm:inline">Admin</span>
               </Link>
             ) : null}
+            <a
+              href={`/${acesso.restaurante.slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Ver meu site"
+              className="flex h-11 items-center gap-1.5 rounded-full border border-[var(--cor-primaria-contraste)]/30 px-3 text-sm font-semibold hover:bg-black/10"
+            >
+              <Globe className="size-4" aria-hidden />
+              <span className="hidden sm:inline">Meu site</span>
+            </a>
             {temPermissao(acesso, "caixa_operar", "delivery", "comandas_painel") ? (
               <ChamarGarcom restauranteId={acesso.restaurante.id} membroId={acesso.membroId} />
             ) : null}
