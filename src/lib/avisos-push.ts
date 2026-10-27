@@ -41,6 +41,43 @@ const MENSAGEM: Record<string, string> = {
 };
 const FINAL = new Set(["entregue", "cancelado"]);
 
+type Inscricao = { endpoint: string; p256dh: string; auth: string };
+
+// Primeiro aviso, logo ao ligar: mostra na hora se o celular recebe (o cliente não espera o aceite
+// para descobrir que as notificações estão bloqueadas). Devolve se o serviço de push aceitou.
+export async function avisarInscricaoNova(pedidoId: string, inscricao: Inscricao): Promise<boolean> {
+  const c = chaves();
+  const admin = createAdminClient();
+  if (!c || !admin) return false;
+  const { data: pedido } = await admin
+    .from("pedidos")
+    .select("id, numero, restaurante:restaurantes!inner(id, slug, nome, logo_url, cor_primaria)")
+    .eq("id", pedidoId)
+    .maybeSingle();
+  if (!pedido) return false;
+  const r = pedido.restaurante;
+  const carga = JSON.stringify({
+    titulo: `${r.nome} · pedido nº ${pedido.numero}`,
+    corpo: "Avisos ligados. Vamos te avisar aqui quando o pedido mudar.",
+    url: `/${r.slug}/pedido/${pedido.id}`,
+    icone: urlIcone({ id: r.id, nome: r.nome, corPrimaria: r.cor_primaria, logoUrl: r.logo_url }, 192),
+    tag: pedido.id,
+  });
+  try {
+    const resultado = await webpush.sendNotification({ endpoint: inscricao.endpoint, keys: { p256dh: inscricao.p256dh, auth: inscricao.auth } }, carga, {
+      vapidDetails: { subject: c.assunto, publicKey: c.publica, privateKey: c.privada },
+      TTL: 60 * 60,
+      urgency: "high",
+      timeout: 5000,
+    });
+    console.info("[avisos-push] teste enviado", resultado.statusCode);
+    return true;
+  } catch (erro) {
+    console.error("[avisos-push] teste falhou", erro instanceof WebPushError ? `${erro.statusCode} ${erro.body}` : erro);
+    return false;
+  }
+}
+
 // Avisa os aparelhos inscritos no pedido sobre o status atual (lido do banco, não de quem chamou).
 // Nunca lança erro: aviso que falha não pode atrapalhar o atendimento.
 export async function avisarCliente(pedidoId: string): Promise<void> {
@@ -77,16 +114,17 @@ export async function avisarCliente(pedidoId: string): Promise<void> {
     await Promise.all(
       inscricoes.map(async (i) => {
         try {
-          await webpush.sendNotification({ endpoint: i.endpoint, keys: { p256dh: i.p256dh, auth: i.auth } }, carga, {
+          const resultado = await webpush.sendNotification({ endpoint: i.endpoint, keys: { p256dh: i.p256dh, auth: i.auth } }, carga, {
             vapidDetails: { subject: c.assunto, publicKey: c.publica, privateKey: c.privada },
             TTL: 60 * 60,
             urgency: "high",
             timeout: 5000,
           });
+          console.info("[avisos-push] enviado", pedido.status, resultado.statusCode);
         } catch (erro) {
           // 404/410: o navegador cancelou a inscrição; não adianta tentar de novo.
           if (erro instanceof WebPushError && (erro.statusCode === 404 || erro.statusCode === 410)) recusadas.push(i.id);
-          else console.error("[avisos-push] falha ao enviar", erro instanceof WebPushError ? erro.statusCode : erro);
+          else console.error("[avisos-push] falha ao enviar", erro instanceof WebPushError ? `${erro.statusCode} ${erro.body}` : erro);
         }
       }),
     );

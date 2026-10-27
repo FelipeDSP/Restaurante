@@ -76,7 +76,13 @@ export function AvisoPush({ pedidoId, chavePublica }: { pedidoId: string; chaveP
       }
       gravarLocal(chaveLocal(pedidoId), inscricao.endpoint);
       setEstado("ligado");
-      toast.success("Pronto! Você vai receber um aviso quando o pedido mudar.");
+      const corpo = (await resposta.json().catch(() => null)) as { enviado?: boolean } | null;
+      toast.success(
+        corpo?.enviado
+          ? "Avisos ligados. Mandamos um aviso de teste: se ele não aparecer, libere as notificações do navegador nas configurações do celular."
+          : "Pronto! Você vai receber um aviso quando o pedido mudar.",
+        { duration: 8000 },
+      );
     } catch {
       toast.error("Não foi possível ligar os avisos neste navegador.");
     } finally {

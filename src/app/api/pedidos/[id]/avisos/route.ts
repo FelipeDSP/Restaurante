@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { chavePublicaAvisos, enderecoDeAvisoValido } from "@/lib/avisos-push";
+import { avisarInscricaoNova, chavePublicaAvisos, enderecoDeAvisoValido } from "@/lib/avisos-push";
 import { consumirLimite, ipDoCliente } from "@/lib/limite-taxa";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { id } from "@/lib/validacao";
@@ -57,7 +57,13 @@ export async function POST(request: Request, ctx: RouteContext<"/api/pedidos/[id
     { onConflict: "pedido_id,endpoint" },
   );
   if (error) return resposta(500, "Não foi possível ligar os avisos.");
-  return resposta(204);
+  // Aviso de teste na hora: o cliente vê se o celular recebe.
+  const enviado = await avisarInscricaoNova(pedido.id, {
+    endpoint: dados.data.endpoint,
+    p256dh: dados.data.keys.p256dh,
+    auth: dados.data.keys.auth,
+  });
+  return Response.json({ enviado });
 }
 
 export async function DELETE(request: Request, ctx: RouteContext<"/api/pedidos/[id]/avisos">) {
