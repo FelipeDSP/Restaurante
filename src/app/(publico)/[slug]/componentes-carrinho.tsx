@@ -2,7 +2,8 @@
 
 import { Minus, Plus, ReceiptText, ShoppingBag } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { usePathname } from "next/navigation";
+import { type ReactNode, useState } from "react";
 import { toast } from "sonner";
 
 import { EscolherOpcoes, type ProdutoComOpcoes } from "@/components/adicionais/escolher-opcoes";
@@ -140,4 +141,10 @@ export function IconeMeusPedidos({ slug }: { slug: string }) {
       <ReceiptText className="size-5" />
     </Link>
   );
+}
+
+// Cardápio do salão (QR code na mesa) é só consulta: sem carrinho e sem "Meus pedidos" no topo.
+export function SoNoDelivery({ children }: { children: ReactNode }) {
+  const caminho = usePathname();
+  return caminho?.endsWith("/cardapio") ? null : children;
 }

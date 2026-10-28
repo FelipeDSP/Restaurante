@@ -1096,6 +1096,9 @@ isOneToOne: false
 "buscar_usuario_por_email":
 { Args: { "p_email": string }; Returns: string
                            },
+"cardapio_salao_publico":
+{ Args: { "p_restaurante_id": string }; Returns: Json
+                           },
 "consultar_disponibilidade_delivery":
 { Args: { "p_restaurante_id": string }; Returns: Json
                            },

@@ -168,3 +168,32 @@ export async function consultarPedido(pedidoId: string): Promise<PedidoPublico |
   const { data } = await supabase.rpc("consultar_pedido_publico", { p_pedido_id: pedidoId });
   return (data as PedidoPublico | null) ?? null;
 }
+
+// Cardápio do salão (QR code na mesa, só consulta): tudo o que está disponível no salão,
+// inclusive o que não vai para o delivery. Vem pronto da RPC (a RLS de anon só abre o delivery).
+export type OpcoesSalao = { nome: string; minimo: number; maximo: number; opcoes: { nome: string; preco: number }[] };
+export type ProdutoSalao = Omit<ProdutoPublico, "grupos"> & { grupos: OpcoesSalao[] };
+export type CategoriaSalao = { id: string; nome: string; produtos: ProdutoSalao[] };
+
+export async function carregarCardapioMesa(restauranteId: string): Promise<CategoriaSalao[]> {
+  const supabase = createPublicClient();
+  const { data, error } = await supabase.rpc("cardapio_salao_publico", { p_restaurante_id: restauranteId });
+  if (error) throw new Error(error.message);
+  type Linha = {
+    id: string;
+    nome: string;
+    produtos: { id: string; nome: string; descricao: string | null; preco: number; foto_url: string | null; grupos: OpcoesSalao[] }[];
+  };
+  return ((data ?? []) as Linha[]).map((c) => ({
+    id: c.id,
+    nome: c.nome,
+    produtos: c.produtos.map((p) => ({
+      id: p.id,
+      nome: p.nome,
+      descricao: p.descricao,
+      preco: p.preco,
+      fotoUrl: p.foto_url,
+      grupos: (p.grupos ?? []).map((g) => ({ ...g, opcoes: g.opcoes ?? [] })),
+    })),
+  }));
+}

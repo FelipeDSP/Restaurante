@@ -210,6 +210,10 @@ Já existe (chamar garçom):
 - App do garçom (`garcom/aviso-chamado.tsx`): vibra, bipa e mostra o aviso até ele tocar em "Vou" (`atenderChamado`, só o próprio garçom; a hora vem do banco); vibra a cada 3 s (bipe a cada 6 s) sem parar até o "Vou" chegar ao sistema, o aviso ser fechado, o chamado ser respondido em outro aparelho dele ou vencer (30 min). Ao abrir o app, mostra os chamados sem resposta dos últimos 30 min. Quem chamou recebe "Fulano está indo" (tempo real).
 - O garçom vê só os chamados dele. iPhone não vibra (Safari não deixa); com o app fechado não há aviso (push para a equipe fica para depois).
 
+Já existe (cardápio digital do salão):
+- `/[slug]/cardapio`: o cliente na mesa abre pelo QR code e **só consulta** (o pedido é com o garçom; autoatendimento pelo QR fica para depois). Mostra tudo que está disponível no salão (`produtos.disponivel`, inclusive o que não vai para o delivery) com fotos, preços e opções dos grupos. Vem da RPC `cardapio_salao_publico(restaurante_id)` (security definer, só restaurante ativo), porque a RLS de anon só abre o cardápio do delivery. Sem carrinho nem "Meus pedidos" no topo (`<SoNoDelivery>`).
+- Painel › Cadastro de mesas › "QR code do cardápio" (`/painel/mesas/qrcode`, permissão `mesas`): QR gerado no servidor (pacote `qrcode`, SVG preto no branco) e "Imprimir" sai uma folha com 4 cartões para recortar e pôr nas mesas.
+
 ## Acesso público (anon)
 
 - Leitura de `restaurantes` (apenas colunas públicas, via view `restaurantes_publicos`), `categorias` ativas, `produtos` disponíveis para delivery e `bairros_entrega` ativos, somente de restaurantes ativos.
