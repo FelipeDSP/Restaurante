@@ -358,20 +358,38 @@ export async function marcarTicketPraca(tarefaId: string, status: "pronto" | "pe
   return status === "pronto" ? sucesso("Marcado como pronto.") : sucesso("Voltou para preparo.");
 }
 
-// Pedido pronto levado à mesa ("Entreguei" na comanda): os tickets dele ficam como entregues.
+// Item levado à mesa (ex.: o refri agora, o lanche depois). Desmarcar volta para "a levar".
+// Quando todos os itens com preparo do pedido foram entregues, o banco tira os tickets da cozinha.
+export async function entregarItem(itemId: string, entregue: boolean): Promise<ResultadoAcao> {
+  const acesso = await exigirAlgumaPermissao("garcom_app", "comandas_painel");
+  if (!id.safeParse(itemId).success) return falha("Item inválido.");
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("itens_pedido")
+    .update({ entregue_em: entregue ? new Date().toISOString() : null })
+    .eq("id", itemId)
+    .eq("restaurante_id", acesso.restaurante.id)
+    .is("cancelado_em", null)
+    .select("id");
+  if (error) return falha(mensagemErroBanco(error));
+  if (!data.length) return falha("Item não encontrado.");
+  refresh();
+  return sucesso();
+}
+
+// Tudo do pedido levado à mesa de uma vez.
 export async function entregarPedido(pedidoId: string): Promise<ResultadoAcao> {
   const acesso = await exigirAlgumaPermissao("garcom_app", "comandas_painel");
   if (!id.safeParse(pedidoId).success) return falha("Pedido inválido.");
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("tarefas_producao")
-    .update({ retirada: true })
+  const { error } = await supabase
+    .from("itens_pedido")
+    .update({ entregue_em: new Date().toISOString() })
     .eq("pedido_id", pedidoId)
     .eq("restaurante_id", acesso.restaurante.id)
-    .eq("status", "pronto")
-    .select("id");
+    .is("cancelado_em", null)
+    .is("entregue_em", null);
   if (error) return falha(mensagemErroBanco(error));
-  if (!data.length) return falha("Esse pedido ainda não está pronto.");
   refresh();
   return sucesso();
 }

@@ -113,6 +113,8 @@ export type ItemComanda = {
   cancelado: boolean;
   motivoCancelamento: string | null;
   preparo: Preparo;
+  // Já está na mesa: marcado item a item pelo garçom ou o pedido saiu da cozinha como entregue.
+  entregue: boolean;
 };
 
 export type PagamentoComanda = {
@@ -167,7 +169,7 @@ export async function carregarComandaDaMesa(restauranteId: string, mesaId: strin
     .select(
       `id, status, pessoas, total, aberta_em, subtotal, servico_percentual, cobrar_servico, servico, couvert_unitario, cobrar_couvert, couvert,
        garcom:membros!comandas_restaurante_id_garcom_id_fkey(nome),
-       pedidos(id, numero, status, criado_em, autor:membros!pedidos_restaurante_id_criado_por_fkey(nome), tarefas_producao(status, pronto_em, retirada), itens_pedido(id, nome_produto, preco_unitario, preco_adicionais, adicionais, etapas, para_viagem, quantidade, observacao, total, criado_em, cancelado_em, motivo_cancelamento)),
+       pedidos(id, numero, status, criado_em, autor:membros!pedidos_restaurante_id_criado_por_fkey(nome), tarefas_producao(status, pronto_em, retirada), itens_pedido(id, nome_produto, preco_unitario, preco_adicionais, adicionais, etapas, para_viagem, quantidade, observacao, total, criado_em, cancelado_em, motivo_cancelamento, entregue_em)),
        pagamentos(id, valor, forma, criado_em, estornado_em, motivo_estorno, registrado:membros!pagamentos_restaurante_id_registrado_por_fkey(nome))`,
     )
     .eq("restaurante_id", restauranteId)
@@ -181,7 +183,10 @@ export async function carregarComandaDaMesa(restauranteId: string, mesaId: strin
     .filter((p) => p.status !== "cancelado")
     .flatMap((p) => {
       const preparo = preparoDoPedido(p.tarefas_producao);
-      return p.itens_pedido.map((i) => ({
+      return p.itens_pedido.map((i) => {
+        // Item sem rota de preparo (ex.: bebida) não passa pela cozinha.
+        const comPreparo = Array.isArray(i.etapas) && i.etapas.length > 0;
+        return {
         id: i.id,
         pedidoId: p.id,
         pedidoNumero: p.numero,
@@ -198,11 +203,13 @@ export async function carregarComandaDaMesa(restauranteId: string, mesaId: strin
         criadoEm: i.criado_em,
         cancelado: i.cancelado_em !== null,
         motivoCancelamento: i.motivo_cancelamento,
-        // Item sem rota de preparo (ex.: bebida) não passa pela cozinha.
-        preparo: Array.isArray(i.etapas) && i.etapas.length > 0 ? preparo : null,
-      }));
+        preparo: comPreparo ? preparo : null,
+        entregue: i.entregue_em !== null || (comPreparo && preparo === "entregue"),
+        };
+      });
     })
-    .sort((a, b) => a.criadoEm.localeCompare(b.criadoEm));
+    // Itens do mesmo lançamento têm a mesma hora: o id desempata (a ordem não pula ao atualizar).
+    .sort((a, b) => a.criadoEm.localeCompare(b.criadoEm) || a.id.localeCompare(b.id));
 
   const pagamentos: PagamentoComanda[] = c.pagamentos
     .map((p) => ({

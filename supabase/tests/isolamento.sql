@@ -2298,6 +2298,70 @@ begin
 end;
 $$;
 
+-- ======================================================================
+-- Entregue por item na mesa
+-- ======================================================================
+do $$
+declare
+  a constant uuid := md5('brasa-espetinhos')::uuid;
+  v_mesa uuid;
+  v_comanda uuid;
+  v_r jsonb;
+  v_pedido uuid;
+  v_refri uuid;
+  v_espeto uuid;
+  v_falhou boolean;
+begin
+  perform pg_temp.admin();
+  select m.id into v_mesa from public.mesas m
+  where m.restaurante_id = a and m.ativa
+    and not exists (select 1 from public.comandas c where c.mesa_id = m.id and c.status in ('aberta', 'conta_pedida'))
+  order by m.numero desc limit 1;
+
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  insert into public.comandas (restaurante_id, mesa_id, pessoas) values (a, v_mesa, 2) returning id into v_comanda;
+  v_r := public.lancar_itens_comanda(v_comanda, jsonb_build_array(
+    jsonb_build_object('produto_id', (select id from public.produtos where restaurante_id = a and nome = 'Refrigerante lata'), 'quantidade', 1),
+    jsonb_build_object('produto_id', (select id from public.produtos where restaurante_id = a and nome = 'Espeto de carne'), 'quantidade', 1)
+  ));
+  v_pedido := (v_r ->> 'pedido_id')::uuid;
+  select id into v_refri from public.itens_pedido where pedido_id = v_pedido and nome_produto = 'Refrigerante lata';
+  select id into v_espeto from public.itens_pedido where pedido_id = v_pedido and nome_produto = 'Espeto de carne';
+
+  update public.itens_pedido set entregue_em = '2000-01-01' where id = v_refri;
+  perform pg_temp.admin();
+  perform pg_temp.ok((select entregue_em > now() - interval '1 minute' and entregue_por is not null from public.itens_pedido where id = v_refri),
+    'entregue por item: refri entregue antes, com hora e quem do banco');
+  perform pg_temp.ok(exists (select 1 from public.tarefas_producao where pedido_id = v_pedido and status = 'pendente'),
+    'entregue por item: espeto continua na cozinha');
+
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  update public.itens_pedido set entregue_em = now() where id = v_espeto;
+  perform pg_temp.admin();
+  perform pg_temp.ok(not exists (select 1 from public.tarefas_producao where pedido_id = v_pedido and not (status = 'pronto' and retirada)),
+    'entregue por item: tudo entregue tira o ticket da cozinha');
+
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  update public.itens_pedido set entregue_em = null where id = v_refri;
+  perform pg_temp.admin();
+  perform pg_temp.ok((select entregue_em is null and entregue_por is null from public.itens_pedido where id = v_refri), 'entregue por item: desfazer');
+
+  perform pg_temp.entrar('dono.burger@exemplo.com');
+  update public.itens_pedido set entregue_em = now() where id = v_refri;
+  perform pg_temp.admin();
+  perform pg_temp.ok((select entregue_em is null from public.itens_pedido where id = v_refri), 'entregue por item: outro restaurante não marca');
+
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  v_falhou := false;
+  begin
+    update public.itens_pedido set total = 1, entregue_em = now() where id = v_refri;
+  exception when others then v_falhou := true;
+  end;
+  perform pg_temp.admin();
+  perform pg_temp.ok(v_falhou or (select total <> 1 from public.itens_pedido where id = v_refri), 'entregue por item: não mexe no preço');
+end;
+$$;
+
 select n, ok, teste from resultado order by n;
 select count(*) filter (where not ok) as falhas, count(*) as total from resultado;
 

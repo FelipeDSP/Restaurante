@@ -540,18 +540,24 @@ isOneToOne: false
                   ]
                 },"itens_pedido": {
                   Row: {
-                    "adicionais": NonNullable<Json>,"cancelado_em": string | null,"cancelado_por": string | null,"criado_em": string,"etapas": NonNullable<Json>,"id": string,"motivo_cancelamento": string | null,"nome_produto": string,"observacao": string | null,"para_viagem": boolean,"pedido_id": string,"preco_adicionais": number,"preco_unitario": number,"produto_id": string,"quantidade": number,"restaurante_id": string,"total": number
+                    "adicionais": NonNullable<Json>,"cancelado_em": string | null,"cancelado_por": string | null,"criado_em": string,"entregue_em": string | null,"entregue_por": string | null,"etapas": NonNullable<Json>,"id": string,"motivo_cancelamento": string | null,"nome_produto": string,"observacao": string | null,"para_viagem": boolean,"pedido_id": string,"preco_adicionais": number,"preco_unitario": number,"produto_id": string,"quantidade": number,"restaurante_id": string,"total": number
                   }
                   Insert: {
-                    "adicionais"?: NonNullable<Json>,"cancelado_em"?: string | null,"cancelado_por"?: string | null,"criado_em"?: string,"etapas"?: NonNullable<Json>,"id"?: string,"motivo_cancelamento"?: string | null,"nome_produto": string,"observacao"?: string | null,"para_viagem": boolean,"pedido_id": string,"preco_adicionais"?: number,"preco_unitario": number,"produto_id": string,"quantidade": number,"restaurante_id": string,"total"?: number
+                    "adicionais"?: NonNullable<Json>,"cancelado_em"?: string | null,"cancelado_por"?: string | null,"criado_em"?: string,"entregue_em"?: string | null,"entregue_por"?: string | null,"etapas"?: NonNullable<Json>,"id"?: string,"motivo_cancelamento"?: string | null,"nome_produto": string,"observacao"?: string | null,"para_viagem": boolean,"pedido_id": string,"preco_adicionais"?: number,"preco_unitario": number,"produto_id": string,"quantidade": number,"restaurante_id": string,"total"?: number
                   }
                   Update: {
-                    "adicionais"?: NonNullable<Json>,"cancelado_em"?: string | null,"cancelado_por"?: string | null,"criado_em"?: string,"etapas"?: NonNullable<Json>,"id"?: string,"motivo_cancelamento"?: string | null,"nome_produto"?: string,"observacao"?: string | null,"para_viagem"?: boolean,"pedido_id"?: string,"preco_adicionais"?: number,"preco_unitario"?: number,"produto_id"?: string,"quantidade"?: number,"restaurante_id"?: string,"total"?: number
+                    "adicionais"?: NonNullable<Json>,"cancelado_em"?: string | null,"cancelado_por"?: string | null,"criado_em"?: string,"entregue_em"?: string | null,"entregue_por"?: string | null,"etapas"?: NonNullable<Json>,"id"?: string,"motivo_cancelamento"?: string | null,"nome_produto"?: string,"observacao"?: string | null,"para_viagem"?: boolean,"pedido_id"?: string,"preco_adicionais"?: number,"preco_unitario"?: number,"produto_id"?: string,"quantidade"?: number,"restaurante_id"?: string,"total"?: number
                   }
                   Relationships: [
                     {
       foreignKeyName: "itens_pedido_restaurante_id_cancelado_por_fkey"
       columns: ["restaurante_id","cancelado_por"]
+isOneToOne: false
+      referencedRelation: "membros"
+      referencedColumns: ["restaurante_id","id"]
+    },{
+      foreignKeyName: "itens_pedido_restaurante_id_entregue_por_fkey"
+      columns: ["restaurante_id","entregue_por"]
 isOneToOne: false
       referencedRelation: "membros"
       referencedColumns: ["restaurante_id","id"]

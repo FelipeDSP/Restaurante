@@ -23,6 +23,7 @@ import {
   assumirMesa,
   cancelarComanda,
   cancelarItem,
+  entregarItem,
   entregarPedido,
   estornarPagamento,
   fecharComanda,
@@ -90,35 +91,52 @@ function LinhaItem({ item, editavel }: { item: ItemComanda; editavel: boolean })
 
   return (
     <li className="py-1">
-      <button
-        type="button"
-        className="flex w-full items-start justify-between gap-3 rounded-md py-2 text-left disabled:cursor-default"
-        aria-expanded={aberto}
-        disabled={!editavel}
-        onClick={() => setAberto((a) => !a)}
-      >
-        <span className="flex flex-col">
-          <span className="font-medium">
-            {item.quantidade}× {item.nome}
-          </span>
-          {item.adicionais.length > 0 ? (
-            <span className="text-sm text-muted-foreground">{resumoAdicionais(item.adicionais)}</span>
-          ) : null}
-          {item.paraViagem ? <span className="text-xs font-bold text-violet-700 uppercase">Pra viagem</span> : null}
-          {item.preparo === "pronto" ? (
-            <span className="mt-0.5 w-fit rounded-full bg-green-600 px-2 py-0.5 text-xs font-bold text-white">Pronto · levar</span>
-          ) : item.preparo === "na_cozinha" ? (
-            <span className="text-xs font-medium text-muted-foreground">Na cozinha</span>
-          ) : item.preparo === "entregue" ? (
-            <span className="flex items-center gap-1 text-xs font-medium text-green-700">
-              <Check className="size-3.5" aria-hidden />
-              Entregue
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          className="flex min-w-0 flex-1 items-start justify-between gap-3 rounded-md py-2 text-left disabled:cursor-default"
+          aria-expanded={aberto}
+          disabled={!editavel}
+          onClick={() => setAberto((a) => !a)}
+        >
+          <span className="flex flex-col">
+            <span className="font-medium">
+              {item.quantidade}× {item.nome}
             </span>
-          ) : null}
-          {item.observacao ? <span className="text-sm text-muted-foreground">Obs.: {item.observacao}</span> : null}
-        </span>
-        <span className="font-medium tabular-nums">{formatarBRL(item.total)}</span>
-      </button>
+            {item.adicionais.length > 0 ? (
+              <span className="text-sm text-muted-foreground">{resumoAdicionais(item.adicionais)}</span>
+            ) : null}
+            {item.paraViagem ? <span className="text-xs font-bold text-violet-700 uppercase">Pra viagem</span> : null}
+            {item.entregue ? (
+              <span className="flex items-center gap-1 text-xs font-medium text-green-700">
+                <Check className="size-3.5" aria-hidden />
+                Entregue
+              </span>
+            ) : item.preparo === "pronto" ? (
+              <span className="mt-0.5 w-fit rounded-full bg-green-600 px-2 py-0.5 text-xs font-bold text-white">Pronto · levar</span>
+            ) : item.preparo === "na_cozinha" ? (
+              <span className="text-xs font-medium text-muted-foreground">Na cozinha</span>
+            ) : null}
+            {item.observacao ? <span className="text-sm text-muted-foreground">Obs.: {item.observacao}</span> : null}
+          </span>
+          <span className="font-medium tabular-nums">{formatarBRL(item.total)}</span>
+        </button>
+        {/* Cada item vai à mesa quando fica pronto (o refri agora, o lanche depois). */}
+        {editavel && !item.entregue ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className={cn("shrink-0", item.preparo === "pronto" && "border-green-600 text-green-800 hover:bg-green-50")}
+            disabled={pendente}
+            aria-label={`Entreguei ${item.nome}`}
+            onClick={() => executar(() => entregarItem(item.id, true))}
+          >
+            <Check />
+            Entreguei
+          </Button>
+        ) : null}
+      </div>
 
       {aberto ? (
         <div className="mb-2 flex flex-col gap-3 rounded-lg bg-muted/60 p-3">
@@ -138,6 +156,18 @@ function LinhaItem({ item, editavel }: { item: ItemComanda; editavel: boolean })
                   className="h-11 bg-background"
                 />
               </label>
+              {item.entregue ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-11 w-fit"
+                  disabled={pendente}
+                  onClick={() => executar(() => entregarItem(item.id, false), () => setAberto(false))}
+                >
+                  <Undo2 />
+                  Ainda não foi entregue
+                </Button>
+              ) : null}
               <div className="flex flex-wrap gap-2">
                 <Button
                   type="button"
@@ -812,8 +842,8 @@ export function TelaComanda({ mesaId, comanda, podeGerenciar, podeEstornar, fuso
                       <LinhaItem key={item.id} item={item} editavel />
                     ))}
                   </ul>
-                  {/* Pronto na cozinha e levado à mesa: o garçom marca ao servir. */}
-                  {g.itens.some((i) => !i.cancelado && i.preparo === "pronto") ? (
+                  {/* Vários itens a levar: marca todos de uma vez. */}
+                  {g.itens.filter((i) => !i.cancelado && !i.entregue).length > 1 ? (
                     <div className="border-t px-3 py-2">
                       <Button
                         type="button"
@@ -823,7 +853,7 @@ export function TelaComanda({ mesaId, comanda, podeGerenciar, podeEstornar, fuso
                         onClick={() => executar(() => entregarPedido(g.pedidoId))}
                       >
                         <Check />
-                        Entreguei na mesa
+                        Entreguei tudo
                       </Button>
                     </div>
                   ) : null}
