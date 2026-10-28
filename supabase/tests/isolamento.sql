@@ -2292,6 +2292,21 @@ begin
   perform pg_temp.ok(v_falhou, 'mesa QR: garçom não troca o garçom depois de assumida');
 
   -- O código de uma mesa de outro restaurante não lança aqui (vale só a mesa dele).
+  -- Pedido do cliente visto pelo garçom: quem e quando vêm do banco; ninguém apaga nem troca.
+  perform pg_temp.entrar('dono.burger@exemplo.com');
+  v_falhou := false;
+  begin
+    perform public.marcar_pedido_visto((v_r ->> 'pedido_id')::uuid);
+  exception when others then v_falhou := true;
+  end;
+  perform pg_temp.ok(v_falhou, 'mesa QR: outro restaurante não marca como visto');
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  perform public.marcar_pedido_visto((v_r ->> 'pedido_id')::uuid);
+  update public.pedidos set visto_em = null, visto_por = null where id = (v_r ->> 'pedido_id')::uuid;
+  perform pg_temp.admin();
+  perform pg_temp.ok((select visto_em is not null and visto_por is not null from public.pedidos where id = (v_r ->> 'pedido_id')::uuid),
+    'mesa QR: garçom marca o pedido como visto (e não desfaz)');
+
   perform pg_temp.anonimo();
   perform pg_temp.ok(public.mesa_por_qr(v_token_b) ->> 'restaurante_id' = b::text, 'mesa QR: código leva só à mesa do próprio restaurante');
   perform pg_temp.admin();

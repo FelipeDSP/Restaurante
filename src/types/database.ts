@@ -737,13 +737,13 @@ isOneToOne: false
                   ]
                 },"pedidos": {
                   Row: {
-                    "aceito_em": string | null,"bairro_id": string | null,"caixa_sessao_id": string,"cancelado_em": string | null,"cancelado_por": string | null,"chave_idempotencia": string | null,"cliente_id": string | null,"cliente_nome": string | null,"cliente_telefone": string | null,"comanda_id": string | null,"criado_em": string,"criado_por": string | null,"cupom_codigo": string | null,"cupom_id": string | null,"cupom_tipo": string | null,"cupom_valor": number | null,"desconto": number,"endereco": Json | null,"entregador_id": string | null,"forma_pagamento_prevista": string | null,"id": string,"motivo_cancelamento": string | null,"numero": number,"observacao": string | null,"origem": string,"restaurante_id": string,"status": string,"subtotal": number,"taxa_entrega": number,"total": number,"troco_para": number | null,"valor_entregador": number
+                    "aceito_em": string | null,"bairro_id": string | null,"caixa_sessao_id": string,"cancelado_em": string | null,"cancelado_por": string | null,"chave_idempotencia": string | null,"cliente_id": string | null,"cliente_nome": string | null,"cliente_telefone": string | null,"comanda_id": string | null,"criado_em": string,"criado_por": string | null,"cupom_codigo": string | null,"cupom_id": string | null,"cupom_tipo": string | null,"cupom_valor": number | null,"desconto": number,"endereco": Json | null,"entregador_id": string | null,"forma_pagamento_prevista": string | null,"id": string,"motivo_cancelamento": string | null,"numero": number,"observacao": string | null,"origem": string,"restaurante_id": string,"status": string,"subtotal": number,"taxa_entrega": number,"total": number,"troco_para": number | null,"valor_entregador": number,"visto_em": string | null,"visto_por": string | null
                   }
                   Insert: {
-                    "aceito_em"?: string | null,"bairro_id"?: string | null,"caixa_sessao_id": string,"cancelado_em"?: string | null,"cancelado_por"?: string | null,"chave_idempotencia"?: string | null,"cliente_id"?: string | null,"cliente_nome"?: string | null,"cliente_telefone"?: string | null,"comanda_id"?: string | null,"criado_em"?: string,"criado_por"?: string | null,"cupom_codigo"?: string | null,"cupom_id"?: string | null,"cupom_tipo"?: string | null,"cupom_valor"?: number | null,"desconto"?: number,"endereco"?: Json | null,"entregador_id"?: string | null,"forma_pagamento_prevista"?: string | null,"id"?: string,"motivo_cancelamento"?: string | null,"numero": number,"observacao"?: string | null,"origem": string,"restaurante_id": string,"status"?: string,"subtotal"?: number,"taxa_entrega"?: number,"total"?: number,"troco_para"?: number | null,"valor_entregador"?: number
+                    "aceito_em"?: string | null,"bairro_id"?: string | null,"caixa_sessao_id": string,"cancelado_em"?: string | null,"cancelado_por"?: string | null,"chave_idempotencia"?: string | null,"cliente_id"?: string | null,"cliente_nome"?: string | null,"cliente_telefone"?: string | null,"comanda_id"?: string | null,"criado_em"?: string,"criado_por"?: string | null,"cupom_codigo"?: string | null,"cupom_id"?: string | null,"cupom_tipo"?: string | null,"cupom_valor"?: number | null,"desconto"?: number,"endereco"?: Json | null,"entregador_id"?: string | null,"forma_pagamento_prevista"?: string | null,"id"?: string,"motivo_cancelamento"?: string | null,"numero": number,"observacao"?: string | null,"origem": string,"restaurante_id": string,"status"?: string,"subtotal"?: number,"taxa_entrega"?: number,"total"?: number,"troco_para"?: number | null,"valor_entregador"?: number,"visto_em"?: string | null,"visto_por"?: string | null
                   }
                   Update: {
-                    "aceito_em"?: string | null,"bairro_id"?: string | null,"caixa_sessao_id"?: string,"cancelado_em"?: string | null,"cancelado_por"?: string | null,"chave_idempotencia"?: string | null,"cliente_id"?: string | null,"cliente_nome"?: string | null,"cliente_telefone"?: string | null,"comanda_id"?: string | null,"criado_em"?: string,"criado_por"?: string | null,"cupom_codigo"?: string | null,"cupom_id"?: string | null,"cupom_tipo"?: string | null,"cupom_valor"?: number | null,"desconto"?: number,"endereco"?: Json | null,"entregador_id"?: string | null,"forma_pagamento_prevista"?: string | null,"id"?: string,"motivo_cancelamento"?: string | null,"numero"?: number,"observacao"?: string | null,"origem"?: string,"restaurante_id"?: string,"status"?: string,"subtotal"?: number,"taxa_entrega"?: number,"total"?: number,"troco_para"?: number | null,"valor_entregador"?: number
+                    "aceito_em"?: string | null,"bairro_id"?: string | null,"caixa_sessao_id"?: string,"cancelado_em"?: string | null,"cancelado_por"?: string | null,"chave_idempotencia"?: string | null,"cliente_id"?: string | null,"cliente_nome"?: string | null,"cliente_telefone"?: string | null,"comanda_id"?: string | null,"criado_em"?: string,"criado_por"?: string | null,"cupom_codigo"?: string | null,"cupom_id"?: string | null,"cupom_tipo"?: string | null,"cupom_valor"?: number | null,"desconto"?: number,"endereco"?: Json | null,"entregador_id"?: string | null,"forma_pagamento_prevista"?: string | null,"id"?: string,"motivo_cancelamento"?: string | null,"numero"?: number,"observacao"?: string | null,"origem"?: string,"restaurante_id"?: string,"status"?: string,"subtotal"?: number,"taxa_entrega"?: number,"total"?: number,"troco_para"?: number | null,"valor_entregador"?: number,"visto_em"?: string | null,"visto_por"?: string | null
                   }
                   Relationships: [
                     {
@@ -806,6 +806,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "restaurantes_publicos"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "pedidos_restaurante_id_visto_por_fkey"
+      columns: ["restaurante_id","visto_por"]
+isOneToOne: false
+      referencedRelation: "membros"
+      referencedColumns: ["restaurante_id","id"]
     }
                   ]
                 },"pedidos_alteracoes": {
@@ -1146,6 +1152,9 @@ isOneToOne: false
                            },
 "lancar_itens_comanda":
 { Args: { "p_comanda_id": string,"p_itens": Json,"p_lote"?: string,"p_total_esperado"?: number }; Returns: Json
+                           },
+"marcar_pedido_visto":
+{ Args: { "p_pedido_id": string }; Returns: undefined
                            },
 "mesa_por_qr":
 { Args: { "p_token": string }; Returns: Json

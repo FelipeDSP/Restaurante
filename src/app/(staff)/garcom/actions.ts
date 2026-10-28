@@ -216,6 +216,16 @@ export async function registrarPagamentos(comandaId: string, partes: { valor: nu
   );
 }
 
+// O garçom viu o pedido que o cliente fez pelo QR code: o aviso para em todos os aparelhos.
+export async function marcarPedidoVisto(pedidoId: string): Promise<ResultadoAcao> {
+  await exigirAlgumaPermissao("garcom_app", "comandas_painel");
+  if (!id.safeParse(pedidoId).success) return falha("Pedido inválido.");
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("marcar_pedido_visto", { p_pedido_id: pedidoId });
+  if (error) return falha(mensagemErroBanco(error));
+  return sucesso();
+}
+
 // Mesa aberta pelo cliente (QR code) fica sem garçom: quem atende assume (o banco só deixa se
 // ainda estiver sem garçom; trocar depois continua com "comandas_gerenciar").
 export async function assumirMesa(comandaId: string): Promise<ResultadoAcao> {
