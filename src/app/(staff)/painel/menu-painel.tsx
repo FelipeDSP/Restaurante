@@ -1,7 +1,7 @@
 "use client";
 
 import { Dialog } from "@base-ui/react/dialog";
-import { Bike, ChartColumn, ChefHat, CookingPot, House, LayoutGrid, type LucideIcon, Menu, Wallet, X } from "lucide-react";
+import { Bike, ChartColumn, ChefHat, CookingPot, House, LayoutGrid, Lock, type LucideIcon, Menu, Wallet, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -10,7 +10,8 @@ import { cn } from "@/lib/utils";
 
 import { GRUPOS, type ItemNavegacao, itemAtivo, itemDaPagina } from "./navegacao";
 
-type Props = { itens: ItemNavegacao[]; novos: number };
+// `bloqueados`: o que o plano não tem (só o dono vê, com cadeado, levando aos planos).
+type Props = { itens: ItemNavegacao[]; novos: number; bloqueados?: ItemNavegacao[] };
 
 function Contador({ valor }: { valor: number }) {
   return (
@@ -23,12 +24,13 @@ function Contador({ valor }: { valor: number }) {
   );
 }
 
-function ListaAgrupada({ itens, novos, ativo, aoNavegar }: Props & { ativo: string | null; aoNavegar?: () => void }) {
+function ListaAgrupada({ itens, novos, bloqueados = [], ativo, aoNavegar }: Props & { ativo: string | null; aoNavegar?: () => void }) {
   return (
     <div className="flex flex-col gap-5">
       {GRUPOS.map((grupo) => {
         const doGrupo = itens.filter((i) => i.grupo === grupo);
-        if (doGrupo.length === 0) return null;
+        const travados = bloqueados.filter((i) => i.grupo === grupo);
+        if (doGrupo.length === 0 && travados.length === 0) return null;
         return (
           <div key={grupo} className="flex flex-col gap-0.5">
             <p className="px-3 pb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{grupo}</p>
@@ -50,6 +52,18 @@ function ListaAgrupada({ itens, novos, ativo, aoNavegar }: Props & { ativo: stri
                 </Link>
               );
             })}
+            {travados.map((item) => (
+              <Link
+                key={item.href}
+                href="/painel/assinatura"
+                onClick={aoNavegar}
+                title="Não faz parte do seu plano"
+                className="flex min-h-10 items-center justify-between gap-2 rounded-md px-3 text-sm font-medium text-muted-foreground hover:bg-muted"
+              >
+                {item.rotulo}
+                <Lock className="size-3.5" aria-label="Não faz parte do seu plano" />
+              </Link>
+            ))}
           </div>
         );
       })}
@@ -58,11 +72,11 @@ function ListaAgrupada({ itens, novos, ativo, aoNavegar }: Props & { ativo: stri
 }
 
 // Computador: barra lateral com todos os itens agrupados (antes, metade do menu ficava escondida).
-export function MenuLateral({ itens, novos }: Props) {
+export function MenuLateral({ itens, novos, bloqueados }: Props) {
   const ativo = itemAtivo(itens, usePathname());
   return (
     <nav aria-label="Painel" className="sticky top-16 hidden h-[calc(100dvh-4rem)] w-56 shrink-0 overflow-y-auto border-r bg-background p-3 lg:block print:hidden">
-      <ListaAgrupada itens={itens} novos={novos} ativo={ativo} />
+      <ListaAgrupada itens={itens} novos={novos} bloqueados={bloqueados} ativo={ativo} />
     </nav>
   );
 }
@@ -91,7 +105,7 @@ function abasDeDentro(itens: ItemNavegacao[]) {
 // Celular e tablet: o painel vira app, com as áreas da pessoa em abas no rodapé (alcance do polegar)
 // e "Mais" com o menu completo. Quem tem poucas áreas (ex.: garçom) vê as abas de dentro delas
 // (Mesas e Praças).
-export function BarraApp({ itens, novos }: Props) {
+export function BarraApp({ itens, novos, bloqueados }: Props) {
   const caminho = usePathname();
   const [aberto, setAberto] = useState(false);
   // O portal fica dentro da tela do restaurante para herdar as cores da marca.
@@ -158,7 +172,7 @@ export function BarraApp({ itens, novos }: Props) {
                   </Dialog.Close>
                 </div>
                 <div className="flex-1 overflow-y-auto p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-                  <ListaAgrupada itens={itens} novos={novos} ativo={ativo} aoNavegar={() => setAberto(false)} />
+                  <ListaAgrupada itens={itens} novos={novos} bloqueados={bloqueados} ativo={ativo} aoNavegar={() => setAberto(false)} />
                 </div>
               </Dialog.Popup>
             </Dialog.Portal>

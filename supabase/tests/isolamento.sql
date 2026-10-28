@@ -2392,6 +2392,67 @@ begin
 end;
 $$;
 
+-- ======================================================================
+-- Planos (o plano tira permissões de todos, inclusive do dono; no teste tudo liberado)
+-- ======================================================================
+do $$
+declare
+  a constant uuid := md5('brasa-espetinhos')::uuid;
+  v_mesa uuid;
+  v_token uuid;
+  v_falhou boolean;
+begin
+  perform pg_temp.admin();
+  update public.assinaturas set plano = 'delivery', status = 'ativa', periodo_termina_em = now() + interval '30 days' where restaurante_id = a;
+  select m.id into v_mesa from public.mesas m
+  where m.restaurante_id = a and m.ativa
+    and not exists (select 1 from public.comandas c where c.mesa_id = m.id and c.status in ('aberta', 'conta_pedida'))
+  limit 1;
+
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  perform pg_temp.ok(not (public.minhas_permissoes(a) && array['comandas_painel', 'mesas', 'garcom_app']) and public.minhas_permissoes(a) @> array['delivery', 'caixa_operar', 'relatorios', 'cozinha_tela'],
+    'plano delivery: dono sem mesas e sem app do garçom, com o resto');
+  v_falhou := false;
+  begin
+    insert into public.comandas (restaurante_id, mesa_id, pessoas) values (a, v_mesa, 1);
+  exception when others then v_falhou := true;
+  end;
+  perform pg_temp.ok(v_falhou, 'plano delivery: não abre mesa');
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  perform pg_temp.ok(not ('garcom_app' = any (public.minhas_permissoes(a))), 'plano delivery: garçom perde o app');
+
+  perform pg_temp.admin();
+  update public.assinaturas set plano = 'presencial' where restaurante_id = a;
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  perform pg_temp.ok(public.minhas_permissoes(a) @> array['comandas_painel', 'mesas'] and not ('garcom_app' = any (public.minhas_permissoes(a))),
+    'plano presencial: mesas pelo caixa, sem app do garçom');
+
+  perform pg_temp.admin();
+  update public.assinaturas set plano = 'avancado' where restaurante_id = a;
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  perform pg_temp.ok('garcom_app' = any (public.minhas_permissoes(a)), 'plano avançado: app do garçom');
+  perform pg_temp.ok(not (select qr from public.meus_planos() where restaurante_id = a), 'plano avançado: sem pedido pelo QR');
+
+  perform pg_temp.admin();
+  update public.restaurantes set pedido_mesa_qr = true where id = a;
+  select qr_token into v_token from public.mesas where id = v_mesa;
+  perform pg_temp.anonimo();
+  v_falhou := false;
+  begin
+    perform public.pedir_pela_mesa(v_token, '[]', gen_random_uuid(), null);
+  exception when others then v_falhou := sqlerrm like '%desligados%';
+  end;
+  perform pg_temp.ok(v_falhou, 'plano avançado: QR da mesa não recebe pedido');
+
+  perform pg_temp.admin();
+  update public.assinaturas set plano = 'delivery', status = 'teste', teste_termina_em = now() + interval '7 days' where restaurante_id = a;
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  perform pg_temp.ok(public.minhas_permissoes(a) @> array['comandas_painel', 'garcom_app'] and (select qr from public.meus_planos() where restaurante_id = a),
+    'teste grátis: tudo liberado');
+  perform pg_temp.admin();
+end;
+$$;
+
 select n, ok, teste from resultado order by n;
 select count(*) filter (where not ok) as falhas, count(*) as total from resultado;
 

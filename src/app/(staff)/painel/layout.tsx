@@ -18,7 +18,7 @@ import { AvisoPronto } from "../garcom/aviso-pronto";
 import { AvisoAssinatura } from "./aviso-assinatura";
 import { ChamarGarcom } from "./chamar-garcom";
 import { AbasSecao, BarraApp, MenuLateral } from "./menu-painel";
-import { itensDoMenu } from "./navegacao";
+import { itensBloqueadosPeloPlano, itensDoMenu } from "./navegacao";
 
 // App da equipe com a marca do restaurante: manifest e ícones em rotas públicas por restaurante
 // (instala pelo navegador: "Adicionar à tela de início").
@@ -56,6 +56,7 @@ async function contarPedidosNovos(restauranteId: string): Promise<number> {
 export default async function PainelLayout({ children }: LayoutProps<"/painel">) {
   const acesso = await exigirAcesso("painel");
   const itens = itensDoMenu(acesso.papel, acesso.permissoes);
+  const bloqueados = itensBloqueadosPeloPlano(acesso.papel, itens);
   const [novos, assinatura, adminPlataforma] = await Promise.all([
     acesso.permissoes.includes("delivery") ? contarPedidosNovos(acesso.restaurante.id) : 0,
     acesso.papel === "dono" ? carregarAssinatura(acesso.restaurante.id) : null,
@@ -113,7 +114,7 @@ export default async function PainelLayout({ children }: LayoutProps<"/painel">)
         </>
       ) : null}
       <div className="flex flex-1">
-        <MenuLateral itens={itens} novos={novos} />
+        <MenuLateral itens={itens} novos={novos} bloqueados={bloqueados} />
         <div className="flex min-w-0 flex-1 flex-col">
           <AvisoAssinatura assinatura={assinatura} />
           {/* No celular, espaço para a barra de abas do rodapé. */}
@@ -123,7 +124,7 @@ export default async function PainelLayout({ children }: LayoutProps<"/painel">)
           </div>
         </div>
       </div>
-      <BarraApp itens={itens} novos={novos} />
+      <BarraApp itens={itens} novos={novos} bloqueados={bloqueados} />
     </div>
   );
 }

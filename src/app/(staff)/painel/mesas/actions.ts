@@ -136,6 +136,7 @@ export async function excluirMesa(mesaId: string): Promise<ResultadoAcao> {
 // Liga ou desliga o pedido pelo QR code das mesas (configuração do restaurante).
 export async function alternarPedidoMesa(ligado: boolean): Promise<ResultadoAcao> {
   const acesso = await exigirPermissao("painel", "restaurante");
+  if (ligado && !acesso.plano.qr) return falha("Pedido pelo QR code faz parte do plano Completo.");
   const supabase = await createClient();
   const { error } = await supabase
     .from("restaurantes")

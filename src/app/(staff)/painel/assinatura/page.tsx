@@ -76,7 +76,7 @@ export default async function AssinaturaPage() {
         </h2>
         <div className="grid gap-4 md:grid-cols-2">
           {PLANOS.map((p) => {
-            const atual = assinatura?.situacao === "ativa" && assinatura.plano === p.id;
+            const atual = (assinatura?.situacao === "ativa" || assinatura?.situacao === "cortesia" || assinatura?.situacao === "atrasada") && assinatura.plano === p.id;
             return (
               <Card key={p.id} className={cn(p.destaque && "ring-2 ring-primary")}>
                 <CardHeader>

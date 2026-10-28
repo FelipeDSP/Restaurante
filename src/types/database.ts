@@ -1162,6 +1162,11 @@ isOneToOne: false
 "meus_pedidos_cliente":
 { Args: { "p_restaurante_id": string }; Returns: Json
                            },
+"meus_planos":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "permissoes": (string)[],"plano": string,"qr": boolean,"restaurante_id": string,"teste": boolean
+            }[]
+                           },
 "minhas_permissoes":
 { Args: { "p_restaurante_id": string }; Returns: (string)[]
                            },

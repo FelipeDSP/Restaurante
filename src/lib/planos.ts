@@ -1,8 +1,8 @@
-// Planos exibidos no site e no painel.
-// ATENÇÃO: preços PROVISÓRIOS (mock) até definir valores e a cobrança (provável Kiwify).
-// `linkCheckout` null = botão de assinar desativado ("em breve").
+// Planos exibidos no site e no painel (documento de marketing, 29/10). Todos sem limite de usuários
+// e de pedidos. O que cada um libera fica no banco (rest_privado.permissoes_do_plano e plano_tem_qr).
+// `linkCheckout` null = botão de assinar desativado ("em breve") até ligar a cobrança (provável Kiwify).
 
-export type IdPlano = "essencial" | "completo";
+export type IdPlano = "delivery" | "presencial" | "avancado" | "completo";
 
 export type Plano = {
   id: IdPlano;
@@ -14,33 +14,48 @@ export type Plano = {
   linkCheckout: string | null;
 };
 
+const SEM_LIMITES = "Sem limite de usuários e de pedidos";
+
 export const PLANOS: Plano[] = [
   {
-    id: "essencial",
-    nome: "Essencial",
-    paraQuem: "Espetinho ou lanchonete pequena",
-    precoMensal: 8990,
+    id: "delivery",
+    nome: "Delivery",
+    paraQuem: "Quem vende só por entrega ou retirada",
+    precoMensal: 9990,
     destaque: false,
     itens: [
-      "App do garçom e mapa de mesas",
-      "Caixa com resumo da noite",
-      "Delivery próprio com a sua marca",
-      "Até 3 usuários da equipe",
+      "Site de delivery com a sua marca",
+      "Caixa, cozinha e impressão",
+      "Cupons, entregadores e relatórios",
+      SEM_LIMITES,
     ],
+    linkCheckout: null,
+  },
+  {
+    id: "presencial",
+    nome: "Delivery + Presencial",
+    paraQuem: "Delivery e mesas atendidas pelo caixa",
+    precoMensal: 14990,
+    destaque: false,
+    itens: ["Tudo do Delivery", "Mesas e comandas pelo caixa", SEM_LIMITES],
+    linkCheckout: null,
+  },
+  {
+    id: "avancado",
+    nome: "Avançado",
+    paraQuem: "Salão com garçons e delivery",
+    precoMensal: 19990,
+    destaque: false,
+    itens: ["Tudo do Delivery + Presencial", "App do garçom no celular", SEM_LIMITES],
     linkCheckout: null,
   },
   {
     id: "completo",
     nome: "Completo",
-    paraQuem: "Hamburgueria ou restaurante com salão e delivery",
-    precoMensal: 14990,
+    paraQuem: "Salão, garçons, delivery e pedido na mesa",
+    precoMensal: 24990,
     destaque: true,
-    itens: [
-      "Tudo do Essencial",
-      "Usuários ilimitados na equipe",
-      "Impressão por praça na cozinha (em breve)",
-      "Relatórios por período e por garçom (em breve)",
-    ],
+    itens: ["Tudo do Avançado", "Cliente pede pelo QR code da mesa", SEM_LIMITES],
     linkCheckout: null,
   },
 ];

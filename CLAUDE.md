@@ -145,10 +145,11 @@ Por restaurante:
 Na fase 2 ainda entra `produto_componentes` (ficha técnica/estoque). Na fase 3, `configuracoes_pagamento` (subconta Asaas), `planos`, `dominios`.
 
 Já existe (cadastro self-service):
-- `assinaturas`: id, restaurante_id (único), plano (`essencial`|`completo`), status (`teste`|`ativa`|`atrasada`|`cancelada`|`cortesia`), teste_termina_em, periodo_termina_em, provedor (`kiwify`), provedor_assinatura_id. Criada por trigger com 14 dias de teste a cada restaurante novo; só o dono lê; ninguém escreve pelo app (a cobrança, provavelmente Kiwify, vai atualizar por webhook no servidor).
+- `assinaturas`: id, restaurante_id (único), plano (`delivery`|`presencial`|`avancado`|`completo`), status (`teste`|`ativa`|`atrasada`|`cancelada`|`cortesia`), teste_termina_em, periodo_termina_em, provedor (`kiwify`), provedor_assinatura_id. Criada por trigger com 14 dias de teste a cada restaurante novo; só o dono lê; ninguém escreve pelo app (a cobrança, provavelmente Kiwify, vai atualizar por webhook no servidor).
 - RPCs `criar_meu_restaurante(...)` (usuário logado vira dono; limite de 3 por conta) e `slug_disponivel(slug)`.
 - Endereços reservados em `rest_privado.slug_reservado()`: ao criar uma rota nova no primeiro nível do app (`/algo`), acrescentar o nome lá numa migração.
-- Planos e preços (provisórios, mock) ficam em `src/lib/planos.ts`.
+- **Planos reais** (documento de marketing, 29/10; `src/lib/planos.ts`, todos sem limite de usuários e de pedidos): **Delivery** R$ 99,90 (delivery, caixa, cardápio, cozinha, impressão, relatórios, cupons, entregadores); **Delivery + Presencial** R$ 149,90 (+ mesas pelo caixa: `comandas_painel`, `comandas_gerenciar`, `mesas`); **Avançado** R$ 199,90 (+ app do garçom: `garcom_app`); **Completo** R$ 249,90 (+ pedido pelo QR da mesa). Teste grátis: tudo liberado.
+- O plano **bloqueia de verdade** (migração `planos`): `rest_privado.permissoes_membro` = (permissões da pessoa) ∩ `permissoes_do_plano(restaurante)`, então vale em todas as políticas/funções e para o dono também; QR por `plano_tem_qr` (em `mesa_por_qr` e `pedir_pela_mesa`). Abrir mesa exige `comandas_painel`/`garcom_app` (trigger de `comandas`). App: `meus_planos()` em `obterVinculos` (`Vinculo.plano`, permissões já filtradas); o dono vê no menu, com cadeado, o que o plano não tem (`itensBloqueadosPeloPlano`, leva à Assinatura); a página do QR mostra "Ver planos" fora do Completo.
 
 Já existe (adicionais e opções):
 - `grupos_adicionais` (nome, minimo, maximo, ordem, ativo), `adicionais` (grupo_id, nome, preco, disponivel, ordem) e `produtos_grupos_adicionais` (produto_id, grupo_id). Um grupo serve para vários produtos.

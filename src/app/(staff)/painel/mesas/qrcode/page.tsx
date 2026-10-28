@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import QRCode from "qrcode";
 
+import { buttonVariants } from "@/components/ui/button";
 import { exigirPermissao, temPermissao } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { origemDoSite } from "@/lib/url";
+import { cn } from "@/lib/utils";
 
 import { BotaoImprimir } from "../../caixa/formularios";
 import { ChavePedidoMesa, TrocarQr } from "./controles";
@@ -14,6 +17,18 @@ export const metadata: Metadata = { title: "QR code das mesas" };
 // "Imprimir" sai uma folha com os cartões para recortar e colar nas mesas.
 export default async function QrCodeMesasPage() {
   const acesso = await exigirPermissao("painel", "mesas");
+  // Pedido na mesa pelo QR code é do plano Completo (no teste, liberado).
+  if (!acesso.plano.qr) {
+    return (
+      <main className="flex flex-col gap-4 p-4 md:p-6">
+        <h1 className="text-2xl font-semibold">QR code das mesas</h1>
+        <p>O cliente pede pelo celular, direto da mesa, no plano Completo.</p>
+        <Link href="/painel/assinatura" className={cn(buttonVariants(), "h-11 w-fit")}>
+          Ver planos
+        </Link>
+      </main>
+    );
+  }
   const supabase = await createClient();
   const [{ data: mesas, error }, { data: restaurante }] = await Promise.all([
     supabase

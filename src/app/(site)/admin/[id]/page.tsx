@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { formatarBRL } from "@/lib/dinheiro";
+import { planoPorId } from "@/lib/planos";
 import { id as idSchema } from "@/lib/validacao";
 
 import { carregarFicha, dataBR, NOME_STATUS, type StatusAssinatura } from "../dados";
@@ -116,7 +117,7 @@ export default async function FichaRestaurantePage(props: PageProps<"/admin/[id]
                 <div className="flex flex-wrap items-center gap-3 text-sm">
                   <SeloAssinatura status={a.status} testeTerminaEm={a.teste_termina_em} />
                   <span className="text-uau-marrom-claro">
-                    Plano {a.plano === "completo" ? "Completo" : "Essencial"}
+                    Plano {planoPorId(a.plano)?.nome ?? a.plano}
                     {a.provedor ? ` · cobrança: ${a.provedor}` : " · sem cobrança automática"} · atualizada em {dataBR(a.atualizado_em)}
                   </span>
                 </div>

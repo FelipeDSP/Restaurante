@@ -3,6 +3,7 @@ import "server-only";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 
+import type { IdPlano } from "@/lib/planos";
 import { createClient } from "@/lib/supabase/server";
 
 import type { StatusAssinatura } from "./assinatura";
@@ -28,7 +29,7 @@ export type RestauranteResumo = {
   criado_em: string;
   dono_nome: string | null;
   dono_email: string | null;
-  plano: "essencial" | "completo" | null;
+  plano: IdPlano | null;
   assinatura_status: StatusAssinatura | null;
   teste_termina_em: string | null;
   periodo_termina_em: string | null;
@@ -71,7 +72,7 @@ export type FichaRestaurante = {
     cor_primaria: string | null;
   };
   assinatura: {
-    plano: "essencial" | "completo";
+    plano: IdPlano;
     status: StatusAssinatura;
     teste_termina_em: string | null;
     periodo_termina_em: string | null;

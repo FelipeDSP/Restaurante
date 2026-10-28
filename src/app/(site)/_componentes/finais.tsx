@@ -71,12 +71,12 @@ export function Planos() {
             Teste tudo por {DIAS_TESTE_GRATIS} dias, sem cartão de crédito. Vendeu mais? O preço continua o mesmo.
           </p>
         </div>
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
           {PLANOS.map((p) => (
             <article
               key={p.id}
               className={cn(
-                "relative flex flex-col gap-6 rounded-[2rem] p-8",
+                "relative flex flex-col gap-6 rounded-[2rem] p-7",
                 p.destaque ? "bg-uau-laranja text-uau-marrom" : "border-2 border-uau-creme/15 bg-uau-creme/5",
               )}
             >

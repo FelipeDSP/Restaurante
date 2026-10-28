@@ -29,6 +29,7 @@ export async function PrimeirosPassos({ acesso }: { acesso: Acesso }) {
     supabase.from("restaurantes").select("aceita_delivery").eq("id", id).maybeSingle(),
   ]);
 
+  const temMesas = acesso.permissoes.includes("mesas");
   const passos: Passo[] = [
     {
       titulo: "Envie o logo",
@@ -42,12 +43,17 @@ export async function PrimeirosPassos({ acesso }: { acesso: Acesso }) {
       href: "/painel/produtos",
       feito: produtos > 0,
     },
-    {
-      titulo: "Cadastre as mesas",
-      descricao: "Elas formam o mapa do garçom.",
-      href: "/painel/mesas",
-      feito: mesas > 0,
-    },
+    // Plano só de delivery não tem mesas.
+    ...(temMesas
+      ? [
+          {
+            titulo: "Cadastre as mesas",
+            descricao: "Elas formam o mapa do garçom.",
+            href: "/painel/mesas",
+            feito: mesas > 0,
+          },
+        ]
+      : []),
     {
       titulo: "Ligue o delivery",
       descricao: "Taxa de entrega, horários e pedido mínimo.",

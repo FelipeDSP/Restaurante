@@ -1,4 +1,4 @@
-import { type Papel, type Permissao, PERMISSOES_INICIO } from "@/lib/auth/papeis";
+import { type Papel, type Permissao, PERMISSOES, PERMISSOES_INICIO } from "@/lib/auth/papeis";
 
 export type GrupoNavegacao = "Operação" | "Cadastros" | "Ajustes";
 
@@ -96,6 +96,13 @@ export function itensDoMenu(papel: Papel, permissoes: readonly Permissao[]): Ite
     const secoes = item.secoes.filter((s) => !s.acesso || tem(s.acesso));
     return secoes.length ? [{ ...item, href: secoes[0].href, secoes }] : [];
   });
+}
+
+// Dono: o que o plano não tem (aparece no menu com cadeado e leva aos planos).
+export function itensBloqueadosPeloPlano(papel: Papel, itens: ItemNavegacao[]): ItemNavegacao[] {
+  if (papel !== "dono") return [];
+  const visiveis = new Set(itens.map((i) => i.rotulo));
+  return itensDoMenu("dono", PERMISSOES).filter((i) => !visiveis.has(i.rotulo));
 }
 
 function casa(href: string, caminho: string) {

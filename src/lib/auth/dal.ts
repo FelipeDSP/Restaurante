@@ -4,7 +4,18 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 
-import { type Area, ehPapel, NOME_PAPEL, type Papel, type Permissao, permissoesEfetivas, podeAcessar, rotaInicial } from "@/lib/auth/papeis";
+import {
+  type Area,
+  ehPapel,
+  ehPermissao,
+  NOME_PAPEL,
+  type Papel,
+  type Permissao,
+  PERMISSOES,
+  permissoesEfetivas,
+  podeAcessar,
+  rotaInicial,
+} from "@/lib/auth/papeis";
 import { createClient } from "@/lib/supabase/server";
 
 // Restaurante escolhido no seletor. Sempre revalidado contra `membros`.
@@ -26,8 +37,10 @@ export type Vinculo = {
   papel: Papel;
   // Nome da função (ou "Dono"), para mostrar.
   funcao: string;
-  // Permissões que valem para a pessoa (dono: todas).
+  // Permissões que valem para a pessoa (dono: todas), já limitadas pelo plano do restaurante.
   permissoes: Permissao[];
+  // O que o plano libera (no teste grátis, tudo). O dono vê com cadeado o que o plano não tem.
+  plano: { id: string | null; teste: boolean; permissoes: Permissao[]; qr: boolean };
   restaurante: RestauranteResumo;
 };
 
@@ -46,6 +59,7 @@ export const obterVinculos = cache(async (): Promise<Vinculo[]> => {
   if (!usuario) return [];
 
   const supabase = await createClient();
+  const planos = supabase.rpc("meus_planos");
   const { data, error } = await supabase
     .from("membros")
     .select(
@@ -55,18 +69,26 @@ export const obterVinculos = cache(async (): Promise<Vinculo[]> => {
     .eq("ativo", true);
 
   if (error) throw new Error(`Falha ao carregar vínculos: ${error.message}`);
+  // O banco confere o plano de novo em cada política; aqui só decide o que aparece.
+  const { data: dePlanos } = await planos;
+  const planoDe = new Map((dePlanos ?? []).map((p) => [p.restaurante_id, p]));
 
   return data
     .flatMap((m): Vinculo[] => {
       const r = m.restaurante;
       if (!r || r.excluido_em || !ehPapel(m.papel)) return [];
+      const p = planoDe.get(r.id);
+      const doPlano = p ? (p.permissoes ?? []).filter(ehPermissao) : [...PERMISSOES];
       return [
         {
           membroId: m.id,
           nome: m.nome,
           papel: m.papel,
           funcao: m.papel === "dono" ? NOME_PAPEL.dono : (m.funcao?.nome ?? NOME_PAPEL[m.papel]),
-          permissoes: permissoesEfetivas(m.papel, m.funcao?.permissoes, m.permissoes_extras, m.permissoes_removidas),
+          permissoes: permissoesEfetivas(m.papel, m.funcao?.permissoes, m.permissoes_extras, m.permissoes_removidas).filter((x) =>
+            doPlano.includes(x),
+          ),
+          plano: { id: p?.plano ?? null, teste: p?.teste ?? true, permissoes: doPlano, qr: p?.qr ?? true },
           restaurante: {
             id: r.id,
             slug: r.slug,

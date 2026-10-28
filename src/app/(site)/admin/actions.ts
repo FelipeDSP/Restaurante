@@ -23,7 +23,7 @@ const semData = (v: string | null) => v as string;
 const assinaturaSchema = z.object({
   restauranteId: id,
   status: z.enum(["teste", "ativa", "atrasada", "cancelada", "cortesia"]),
-  plano: z.enum(["essencial", "completo"]),
+  plano: z.enum(["delivery", "presencial", "avancado", "completo"]),
   testeTerminaEm: dataOpcional,
   periodoTerminaEm: dataOpcional,
 });
@@ -53,7 +53,7 @@ export async function salvarAssinatura(_estado: ResultadoAcao, formData: FormDat
 export async function estenderTeste(restauranteId: string, dias: number, plano: string, fimAtual: string | null): Promise<ResultadoAcao> {
   const { supabase } = await exigirAdmin();
   const dados = z
-    .object({ restauranteId: id, dias: z.number().int().min(1).max(90), plano: z.enum(["essencial", "completo"]) })
+    .object({ restauranteId: id, dias: z.number().int().min(1).max(90), plano: z.enum(["delivery", "presencial", "avancado", "completo"]) })
     .safeParse({ restauranteId, dias, plano });
   if (!dados.success) return falha("Dados inválidos.");
   const base = fimAtual && new Date(fimAtual).getTime() > Date.now() ? new Date(fimAtual) : new Date();

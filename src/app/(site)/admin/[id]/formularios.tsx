@@ -6,6 +6,7 @@ import { useAcao } from "@/components/staff/acoes-cliente";
 import { BotaoEnviar, Campo, ErroCampo, Selecao, useAvisoResultado, valorCampo } from "@/components/staff/formulario";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { type IdPlano, PLANOS } from "@/lib/planos";
 
 import { definirAtivo, estenderTeste, salvarAssinatura } from "../actions";
 import { NOME_STATUS, type StatusAssinatura } from "../assinatura";
@@ -19,7 +20,7 @@ function diaDe(iso: string | null): string {
 }
 
 type Assinatura = {
-  plano: "essencial" | "completo";
+  plano: IdPlano;
   status: StatusAssinatura;
   teste_termina_em: string | null;
   periodo_termina_em: string | null;
@@ -64,8 +65,11 @@ export function FormAssinatura({ restauranteId, assinatura }: { restauranteId: s
         </Campo>
         <Campo rotulo="Plano" htmlFor="plano">
           <Selecao id="plano" name="plano" defaultValue={valorCampo(estado, "plano", assinatura.plano)} className="h-11">
-            <option value="essencial">Essencial</option>
-            <option value="completo">Completo</option>
+            {PLANOS.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.nome}
+              </option>
+            ))}
           </Selecao>
         </Campo>
         <Campo rotulo="Teste vai até" htmlFor="testeTerminaEm" dica="Obrigatório quando a situação é Teste grátis.">
