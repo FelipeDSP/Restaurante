@@ -112,10 +112,14 @@ function LinhaItem({ item, editavel }: { item: ItemComanda; editavel: boolean })
                 <Check className="size-3.5" aria-hidden />
                 Entregue
               </span>
-            ) : item.preparo === "pronto" ? (
+            ) : item.preparo === "pronto" || (item.quandoLevar === "com_a_comida" && item.preparo === "entregue") ? (
               <span className="mt-0.5 w-fit rounded-full bg-green-600 px-2 py-0.5 text-xs font-bold text-white">Pronto · levar</span>
+            ) : item.quandoLevar === "com_a_comida" ? (
+              <span className="text-xs font-medium text-muted-foreground">Levar com a comida</span>
             ) : item.preparo === "na_cozinha" ? (
               <span className="text-xs font-medium text-muted-foreground">Na cozinha</span>
+            ) : item.quandoLevar === "agora" ? (
+              <span className="mt-0.5 w-fit rounded-full bg-amber-300 px-2 py-0.5 text-xs font-bold text-amber-950">Levar agora</span>
             ) : null}
             {item.observacao ? <span className="text-sm text-muted-foreground">Obs.: {item.observacao}</span> : null}
           </span>

@@ -115,6 +115,8 @@ export type ItemComanda = {
   preparo: Preparo;
   // Já está na mesa: marcado item a item pelo garçom ou o pedido saiu da cozinha como entregue.
   entregue: boolean;
+  // Pedido do cliente pelo QR, item que não vai à cozinha (ex.: bebida): levar agora ou com a comida.
+  quandoLevar: "agora" | "com_a_comida" | null;
 };
 
 export type PagamentoComanda = {
@@ -169,7 +171,7 @@ export async function carregarComandaDaMesa(restauranteId: string, mesaId: strin
     .select(
       `id, status, pessoas, total, aberta_em, subtotal, servico_percentual, cobrar_servico, servico, couvert_unitario, cobrar_couvert, couvert,
        garcom:membros!comandas_restaurante_id_garcom_id_fkey(nome),
-       pedidos(id, numero, status, criado_em, autor:membros!pedidos_restaurante_id_criado_por_fkey(nome), tarefas_producao(status, pronto_em, retirada), itens_pedido(id, nome_produto, preco_unitario, preco_adicionais, adicionais, etapas, para_viagem, quantidade, observacao, total, criado_em, cancelado_em, motivo_cancelamento, entregue_em)),
+       pedidos(id, numero, status, criado_em, autor:membros!pedidos_restaurante_id_criado_por_fkey(nome), tarefas_producao(status, pronto_em, retirada), itens_pedido(id, nome_produto, preco_unitario, preco_adicionais, adicionais, etapas, para_viagem, quantidade, observacao, total, criado_em, cancelado_em, motivo_cancelamento, entregue_em, servir_com_comida)),
        pagamentos(id, valor, forma, criado_em, estornado_em, motivo_estorno, registrado:membros!pagamentos_restaurante_id_registrado_por_fkey(nome))`,
     )
     .eq("restaurante_id", restauranteId)
@@ -184,28 +186,34 @@ export async function carregarComandaDaMesa(restauranteId: string, mesaId: strin
     .flatMap((p) => {
       const preparo = preparoDoPedido(p.tarefas_producao);
       return p.itens_pedido.map((i) => {
-        // Item sem rota de preparo (ex.: bebida) não passa pela cozinha.
-        const comPreparo = Array.isArray(i.etapas) && i.etapas.length > 0;
-        return {
-        id: i.id,
-        pedidoId: p.id,
-        pedidoNumero: p.numero,
-        pedidoCriadoEm: p.criado_em,
-        // Pedido de mesa sem autor da equipe = o cliente pediu pelo QR code.
-        pedidoAutor: p.autor?.nome ?? "Cliente pelo celular",
-        nome: i.nome_produto,
-        precoUnitario: i.preco_unitario + i.preco_adicionais,
-        adicionais: lerAdicionais(i.adicionais),
-        paraViagem: i.para_viagem,
-        quantidade: i.quantidade,
-        observacao: i.observacao,
-        total: i.total,
-        criadoEm: i.criado_em,
-        cancelado: i.cancelado_em !== null,
-        motivoCancelamento: i.motivo_cancelamento,
-        preparo: comPreparo ? preparo : null,
-        entregue: i.entregue_em !== null || (comPreparo && preparo === "entregue"),
+        // Item sem rota de preparo (ex.: bebida) não passa pela cozinha; "junto com a comida"
+        // (escolha do cliente no QR) acompanha o andamento da comida do mesmo pedido.
+        const temEtapas = Array.isArray(i.etapas) && i.etapas.length > 0;
+        const segueCozinha = temEtapas || i.servir_com_comida;
+        const item: ItemComanda = {
+          id: i.id,
+          pedidoId: p.id,
+          pedidoNumero: p.numero,
+          pedidoCriadoEm: p.criado_em,
+          // Pedido de mesa sem autor da equipe = o cliente pediu pelo QR code.
+          pedidoAutor: p.autor?.nome ?? "Cliente pelo celular",
+          nome: i.nome_produto,
+          precoUnitario: i.preco_unitario + i.preco_adicionais,
+          adicionais: lerAdicionais(i.adicionais),
+          paraViagem: i.para_viagem,
+          quantidade: i.quantidade,
+          observacao: i.observacao,
+          total: i.total,
+          criadoEm: i.criado_em,
+          cancelado: i.cancelado_em !== null,
+          motivoCancelamento: i.motivo_cancelamento,
+          preparo: segueCozinha ? preparo : null,
+          // A bebida "com a comida" só fica entregue quando marcada (a comida pode ter ido antes).
+          entregue: i.entregue_em !== null || (temEtapas && preparo === "entregue"),
+          // Pedido do cliente pelo QR: o que não vai à cozinha mostra quando levar.
+          quandoLevar: temEtapas || p.autor ? null : i.servir_com_comida ? "com_a_comida" : "agora",
         };
+        return item;
       });
     })
     // Itens do mesmo lançamento têm a mesma hora: o id desempata (a ordem não pula ao atualizar).

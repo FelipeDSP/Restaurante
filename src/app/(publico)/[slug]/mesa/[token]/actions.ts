@@ -20,6 +20,8 @@ const pedidoSchema = z.object({
         quantidade: z.number().int().min(1).max(20),
         observacao: z.string().trim().max(200),
         adicionais: z.array(id).max(30),
+        // Bebida (o que não passa pela cozinha): trazer junto com a comida em vez de na hora.
+        com_a_comida: z.boolean(),
       }),
     )
     .min(1, "Seu pedido está vazio.")

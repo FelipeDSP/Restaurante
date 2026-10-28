@@ -14,12 +14,27 @@ import { precoUnitario, useCarrinho } from "../../carrinho-store";
 import { pedirPelaMesa } from "./actions";
 
 // Pedido do cliente na mesa: barra embaixo e a revisão antes de mandar para a cozinha.
-export function BarraPedidoMesa({ slug, token, carrinho }: { slug: string; token: string; carrinho: string }) {
+export function BarraPedidoMesa({
+  slug,
+  token,
+  carrinho,
+  semPreparo,
+}: {
+  slug: string;
+  token: string;
+  carrinho: string;
+  // Produtos que não passam pela cozinha (ex.: bebidas): com comida no pedido, pergunta quando trazer.
+  semPreparo: string[];
+}) {
   const router = useRouter();
   const { itens, alterarQuantidade, limpar, quantidade, subtotal } = useCarrinho(carrinho);
   const [aberto, setAberto] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [ancora, setAncora] = useState<HTMLSpanElement | null>(null);
+  const [comAComida, setComAComida] = useState(false);
+  const prontos = itens.filter((i) => semPreparo.includes(i.produtoId));
+  // Só faz sentido perguntar quando o pedido tem comida e algo que já sai pronto.
+  const perguntar = prontos.length > 0 && prontos.length < itens.length;
   // A mesma chave até dar certo: reenviar (internet caiu, toque duplo) não pede em dobro.
   const lote = useRef<string | null>(null);
 
@@ -37,11 +52,13 @@ export function BarraPedidoMesa({ slug, token, carrinho }: { slug: string; token
           quantidade: i.quantidade,
           observacao: i.observacao,
           adicionais: i.adicionais.map((a) => a.id),
+          com_a_comida: perguntar && comAComida && semPreparo.includes(i.produtoId),
         })),
       });
       if (r.ok) {
         lote.current = null;
         limpar();
+        setComAComida(false);
         setAberto(false);
         toast.success("Pedido enviado! Já foi para a cozinha.", { duration: 6000 });
       } else {
@@ -132,6 +149,34 @@ export function BarraPedidoMesa({ slug, token, carrinho }: { slug: string; token
               ))}
             </ul>
             <div className="flex flex-col gap-3 border-t p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+              {perguntar ? (
+                <fieldset className="flex flex-col gap-2">
+                  <legend className="mb-2 text-sm font-semibold">
+                    Quando trazer {[...new Set(prontos.map((i) => i.nome))].join(", ")}?
+                  </legend>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { valor: false, rotulo: "Agora" },
+                      { valor: true, rotulo: "Junto com a comida" },
+                    ].map((o) => (
+                      <button
+                        key={o.rotulo}
+                        type="button"
+                        aria-pressed={comAComida === o.valor}
+                        onClick={() => setComAComida(o.valor)}
+                        className={cn(
+                          "min-h-11 rounded-lg border px-3 text-sm font-medium transition-colors",
+                          comAComida === o.valor
+                            ? "border-[var(--cor-primaria)] bg-[color-mix(in_oklab,var(--cor-primaria)_12%,transparent)]"
+                            : "hover:bg-muted",
+                        )}
+                      >
+                        {o.rotulo}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+              ) : null}
               <p className="flex justify-between text-lg font-bold">
                 <span>Total</span>
                 <span className="tabular-nums">{formatarBRL(subtotal)}</span>

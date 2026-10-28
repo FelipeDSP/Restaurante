@@ -2292,6 +2292,21 @@ begin
   perform pg_temp.ok(v_falhou, 'mesa QR: garçom não troca o garçom depois de assumida');
 
   -- O código de uma mesa de outro restaurante não lança aqui (vale só a mesa dele).
+  -- "Junto com a comida": só para o que não passa pela cozinha.
+  perform pg_temp.anonimo();
+  v_r2 := public.pedir_pela_mesa(v_token, jsonb_build_array(
+    jsonb_build_object('produto_id', (select id from public.produtos where restaurante_id = a and nome = 'Refrigerante lata'), 'quantidade', 1, 'com_a_comida', true),
+    jsonb_build_object('produto_id', (select id from public.produtos where restaurante_id = a and nome = 'Espeto de carne'), 'quantidade', 1, 'com_a_comida', true)
+  ), gen_random_uuid(), null);
+  perform pg_temp.admin();
+  perform pg_temp.ok(
+    (select bool_and(servir_com_comida = (nome_produto = 'Refrigerante lata')) from public.itens_pedido where pedido_id = (v_r2 ->> 'pedido_id')::uuid),
+    'mesa QR: "junto com a comida" vale só para o que não vai à cozinha');
+  perform pg_temp.ok(
+    (select bool_and(((p ->> 'preparo')::boolean) = (p ->> 'nome' <> 'Refrigerante lata' and p ->> 'nome' <> 'Cerveja long neck'))
+     from jsonb_array_elements(public.cardapio_salao_publico(a)) c, jsonb_array_elements(c -> 'produtos') p),
+    'mesa QR: cardápio diz o que passa pela cozinha');
+
   -- Pedido do cliente visto pelo garçom: quem e quando vêm do banco; ninguém apaga nem troca.
   perform pg_temp.entrar('dono.burger@exemplo.com');
   v_falhou := false;

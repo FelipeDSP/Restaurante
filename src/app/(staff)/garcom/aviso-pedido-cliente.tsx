@@ -11,21 +11,19 @@ import { createClient } from "@/lib/supabase/client";
 
 import { marcarPedidoVisto } from "./actions";
 
-// Depois disso o aviso não insiste mais (o pedido já foi servido ou a mesa resolveu com o garçom).
+// Pedidos do cliente ainda não vistos aparecem de novo ao abrir o app, por até 30 min.
 const VALIDADE_MS = 30 * 60_000;
-// Até alguém ver: vibra a cada 3 s e bipa a cada 6 s.
-const VIBRAR_MS = 3_000;
 
-type PedidoCliente = { id: string; criado_em: string; comanda_id: string | null };
+type PedidoCliente = { id: string; comanda_id: string | null };
 
-// O cliente pediu pelo QR code da mesa: o pedido já foi para a cozinha, mas o garçom precisa olhar
-// (ex.: bebida, para perguntar se é para agora). O aviso mostra os itens e insiste até alguém tocar
-// em "Ver pedido"; o banco guarda quem viu e o aviso some nos outros aparelhos. Vai para o garçom da
-// mesa ou, com a mesa sem garçom (o cliente abriu), para todos.
+// O cliente pediu pelo QR code da mesa (já foi para a cozinha): aviso com os itens, para o garçom
+// conferir (ex.: a bebida é agora ou com a comida). Só o garçom da mesa sente: vibra e bipa uma vez.
+// Mesa sem garçom (o cliente abriu) aparece na tela de todos, sem vibrar (muitas mesas cansariam).
+// "Ver pedido" grava quem viu e o aviso some nos outros aparelhos.
 export function AvisoPedidoCliente({ restauranteId, membroId }: { restauranteId: string; membroId: string }) {
   const router = useRouter();
   const audio = useRef<AudioContext | null>(null);
-  const abertos = useRef(new Map<string, number>());
+  const mostrados = useRef(new Set<string>());
   const { executar } = useAcao();
 
   // Navegadores só liberam som depois de um toque na página.
@@ -38,29 +36,13 @@ export function AvisoPedidoCliente({ restauranteId, membroId }: { restauranteId:
     return () => window.removeEventListener("pointerdown", liberar);
   }, []);
 
-  useEffect(() => {
-    const repeticoes = abertos.current;
-    return () => repeticoes.forEach((intervalo) => clearInterval(intervalo));
-  }, []);
-
-  const alertar = useCallback((bipar: boolean) => {
-    navigator.vibrate?.([400, 150, 400]);
-    if (bipar && audio.current?.state === "running") tocarAlerta(audio.current);
-  }, []);
-
-  const encerrar = useCallback((pedidoId: string) => {
-    clearInterval(abertos.current.get(pedidoId));
-    abertos.current.delete(pedidoId);
-    toast.dismiss(`pedido-cliente-${pedidoId}`);
-  }, []);
-
   const mostrar = useCallback(
-    async (pedido: PedidoCliente) => {
-      if (abertos.current.has(pedido.id) || !pedido.comanda_id) return;
+    async (pedido: PedidoCliente, alertar: boolean) => {
+      if (mostrados.current.has(pedido.id) || !pedido.comanda_id) return;
       const { data } = await createClient()
         .from("pedidos")
         .select(
-          "visto_em, status, comanda:comandas(garcom_id, mesa_id, status, mesa:mesas(numero)), itens_pedido(nome_produto, quantidade, adicionais, observacao, cancelado_em)",
+          "visto_em, status, comanda:comandas(garcom_id, mesa_id, status, mesa:mesas(numero)), itens_pedido(nome_produto, quantidade, adicionais, observacao, etapas, servir_com_comida, cancelado_em)",
         )
         .eq("id", pedido.id)
         .eq("restaurante_id", restauranteId)
@@ -68,31 +50,28 @@ export function AvisoPedidoCliente({ restauranteId, membroId }: { restauranteId:
       const comanda = data?.comanda;
       if (!data || data.visto_em || data.status === "cancelado" || !comanda) return;
       if (comanda.status !== "aberta" && comanda.status !== "conta_pedida") return;
-      if (comanda.garcom_id && comanda.garcom_id !== membroId) return;
-      if (abertos.current.has(pedido.id)) return;
+      const daMinhaMesa = comanda.garcom_id === membroId;
+      if (comanda.garcom_id && !daMinhaMesa) return;
+      if (mostrados.current.has(pedido.id)) return;
+      mostrados.current.add(pedido.id);
 
       const itens = data.itens_pedido
         .filter((i) => !i.cancelado_em)
         .map((i) => {
           const opcoes = Array.isArray(i.adicionais) ? (i.adicionais as { nome?: string }[]).map((a) => a.nome).filter(Boolean) : [];
-          return `${i.quantidade}× ${i.nome_produto}${opcoes.length ? ` (${opcoes.join(", ")})` : ""}${i.observacao ? ` — ${i.observacao}` : ""}`;
+          const semCozinha = !Array.isArray(i.etapas) || i.etapas.length === 0;
+          const quando = semCozinha ? (i.servir_com_comida ? " · com a comida" : " · agora") : "";
+          return `${i.quantidade}× ${i.nome_produto}${opcoes.length ? ` (${opcoes.join(", ")})` : ""}${i.observacao ? ` — ${i.observacao}` : ""}${quando}`;
         });
 
-      const vence = new Date(pedido.criado_em).getTime() + VALIDADE_MS;
-      let vezes = 0;
-      const intervalo = window.setInterval(() => {
-        if (Date.now() > vence) {
-          encerrar(pedido.id);
-          return;
-        }
-        vezes += 1;
-        alertar(vezes % 2 === 0);
-      }, VIBRAR_MS);
-      abertos.current.set(pedido.id, intervalo);
-      alertar(true);
+      if (alertar && daMinhaMesa) {
+        navigator.vibrate?.([400, 150, 400]);
+        if (audio.current?.state === "running") tocarAlerta(audio.current);
+      }
 
-      toast.warning(`Mesa ${comanda.mesa?.numero ?? ""} pediu pelo celular`, {
-        id: `pedido-cliente-${pedido.id}`,
+      const idAviso = `pedido-cliente-${pedido.id}`;
+      toast.info(`Mesa ${comanda.mesa?.numero ?? ""} pediu pelo celular`, {
+        id: idAviso,
         description: (
           <span className="flex flex-col">
             {itens.map((linha, n) => (
@@ -107,31 +86,26 @@ export function AvisoPedidoCliente({ restauranteId, membroId }: { restauranteId:
         action: {
           label: "Ver pedido",
           onClick: (evento) => {
-            // O aviso (e a vibração) só some quando o "visto" chega ao sistema; sem internet, continua.
             evento.preventDefault();
             executar(
               () => marcarPedidoVisto(pedido.id),
               () => {
-                encerrar(pedido.id);
+                toast.dismiss(idAviso);
                 router.push(`/painel/comandas/${comanda.mesa_id}`);
               },
             );
           },
         },
-        onDismiss: () => {
-          clearInterval(abertos.current.get(pedido.id));
-          abertos.current.delete(pedido.id);
-        },
       });
     },
-    [restauranteId, membroId, alertar, encerrar, executar, router],
+    [restauranteId, membroId, executar, router],
   );
 
-  // Pedidos que chegaram com o app fechado (ou durante uma queda de conexão).
+  // Pedidos que chegaram com o app fechado (ou durante uma queda de conexão): só na tela.
   const conferir = useCallback(async () => {
     const { data } = await createClient()
       .from("pedidos")
-      .select("id, criado_em, comanda_id")
+      .select("id, comanda_id")
       .eq("restaurante_id", restauranteId)
       .eq("origem", "mesa")
       .is("criado_por", null)
@@ -139,7 +113,7 @@ export function AvisoPedidoCliente({ restauranteId, membroId }: { restauranteId:
       .neq("status", "cancelado")
       .gte("criado_em", new Date(Date.now() - VALIDADE_MS).toISOString())
       .order("criado_em");
-    (data ?? []).forEach((p) => void mostrar(p));
+    (data ?? []).forEach((p) => void mostrar(p, false));
   }, [restauranteId, mostrar]);
 
   useEffect(() => {
@@ -150,24 +124,24 @@ export function AvisoPedidoCliente({ restauranteId, membroId }: { restauranteId:
     restauranteId,
     ["pedidos"],
     (mudanca) => {
-      const p = mudanca.new as { id?: string; origem?: string; criado_por?: string | null; criado_em?: string; comanda_id?: string | null };
+      const p = mudanca.new as { id?: string; origem?: string; criado_por?: string | null; comanda_id?: string | null };
       if (p.origem !== "mesa" || p.criado_por || !p.id) return;
       // O aviso chega depois do commit: os itens do pedido já estão gravados.
-      void mostrar({ id: p.id, criado_em: p.criado_em ?? new Date().toISOString(), comanda_id: p.comanda_id ?? null });
+      void mostrar({ id: p.id, comanda_id: p.comanda_id ?? null }, true);
       router.refresh();
     },
     "INSERT",
     () => void conferir(),
   );
 
-  // Visto em outro aparelho (ou por outro garçom): para de insistir aqui também.
+  // Visto em outro aparelho (ou por outro garçom) ou cancelado: o aviso some aqui também.
   useMudancasRealtime(
     restauranteId,
     ["pedidos"],
     (mudanca) => {
       const p = mudanca.new as { id?: string; visto_em?: string | null; status?: string };
-      if (!p.id || !abertos.current.has(p.id)) return;
-      if (p.visto_em || p.status === "cancelado") encerrar(p.id);
+      if (!p.id || !mostrados.current.has(p.id)) return;
+      if (p.visto_em || p.status === "cancelado") toast.dismiss(`pedido-cliente-${p.id}`);
     },
     "UPDATE",
   );

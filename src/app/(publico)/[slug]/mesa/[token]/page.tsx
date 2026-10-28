@@ -122,7 +122,14 @@ export default async function MesaPage(props: PageProps<"/[slug]/mesa/[token]">)
         ))
       )}
 
-      {mesa.podePedir ? <BarraPedidoMesa slug={restaurante.slug} token={token} carrinho={carrinho} /> : null}
+      {mesa.podePedir ? (
+        <BarraPedidoMesa
+          slug={restaurante.slug}
+          token={token}
+          carrinho={carrinho}
+          semPreparo={cardapio.flatMap((c) => c.produtos.filter((p) => !p.preparo).map((p) => p.id))}
+        />
+      ) : null}
     </main>
   );
 }

@@ -71,6 +71,8 @@ export type ProdutoPublico = {
   preco: number;
   fotoUrl: string | null;
   grupos: GrupoAdicionais[];
+  // Cardápio da mesa: passa pela cozinha (o que não passa pergunta "agora ou com a comida").
+  preparo?: boolean;
 };
 
 export type CategoriaPublica = { id: string; nome: string; produtos: ProdutoPublico[] };
@@ -178,7 +180,15 @@ export async function carregarCardapioMesa(restauranteId: string): Promise<Categ
   type Linha = {
     id: string;
     nome: string;
-    produtos: { id: string; nome: string; descricao: string | null; preco: number; foto_url: string | null; grupos: GrupoAdicionais[] }[];
+    produtos: {
+      id: string;
+      nome: string;
+      descricao: string | null;
+      preco: number;
+      foto_url: string | null;
+      preparo: boolean;
+      grupos: GrupoAdicionais[];
+    }[];
   };
   return ((data ?? []) as Linha[]).map((c) => ({
     id: c.id,
@@ -189,6 +199,7 @@ export async function carregarCardapioMesa(restauranteId: string): Promise<Categ
       descricao: p.descricao,
       preco: p.preco,
       fotoUrl: p.foto_url,
+      preparo: p.preparo,
       grupos: (p.grupos ?? []).map((g) => ({ ...g, opcoes: g.opcoes ?? [] })),
     })),
   }));
