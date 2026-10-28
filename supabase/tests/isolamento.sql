@@ -2204,6 +2204,100 @@ begin
 end;
 $$;
 
+-- ======================================================================
+-- Pedido pelo QR code da mesa
+-- ======================================================================
+do $$
+declare
+  a constant uuid := md5('brasa-espetinhos')::uuid;
+  b constant uuid := md5('burger-do-ze')::uuid;
+  v_mesa uuid;
+  v_token uuid;
+  v_token_b uuid;
+  v_produto uuid;
+  v_preco integer;
+  v_r jsonb;
+  v_r2 jsonb;
+  v_comanda record;
+  v_falhou boolean;
+begin
+  perform pg_temp.admin();
+  select m.id, m.qr_token into v_mesa, v_token from public.mesas m
+  where m.restaurante_id = a and m.ativa
+    and not exists (select 1 from public.comandas c where c.mesa_id = m.id and c.status in ('aberta', 'conta_pedida'))
+  order by m.numero limit 1;
+  select qr_token into v_token_b from public.mesas where restaurante_id = b and ativa limit 1;
+  select p.id, p.preco into v_produto, v_preco from public.produtos p
+  where p.restaurante_id = a and p.disponivel
+    and not exists (select 1 from public.produtos_grupos_adicionais g where g.produto_id = p.id)
+  order by p.nome limit 1;
+  if not exists (select 1 from public.caixa_sessoes where restaurante_id = a and fechada_em is null) then
+    perform pg_temp.entrar('dono.brasa@exemplo.com');
+    insert into public.caixa_sessoes (restaurante_id, valor_inicial) values (a, 0);
+    perform pg_temp.admin();
+  end if;
+  update public.restaurantes set pedido_mesa_qr = false where id = a;
+
+  perform pg_temp.anonimo();
+  v_falhou := false;
+  begin
+    perform public.pedir_pela_mesa(v_token, jsonb_build_array(jsonb_build_object('produto_id', v_produto, 'quantidade', 1)), gen_random_uuid(), null);
+  exception when others then v_falhou := true;
+  end;
+  perform pg_temp.ok(v_falhou, 'mesa QR: desligado não aceita pedido');
+  perform pg_temp.ok(public.mesa_por_qr(v_token) ->> 'pode_pedir' = 'false', 'mesa QR: desligado só mostra o cardápio');
+
+  perform pg_temp.admin();
+  update public.restaurantes set pedido_mesa_qr = true where id = a;
+  perform pg_temp.anonimo();
+  v_r := public.pedir_pela_mesa(v_token, jsonb_build_array(jsonb_build_object('produto_id', v_produto, 'quantidade', 2)),
+    '22222222-2222-2222-2222-222222222222', v_preco * 2);
+  v_r2 := public.pedir_pela_mesa(v_token, '[]', '22222222-2222-2222-2222-222222222222', null);
+  perform pg_temp.ok(v_r ->> 'pedido_id' = v_r2 ->> 'pedido_id', 'mesa QR: mesmo envio não duplica');
+  perform pg_temp.ok((public.mesa_por_qr(v_token) -> 'conta' ->> 'subtotal')::integer = v_preco * 2, 'mesa QR: conta da mesa mostra o pedido');
+
+  v_falhou := false;
+  begin
+    perform public.pedir_pela_mesa(v_token, jsonb_build_array(jsonb_build_object('produto_id', v_produto, 'quantidade', 1)), gen_random_uuid(), 1);
+  exception when others then v_falhou := sqlerrm like '%(precos_mudaram)';
+  end;
+  perform pg_temp.ok(v_falhou, 'mesa QR: total diferente do visto é recusado');
+
+  v_falhou := false;
+  begin
+    perform public.pedir_pela_mesa(gen_random_uuid(), '[]', gen_random_uuid(), null);
+  exception when others then v_falhou := true;
+  end;
+  perform pg_temp.ok(v_falhou, 'mesa QR: código inventado é recusado');
+
+  perform pg_temp.admin();
+  select c.id, c.garcom_id, p.criado_por, (select count(*) from public.tarefas_producao t where t.pedido_id = p.id) as tickets
+  into v_comanda
+  from public.pedidos p join public.comandas c on c.id = p.comanda_id
+  where p.id = (v_r ->> 'pedido_id')::uuid;
+  perform pg_temp.ok(v_comanda.garcom_id is null and v_comanda.criado_por is null, 'mesa QR: mesa abre sem garçom e o pedido é do cliente');
+
+  -- O garçom assume a mesa sem garçom; trocar depois continua só com permissão.
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  update public.comandas set garcom_id = (select id from public.membros where restaurante_id = a and user_id = md5('garcom1.brasa@exemplo.com')::uuid)
+  where id = v_comanda.id;
+  perform pg_temp.admin();
+  perform pg_temp.ok((select garcom_id from public.comandas where id = v_comanda.id) is not null, 'mesa QR: garçom assume a mesa aberta pelo cliente');
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  v_falhou := false;
+  begin
+    update public.comandas set garcom_id = null where id = v_comanda.id;
+  exception when others then v_falhou := true;
+  end;
+  perform pg_temp.ok(v_falhou, 'mesa QR: garçom não troca o garçom depois de assumida');
+
+  -- O código de uma mesa de outro restaurante não lança aqui (vale só a mesa dele).
+  perform pg_temp.anonimo();
+  perform pg_temp.ok(public.mesa_por_qr(v_token_b) ->> 'restaurante_id' = b::text, 'mesa QR: código leva só à mesa do próprio restaurante');
+  perform pg_temp.admin();
+end;
+$$;
+
 select n, ok, teste from resultado order by n;
 select count(*) filter (where not ok) as falhas, count(*) as total from resultado;
 

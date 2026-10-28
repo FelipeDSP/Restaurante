@@ -614,13 +614,13 @@ isOneToOne: false
                   ]
                 },"mesas": {
                   Row: {
-                    "ativa": boolean,"id": string,"numero": string,"ordem": number,"restaurante_id": string
+                    "ativa": boolean,"id": string,"numero": string,"ordem": number,"qr_token": string,"restaurante_id": string
                   }
                   Insert: {
-                    "ativa"?: boolean,"id"?: string,"numero": string,"ordem"?: number,"restaurante_id": string
+                    "ativa"?: boolean,"id"?: string,"numero": string,"ordem"?: number,"qr_token"?: string,"restaurante_id": string
                   }
                   Update: {
-                    "ativa"?: boolean,"id"?: string,"numero"?: string,"ordem"?: number,"restaurante_id"?: string
+                    "ativa"?: boolean,"id"?: string,"numero"?: string,"ordem"?: number,"qr_token"?: string,"restaurante_id"?: string
                   }
                   Relationships: [
                     {
@@ -977,13 +977,13 @@ isOneToOne: false
                   ]
                 },"restaurantes": {
                   Row: {
-                    "aceita_delivery": boolean,"ativo": boolean,"cor_primaria": string,"cor_secundaria": string,"couvert_dias": (number)[],"couvert_valor": number,"criado_em": string,"endereco": NonNullable<Json>,"excluido_em": string | null,"fuso_horario": string,"horarios": NonNullable<Json>,"id": string,"logo_url": string | null,"nome": string,"pedido_minimo": number,"servico_percentual": number,"slug": string,"taxa_entrega_fixa": number,"taxa_entrega_modo": string,"telefone": string | null,"tempo_estimado_entrega_min": number | null,"whatsapp": string | null
+                    "aceita_delivery": boolean,"ativo": boolean,"cor_primaria": string,"cor_secundaria": string,"couvert_dias": (number)[],"couvert_valor": number,"criado_em": string,"endereco": NonNullable<Json>,"excluido_em": string | null,"fuso_horario": string,"horarios": NonNullable<Json>,"id": string,"logo_url": string | null,"nome": string,"pedido_mesa_qr": boolean,"pedido_minimo": number,"servico_percentual": number,"slug": string,"taxa_entrega_fixa": number,"taxa_entrega_modo": string,"telefone": string | null,"tempo_estimado_entrega_min": number | null,"whatsapp": string | null
                   }
                   Insert: {
-                    "aceita_delivery"?: boolean,"ativo"?: boolean,"cor_primaria"?: string,"cor_secundaria"?: string,"couvert_dias"?: (number)[],"couvert_valor"?: number,"criado_em"?: string,"endereco"?: NonNullable<Json>,"excluido_em"?: string | null,"fuso_horario"?: string,"horarios"?: NonNullable<Json>,"id"?: string,"logo_url"?: string | null,"nome": string,"pedido_minimo"?: number,"servico_percentual"?: number,"slug": string,"taxa_entrega_fixa"?: number,"taxa_entrega_modo"?: string,"telefone"?: string | null,"tempo_estimado_entrega_min"?: number | null,"whatsapp"?: string | null
+                    "aceita_delivery"?: boolean,"ativo"?: boolean,"cor_primaria"?: string,"cor_secundaria"?: string,"couvert_dias"?: (number)[],"couvert_valor"?: number,"criado_em"?: string,"endereco"?: NonNullable<Json>,"excluido_em"?: string | null,"fuso_horario"?: string,"horarios"?: NonNullable<Json>,"id"?: string,"logo_url"?: string | null,"nome": string,"pedido_mesa_qr"?: boolean,"pedido_minimo"?: number,"servico_percentual"?: number,"slug": string,"taxa_entrega_fixa"?: number,"taxa_entrega_modo"?: string,"telefone"?: string | null,"tempo_estimado_entrega_min"?: number | null,"whatsapp"?: string | null
                   }
                   Update: {
-                    "aceita_delivery"?: boolean,"ativo"?: boolean,"cor_primaria"?: string,"cor_secundaria"?: string,"couvert_dias"?: (number)[],"couvert_valor"?: number,"criado_em"?: string,"endereco"?: NonNullable<Json>,"excluido_em"?: string | null,"fuso_horario"?: string,"horarios"?: NonNullable<Json>,"id"?: string,"logo_url"?: string | null,"nome"?: string,"pedido_minimo"?: number,"servico_percentual"?: number,"slug"?: string,"taxa_entrega_fixa"?: number,"taxa_entrega_modo"?: string,"telefone"?: string | null,"tempo_estimado_entrega_min"?: number | null,"whatsapp"?: string | null
+                    "aceita_delivery"?: boolean,"ativo"?: boolean,"cor_primaria"?: string,"cor_secundaria"?: string,"couvert_dias"?: (number)[],"couvert_valor"?: number,"criado_em"?: string,"endereco"?: NonNullable<Json>,"excluido_em"?: string | null,"fuso_horario"?: string,"horarios"?: NonNullable<Json>,"id"?: string,"logo_url"?: string | null,"nome"?: string,"pedido_mesa_qr"?: boolean,"pedido_minimo"?: number,"servico_percentual"?: number,"slug"?: string,"taxa_entrega_fixa"?: number,"taxa_entrega_modo"?: string,"telefone"?: string | null,"tempo_estimado_entrega_min"?: number | null,"whatsapp"?: string | null
                   }
                   Relationships: [
                     
@@ -1141,11 +1141,17 @@ isOneToOne: false
 "lancar_itens_comanda":
 { Args: { "p_comanda_id": string,"p_itens": Json,"p_lote"?: string,"p_total_esperado"?: number }; Returns: Json
                            },
+"mesa_por_qr":
+{ Args: { "p_token": string }; Returns: Json
+                           },
 "meus_pedidos_cliente":
 { Args: { "p_restaurante_id": string }; Returns: Json
                            },
 "minhas_permissoes":
 { Args: { "p_restaurante_id": string }; Returns: (string)[]
+                           },
+"pedir_pela_mesa":
+{ Args: { "p_itens": Json,"p_lote": string,"p_token": string,"p_total_esperado": number }; Returns: Json
                            },
 "reimprimir":
 { Args: { "p_fila_id": string }; Returns: undefined

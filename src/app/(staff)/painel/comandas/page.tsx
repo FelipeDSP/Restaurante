@@ -46,6 +46,8 @@ function CartaoMesa({ mesa }: { mesa: MesaNoMapa }) {
               {mesa.abertaEm ? tempoDesde(mesa.abertaEm) : ""}
               <span className="hidden sm:inline">{mesa.garcom ? ` · ${mesa.garcom}` : ""}</span>
             </span>
+            {/* Mesa aberta pelo cliente (QR code): ninguém assumiu ainda. */}
+            {mesa.garcom ? null : <span className="font-semibold">Sem garçom</span>}
           </>
         ) : null}
       </span>

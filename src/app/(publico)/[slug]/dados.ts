@@ -169,20 +169,16 @@ export async function consultarPedido(pedidoId: string): Promise<PedidoPublico |
   return (data as PedidoPublico | null) ?? null;
 }
 
-// Cardápio do salão (QR code na mesa, só consulta): tudo o que está disponível no salão,
-// inclusive o que não vai para o delivery. Vem pronto da RPC (a RLS de anon só abre o delivery).
-export type OpcoesSalao = { nome: string; minimo: number; maximo: number; opcoes: { nome: string; preco: number }[] };
-export type ProdutoSalao = Omit<ProdutoPublico, "grupos"> & { grupos: OpcoesSalao[] };
-export type CategoriaSalao = { id: string; nome: string; produtos: ProdutoSalao[] };
-
-export async function carregarCardapioMesa(restauranteId: string): Promise<CategoriaSalao[]> {
+// Cardápio do salão (QR code da mesa): tudo o que está disponível no salão, inclusive o que não vai
+// para o delivery. Vem pronto da RPC (a RLS de anon só abre o cardápio do delivery).
+export async function carregarCardapioMesa(restauranteId: string): Promise<CategoriaPublica[]> {
   const supabase = createPublicClient();
   const { data, error } = await supabase.rpc("cardapio_salao_publico", { p_restaurante_id: restauranteId });
   if (error) throw new Error(error.message);
   type Linha = {
     id: string;
     nome: string;
-    produtos: { id: string; nome: string; descricao: string | null; preco: number; foto_url: string | null; grupos: OpcoesSalao[] }[];
+    produtos: { id: string; nome: string; descricao: string | null; preco: number; foto_url: string | null; grupos: GrupoAdicionais[] }[];
   };
   return ((data ?? []) as Linha[]).map((c) => ({
     id: c.id,
@@ -196,4 +192,22 @@ export async function carregarCardapioMesa(restauranteId: string): Promise<Categ
       grupos: (p.grupos ?? []).map((g) => ({ ...g, opcoes: g.opcoes ?? [] })),
     })),
   }));
+}
+
+export type ContaMesa = {
+  subtotal: number;
+  servico: number;
+  couvert: number;
+  total: number;
+  itens: { nome: string; quantidade: number; adicionais: string | null; total: number }[];
+};
+export type MesaQr = { restauranteId: string; mesa: string; podePedir: boolean; conta: ContaMesa | null };
+
+// Mesa pelo código do QR (null se o código não vale).
+export async function buscarMesaPorQr(token: string): Promise<MesaQr | null> {
+  const supabase = createPublicClient();
+  const { data } = await supabase.rpc("mesa_por_qr", { p_token: token });
+  const m = data as { restaurante_id: string; mesa: string; pode_pedir: boolean; conta: ContaMesa | null } | null;
+  if (!m) return null;
+  return { restauranteId: m.restaurante_id, mesa: m.mesa, podePedir: m.pode_pedir, conta: m.conta };
 }

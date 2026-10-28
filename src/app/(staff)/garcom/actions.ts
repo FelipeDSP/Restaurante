@@ -216,6 +216,26 @@ export async function registrarPagamentos(comandaId: string, partes: { valor: nu
   );
 }
 
+// Mesa aberta pelo cliente (QR code) fica sem garçom: quem atende assume (o banco só deixa se
+// ainda estiver sem garçom; trocar depois continua com "comandas_gerenciar").
+export async function assumirMesa(comandaId: string): Promise<ResultadoAcao> {
+  const acesso = await exigirAlgumaPermissao("garcom_app", "comandas_painel");
+  if (!id.safeParse(comandaId).success) return falha("Dados inválidos.");
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("comandas")
+    .update({ garcom_id: acesso.membroId })
+    .eq("id", comandaId)
+    .eq("restaurante_id", acesso.restaurante.id)
+    .is("garcom_id", null)
+    .in("status", ["aberta", "conta_pedida"])
+    .select("id");
+  if (error) return falha(mensagemErroBanco(error));
+  if (!data.length) return falha("Outra pessoa já assumiu esta mesa.");
+  refresh();
+  return sucesso("Mesa assumida.");
+}
+
 // Chegou ou saiu gente da mesa: muda a quantidade de pessoas da comanda aberta.
 export async function alterarPessoas(comandaId: string, pessoas: number): Promise<ResultadoAcao> {
   const acesso = await exigirAlgumaPermissao("garcom_app", "comandas_painel");

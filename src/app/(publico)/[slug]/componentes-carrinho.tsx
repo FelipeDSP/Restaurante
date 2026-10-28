@@ -13,7 +13,8 @@ import { formatarBRL } from "@/lib/dinheiro";
 
 import { useCarrinho } from "./carrinho-store";
 
-export function AdicionarProduto({ restauranteId, produto }: { restauranteId: string; produto: ProdutoComOpcoes }) {
+// `restauranteId`: chave do carrinho (o do delivery é o id do restaurante; o da mesa, o código do QR).
+export function AdicionarProduto({ restauranteId, produto, naMesa = false }: { restauranteId: string; produto: ProdutoComOpcoes; naMesa?: boolean }) {
   const { itens, adicionar, alterarQuantidade } = useCarrinho(restauranteId);
   const [escolhendo, setEscolhendo] = useState(false);
 
@@ -38,9 +39,9 @@ export function AdicionarProduto({ restauranteId, produto }: { restauranteId: st
           aoConfirmar={(escolha) => {
             adicionar(produto, escolha);
             setEscolhendo(false);
-            toast.success(`${produto.nome} no carrinho.`);
+            toast.success(`${produto.nome} ${naMesa ? "no seu pedido" : "no carrinho"}.`);
           }}
-          rotuloConfirmar="Adicionar ao carrinho"
+          rotuloConfirmar={naMesa ? "Adicionar ao pedido" : "Adicionar ao carrinho"}
         />
       </>
     );
@@ -143,8 +144,8 @@ export function IconeMeusPedidos({ slug }: { slug: string }) {
   );
 }
 
-// Cardápio do salão (QR code na mesa) é só consulta: sem carrinho e sem "Meus pedidos" no topo.
+// Na mesa (QR code) o pedido é da mesa: sem carrinho do delivery e sem "Meus pedidos" no topo.
 export function SoNoDelivery({ children }: { children: ReactNode }) {
   const caminho = usePathname();
-  return caminho?.endsWith("/cardapio") ? null : children;
+  return caminho?.includes("/mesa/") ? null : children;
 }

@@ -30,7 +30,7 @@ export default async function MesasPage() {
         <h1 className="text-2xl font-semibold">Mesas</h1>
         <Link href="/painel/mesas/qrcode" className={cn(buttonVariants({ variant: "outline" }), "h-11")}>
           <QrCode aria-hidden />
-          QR code do cardápio
+          QR code das mesas
         </Link>
       </div>
       <NovasMesas />

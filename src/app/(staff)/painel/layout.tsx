@@ -13,6 +13,7 @@ import { urlIcone } from "@/lib/icone";
 import { createClient } from "@/lib/supabase/server";
 
 import { AvisoChamado } from "../garcom/aviso-chamado";
+import { AvisoPedidoCliente } from "../garcom/aviso-pedido-cliente";
 import { AvisoPronto } from "../garcom/aviso-pronto";
 import { AvisoAssinatura } from "./aviso-assinatura";
 import { ChamarGarcom } from "./chamar-garcom";
@@ -108,6 +109,7 @@ export default async function PainelLayout({ children }: LayoutProps<"/painel">)
         <>
           <AvisoPronto restauranteId={acesso.restaurante.id} membroId={acesso.membroId} />
           <AvisoChamado restauranteId={acesso.restaurante.id} membroId={acesso.membroId} />
+          <AvisoPedidoCliente restauranteId={acesso.restaurante.id} membroId={acesso.membroId} />
         </>
       ) : null}
       <div className="flex flex-1">

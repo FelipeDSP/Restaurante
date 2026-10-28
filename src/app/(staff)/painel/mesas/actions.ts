@@ -132,3 +132,33 @@ export async function excluirMesa(mesaId: string): Promise<ResultadoAcao> {
   refresh();
   return sucesso("Mesa excluída.");
 }
+
+// Liga ou desliga o pedido pelo QR code das mesas (configuração do restaurante).
+export async function alternarPedidoMesa(ligado: boolean): Promise<ResultadoAcao> {
+  const acesso = await exigirPermissao("painel", "restaurante");
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("restaurantes")
+    .update({ pedido_mesa_qr: ligado === true })
+    .eq("id", acesso.restaurante.id);
+  if (error) return falha(mensagemErroBanco(error));
+  refresh();
+  return sucesso(ligado ? "Clientes já podem pedir pelo QR code." : "Pedido pelo QR code desligado.");
+}
+
+// Código novo para o QR da mesa: o impresso antes deixa de valer (ex.: alguém fotografou e pediu de fora).
+export async function trocarQrMesa(mesaId: string): Promise<ResultadoAcao> {
+  const acesso = await exigirPermissao("painel", "mesas");
+  if (!id.safeParse(mesaId).success) return falha("Mesa inválida.");
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("mesas")
+    .update({ qr_token: crypto.randomUUID() })
+    .eq("id", mesaId)
+    .eq("restaurante_id", acesso.restaurante.id)
+    .select("numero");
+  if (error) return falha(mensagemErroBanco(error));
+  if (!data.length) return falha("Mesa não encontrada.");
+  refresh();
+  return sucesso(`QR code da mesa ${data[0].numero} trocado. Imprima o novo.`);
+}

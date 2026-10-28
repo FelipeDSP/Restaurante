@@ -186,7 +186,8 @@ export async function carregarComandaDaMesa(restauranteId: string, mesaId: strin
         pedidoId: p.id,
         pedidoNumero: p.numero,
         pedidoCriadoEm: p.criado_em,
-        pedidoAutor: p.autor?.nome ?? null,
+        // Pedido de mesa sem autor da equipe = o cliente pediu pelo QR code.
+        pedidoAutor: p.autor?.nome ?? "Cliente pelo celular",
         nome: i.nome_produto,
         precoUnitario: i.preco_unitario + i.preco_adicionais,
         adicionais: lerAdicionais(i.adicionais),

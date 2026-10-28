@@ -20,6 +20,7 @@ import {
   alterarCobranca,
   alterarPessoas,
   alterarStatusConta,
+  assumirMesa,
   cancelarComanda,
   cancelarItem,
   entregarPedido,
@@ -767,7 +768,7 @@ export function TelaComanda({ mesaId, comanda, podeGerenciar, podeEstornar, fuso
           )}
           <span>desde {horaLocal(comanda.abertaEm, fusoHorario)}</span>
           <EditarPessoas comandaId={comanda.id} pessoas={comanda.pessoas} />
-          {comanda.garcom ? <span>· {comanda.garcom}</span> : null}
+          {comanda.garcom ? <span>· {comanda.garcom}</span> : <AssumirMesa comandaId={comanda.id} />}
         </div>
 
         <section aria-labelledby="titulo-itens">
@@ -982,5 +983,15 @@ export function TelaComanda({ mesaId, comanda, podeGerenciar, podeEstornar, fuso
         </div>
       </div>
     </div>
+  );
+}
+
+// Mesa aberta pelo cliente (QR code): ninguém atende até alguém assumir.
+function AssumirMesa({ comandaId }: { comandaId: string }) {
+  const { pendente, executar } = useAcao();
+  return (
+    <Button type="button" size="sm" disabled={pendente} onClick={() => executar(() => assumirMesa(comandaId))}>
+      Sem garçom · Assumir
+    </Button>
   );
 }
