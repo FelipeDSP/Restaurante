@@ -2453,6 +2453,57 @@ begin
 end;
 $$;
 
+-- ======================================================================
+-- Cobrança pelo Asaas (avisos do webhook)
+-- ======================================================================
+do $$
+declare
+  a constant uuid := md5('brasa-espetinhos')::uuid;
+  v_falhou boolean;
+  r record;
+begin
+  perform pg_temp.admin();
+  update public.assinaturas set provedor = 'asaas', provedor_assinatura_id = 'sub_teste', status = 'teste', plano = 'avancado' where restaurante_id = a;
+
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  v_falhou := false;
+  begin
+    perform public.processar_evento_asaas('{"id":"evt_x","event":"PAYMENT_RECEIVED","payment":{"subscription":"sub_teste"}}');
+  exception when others then v_falhou := true;
+  end;
+  perform pg_temp.ok(v_falhou, 'asaas: dono não registra pagamento sozinho');
+  v_falhou := false;
+  begin
+    update public.assinaturas set status = 'ativa' where restaurante_id = a;
+  exception when others then v_falhou := true;
+  end;
+  perform pg_temp.admin();
+  perform pg_temp.ok((select status from public.assinaturas where restaurante_id = a) = 'teste', 'asaas: dono não muda a assinatura pela API');
+
+  perform public.processar_evento_asaas('{"id":"evt_1","event":"PAYMENT_CREATED","payment":{"subscription":"sub_teste","invoiceUrl":"https://www.asaas.com/i/1","dueDate":"2026-11-10"}}');
+  perform pg_temp.ok((select fatura_url from public.assinaturas where restaurante_id = a) = 'https://www.asaas.com/i/1', 'asaas: fatura nova fica no botão Pagar');
+
+  perform public.processar_evento_asaas('{"id":"evt_2","event":"PAYMENT_CONFIRMED","payment":{"subscription":"sub_teste","dueDate":"2026-11-10"}}');
+  select * into r from public.assinaturas where restaurante_id = a;
+  perform pg_temp.ok(r.status = 'ativa' and r.fatura_url is null and r.periodo_termina_em >= '2026-12-10'::date, 'asaas: pagamento confirmado ativa até o próximo vencimento');
+
+  perform pg_temp.ok(public.processar_evento_asaas('{"id":"evt_2","event":"PAYMENT_CONFIRMED","payment":{"subscription":"sub_teste"}}') = 'repetido', 'asaas: aviso repetido não conta duas vezes');
+
+  perform public.processar_evento_asaas('{"id":"evt_3","event":"PAYMENT_OVERDUE","payment":{"subscription":"sub_teste","invoiceUrl":"https://www.asaas.com/i/2"}}');
+  select * into r from public.assinaturas where restaurante_id = a;
+  perform pg_temp.ok(r.status = 'atrasada' and r.fatura_url = 'https://www.asaas.com/i/2', 'asaas: vencida fica atrasada com o link para pagar');
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  perform pg_temp.ok('garcom_app' = any (public.minhas_permissoes(a)), 'asaas: atraso não bloqueia o plano');
+  perform pg_temp.admin();
+
+  perform public.processar_evento_asaas('{"id":"evt_4","event":"PAYMENT_RECEIVED","payment":{"subscription":"sub_teste","dueDate":"2026-12-10"}}');
+  perform pg_temp.ok((select status from public.assinaturas where restaurante_id = a) = 'ativa', 'asaas: pagou o atraso, volta a ativa');
+
+  perform public.processar_evento_asaas('{"id":"evt_5","event":"SUBSCRIPTION_DELETED","subscription":{"id":"sub_teste"}}');
+  perform pg_temp.ok((select status from public.assinaturas where restaurante_id = a) = 'cancelada', 'asaas: assinatura removida fica cancelada');
+end;
+$$;
+
 select n, ok, teste from resultado order by n;
 select count(*) filter (where not ok) as falhas, count(*) as total from resultado;
 

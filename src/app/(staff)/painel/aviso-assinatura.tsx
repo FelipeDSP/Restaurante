@@ -9,6 +9,7 @@ export function AvisoAssinatura({ assinatura }: { assinatura: Assinatura | null 
 
   let texto: string;
   let urgente = false;
+  let acao = "Ver planos";
   switch (assinatura.situacao) {
     case "teste": {
       const dias = assinatura.diasRestantesTeste ?? 0;
@@ -22,6 +23,7 @@ export function AvisoAssinatura({ assinatura }: { assinatura: Assinatura | null 
       break;
     case "atrasada":
       texto = "O pagamento da assinatura está atrasado.";
+      acao = "Pagar";
       urgente = true;
       break;
     case "cancelada":
@@ -42,7 +44,7 @@ export function AvisoAssinatura({ assinatura }: { assinatura: Assinatura | null 
     >
       {texto}{" "}
       <Link href="/painel/assinatura" className="font-semibold underline underline-offset-4">
-        Ver planos
+        {acao}
       </Link>
     </div>
   );

@@ -63,13 +63,13 @@ isOneToOne: false
                   ]
                 },"assinaturas": {
                   Row: {
-                    "atualizado_em": string,"criado_em": string,"id": string,"periodo_termina_em": string | null,"plano": string,"provedor": string | null,"provedor_assinatura_id": string | null,"restaurante_id": string,"status": string,"teste_termina_em": string | null
+                    "atualizado_em": string,"criado_em": string,"fatura_url": string | null,"id": string,"periodo_termina_em": string | null,"plano": string,"provedor": string | null,"provedor_assinatura_id": string | null,"provedor_cliente_id": string | null,"restaurante_id": string,"status": string,"teste_termina_em": string | null
                   }
                   Insert: {
-                    "atualizado_em"?: string,"criado_em"?: string,"id"?: string,"periodo_termina_em"?: string | null,"plano"?: string,"provedor"?: string | null,"provedor_assinatura_id"?: string | null,"restaurante_id": string,"status"?: string,"teste_termina_em"?: string | null
+                    "atualizado_em"?: string,"criado_em"?: string,"fatura_url"?: string | null,"id"?: string,"periodo_termina_em"?: string | null,"plano"?: string,"provedor"?: string | null,"provedor_assinatura_id"?: string | null,"provedor_cliente_id"?: string | null,"restaurante_id": string,"status"?: string,"teste_termina_em"?: string | null
                   }
                   Update: {
-                    "atualizado_em"?: string,"criado_em"?: string,"id"?: string,"periodo_termina_em"?: string | null,"plano"?: string,"provedor"?: string | null,"provedor_assinatura_id"?: string | null,"restaurante_id"?: string,"status"?: string,"teste_termina_em"?: string | null
+                    "atualizado_em"?: string,"criado_em"?: string,"fatura_url"?: string | null,"id"?: string,"periodo_termina_em"?: string | null,"plano"?: string,"provedor"?: string | null,"provedor_assinatura_id"?: string | null,"provedor_cliente_id"?: string | null,"restaurante_id"?: string,"status"?: string,"teste_termina_em"?: string | null
                   }
                   Relationships: [
                     {
@@ -1172,6 +1172,9 @@ isOneToOne: false
                            },
 "pedir_pela_mesa":
 { Args: { "p_itens": Json,"p_lote": string,"p_token": string,"p_total_esperado": number }; Returns: Json
+                           },
+"processar_evento_asaas":
+{ Args: { "p_evento": Json }; Returns: string
                            },
 "reimprimir":
 { Args: { "p_fila_id": string }; Returns: undefined

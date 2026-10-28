@@ -45,6 +45,9 @@ Em *Environment Variables* do app:
 ### Avisos no celular do cliente (opcional)
 Gere as chaves uma vez, num terminal seu: `npx web-push generate-vapid-keys`. No Coolify (só runtime): `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` e `VAPID_ASSUNTO` (ex.: `mailto:suporte@seu-dominio.com.br`). Não troque as chaves depois: os avisos já ligados param de funcionar. Sem elas, o site não mostra o botão de avisos.
 
+### Cobrança da assinatura pelo Asaas (opcional)
+No Coolify (só runtime): `ASAAS_API_KEY` (chave da conta no Asaas: Integrações › Chave de API), `ASAAS_AMBIENTE` (`sandbox` para testar, `producao` para cobrar de verdade) e `ASAAS_WEBHOOK_TOKEN` (um texto longo e aleatório, inventado por você). No Asaas, em Integrações › Webhooks, crie um webhook com a URL `https://seu-dominio.com.br/api/asaas/webhook`, o mesmo token em "Token de autenticação", versão da API v3, fila sincronizada e os eventos de **cobranças** (pagamento criado, confirmado, recebido, vencido) e de **assinaturas** (removida/inativada). Sem a chave, a página de Assinatura mostra "Assinatura online em breve". A chave de sandbox não funciona no ambiente de produção (e vice-versa): ao trocar `ASAAS_AMBIENTE`, troque a chave junto.
+
 ## 3.1 App de impressão (instalador e atualizações)
 
 O painel (Impressoras) tem o link "Baixar o app de impressão", e o app instalado procura atualizações em `https://seu-dominio.com.br/downloads/impressao/latest.yml`. Os arquivos ficam **fora da imagem**, num volume, para publicar versão nova sem redeploy:

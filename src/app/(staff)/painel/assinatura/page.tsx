@@ -4,11 +4,14 @@ import type { Metadata } from "next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { asaasConfigurado } from "@/lib/asaas";
 import { carregarAssinatura, NOME_SITUACAO } from "@/lib/assinatura";
 import { exigirDono } from "@/lib/auth/dal";
 import { formatarBRL } from "@/lib/dinheiro";
 import { DIAS_TESTE_GRATIS, PLANOS, planoPorId } from "@/lib/planos";
 import { cn } from "@/lib/utils";
+
+import { BotaoAssinar } from "./botao-assinar";
 
 export const metadata: Metadata = { title: "Assinatura" };
 
@@ -21,6 +24,9 @@ export default async function AssinaturaPage() {
   const assinatura = await carregarAssinatura(acesso.restaurante.id);
   const fuso = acesso.restaurante.fusoHorario;
   const emTeste = assinatura?.situacao === "teste" || assinatura?.situacao === "teste_encerrado";
+  const cobrancaOnline = asaasConfigurado();
+  // Já escolheu um plano no Asaas (ativa, atrasada ou com a primeira fatura em aberto).
+  const escolhido = assinatura?.temCadastroPagamento && assinatura.situacao !== "cancelada" ? assinatura.plano : null;
   const diasUsados = assinatura?.diasRestantesTeste != null ? DIAS_TESTE_GRATIS - assinatura.diasRestantesTeste : 0;
 
   return (
@@ -53,6 +59,13 @@ export default async function AssinaturaPage() {
                       : null}
             </CardDescription>
           </CardHeader>
+          {assinatura.faturaUrl && assinatura.situacao !== "cortesia" ? (
+            <CardContent>
+              <Button className="h-11" nativeButton={false} render={<a href={assinatura.faturaUrl} />}>
+                Pagar fatura
+              </Button>
+            </CardContent>
+          ) : null}
           {emTeste ? (
             <CardContent>
               <div
@@ -76,7 +89,10 @@ export default async function AssinaturaPage() {
         </h2>
         <div className="grid gap-4 md:grid-cols-2">
           {PLANOS.map((p) => {
-            const atual = (assinatura?.situacao === "ativa" || assinatura?.situacao === "cortesia" || assinatura?.situacao === "atrasada") && assinatura.plano === p.id;
+            const atual =
+              ((assinatura?.situacao === "ativa" || assinatura?.situacao === "cortesia" || assinatura?.situacao === "atrasada") &&
+                assinatura.plano === p.id) ||
+              escolhido === p.id;
             return (
               <Card key={p.id} className={cn(p.destaque && "ring-2 ring-primary")}>
                 <CardHeader>
@@ -101,10 +117,13 @@ export default async function AssinaturaPage() {
                   </ul>
                 </CardContent>
                 <CardFooter>
-                  {atual ? null : p.linkCheckout ? (
-                    <Button className="h-11 w-full" nativeButton={false} render={<a href={p.linkCheckout} target="_blank" rel="noopener noreferrer" />}>
-                      Assinar o {p.nome}
-                    </Button>
+                  {atual || assinatura?.situacao === "cortesia" ? null : cobrancaOnline ? (
+                    <BotaoAssinar
+                      plano={p.id}
+                      nome={p.nome}
+                      pedirDocumento={!assinatura?.temCadastroPagamento}
+                      rotulo={escolhido ? "Trocar para este plano" : "Assinar"}
+                    />
                   ) : (
                     <Button className="h-11 w-full" variant="outline" disabled>
                       Assinatura online em breve

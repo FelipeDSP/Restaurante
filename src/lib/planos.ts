@@ -1,6 +1,6 @@
 // Planos exibidos no site e no painel (documento de marketing, 29/10). Todos sem limite de usuários
 // e de pedidos. O que cada um libera fica no banco (rest_privado.permissoes_do_plano e plano_tem_qr).
-// `linkCheckout` null = botão de assinar desativado ("em breve") até ligar a cobrança (provável Kiwify).
+// Assinatura e cobrança pelo Asaas (Painel › Assinatura; `src/lib/asaas.ts`).
 
 export type IdPlano = "delivery" | "presencial" | "avancado" | "completo";
 
@@ -11,7 +11,6 @@ export type Plano = {
   precoMensal: number; // centavos
   destaque: boolean;
   itens: string[];
-  linkCheckout: string | null;
 };
 
 const SEM_LIMITES = "Sem limite de usuários e de pedidos";
@@ -29,7 +28,6 @@ export const PLANOS: Plano[] = [
       "Cupons, entregadores e relatórios",
       SEM_LIMITES,
     ],
-    linkCheckout: null,
   },
   {
     id: "presencial",
@@ -38,7 +36,6 @@ export const PLANOS: Plano[] = [
     precoMensal: 14990,
     destaque: false,
     itens: ["Tudo do Delivery", "Mesas e comandas pelo caixa", SEM_LIMITES],
-    linkCheckout: null,
   },
   {
     id: "avancado",
@@ -47,7 +44,6 @@ export const PLANOS: Plano[] = [
     precoMensal: 19990,
     destaque: false,
     itens: ["Tudo do Delivery + Presencial", "App do garçom no celular", SEM_LIMITES],
-    linkCheckout: null,
   },
   {
     id: "completo",
@@ -56,7 +52,6 @@ export const PLANOS: Plano[] = [
     precoMensal: 24990,
     destaque: true,
     itens: ["Tudo do Avançado", "Cliente pede pelo QR code da mesa", SEM_LIMITES],
-    linkCheckout: null,
   },
 ];
 

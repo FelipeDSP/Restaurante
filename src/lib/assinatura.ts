@@ -11,6 +11,9 @@ export type Assinatura = {
   testeTerminaEm: string | null;
   periodoTerminaEm: string | null;
   diasRestantesTeste: number | null;
+  // Fatura em aberto no Asaas (botão "Pagar") e se já há cadastro de quem paga (CPF/CNPJ).
+  faturaUrl: string | null;
+  temCadastroPagamento: boolean;
 };
 
 const DIA_MS = 24 * 60 * 60 * 1000;
@@ -20,7 +23,7 @@ export async function carregarAssinatura(restauranteId: string): Promise<Assinat
   const supabase = await createClient();
   const { data } = await supabase
     .from("assinaturas")
-    .select("plano, status, teste_termina_em, periodo_termina_em")
+    .select("plano, status, teste_termina_em, periodo_termina_em, provedor, provedor_cliente_id, fatura_url")
     .eq("restaurante_id", restauranteId)
     .maybeSingle();
   if (!data) return null;
@@ -41,6 +44,8 @@ export async function carregarAssinatura(restauranteId: string): Promise<Assinat
     testeTerminaEm: data.teste_termina_em,
     periodoTerminaEm: data.periodo_termina_em,
     diasRestantesTeste,
+    faturaUrl: data.fatura_url,
+    temCadastroPagamento: data.provedor === "asaas" && Boolean(data.provedor_cliente_id),
   };
 }
 
