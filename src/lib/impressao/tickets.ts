@@ -98,10 +98,10 @@ async function documentoConta(supabase: Cliente, comandaId: string, r: Restauran
   const { data: c, error } = await supabase
     .from("comandas")
     .select(
-      `id, pessoas, total, aberta_em, subtotal, servico, servico_percentual, couvert, couvert_unitario,
+      `id, status, pessoas, total, aberta_em, subtotal, servico, servico_percentual, couvert, couvert_unitario,
        mesa:mesas!comandas_restaurante_id_mesa_id_fkey(numero),
        pedidos(status, itens_pedido(quantidade, nome_produto, adicionais, total, cancelado_em, criado_em)),
-       pagamentos(valor, estornado_em)`,
+       pagamentos(valor, forma, estornado_em)`,
     )
     .eq("id", comandaId)
     .maybeSingle();
@@ -113,11 +113,14 @@ async function documentoConta(supabase: Cliente, comandaId: string, r: Restauran
     .flatMap((p) => p.itens_pedido)
     .filter((i) => !i.cancelado_em)
     .sort((a, b) => a.criado_em.localeCompare(b.criado_em));
-  const pago = c.pagamentos.filter((p) => !p.estornado_em).reduce((s, p) => s + p.valor, 0);
+  const ativos = c.pagamentos.filter((p) => !p.estornado_em);
+  const pago = ativos.reduce((s, p) => s + p.valor, 0);
+  // Mesa fechada: é a via do cliente (conta paga, com as formas de pagamento).
+  const fechada = c.status === "fechada";
 
   const linhas: Linha[] = [
     { tipo: "texto", texto: r.nome, alinhar: "centro", negrito: true },
-    { tipo: "texto", texto: `CONTA · MESA ${c.mesa?.numero ?? ""}`, alinhar: "centro", negrito: true, grande: true },
+    { tipo: "texto", texto: `${fechada ? "CONTA PAGA" : "CONTA"} · MESA ${c.mesa?.numero ?? ""}`, alinhar: "centro", negrito: true, grande: true },
     { tipo: "texto", texto: dataHoraLocal(new Date().toISOString(), r.fuso), alinhar: "centro" },
     { tipo: "separador" },
   ];
@@ -135,13 +138,19 @@ async function documentoConta(supabase: Cliente, comandaId: string, r: Restauran
     }
   }
   linhas.push({ tipo: "colunas", esquerda: "TOTAL", direita: formatarBRL(c.total), negrito: true, grande: true });
-  if (pago > 0) {
+  if (fechada) {
+    // Uma linha por forma (somando as partes iguais).
+    const porForma = new Map<string, number>();
+    for (const p of ativos) porForma.set(p.forma, (porForma.get(p.forma) ?? 0) + p.valor);
+    for (const [forma, valor] of porForma) linhas.push({ tipo: "colunas", esquerda: `Pago · ${nomeForma(forma)}`, direita: formatarBRL(valor) });
+  } else if (pago > 0) {
     linhas.push({ tipo: "colunas", esquerda: "Pago", direita: formatarBRL(pago) });
     linhas.push({ tipo: "colunas", esquerda: "Falta", direita: formatarBRL(Math.max(0, c.total - pago)), negrito: true });
   }
-  if (c.pessoas && c.pessoas > 1) {
+  if (!fechada && c.pessoas && c.pessoas > 1) {
     linhas.push({ tipo: "colunas", esquerda: `Por pessoa (${c.pessoas})`, direita: formatarBRL(Math.ceil(c.total / c.pessoas)) });
   }
+  if (fechada) linhas.push({ tipo: "espaco" }, { tipo: "texto", texto: "Obrigado pela preferência!", alinhar: "centro" });
   linhas.push({ tipo: "espaco" }, { tipo: "texto", texto: "Não é documento fiscal", alinhar: "centro" });
   return { linhas };
 }

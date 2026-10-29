@@ -72,6 +72,7 @@ export function AssistenteImpressora({
   // A primeira impressora já imprime tudo; as outras a pessoa escolhe.
   const [conta, setConta] = useState(primeira);
   const [via, setVia] = useState(primeira);
+  const [aoFechar, setAoFechar] = useState(false);
   const [setores, setSetores] = useState<string[]>(
     primeira ? pracas.map((p) => p.id) : [],
   );
@@ -270,7 +271,7 @@ export function AssistenteImpressora({
     </label>
   );
 
-  const nadaMarcado = !conta && !via && setores.length === 0;
+  const nadaMarcado = !conta && !via && !aoFechar && setores.length === 0;
 
   return (
     <div className="flex flex-col gap-4 rounded-xl border p-4">
@@ -322,6 +323,7 @@ export function AssistenteImpressora({
         <div className="flex flex-wrap gap-2">
           {chip(conta, "Conta das mesas", setConta, "conta")}
           {chip(via, "Via do delivery", setVia, "via")}
+          {chip(aoFechar, "Via do cliente ao fechar a mesa", setAoFechar, "fechar")}
           {pracas.map((p) =>
             chip(
               setores.includes(p.id),
@@ -359,6 +361,7 @@ export function AssistenteImpressora({
               nome: nome.trim(),
               imprimeConta: conta,
               imprimeViaDelivery: via,
+              imprimeAoFechar: aoFechar,
               pracas: setores,
             });
             if (r.ok && r.impressoraId) {

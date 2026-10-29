@@ -186,6 +186,15 @@ function FormImpressora({
             />
             Via do delivery (motoboy)
           </label>
+          <label className="flex h-10 cursor-pointer items-center gap-2 rounded-full border bg-background px-3 text-sm">
+            <input
+              type="checkbox"
+              name="imprime_ao_fechar"
+              defaultChecked={marcadoCampo(estado, "imprime_ao_fechar", impressora?.imprimeAoFechar ?? false)}
+              className="size-4 accent-[var(--cor-primaria-texto)]"
+            />
+            Via do cliente ao fechar a mesa
+          </label>
         </div>
         {pracas.length === 0 ? <p className="text-sm text-muted-foreground">Nenhum setor da cozinha cadastrado.</p> : null}
       </fieldset>
@@ -227,6 +236,7 @@ function LinhaImpressora({
     ...pracas.filter((p) => impressora.pracas.includes(p.id)).map((p) => p.nome),
     ...(impressora.imprimeConta ? ["Conta"] : []),
     ...(impressora.imprimeViaDelivery ? ["Via do delivery"] : []),
+    ...(impressora.imprimeAoFechar ? ["Via ao fechar a mesa"] : []),
   ];
   const comErro = impressora.ultimoErroEm && (!impressora.ultimoSucessoEm || impressora.ultimoErroEm > impressora.ultimoSucessoEm);
 

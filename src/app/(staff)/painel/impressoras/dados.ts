@@ -25,6 +25,8 @@ export type Impressora = {
   agenteId: string | null;
   imprimeConta: boolean;
   imprimeViaDelivery: boolean;
+  // Via do cliente: imprime a conta sozinha quando a mesa fecha.
+  imprimeAoFechar: boolean;
   ativa: boolean;
   pracas: string[];
   ultimoSucessoEm: string | null;
@@ -58,7 +60,7 @@ export async function carregarImpressao(restauranteId: string) {
     supabase
       .from("impressoras")
       .select(
-        "id, nome, conexao, endereco, porta, largura, codificacao, modo, agente_id, imprime_conta, imprime_via_delivery, ativa, ultimo_sucesso_em, ultimo_erro, ultimo_erro_em, estacoes!estacoes_restaurante_id_impressora_id_fkey(id)",
+        "id, nome, conexao, endereco, porta, largura, codificacao, modo, agente_id, imprime_conta, imprime_via_delivery, imprime_ao_fechar, ativa, ultimo_sucesso_em, ultimo_erro, ultimo_erro_em, estacoes!estacoes_restaurante_id_impressora_id_fkey(id)",
       )
       .eq("restaurante_id", restauranteId)
       .order("nome"),
@@ -103,6 +105,7 @@ export async function carregarImpressao(restauranteId: string) {
         agenteId: i.agente_id,
         imprimeConta: i.imprime_conta,
         imprimeViaDelivery: i.imprime_via_delivery,
+        imprimeAoFechar: i.imprime_ao_fechar,
         ativa: i.ativa,
         pracas: i.estacoes.map((e) => e.id),
         ultimoSucessoEm: i.ultimo_sucesso_em,

@@ -115,6 +115,7 @@ const impressoraSchema = z
     agente_id: z.preprocess((v) => (v === "" || v === undefined ? null : v), id.nullable()),
     imprime_conta: checkbox,
     imprime_via_delivery: checkbox,
+    imprime_ao_fechar: checkbox,
     ativa: checkbox,
   })
   // Pela rede só existe o modo de comandos; o driver é do Windows.
@@ -208,6 +209,7 @@ const assistenteSchema = z.object({
   nome: z.string().trim().min(1).max(60),
   imprimeConta: z.boolean(),
   imprimeViaDelivery: z.boolean(),
+  imprimeAoFechar: z.boolean(),
   pracas: z.array(id).max(30),
 });
 
@@ -249,6 +251,7 @@ export async function configurarImpressora(entrada: z.input<typeof assistenteSch
       agente_id: d.agenteId,
       imprime_conta: d.imprimeConta,
       imprime_via_delivery: d.imprimeViaDelivery,
+      imprime_ao_fechar: d.imprimeAoFechar,
       ativa: true,
     })
     .select("id")

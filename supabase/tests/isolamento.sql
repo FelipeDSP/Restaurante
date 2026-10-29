@@ -2681,6 +2681,51 @@ begin
 end;
 $$;
 
+-- ======================================================================
+-- Via do cliente ao fechar a mesa
+-- ======================================================================
+do $$
+declare
+  a constant uuid := md5('brasa-espetinhos')::uuid;
+  v_mesa uuid;
+  v_comanda uuid;
+  v_imp uuid;
+  v_total integer;
+begin
+  perform pg_temp.admin();
+  update public.assinaturas set status = 'teste', teste_termina_em = now() + interval '7 days',
+    modulos_liberados = '{}', modulos_bloqueados = '{}' where restaurante_id = a;
+  select m.id into v_mesa from public.mesas m
+  where m.restaurante_id = a and m.ativa
+    and not exists (select 1 from public.comandas c where c.mesa_id = m.id and c.status in ('aberta', 'conta_pedida'))
+  order by m.numero limit 1;
+
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  insert into public.impressoras (restaurante_id, nome, conexao, endereco, porta, largura, codificacao, imprime_ao_fechar)
+  values (a, 'Via do cliente', 'rede', '192.168.0.99', 9100, 80, 'cp850', true) returning id into v_imp;
+  insert into public.comandas (restaurante_id, mesa_id, pessoas) values (a, v_mesa, 1) returning id into v_comanda;
+  perform public.lancar_itens_comanda(v_comanda, jsonb_build_array(
+    jsonb_build_object('produto_id', (select id from public.produtos where restaurante_id = a and nome = 'Refrigerante lata'), 'quantidade', 1)));
+  select total into v_total from public.comandas where id = v_comanda;
+  insert into public.pagamentos (restaurante_id, comanda_id, valor, forma) values (a, v_comanda, v_total, 'pix');
+  perform pg_temp.ok(not exists (select 1 from public.fila_impressao where comanda_id = v_comanda and tipo = 'conta'),
+    'via ao fechar: nada sai antes de fechar');
+  update public.comandas set status = 'fechada' where id = v_comanda;
+  perform pg_temp.ok((select count(*) = 1 from public.fila_impressao where comanda_id = v_comanda and tipo = 'conta' and impressora_id = v_imp),
+    'via ao fechar: fechar a mesa manda a conta para a impressora marcada');
+
+  update public.impressoras set imprime_ao_fechar = false where id = v_imp;
+  insert into public.comandas (restaurante_id, mesa_id, pessoas) values (a, v_mesa, 1) returning id into v_comanda;
+  perform public.lancar_itens_comanda(v_comanda, jsonb_build_array(
+    jsonb_build_object('produto_id', (select id from public.produtos where restaurante_id = a and nome = 'Refrigerante lata'), 'quantidade', 1)));
+  select total into v_total from public.comandas where id = v_comanda;
+  insert into public.pagamentos (restaurante_id, comanda_id, valor, forma) values (a, v_comanda, v_total, 'pix');
+  update public.comandas set status = 'fechada' where id = v_comanda;
+  perform pg_temp.ok(not exists (select 1 from public.fila_impressao where comanda_id = v_comanda),
+    'via ao fechar: desligada, fechar não imprime');
+end;
+$$;
+
 select n, ok, teste from resultado order by n;
 select count(*) filter (where not ok) as falhas, count(*) as total from resultado;
 
