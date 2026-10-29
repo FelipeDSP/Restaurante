@@ -87,3 +87,33 @@ export async function definirAtivo(restauranteId: string, ativo: boolean, motivo
   refresh();
   return sucesso(dados.data.ativo ? "Restaurante reativado: o site voltou ao ar." : "Restaurante desativado: o site saiu do ar.");
 }
+
+// Anotação interna sobre o restaurante (só a equipe da plataforma vê).
+export async function anotar(restauranteId: string, texto: string): Promise<ResultadoAcao> {
+  const { supabase } = await exigirAdmin();
+  const dados = z.object({ restauranteId: id, texto: z.string().trim().min(1, "Escreva a anotação.").max(2000) }).safeParse({ restauranteId, texto });
+  if (!dados.success) return falha(dados.error.issues[0]?.message ?? "Dados inválidos.");
+  const { error } = await supabase.rpc("admin_anotar", { p_restaurante_id: dados.data.restauranteId, p_texto: dados.data.texto });
+  if (error) return falha(mensagemErroBanco(error));
+  refresh();
+  return sucesso("Anotação salva.");
+}
+
+export async function adicionarAdmin(_estado: ResultadoAcao, formData: FormData): Promise<ResultadoAcao> {
+  const { supabase } = await exigirAdmin();
+  const dados = z.object({ email: z.email("Informe um e-mail válido.").trim().toLowerCase() }).safeParse({ email: formData.get("email") });
+  if (!dados.success) return falhaValidacao(dados.error, formData);
+  const { error } = await supabase.rpc("admin_adicionar_admin", { p_email: dados.data.email });
+  if (error) return falha(mensagemErroBanco(error), undefined, formData);
+  refresh();
+  return sucesso(`${dados.data.email} agora é administrador.`);
+}
+
+export async function removerAdmin(userId: string): Promise<ResultadoAcao> {
+  const { supabase } = await exigirAdmin();
+  if (!id.safeParse(userId).success) return falha("Dados inválidos.");
+  const { error } = await supabase.rpc("admin_remover_admin", { p_user_id: userId });
+  if (error) return falha(mensagemErroBanco(error));
+  refresh();
+  return sucesso("Acesso de administrador retirado.");
+}

@@ -40,9 +40,11 @@ export async function updateSession(request: NextRequest) {
 
   // Checagem otimista. A autorização real (membro, papel) é feita no servidor e na RLS.
   const { pathname } = request.nextUrl;
-  if (!logado && ROTAS_STAFF.some((rota) => pathname.startsWith(rota))) {
+  // O painel da plataforma tem a própria tela de entrar (/admin/entrar), fora da trava.
+  const admin = pathname === "/admin" || pathname.startsWith("/admin/");
+  if (!logado && pathname !== "/admin/entrar" && ROTAS_STAFF.some((rota) => pathname.startsWith(rota))) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
+    url.pathname = admin ? "/admin/entrar" : "/login";
     url.searchParams.set("next", pathname);
     const redirect = NextResponse.redirect(url);
     response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));

@@ -15,7 +15,7 @@ export { dataBR, diasRestantes, NOME_STATUS, type StatusAssinatura } from "./ass
 export const exigirAdmin = cache(async () => {
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
-  if (!data?.claims?.sub) redirect("/login?next=/admin");
+  if (!data?.claims?.sub) redirect("/admin/entrar");
   const { data: admin } = await supabase.rpc("admin_sou_admin");
   if (!admin) notFound();
   return { supabase, email: (data.claims.email as string | undefined) ?? "" };
@@ -106,4 +106,52 @@ export async function carregarFicha(restauranteId: string): Promise<FichaRestaur
   const { data, error } = await supabase.rpc("admin_restaurante", { p_restaurante_id: restauranteId });
   if (error) throw new Error(error.message);
   return (data as unknown as FichaRestaurante | null) ?? null;
+}
+
+export type Financeiro = {
+  por_plano: { plano: IdPlano; status: StatusAssinatura; quantidade: number }[];
+  inadimplentes: {
+    id: string;
+    nome: string;
+    plano: IdPlano;
+    status: StatusAssinatura;
+    periodo_termina_em: string | null;
+    fatura_url: string | null;
+  }[];
+  pagamentos: { restaurante_id: string | null; nome: string | null; valor: number; em: string }[];
+};
+
+export async function carregarFinanceiro(): Promise<Financeiro> {
+  const { supabase } = await exigirAdmin();
+  const { data, error } = await supabase.rpc("admin_financeiro");
+  if (error) throw new Error(error.message);
+  return data as unknown as Financeiro;
+}
+
+export type DetalhesRestaurante = {
+  cobranca: {
+    provedor: string | null;
+    cliente_id: string | null;
+    assinatura_id: string | null;
+    fatura_url: string | null;
+    eventos: { evento: string; em: string; valor: number | null; vencimento: string | null }[];
+  } | null;
+  por_dia: { dia: string; pedidos: number; vendido: number }[];
+  notas: { texto: string; em: string; por: string | null }[];
+};
+
+export async function carregarDetalhes(restauranteId: string): Promise<DetalhesRestaurante | null> {
+  const { supabase } = await exigirAdmin();
+  const { data, error } = await supabase.rpc("admin_restaurante_detalhes", { p_restaurante_id: restauranteId });
+  if (error) throw new Error(error.message);
+  return (data as unknown as DetalhesRestaurante | null) ?? null;
+}
+
+export type Administrador = { user_id: string; email: string; desde: string; ultimo_acesso: string | null; voce: boolean };
+
+export async function carregarAdmins(): Promise<Administrador[]> {
+  const { supabase } = await exigirAdmin();
+  const { data, error } = await supabase.rpc("admin_listar_admins");
+  if (error) throw new Error(error.message);
+  return (data as unknown as Administrador[]) ?? [];
 }

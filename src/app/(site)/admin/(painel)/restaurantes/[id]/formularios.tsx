@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { type IdPlano, PLANOS } from "@/lib/planos";
 
-import { definirAtivo, estenderTeste, salvarAssinatura } from "../actions";
-import { NOME_STATUS, type StatusAssinatura } from "../assinatura";
+import { definirAtivo, estenderTeste, salvarAssinatura } from "../../../actions";
+import { NOME_STATUS, type StatusAssinatura } from "../../../assinatura";
 
 // AAAA-MM-DD do dia em Brasília (o formulário usa <input type="date">).
 function diaDe(iso: string | null): string {

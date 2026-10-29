@@ -1062,16 +1062,34 @@ isOneToOne: false
                 }
           }
           Functions: {
-            "admin_definir_assinatura":
+            "admin_adicionar_admin":
+{ Args: { "p_email": string }; Returns: undefined
+                           },
+"admin_anotar":
+{ Args: { "p_restaurante_id": string,"p_texto": string }; Returns: undefined
+                           },
+"admin_definir_assinatura":
 { Args: { "p_periodo_termina_em": string,"p_plano": string,"p_restaurante_id": string,"p_status": string,"p_teste_termina_em": string }; Returns: undefined
                            },
 "admin_definir_ativo":
 { Args: { "p_ativo": boolean,"p_motivo": string,"p_restaurante_id": string }; Returns: undefined
                            },
+"admin_financeiro":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
+"admin_listar_admins":
+{ Args: Record<PropertyKey, never>; Returns: Json
+                           },
 "admin_painel":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },
+"admin_remover_admin":
+{ Args: { "p_user_id": string }; Returns: undefined
+                           },
 "admin_restaurante":
+{ Args: { "p_restaurante_id": string }; Returns: Json
+                           },
+"admin_restaurante_detalhes":
 { Args: { "p_restaurante_id": string }; Returns: Json
                            },
 "admin_sou_admin":

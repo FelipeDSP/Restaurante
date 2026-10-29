@@ -2504,6 +2504,48 @@ begin
 end;
 $$;
 
+-- ======================================================================
+-- Painel da plataforma v2: financeiro, ficha, anotações e administradores
+-- ======================================================================
+do $$
+declare
+  a constant uuid := md5('brasa-espetinhos')::uuid;
+  v_dono uuid := md5('dono.brasa@exemplo.com')::uuid;
+  v_json jsonb;
+  v_falhou boolean;
+begin
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  v_falhou := false;
+  begin perform public.admin_financeiro(); exception when insufficient_privilege then v_falhou := true; end;
+  perform pg_temp.ok(v_falhou, 'admin v2: dono não vê o financeiro da plataforma');
+  v_falhou := false;
+  begin perform public.admin_anotar(a, 'oi'); exception when insufficient_privilege then v_falhou := true; end;
+  perform pg_temp.ok(v_falhou, 'admin v2: dono não escreve anotação interna');
+  v_falhou := false;
+  begin perform public.admin_adicionar_admin('dono.brasa@exemplo.com'); exception when insufficient_privilege then v_falhou := true; end;
+  perform pg_temp.ok(v_falhou, 'admin v2: dono não se torna admin sozinho');
+
+  perform pg_temp.entrar('admin.plataforma@exemplo.com');
+  v_json := public.admin_financeiro();
+  perform pg_temp.ok(v_json ? 'por_plano' and v_json ? 'pagamentos', 'admin v2: financeiro abre');
+  perform public.admin_anotar(a, 'Liguei para o dono');
+  v_json := public.admin_restaurante_detalhes(a);
+  perform pg_temp.ok(jsonb_array_length(v_json -> 'por_dia') = 30 and (v_json -> 'notas' -> 0 ->> 'texto') = 'Liguei para o dono',
+    'admin v2: ficha com 30 dias e anotação');
+
+  perform public.admin_adicionar_admin('dono.brasa@exemplo.com');
+  perform pg_temp.ok(jsonb_array_length(public.admin_listar_admins()) = 2, 'admin v2: adiciona administrador');
+  v_falhou := false;
+  begin perform public.admin_remover_admin(md5('admin.plataforma@exemplo.com')::uuid); exception when others then v_falhou := sqlerrm like '%próprio acesso%'; end;
+  perform pg_temp.ok(v_falhou, 'admin v2: não tira o próprio acesso');
+  perform public.admin_remover_admin(v_dono);
+  perform pg_temp.ok(jsonb_array_length(public.admin_listar_admins()) = 1, 'admin v2: tira administrador');
+  perform pg_temp.admin();
+  perform pg_temp.ok((select count(*) from rest_privado.admin_registros where acao in ('admin_adicionado', 'admin_removido')) = 2,
+    'admin v2: mudanças de administrador registradas');
+end;
+$$;
+
 select n, ok, teste from resultado order by n;
 select count(*) filter (where not ok) as falhas, count(*) as total from resultado;
 
