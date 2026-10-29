@@ -35,20 +35,12 @@ const geistMono = Geist_Mono({ subsets: ["latin"], weight: ["500", "700"], varia
 const WHATSAPP = "5569999565508";
 const TELEFONE = "(69) 99956-5508";
 const INSTAGRAM = "uaufoods.oficial";
-const LINK_DEMONSTRACAO = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent("Olá! Quero uma demonstração do uau foods.")}`;
+const LINK_WHATSAPP = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent("Olá! Quero saber mais sobre o uau foods.")}`;
 
 function Ok({ tamanho = 16 }: { tamanho?: number }) {
   return (
     <svg width={tamanho} height={tamanho} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M5 12l4 4 10-10" />
-    </svg>
-  );
-}
-
-function Balao() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M21 12a8.5 8.5 0 0 1-12.4 7.6L3 21l1.5-5.3A8.5 8.5 0 1 1 21 12z" />
     </svg>
   );
 }
@@ -129,7 +121,7 @@ const DUVIDAS = [
 const CIDADES = ["Espetinho", "Hamburgueria", "Lanchonete", "Restaurante", "Salão", "Delivery", "Ariquemes e região"];
 
 export async function Landing() {
-  const qr = await QRCode.toString(LINK_DEMONSTRACAO, { type: "svg", margin: 1, errorCorrectionLevel: "M", color: { dark: "#2B1A12", light: "#FFFDF8" } });
+  const qr = await QRCode.toString(LINK_WHATSAPP, { type: "svg", margin: 1, errorCorrectionLevel: "M", color: { dark: "#2B1A12", light: "#FFFDF8" } });
 
   return (
     <div className={`lp ${geist.variable} ${geistMono.variable}`}>
@@ -185,10 +177,6 @@ export async function Landing() {
                 <Link className="btn btn-primary" href="/cadastro">
                   Testar grátis por {DIAS_TESTE_GRATIS} dias
                 </Link>
-                <a className="btn btn-ghost" href={LINK_DEMONSTRACAO} target="_blank" rel="noopener noreferrer">
-                  <Balao />
-                  Pedir demonstração
-                </a>
               </div>
               <div className="fine rise d5">
                 <span>
@@ -552,13 +540,9 @@ export async function Landing() {
                 Ariquemes e região · RO
               </span>
               <h2>Bora deixar a próxima sexta mais tranquila?</h2>
-              <p className="lead">Peça uma demonstração pelo WhatsApp ou comece o teste grátis agora.</p>
+              <p className="lead">Comece o teste grátis agora, sem cartão de crédito.</p>
               <div className="cta-row">
-                <a className="btn btn-primary" href={LINK_DEMONSTRACAO} target="_blank" rel="noopener noreferrer">
-                  <Balao />
-                  Pedir demonstração
-                </a>
-                <Link className="btn btn-ghost" href="/cadastro">
+                <Link className="btn btn-primary" href="/cadastro">
                   Testar grátis por {DIAS_TESTE_GRATIS} dias
                 </Link>
               </div>
