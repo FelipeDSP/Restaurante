@@ -107,6 +107,8 @@ export type ItemComanda = {
   adicionais: AdicionalEscolhido[];
   paraViagem: boolean;
   quantidade: number;
+  // Unidades já pagas pela calculadora "Por item" (pagamentos não estornados).
+  pagos: number;
   observacao: string | null;
   total: number;
   criadoEm: string;
@@ -172,7 +174,7 @@ export async function carregarComandaDaMesa(restauranteId: string, mesaId: strin
       `id, status, pessoas, total, aberta_em, subtotal, servico_percentual, cobrar_servico, servico, couvert_unitario, cobrar_couvert, couvert,
        garcom:membros!comandas_restaurante_id_garcom_id_fkey(nome),
        pedidos(id, numero, status, criado_em, autor:membros!pedidos_restaurante_id_criado_por_fkey(nome), tarefas_producao(status, pronto_em, retirada), itens_pedido(id, nome_produto, preco_unitario, preco_adicionais, adicionais, etapas, para_viagem, quantidade, observacao, total, criado_em, cancelado_em, motivo_cancelamento, entregue_em, servir_com_comida)),
-       pagamentos(id, valor, forma, criado_em, estornado_em, motivo_estorno, registrado:membros!pagamentos_restaurante_id_registrado_por_fkey(nome))`,
+       pagamentos(id, valor, forma, itens, criado_em, estornado_em, motivo_estorno, registrado:membros!pagamentos_restaurante_id_registrado_por_fkey(nome))`,
     )
     .eq("restaurante_id", restauranteId)
     .eq("mesa_id", mesaId)
@@ -180,6 +182,15 @@ export async function carregarComandaDaMesa(restauranteId: string, mesaId: strin
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!c) return null;
+
+  // Quantas unidades de cada item os pagamentos ativos "por item" já cobriram.
+  const pagosPorItem = new Map<string, number>();
+  for (const p of c.pagamentos) {
+    if (p.estornado_em || !Array.isArray(p.itens)) continue;
+    for (const e of p.itens as { item_id?: string; quantidade?: number }[]) {
+      if (e?.item_id && typeof e.quantidade === "number") pagosPorItem.set(e.item_id, (pagosPorItem.get(e.item_id) ?? 0) + e.quantidade);
+    }
+  }
 
   const itens: ItemComanda[] = c.pedidos
     .filter((p) => p.status !== "cancelado")
@@ -202,6 +213,7 @@ export async function carregarComandaDaMesa(restauranteId: string, mesaId: strin
           adicionais: lerAdicionais(i.adicionais),
           paraViagem: i.para_viagem,
           quantidade: i.quantidade,
+          pagos: Math.min(i.quantidade, pagosPorItem.get(i.id) ?? 0),
           observacao: i.observacao,
           total: i.total,
           criadoEm: i.criado_em,

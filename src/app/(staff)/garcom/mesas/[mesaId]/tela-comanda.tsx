@@ -107,6 +107,11 @@ function LinhaItem({ item, editavel }: { item: ItemComanda; editavel: boolean })
               <span className="text-sm text-muted-foreground">{resumoAdicionais(item.adicionais)}</span>
             ) : null}
             {item.paraViagem ? <span className="text-xs font-bold text-violet-700 uppercase">Pra viagem</span> : null}
+            {item.pagos > 0 ? (
+              <span className="mt-0.5 w-fit rounded-full bg-sky-100 px-2 py-0.5 text-xs font-bold text-sky-900">
+                {item.pagos >= item.quantidade ? "Pago" : `${item.pagos} de ${item.quantidade} pago`}
+              </span>
+            ) : null}
             {item.entregue ? (
               <span className="flex items-center gap-1 text-xs font-medium text-green-700">
                 <Check className="size-3.5" aria-hidden />
@@ -238,7 +243,8 @@ function LinhaItem({ item, editavel }: { item: ItemComanda; editavel: boolean })
 }
 
 // Calculadora da conta separada: marca o que cada um consumiu (quantas unidades de cada item)
-// e mostra quanto a pessoa paga. Não grava nada; o valor vai para o pagamento.
+// e mostra quanto a pessoa paga. O que foi marcado vai junto com o pagamento; a próxima pessoa
+// só vê o que ainda não foi pago.
 function CalculadoraItens({
   itens,
   servicoPercentual,
@@ -249,34 +255,42 @@ function CalculadoraItens({
   // Só o que está sendo cobrado na mesa (0 quando foi retirado).
   servicoPercentual: number;
   couvertPorPessoa: number;
-  aoUsar: (valor: number) => void;
+  aoUsar: (valor: number, itens: { itemId: string; quantidade: number }[]) => void;
 }) {
   const [escolhidos, setEscolhidos] = useState<Record<string, number>>({});
-  const ativos = itens.filter((i) => !i.cancelado);
+  const ativos = itens.filter((i) => !i.cancelado && i.pagos < i.quantidade);
+  const jaPagos = itens.filter((i) => !i.cancelado && i.pagos >= i.quantidade).length;
   const consumo = ativos.reduce((soma, i) => soma + (escolhidos[i.id] ?? 0) * i.precoUnitario, 0);
   const servico = Math.round((consumo * servicoPercentual) / 100);
   const couvert = consumo > 0 ? couvertPorPessoa : 0;
   const total = consumo + servico + couvert;
   const mudar = (item: ItemComanda, n: number) =>
-    setEscolhidos((e) => ({ ...e, [item.id]: Math.max(0, Math.min(item.quantidade, n)) }));
+    setEscolhidos((e) => ({ ...e, [item.id]: Math.max(0, Math.min(item.quantidade - item.pagos, n)) }));
+
+  if (ativos.length === 0) {
+    return <p className="rounded-lg bg-muted/60 p-3 text-sm text-muted-foreground">Todos os itens já foram pagos.</p>;
+  }
 
   return (
     <div className="flex flex-col gap-3 rounded-lg bg-muted/60 p-3">
-      <p className="text-sm text-muted-foreground">Marque o que esta pessoa consumiu.</p>
+      <p className="text-sm text-muted-foreground">
+        Marque o que esta pessoa consumiu.{jaPagos > 0 ? ` ${jaPagos === 1 ? "1 item já pago não aparece" : `${jaPagos} itens já pagos não aparecem`}.` : ""}
+      </p>
       <ul className="flex flex-col divide-y">
         {ativos.map((i) => {
           const n = escolhidos[i.id] ?? 0;
+          const resta = i.quantidade - i.pagos;
           return (
             <li key={i.id} className="flex items-center justify-between gap-2 py-2">
               <span className="flex min-w-0 flex-col">
                 <span className={cn("truncate", n > 0 && "font-semibold")}>
-                  {i.quantidade}× {i.nome}
+                  {resta}× {i.nome}
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  {formatarBRL(i.precoUnitario)} cada{i.adicionais.length > 0 ? ` · ${resumoAdicionais(i.adicionais)}` : ""}
+                  {formatarBRL(i.precoUnitario)} cada{i.pagos > 0 ? ` · ${i.pagos} já pago` : ""}{i.adicionais.length > 0 ? ` · ${resumoAdicionais(i.adicionais)}` : ""}
                 </span>
               </span>
-              {i.quantidade === 1 ? (
+              {resta === 1 ? (
                 <Button
                   type="button"
                   variant={n > 0 ? "default" : "outline"}
@@ -293,9 +307,9 @@ function CalculadoraItens({
                     <Minus />
                   </Button>
                   <span className="w-12 text-center font-semibold tabular-nums">
-                    {n}/{i.quantidade}
+                    {n}/{resta}
                   </span>
-                  <Button type="button" variant="outline" size="icon" className="size-11" aria-label={`Mais ${i.nome}`} disabled={n >= i.quantidade} onClick={() => mudar(i, n + 1)}>
+                  <Button type="button" variant="outline" size="icon" className="size-11" aria-label={`Mais ${i.nome}`} disabled={n >= resta} onClick={() => mudar(i, n + 1)}>
                     <Plus />
                   </Button>
                 </div>
@@ -319,7 +333,15 @@ function CalculadoraItens({
           <Button type="button" variant="ghost" className="h-11" disabled={total === 0} onClick={() => setEscolhidos({})}>
             Limpar
           </Button>
-          <Button type="button" className="h-11" disabled={total === 0} onClick={() => aoUsar(total)}>
+          <Button type="button" className="h-11" disabled={total === 0} onClick={() =>
+              aoUsar(
+                total,
+                Object.entries(escolhidos)
+                  .filter(([, q]) => q > 0)
+                  .map(([itemId, quantidade]) => ({ itemId, quantidade })),
+              )
+            }
+          >
             Cobrar {formatarBRL(total)}
           </Button>
         </div>
@@ -346,6 +368,7 @@ function PainelPagamento({
   itens,
   cobranca,
   aoFechar,
+  aoFecharMesa,
 }: {
   comandaId: string;
   total: number;
@@ -354,6 +377,8 @@ function PainelPagamento({
   itens: ItemComanda[];
   cobranca: DetalheComanda["cobranca"];
   aoFechar: () => void;
+  // O pagamento quitou a conta e a mesa fechou junto.
+  aoFecharMesa: () => void;
 }) {
   // Uma ou mais formas (pagamento combinado: parte no Pix, parte no cartão...).
   const [partes, setPartes] = useState<Parte[]>(() => [novaParte("pix", falta)]);
@@ -361,6 +386,8 @@ function PainelPagamento({
   const [calculando, setCalculando] = useState(false);
   // Valor que esta pessoa vai pagar (calculadora ou "1 de N"); sem ele, a conta toda.
   const [alvo, setAlvo] = useState<number | null>(null);
+  // Itens marcados na calculadora "Por item": vão junto com o pagamento.
+  const [marcados, setMarcados] = useState<{ itemId: string; quantidade: number }[]>([]);
   const { pendente, executar } = useAcao();
   const secao = useRef<HTMLElement>(null);
 
@@ -369,6 +396,7 @@ function PainelPagamento({
     setFaltaBase(falta);
     setPartes([novaParte("pix", falta)]);
     setAlvo(null);
+    setMarcados([]);
   }
 
   // O painel abre abaixo da lista; no celular ficaria fora da tela.
@@ -380,6 +408,7 @@ function PainelPagamento({
   const invalido = valores.some((v) => v === null || v <= 0);
   const soma = valores.reduce<number>((s, v) => s + (v ?? 0), 0);
   const acima = soma > falta;
+  const quita = soma > 0 && soma >= falta;
   const restante = Math.max(0, Math.min(alvo ?? falta, falta) - soma);
   const trocoDe = (p: Parte, v: number | null) => {
     const recebido = p.forma === "dinheiro" && p.recebidoTexto ? centavosDeTexto(p.recebidoTexto) : null;
@@ -393,6 +422,7 @@ function PainelPagamento({
   // Valor de uma forma só (atalhos "Tudo", "por pessoa", calculadora): vira uma parte única.
   const usarValor = (valor: number, daPessoa: boolean) => {
     setAlvo(daPessoa ? valor : null);
+    setMarcados([]);
     setPartes((ps) => [{ ...ps[0], valorTexto: textoDeCentavos(valor), recebidoTexto: "" }]);
   };
 
@@ -443,8 +473,9 @@ function PainelPagamento({
               itens={itens}
               servicoPercentual={cobranca.cobrarServico ? cobranca.servicoPercentual : 0}
               couvertPorPessoa={cobranca.cobrarCouvert ? cobranca.couvertUnitario : 0}
-              aoUsar={(valor) => {
+              aoUsar={(valor, escolhidos) => {
                 usarValor(Math.min(valor, falta), true);
+                setMarcados(escolhidos);
                 setCalculando(false);
               }}
             />
@@ -533,26 +564,43 @@ function PainelPagamento({
             </p>
           ) : null}
 
+          {marcados.length > 0 ? (
+            <p className="flex items-center justify-between gap-2 rounded-lg bg-sky-50 px-3 py-2 text-sm text-sky-900">
+              <span>
+                Paga {marcados.reduce((n, m) => n + m.quantidade, 0)}{" "}
+                {marcados.reduce((n, m) => n + m.quantidade, 0) === 1 ? "item marcado" : "itens marcados"}
+              </span>
+              <button type="button" className="font-medium underline" onClick={() => setMarcados([])}>
+                Desmarcar
+              </button>
+            </p>
+          ) : null}
+
           {acima ? (
             <p role="alert" className="text-sm font-medium text-destructive">
               Passa do que falta ({formatarBRL(falta)}). Para dar troco no dinheiro, preencha o recebido.
             </p>
           ) : null}
 
+          {/* Quitou a conta: recebe e já fecha a mesa, sem outro passo. */}
           <Button
             type="button"
-            className="h-14 text-lg"
+            className={cn("h-14 text-lg", quita && "bg-green-700 text-white hover:bg-green-800")}
             disabled={pendente || invalido || acima || trocoNegativo}
             onClick={() =>
               executar(
-                () => registrarPagamentos(comandaId, partes.map((p, n) => ({ forma: p.forma, valor: valores[n] ?? 0 }))),
-                () => {
-                  if (soma >= falta) aoFechar();
-                },
+                () =>
+                  registrarPagamentos(
+                    comandaId,
+                    partes.map((p, n) => ({ forma: p.forma, valor: valores[n] ?? 0 })),
+                    marcados,
+                    quita,
+                  ),
+                quita ? aoFecharMesa : undefined,
               )
             }
           >
-            {pendente ? "Registrando..." : `Registrar ${soma > 0 ? formatarBRL(soma) : ""}`}
+            {pendente ? "Registrando..." : quita ? `Receber ${formatarBRL(soma)} e fechar mesa` : `Receber ${soma > 0 ? formatarBRL(soma) : ""}`}
           </Button>
         </>
       )}
@@ -762,17 +810,9 @@ type Props = {
 export function TelaComanda({ mesaId, comanda, podeGerenciar, podeEstornar, fusoHorario, origem = "garcom" }: Props) {
   const router = useRouter();
   const [pagando, setPagando] = useState(false);
-  const [confirmarFechar, setConfirmarFechar] = useState(false);
   // Histórico por pedido (cada rodada separada) ou tudo somado por produto.
   const [visao, setVisao] = useState<"pedidos" | "resumo">("pedidos");
   const { pendente, executar } = useAcao();
-
-  // Fechar a comanda não tem volta: o primeiro toque só arma (desarma sozinho em 6 s).
-  useEffect(() => {
-    if (!confirmarFechar) return;
-    const t = setTimeout(() => setConfirmarFechar(false), 6000);
-    return () => clearTimeout(t);
-  }, [confirmarFechar]);
 
   const falta = Math.max(0, comanda.total - comanda.pago);
   const quitada = comanda.total > 0 && comanda.pago >= comanda.total;
@@ -914,6 +954,7 @@ export function TelaComanda({ mesaId, comanda, podeGerenciar, podeEstornar, fuso
             itens={comanda.itens}
             cobranca={comanda.cobranca}
             aoFechar={() => setPagando(false)}
+            aoFecharMesa={voltarAoMapa}
           />
         ) : null}
 
@@ -936,48 +977,45 @@ export function TelaComanda({ mesaId, comanda, podeGerenciar, podeEstornar, fuso
           )}
         >
           <div className={cn("mx-auto grid max-w-md grid-cols-2 gap-2", painel && "lg:max-w-none")}>
-            <Button className="h-14 text-base" nativeButton={false} render={<Link href={linkLancar} />}>
+            <Button className="h-14 text-base" variant={podeFechar ? "outline" : "default"} nativeButton={false} render={<Link href={linkLancar} />}>
               <UtensilsCrossed />
               Lançar itens
             </Button>
+            {/* Paga: fecha num toque. Falta pagar: abre o recebimento, que fecha a mesa quando quita. */}
             {podeFechar ? (
               <Button
                 type="button"
-                className={cn(
-                  "h-14 text-base text-white",
-                  confirmarFechar ? "bg-green-900 ring-4 ring-green-300 hover:bg-green-900" : "bg-green-700 hover:bg-green-800",
-                )}
+                className="h-14 bg-green-700 text-base text-white hover:bg-green-800"
                 disabled={pendente}
-                onClick={() =>
-                  confirmarFechar ? executar(() => fecharComanda(comanda.id), voltarAoMapa) : setConfirmarFechar(true)
-                }
+                onClick={() => executar(() => fecharComanda(comanda.id), voltarAoMapa)}
               >
                 <Check />
-                {confirmarFechar ? "Toque de novo para fechar" : "Fechar comanda"}
-              </Button>
-            ) : comanda.status === "aberta" ? (
-              <Button
-                type="button"
-                variant="outline"
-                className="h-14 text-base"
-                disabled={pendente || itensAtivos.length === 0}
-                onClick={() => executar(() => alterarStatusConta(comanda.id, true))}
-              >
-                <ReceiptText />
-                Pedir conta
+                Fechar mesa
               </Button>
             ) : (
               <Button
                 type="button"
                 variant="outline"
-                className="h-14 text-base"
-                disabled={pendente || pagando}
+                className="h-14 border-green-700 text-base text-green-800 hover:bg-green-50"
+                disabled={pendente || pagando || itensAtivos.length === 0}
                 onClick={() => setPagando(true)}
               >
                 <Wallet />
-                Pagamento
+                Receber {falta > 0 ? formatarBRL(falta) : ""}
               </Button>
             )}
+            {comanda.status === "aberta" && !podeFechar && itensAtivos.length > 0 ? (
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-10 text-sm"
+                disabled={pendente}
+                onClick={() => executar(() => alterarStatusConta(comanda.id, true))}
+              >
+                <ReceiptText />
+                Pedir conta
+              </Button>
+            ) : null}
             {comanda.status === "conta_pedida" ? (
               <Button
                 type="button"
@@ -999,18 +1037,6 @@ export function TelaComanda({ mesaId, comanda, podeGerenciar, podeEstornar, fuso
                 onClick={() => executar(() => alterarStatusConta(comanda.id, false))}
               >
                 Voltar para aberta
-              </Button>
-            ) : null}
-            {comanda.status === "aberta" && !quitada && itensAtivos.length > 0 ? (
-              <Button
-                type="button"
-                variant="ghost"
-                className="col-span-2 h-10 text-sm"
-                disabled={pendente || pagando}
-                onClick={() => setPagando(true)}
-              >
-                <Wallet />
-                Registrar pagamento
               </Button>
             ) : null}
           </div>

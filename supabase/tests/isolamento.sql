@@ -2602,6 +2602,85 @@ begin
 end;
 $$;
 
+-- ======================================================================
+-- Pagamento por item: o que foi pago não volta para a próxima pessoa
+-- ======================================================================
+do $$
+declare
+  a constant uuid := md5('brasa-espetinhos')::uuid;
+  v_mesa uuid;
+  v_comanda uuid;
+  v_r jsonb;
+  v_pedido uuid;
+  v_refri uuid;
+  v_espeto uuid;
+  v_pag uuid;
+  v_outro uuid;
+  v_falhou boolean;
+begin
+  perform pg_temp.admin();
+  -- Os testes anteriores mudam o plano e a equipe da Brasa: volta ao teste grátis (tudo liberado).
+  update public.assinaturas set status = 'teste', teste_termina_em = now() + interval '7 days',
+    modulos_liberados = '{}', modulos_bloqueados = '{}' where restaurante_id = a;
+  select m.id into v_mesa from public.mesas m
+  where m.restaurante_id = a and m.ativa
+    and not exists (select 1 from public.comandas c where c.mesa_id = m.id and c.status in ('aberta', 'conta_pedida'))
+  order by m.numero limit 1;
+  select i.id into v_outro from public.itens_pedido i join public.pedidos p on p.id = i.pedido_id
+  where i.restaurante_id = a and p.comanda_id is not null and i.cancelado_em is null limit 1;
+
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  insert into public.comandas (restaurante_id, mesa_id, pessoas) values (a, v_mesa, 2) returning id into v_comanda;
+  v_r := public.lancar_itens_comanda(v_comanda, jsonb_build_array(
+    jsonb_build_object('produto_id', (select id from public.produtos where restaurante_id = a and nome = 'Refrigerante lata'), 'quantidade', 2),
+    jsonb_build_object('produto_id', (select id from public.produtos where restaurante_id = a and nome = 'Espeto de carne'), 'quantidade', 1)
+  ));
+  v_pedido := (v_r ->> 'pedido_id')::uuid;
+  select id into v_refri from public.itens_pedido where pedido_id = v_pedido and nome_produto = 'Refrigerante lata';
+  select id into v_espeto from public.itens_pedido where pedido_id = v_pedido and nome_produto = 'Espeto de carne';
+
+  insert into public.pagamentos (restaurante_id, comanda_id, valor, forma, itens)
+  values (a, v_comanda, 100, 'pix', jsonb_build_array(
+    jsonb_build_object('item_id', v_refri, 'quantidade', 1), jsonb_build_object('item_id', v_refri, 'quantidade', 1)))
+  returning id into v_pag;
+  perform pg_temp.ok((select itens = jsonb_build_array(jsonb_build_object('item_id', v_refri, 'quantidade', 2)) from public.pagamentos where id = v_pag),
+    'pagamento por item: guarda os itens pagos (somados por item)');
+
+  v_falhou := false;
+  begin
+    insert into public.pagamentos (restaurante_id, comanda_id, valor, forma, itens)
+    values (a, v_comanda, 100, 'pix', jsonb_build_array(jsonb_build_object('item_id', v_refri, 'quantidade', 1)));
+  exception when others then v_falhou := sqlerrm like '%já foi pago%'; end;
+  perform pg_temp.ok(v_falhou, 'pagamento por item: item já pago não é cobrado de novo');
+
+  v_falhou := false;
+  begin
+    insert into public.pagamentos (restaurante_id, comanda_id, valor, forma, itens)
+    values (a, v_comanda, 100, 'pix', jsonb_build_array(jsonb_build_object('item_id', v_espeto, 'quantidade', 2)));
+  exception when others then v_falhou := sqlerrm like '%já foi pago%'; end;
+  perform pg_temp.ok(v_falhou, 'pagamento por item: não passa da quantidade lançada');
+
+  v_falhou := v_outro is null;
+  if not v_falhou then
+    begin
+      insert into public.pagamentos (restaurante_id, comanda_id, valor, forma, itens)
+      values (a, v_comanda, 100, 'pix', jsonb_build_array(jsonb_build_object('item_id', v_outro, 'quantidade', 1)));
+    exception when others then v_falhou := sqlerrm like '%já foi pago%'; end;
+  end if;
+  perform pg_temp.ok(v_falhou, 'pagamento por item: item de outra mesa é recusado');
+
+  update public.pagamentos set itens = '[]' where id = v_pag;
+  perform pg_temp.ok((select jsonb_array_length(itens) = 1 from public.pagamentos where id = v_pag), 'pagamento por item: itens não mudam depois');
+
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  update public.pagamentos set estornado_em = now(), motivo_estorno = 'cobrado errado' where id = v_pag;
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  insert into public.pagamentos (restaurante_id, comanda_id, valor, forma, itens)
+  values (a, v_comanda, 100, 'pix', jsonb_build_array(jsonb_build_object('item_id', v_refri, 'quantidade', 2)));
+  perform pg_temp.ok(true, 'pagamento por item: estorno libera os itens');
+end;
+$$;
+
 select n, ok, teste from resultado order by n;
 select count(*) filter (where not ok) as falhas, count(*) as total from resultado;
 

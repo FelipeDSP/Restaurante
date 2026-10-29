@@ -181,7 +181,14 @@ export async function registrarPagamento(comandaId: string, valor: number, forma
 // Pagamento combinado (ex.: parte no Pix, parte no cartão): todas as formas num envio só.
 // Um insert com várias linhas é uma transação: o trigger confere cada parte contra o que falta
 // (somando as anteriores do mesmo envio) e, se uma passar do saldo, nenhuma é gravada.
-export async function registrarPagamentos(comandaId: string, partes: { valor: number; forma: string }[]): Promise<ResultadoAcao> {
+// itens: o que a pessoa pagou pela calculadora "Por item" (fica na primeira forma do pagamento).
+// fechar: o pagamento quita a conta e a mesa já fecha junto (o banco confere que está paga).
+export async function registrarPagamentos(
+  comandaId: string,
+  partes: { valor: number; forma: string }[],
+  itens: { itemId: string; quantidade: number }[] = [],
+  fechar = false,
+): Promise<ResultadoAcao> {
   const acesso = await exigirAlgumaPermissao("garcom_app", "comandas_painel");
   const dados = z
     .object({
@@ -190,25 +197,38 @@ export async function registrarPagamentos(comandaId: string, partes: { valor: nu
         .array(z.object({ valor: z.number().int().min(1, "Informe o valor de cada forma."), forma: z.enum(FORMAS) }))
         .min(1, "Informe o pagamento.")
         .max(10, "Formas demais."),
+      itens: z.array(z.object({ itemId: id, quantidade: z.number().int().min(1).max(999) })).max(200),
     })
-    .safeParse({ comandaId, partes });
+    .safeParse({ comandaId, partes, itens });
   if (!dados.success) return falha(dados.error.issues[0]?.message ?? "Dados inválidos.");
 
   const supabase = await createClient();
   const { error } = await supabase.from("pagamentos").insert(
-    dados.data.partes.map((p) =>
+    dados.data.partes.map((p, n) =>
       novoRegistro("pagamentos", {
         restaurante_id: acesso.restaurante.id,
         comanda_id: dados.data.comandaId,
         valor: p.valor,
         forma: p.forma,
+        itens: n === 0 && dados.data.itens.length > 0 ? dados.data.itens.map((i) => ({ item_id: i.itemId, quantidade: i.quantidade })) : null,
       }),
     ),
   );
   if (error) return falha(mensagemErroBanco(error));
 
-  refresh();
   const total = dados.data.partes.reduce((soma, p) => soma + p.valor, 0);
+  if (fechar) {
+    const { error: erroFechar } = await supabase
+      .from("comandas")
+      .update({ status: "fechada" })
+      .eq("id", dados.data.comandaId)
+      .eq("restaurante_id", acesso.restaurante.id);
+    refresh();
+    if (erroFechar) return falha(`Pagamento de ${formatarBRL(total)} registrado, mas a mesa não fechou: ${mensagemErroBanco(erroFechar)}`);
+    return sucesso(`${formatarBRL(total)} recebido. Mesa fechada e liberada.`);
+  }
+
+  refresh();
   return sucesso(
     dados.data.partes.length > 1
       ? `${dados.data.partes.length} pagamentos registrados (${formatarBRL(total)}).`
