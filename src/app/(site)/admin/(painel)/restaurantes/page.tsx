@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { carregarPainel, dataBR, diasRestantes, type RestauranteResumo } from "../../dados";
 import { SeloAssinatura } from "../../selo-assinatura";
 import { Titulo, Vazio } from "../ui";
+import { NovoRestaurante } from "./novo-restaurante";
 
 export const metadata: Metadata = { title: { absolute: "Restaurantes · Admin · uau foods" } };
 
@@ -73,7 +74,9 @@ export default async function RestaurantesPage(props: PageProps<"/admin/restaura
 
   return (
     <>
-      <Titulo titulo="Restaurantes" subtitulo={`${restaurantes.length} cadastrados. Uso dos últimos 30 dias.`} />
+      <Titulo titulo="Restaurantes" subtitulo={`${restaurantes.length} cadastrados. Uso dos últimos 30 dias.`}>
+        <NovoRestaurante />
+      </Titulo>
 
       <section aria-label="Lista de restaurantes" className="flex flex-col gap-4">
         <div className="flex flex-col gap-3 rounded-2xl border border-black/5 bg-white p-4 shadow-sm">

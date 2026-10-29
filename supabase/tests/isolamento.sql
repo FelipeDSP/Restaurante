@@ -2546,6 +2546,62 @@ begin
 end;
 $$;
 
+-- ======================================================================
+-- Super admin: módulos, equipe, criar restaurante
+-- ======================================================================
+do $$
+declare
+  a constant uuid := md5('brasa-espetinhos')::uuid;
+  v_garcom uuid := (select id from public.membros where restaurante_id = md5('brasa-espetinhos')::uuid and user_id = md5('garcom1.brasa@exemplo.com')::uuid);
+  v_dono uuid := (select id from public.membros where restaurante_id = md5('brasa-espetinhos')::uuid and user_id = md5('dono.brasa@exemplo.com')::uuid);
+  v_funcao uuid := (select id from public.funcoes where restaurante_id = md5('brasa-espetinhos')::uuid and padrao = 'caixa');
+  v_novo uuid;
+  v_falhou boolean;
+begin
+  perform pg_temp.admin();
+  update public.assinaturas set plano = 'avancado', status = 'ativa', modulos_liberados = '{}', modulos_bloqueados = '{}' where restaurante_id = a;
+
+  -- Dono não mexe nos módulos nem na equipe pelo admin.
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  v_falhou := false;
+  begin perform public.admin_definir_modulos(a, array['qr'], '{}'); exception when insufficient_privilege then v_falhou := true; end;
+  perform pg_temp.ok(v_falhou, 'super admin: dono não libera módulo para si');
+  v_falhou := false;
+  begin perform public.admin_salvar_membro(v_garcom, 'X', 'dono', true); exception when insufficient_privilege then v_falhou := true; end;
+  perform pg_temp.ok(v_falhou, 'super admin: dono não usa a gestão de equipe do admin');
+
+  perform pg_temp.entrar('admin.plataforma@exemplo.com');
+  perform public.admin_definir_modulos(a, array['qr'], array['relatorios']);
+  perform pg_temp.admin();
+  perform pg_temp.ok(rest_privado.plano_tem_qr(a), 'super admin: liberar QR fora do plano');
+  perform pg_temp.ok(not ('relatorios' = any (rest_privado.permissoes_do_plano(a))), 'super admin: bloquear relatórios só deste restaurante');
+  perform pg_temp.ok('garcom_app' = any (rest_privado.permissoes_do_plano(a)), 'super admin: o resto segue o plano');
+
+  perform pg_temp.entrar('admin.plataforma@exemplo.com');
+  perform public.admin_salvar_membro(v_garcom, 'Garçom renomeado', v_funcao::text, false);
+  perform pg_temp.admin();
+  perform pg_temp.ok((select nome = 'Garçom renomeado' and not ativo and funcao_id = v_funcao from public.membros where id = v_garcom),
+    'super admin: edita nome, função e desativa');
+  perform pg_temp.entrar('admin.plataforma@exemplo.com');
+  v_falhou := false;
+  begin perform public.admin_salvar_membro(v_dono, 'Dono', v_funcao::text, true); exception when others then v_falhou := sqlerrm like '%pelo menos um dono%'; end;
+  perform pg_temp.ok(v_falhou, 'super admin: não deixa o restaurante sem dono');
+
+  v_novo := public.admin_criar_restaurante(md5('caixa.brasa@exemplo.com')::uuid, 'Lanche Novo', 'lanche-novo', 'Fulano', 'America/Porto_Velho', null);
+  perform pg_temp.admin();
+  perform pg_temp.ok(exists (select 1 from public.membros where restaurante_id = v_novo and papel = 'dono')
+    and exists (select 1 from public.assinaturas where restaurante_id = v_novo and status = 'teste'),
+    'super admin: cria restaurante com dono e teste grátis');
+  perform pg_temp.entrar('admin.plataforma@exemplo.com');
+  v_falhou := false;
+  begin perform public.admin_criar_restaurante(md5('caixa.brasa@exemplo.com')::uuid, 'Outro', 'admin', 'Fulano', null, null); exception when others then v_falhou := sqlerrm like '%reservado%'; end;
+  perform pg_temp.ok(v_falhou, 'super admin: endereço reservado é recusado');
+  perform pg_temp.admin();
+  perform pg_temp.ok((select count(*) from rest_privado.admin_registros where acao in ('modulos', 'membro_alterado', 'restaurante_criado')) >= 3,
+    'super admin: tudo registrado');
+end;
+$$;
+
 select n, ok, teste from resultado order by n;
 select count(*) filter (where not ok) as falhas, count(*) as total from resultado;
 

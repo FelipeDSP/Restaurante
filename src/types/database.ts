@@ -63,13 +63,13 @@ isOneToOne: false
                   ]
                 },"assinaturas": {
                   Row: {
-                    "atualizado_em": string,"criado_em": string,"fatura_url": string | null,"id": string,"periodo_termina_em": string | null,"plano": string,"provedor": string | null,"provedor_assinatura_id": string | null,"provedor_cliente_id": string | null,"restaurante_id": string,"status": string,"teste_termina_em": string | null
+                    "atualizado_em": string,"criado_em": string,"fatura_url": string | null,"id": string,"modulos_bloqueados": (string)[],"modulos_liberados": (string)[],"periodo_termina_em": string | null,"plano": string,"provedor": string | null,"provedor_assinatura_id": string | null,"provedor_cliente_id": string | null,"restaurante_id": string,"status": string,"teste_termina_em": string | null
                   }
                   Insert: {
-                    "atualizado_em"?: string,"criado_em"?: string,"fatura_url"?: string | null,"id"?: string,"periodo_termina_em"?: string | null,"plano"?: string,"provedor"?: string | null,"provedor_assinatura_id"?: string | null,"provedor_cliente_id"?: string | null,"restaurante_id": string,"status"?: string,"teste_termina_em"?: string | null
+                    "atualizado_em"?: string,"criado_em"?: string,"fatura_url"?: string | null,"id"?: string,"modulos_bloqueados"?: (string)[],"modulos_liberados"?: (string)[],"periodo_termina_em"?: string | null,"plano"?: string,"provedor"?: string | null,"provedor_assinatura_id"?: string | null,"provedor_cliente_id"?: string | null,"restaurante_id": string,"status"?: string,"teste_termina_em"?: string | null
                   }
                   Update: {
-                    "atualizado_em"?: string,"criado_em"?: string,"fatura_url"?: string | null,"id"?: string,"periodo_termina_em"?: string | null,"plano"?: string,"provedor"?: string | null,"provedor_assinatura_id"?: string | null,"provedor_cliente_id"?: string | null,"restaurante_id"?: string,"status"?: string,"teste_termina_em"?: string | null
+                    "atualizado_em"?: string,"criado_em"?: string,"fatura_url"?: string | null,"id"?: string,"modulos_bloqueados"?: (string)[],"modulos_liberados"?: (string)[],"periodo_termina_em"?: string | null,"plano"?: string,"provedor"?: string | null,"provedor_assinatura_id"?: string | null,"provedor_cliente_id"?: string | null,"restaurante_id"?: string,"status"?: string,"teste_termina_em"?: string | null
                   }
                   Relationships: [
                     {
@@ -1065,14 +1065,26 @@ isOneToOne: false
             "admin_adicionar_admin":
 { Args: { "p_email": string }; Returns: undefined
                            },
+"admin_adicionar_membro":
+{ Args: { "p_funcao": string,"p_nome": string,"p_restaurante_id": string,"p_user_id": string }; Returns: string
+                           },
 "admin_anotar":
 { Args: { "p_restaurante_id": string,"p_texto": string }; Returns: undefined
+                           },
+"admin_criar_restaurante":
+{ Args: { "p_dono_user_id": string,"p_fuso": string,"p_nome": string,"p_nome_dono": string,"p_slug": string,"p_whatsapp"?: string }; Returns: string
                            },
 "admin_definir_assinatura":
 { Args: { "p_periodo_termina_em": string,"p_plano": string,"p_restaurante_id": string,"p_status": string,"p_teste_termina_em": string }; Returns: undefined
                            },
 "admin_definir_ativo":
 { Args: { "p_ativo": boolean,"p_motivo": string,"p_restaurante_id": string }; Returns: undefined
+                           },
+"admin_definir_modulos":
+{ Args: { "p_bloqueados": (string)[],"p_liberados": (string)[],"p_restaurante_id": string }; Returns: undefined
+                           },
+"admin_equipe":
+{ Args: { "p_restaurante_id": string }; Returns: Json
                            },
 "admin_financeiro":
 { Args: Record<PropertyKey, never>; Returns: Json
@@ -1083,6 +1095,9 @@ isOneToOne: false
 "admin_painel":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },
+"admin_registrar":
+{ Args: { "p_acao": string,"p_dados": Json,"p_restaurante_id": string }; Returns: undefined
+                           },
 "admin_remover_admin":
 { Args: { "p_user_id": string }; Returns: undefined
                            },
@@ -1091,6 +1106,9 @@ isOneToOne: false
                            },
 "admin_restaurante_detalhes":
 { Args: { "p_restaurante_id": string }; Returns: Json
+                           },
+"admin_salvar_membro":
+{ Args: { "p_ativo": boolean,"p_funcao": string,"p_membro_id": string,"p_nome": string }; Returns: undefined
                            },
 "admin_sou_admin":
 { Args: Record<PropertyKey, never>; Returns: boolean

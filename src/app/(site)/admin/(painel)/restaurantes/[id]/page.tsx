@@ -7,15 +7,14 @@ import { formatarBRL } from "@/lib/dinheiro";
 import { planoPorId } from "@/lib/planos";
 import { id as idSchema } from "@/lib/validacao";
 
-import { carregarDetalhes, carregarFicha, dataBR, NOME_STATUS, type StatusAssinatura } from "../../../dados";
+import { carregarDetalhes, carregarEquipe, carregarFicha, dataBR, NOME_STATUS, type StatusAssinatura } from "../../../dados";
 import { SeloAssinatura } from "../../../selo-assinatura";
 import { Cartao, Indicador, Vazio } from "../../ui";
 import { AtivarDesativar, FormAssinatura } from "./formularios";
+import { EntrarComo, Equipe, Modulos } from "./gestao";
 import { NovaNota } from "./notas";
 
 export const metadata: Metadata = { title: { absolute: "Restaurante · Admin · uau foods" } };
-
-const NOME_PAPEL: Record<string, string> = { dono: "Dono", caixa: "Caixa", garcom: "Garçom", cozinha: "Cozinha", equipe: "Equipe" };
 
 const NOME_EVENTO: Record<string, string> = {
   PAYMENT_CREATED: "Cobrança criada",
@@ -38,6 +37,28 @@ function descreverRegistro(acao: string, dados: Record<string, unknown>): string
     if (depois.periodo_termina_em) partes.push(`período até ${dataBR(depois.periodo_termina_em)}`);
     return `Assinatura: ${partes.join(" · ")}`;
   }
+  const texto = (v: unknown) => (typeof v === "string" ? v : "");
+  switch (acao) {
+    case "modulos": {
+      const d = (dados.depois ?? {}) as { liberados?: string[]; bloqueados?: string[] };
+      const partes = [d.liberados?.length ? `liberados: ${d.liberados.join(", ")}` : "", d.bloqueados?.length ? `bloqueados: ${d.bloqueados.join(", ")}` : ""];
+      return `Módulos: ${partes.filter(Boolean).join(" · ") || "todos pelo plano"}`;
+    }
+    case "membro_adicionado":
+      return `Pessoa adicionada à equipe: ${texto(dados.nome)}`;
+    case "membro_alterado": {
+      const d = (dados.depois ?? {}) as { nome?: string; ativo?: boolean };
+      return `Equipe: ${d.nome ?? ""} alterado(a)${d.ativo === false ? " e desativado(a)" : ""}`;
+    }
+    case "senha_trocada":
+      return `Senha nova gerada para ${texto(dados.email)}`;
+    case "conta_criada":
+      return `Conta criada para ${texto(dados.email)}`;
+    case "entrou_como":
+      return `Entrou como ${texto(dados.email)} (modo suporte)`;
+    case "restaurante_criado":
+      return "Restaurante criado pelo admin";
+  }
   const motivo = typeof dados.motivo === "string" ? `: ${dados.motivo}` : "";
   return `${acao === "desativado" ? "Site tirado do ar" : "Site de volta ao ar"}${motivo}`;
 }
@@ -45,7 +66,7 @@ function descreverRegistro(acao: string, dados: Record<string, unknown>): string
 export default async function FichaRestaurantePage(props: PageProps<"/admin/restaurantes/[id]">) {
   const { id } = await props.params;
   if (!idSchema.safeParse(id).success) notFound();
-  const [ficha, detalhes] = await Promise.all([carregarFicha(id), carregarDetalhes(id)]);
+  const [ficha, detalhes, equipe] = await Promise.all([carregarFicha(id), carregarDetalhes(id), carregarEquipe(id)]);
   if (!ficha) notFound();
   const { restaurante: r, assinatura: a, uso } = ficha;
   const endereco = r.endereco ? [r.endereco.rua, r.endereco.numero, r.endereco.cidade, r.endereco.uf].filter(Boolean).join(", ") : "";
@@ -86,15 +107,18 @@ export default async function FichaRestaurantePage(props: PageProps<"/admin/rest
             </div>
           </div>
         </div>
-        <a
-          href={`/${r.slug}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex min-h-11 items-center gap-2 rounded-xl border border-black/10 px-4 text-sm font-bold hover:bg-uau-marrom/5"
-        >
-          <ExternalLink className="size-4" aria-hidden />
-          Abrir o site
-        </a>
+        <div className="flex flex-wrap gap-2">
+          <EntrarComo restauranteId={r.id} />
+          <a
+            href={`/${r.slug}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex min-h-11 items-center gap-2 rounded-xl border border-black/10 px-4 text-sm font-bold hover:bg-uau-marrom/5"
+          >
+            <ExternalLink className="size-4" aria-hidden />
+            Abrir o site
+          </a>
+        </div>
       </div>
 
       <section aria-label="Uso" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -158,6 +182,12 @@ export default async function FichaRestaurantePage(props: PageProps<"/admin/rest
               <Vazio>Este restaurante não tem assinatura.</Vazio>
             )}
           </Cartao>
+
+          {equipe.modulos ? (
+            <Cartao titulo="Módulos">
+              <Modulos restauranteId={r.id} modulos={equipe.modulos} />
+            </Cartao>
+          ) : null}
 
           <Cartao
             titulo="Cobrança (Asaas)"
@@ -227,23 +257,7 @@ export default async function FichaRestaurantePage(props: PageProps<"/admin/rest
           </Cartao>
 
           <Cartao titulo="Equipe">
-            <ul className="flex flex-col divide-y divide-black/5 text-sm">
-              {ficha.equipe.map((m, i) => (
-                <li key={i} className="flex items-start justify-between gap-3 py-2">
-                  <span className="flex min-w-0 flex-col">
-                    <span className="font-bold">
-                      {m.nome}
-                      {!m.ativo ? <span className="ml-2 text-xs font-normal text-uau-marrom-claro">(inativo)</span> : null}
-                    </span>
-                    <span className="truncate text-xs text-uau-marrom-claro">{m.email ?? "—"}</span>
-                  </span>
-                  <span className="flex shrink-0 flex-col items-end text-xs">
-                    <span className="font-bold">{NOME_PAPEL[m.papel] ?? m.papel}</span>
-                    <span className="text-uau-marrom-claro">{m.ultimo_acesso ? `entrou ${dataBR(m.ultimo_acesso)}` : "nunca entrou"}</span>
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <Equipe restauranteId={r.id} equipe={equipe} />
             {r.whatsapp || r.telefone ? (
               <p className="text-sm text-uau-marrom-claro">
                 {r.whatsapp ? `WhatsApp ${r.whatsapp}` : ""}

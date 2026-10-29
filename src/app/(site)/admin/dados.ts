@@ -155,3 +155,37 @@ export async function carregarAdmins(): Promise<Administrador[]> {
   if (error) throw new Error(error.message);
   return (data as unknown as Administrador[]) ?? [];
 }
+
+export const MODULOS = [
+  { id: "mesas", nome: "Mesas pelo caixa" },
+  { id: "garcom", nome: "App do garçom" },
+  { id: "qr", nome: "Pedido pelo QR da mesa" },
+  { id: "cozinha", nome: "Tela da cozinha e impressão" },
+  { id: "relatorios", nome: "Relatórios" },
+  { id: "cupons", nome: "Cupons" },
+  { id: "entregadores", nome: "Entregadores" },
+] as const;
+export type IdModulo = (typeof MODULOS)[number]["id"];
+
+export type EquipeAdmin = {
+  membros: {
+    id: string;
+    user_id: string;
+    nome: string;
+    papel: string;
+    funcao_id: string | null;
+    funcao: string | null;
+    ativo: boolean;
+    email: string | null;
+    ultimo_acesso: string | null;
+  }[];
+  funcoes: { id: string; nome: string }[];
+  modulos: { plano: IdPlano; status: StatusAssinatura; liberados: IdModulo[]; bloqueados: IdModulo[]; efetivos: IdModulo[] } | null;
+};
+
+export async function carregarEquipe(restauranteId: string): Promise<EquipeAdmin> {
+  const { supabase } = await exigirAdmin();
+  const { data, error } = await supabase.rpc("admin_equipe", { p_restaurante_id: restauranteId });
+  if (error) throw new Error(error.message);
+  return data as unknown as EquipeAdmin;
+}

@@ -8,10 +8,12 @@ import { MarcaRestaurante } from "@/components/staff/marca-restaurante";
 import { MenuUsuario } from "@/components/staff/menu-usuario";
 import { carregarAssinatura } from "@/lib/assinatura";
 import { ehAdminPlataforma, exigirAcesso, temPermissao } from "@/lib/auth/dal";
+import { lerModoSuporte } from "@/lib/auth/suporte";
 import { estiloMarca } from "@/lib/cores";
 import { urlIcone } from "@/lib/icone";
 import { createClient } from "@/lib/supabase/server";
 
+import { sairDoSuporte } from "../../(site)/admin/gestao-actions";
 import { AvisoChamado } from "../garcom/aviso-chamado";
 import { AvisoPedidoCliente } from "../garcom/aviso-pedido-cliente";
 import { AvisoPronto } from "../garcom/aviso-pronto";
@@ -57,10 +59,11 @@ export default async function PainelLayout({ children }: LayoutProps<"/painel">)
   const acesso = await exigirAcesso("painel");
   const itens = itensDoMenu(acesso.papel, acesso.permissoes);
   const bloqueados = itensBloqueadosPeloPlano(acesso.papel, itens);
-  const [novos, assinatura, adminPlataforma] = await Promise.all([
+  const [novos, assinatura, adminPlataforma, suporte] = await Promise.all([
     acesso.permissoes.includes("delivery") ? contarPedidosNovos(acesso.restaurante.id) : 0,
     acesso.papel === "dono" ? carregarAssinatura(acesso.restaurante.id) : null,
     ehAdminPlataforma(),
+    lerModoSuporte(),
   ]);
   return (
     <div className="flex min-h-full flex-1 flex-col" style={estiloMarca(acesso.restaurante)}>
@@ -105,6 +108,19 @@ export default async function PainelLayout({ children }: LayoutProps<"/painel">)
         </div>
         <FaixaConexao />
       </header>
+      {/* "Entrar como" do admin da plataforma: deixa claro que é suporte e como voltar. */}
+      {suporte ? (
+        <div role="status" className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-zinc-900 px-4 py-2 text-center text-sm text-white print:hidden">
+          <span>
+            Modo suporte: você está como <strong>{suporte.dono}</strong> em <strong>{suporte.restaurante}</strong> ({suporte.admin})
+          </span>
+          <form action={sairDoSuporte}>
+            <button type="submit" className="rounded-md bg-white/15 px-3 py-1 font-semibold hover:bg-white/25">
+              Sair do modo suporte
+            </button>
+          </form>
+        </div>
+      ) : null}
       {/* Quem atende mesas recebe os avisos em qualquer tela: prato pronto e chamado do caixa. */}
       {acesso.permissoes.includes("garcom_app") ? (
         <>
