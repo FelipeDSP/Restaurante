@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 
 type Passo = { titulo: string; descricao: string; href: string; feito: boolean };
 
-async function contar(tabela: "produtos" | "mesas" | "membros" | "caixa_sessoes", restauranteId: string) {
+async function contar(tabela: "produtos" | "mesas" | "membros" | "caixa_sessoes" | "impressoras", restauranteId: string) {
   const supabase = await createClient();
   const { count } = await supabase
     .from(tabela)
@@ -21,11 +21,12 @@ async function contar(tabela: "produtos" | "mesas" | "membros" | "caixa_sessoes"
 export async function PrimeirosPassos({ acesso }: { acesso: Acesso }) {
   const id = acesso.restaurante.id;
   const supabase = await createClient();
-  const [produtos, mesas, membros, sessoes, { data: restaurante }] = await Promise.all([
+  const [produtos, mesas, membros, sessoes, impressoras, { data: restaurante }] = await Promise.all([
     contar("produtos", id),
     contar("mesas", id),
     contar("membros", id),
     contar("caixa_sessoes", id),
+    contar("impressoras", id),
     supabase.from("restaurantes").select("aceita_delivery").eq("id", id).maybeSingle(),
   ]);
 
@@ -66,6 +67,17 @@ export async function PrimeirosPassos({ acesso }: { acesso: Acesso }) {
       href: "/painel/equipe",
       feito: membros > 1,
     },
+    // Plano sem cozinha e impressão não tem impressora.
+    ...(acesso.permissoes.includes("impressao")
+      ? [
+          {
+            titulo: "Configure a impressora",
+            descricao: "Instale o app de impressão no computador do caixa e escolha a impressora.",
+            href: "/painel/impressoras",
+            feito: impressoras > 0,
+          },
+        ]
+      : []),
     {
       titulo: "Abra o caixa e faça um teste",
       descricao: "Lance um pedido de mentira e feche a conta.",

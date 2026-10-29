@@ -14,7 +14,8 @@ import { tempoDesde } from "@/lib/tempo";
 import { cn } from "@/lib/utils";
 
 import { excluirImpressora, imprimirTeste, salvarImpressora } from "./actions";
-import type { Computador, Impressora } from "./dados";
+import { AssistenteImpressora, impressorasEncontradas } from "./assistente";
+import type { Computador, Impressao, Impressora } from "./dados";
 
 type Pracas = { id: string; nome: string }[];
 
@@ -42,7 +43,7 @@ function FormImpressora({
   // Fora do <form>: sobrevivem à remontagem após erro.
   const [conexao, setConexao] = useState<Impressora["conexao"]>(impressora?.conexao ?? "rede");
   const [escolhidas, setEscolhidas] = useState<string[]>(impressora?.pracas ?? []);
-  const nomesWindows = [...new Set(computadores.flatMap((c) => c.impressorasWindows))];
+  const nomesWindows = [...new Set(impressorasEncontradas(computadores).map((e) => e.nome))];
   const prefixo = impressora?.id ?? "nova";
 
   return (
@@ -284,14 +285,17 @@ export function Impressoras({
   impressoras,
   pracas,
   computadores,
+  fila,
   dono,
 }: {
   impressoras: Impressora[];
   pracas: Pracas;
   computadores: Computador[];
+  fila: Impressao[];
   dono: boolean;
 }) {
-  const [nova, setNova] = useState(false);
+  // Sem impressora: o assistente já aparece aberto. "avancado" = formulário completo (IP, nome digitado).
+  const [nova, setNova] = useState<"assistente" | "avancado" | null>(impressoras.length === 0 ? "assistente" : null);
   return (
     <Card>
       <CardHeader>
@@ -304,14 +308,30 @@ export function Impressoras({
               <LinhaImpressora key={i.id} impressora={i} pracas={pracas} computadores={computadores} dono={dono} />
             ))}
           </ul>
-        ) : (
+        ) : !dono ? (
           <p className="text-muted-foreground">Nenhuma impressora cadastrada.</p>
-        )}
+        ) : null}
         {dono ? (
-          nova ? (
-            <FormImpressora pracas={pracas} computadores={computadores} aoTerminar={() => setNova(false)} />
+          nova === "assistente" ? (
+            <>
+              <AssistenteImpressora
+                computadores={computadores}
+                impressoras={impressoras}
+                pracas={pracas}
+                fila={fila}
+                aoAvancado={() => setNova("avancado")}
+                aoConcluir={() => setNova(null)}
+              />
+              {impressoras.length > 0 ? (
+                <Button type="button" variant="ghost" className="w-fit" onClick={() => setNova(null)}>
+                  Fechar
+                </Button>
+              ) : null}
+            </>
+          ) : nova === "avancado" ? (
+            <FormImpressora pracas={pracas} computadores={computadores} aoTerminar={() => setNova(impressoras.length === 0 ? "assistente" : null)} />
           ) : (
-            <Button type="button" variant="outline" className="w-fit" onClick={() => setNova(true)}>
+            <Button type="button" variant="outline" className="w-fit" onClick={() => setNova("assistente")}>
               <Printer />
               Nova impressora
             </Button>

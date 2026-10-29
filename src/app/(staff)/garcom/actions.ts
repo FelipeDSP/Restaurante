@@ -150,7 +150,7 @@ export async function imprimirConta(comandaId: string): Promise<ResultadoAcao> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("imprimir_conta", { p_comanda_id: comandaId });
   if (error) return falha(mensagemErroBanco(error));
-  if (!data) return falha("Nenhuma impressora está marcada para imprimir a conta (Painel > Impressoras).");
+  if (!data) return falha("Nenhuma impressora imprime a conta. Configure em Cozinha e impressão › Impressoras (marque \"Conta das mesas\").");
   return sucesso("Conta enviada para a impressora.");
 }
 

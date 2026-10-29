@@ -26,7 +26,7 @@ export default async function ImpressorasPage() {
       {/* Para quem configura, o título já está nas abas (Setores | Impressoras). */}
       <h1 className={dono ? "sr-only" : "text-2xl font-semibold"}>Impressoras</h1>
       <Computadores computadores={computadores} fuso={acesso.restaurante.fusoHorario} dono={dono} endereco={endereco} />
-      <Impressoras impressoras={impressoras} pracas={pracas} computadores={computadores} dono={dono} />
+      <Impressoras impressoras={impressoras} pracas={pracas} computadores={computadores} fila={fila} dono={dono} />
       <Fila fila={fila} fuso={acesso.restaurante.fusoHorario} />
     </main>
   );
