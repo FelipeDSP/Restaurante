@@ -1016,7 +1016,8 @@ export function TelaComanda({ mesaId, comanda, podeGerenciar, podeEstornar, fuso
                 Pedir conta
               </Button>
             ) : null}
-            {comanda.status === "conta_pedida" ? (
+            {/* A conta imprime a qualquer momento (antes de pagar, depois de pagar, sem pedir conta). */}
+            {itensAtivos.length > 0 ? (
               <Button
                 type="button"
                 variant="ghost"
