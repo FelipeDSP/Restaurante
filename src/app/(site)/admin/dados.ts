@@ -18,6 +18,9 @@ export const exigirAdmin = cache(async () => {
   if (!data?.claims?.sub) redirect("/admin/entrar");
   const { data: admin } = await supabase.rpc("admin_sou_admin");
   if (!admin) notFound();
+  // Senha sem o código do e-mail não abre o painel (o banco também recusa as funções admin_*).
+  const { data: verificada } = await supabase.rpc("admin_sessao_verificada");
+  if (!verificada) redirect("/admin/entrar");
   return { supabase, email: (data.claims.email as string | undefined) ?? "" };
 });
 

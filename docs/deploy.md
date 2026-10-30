@@ -51,6 +51,9 @@ No Coolify (só runtime): `ASAAS_API_KEY` (chave da conta no Asaas: Integraçõe
 ### Anti-robô no login (Cloudflare Turnstile, opcional)
 Na Cloudflare: Turnstile › Add widget (domínio do app, modo Managed). A chave do site (pública) vai em `TURNSTILE_SITE_KEY` no Coolify (só runtime) e redeploy; a chave secreta vai no Supabase em *Authentication › Attack Protection › Enable Captcha protection* (provedor Turnstile). Ligue o Captcha no Supabase **depois** que a variável estiver no ar: com o Captcha ligado e sem o widget, ninguém consegue entrar.
 
+### E-mail da plataforma (obrigatório para o /admin)
+O código de acesso do super admin sai por SMTP próprio. No Coolify (só runtime): `SMTP_HOST`, `SMTP_PORT` (465 = SSL), `SMTP_USER`, `SMTP_PASS` (marcar "Is Literal?") e `SMTP_FROM` (ex.: `uau foods <nao-responda@seu-dominio>`). Sem essas variáveis o `/admin` não abre em produção.
+
 ## 3.1 App de impressão (instalador e atualizações)
 
 O painel (Impressoras) tem o link "Baixar o app de impressão", e o app instalado procura atualizações em `https://seu-dominio.com.br/downloads/impressao/latest.yml`. Os arquivos ficam **fora da imagem**, num volume, para publicar versão nova sem redeploy:

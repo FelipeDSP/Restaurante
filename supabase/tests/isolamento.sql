@@ -20,7 +20,7 @@ language plpgsql as $$
 begin
   perform set_config('role', 'postgres', true);
   perform set_config('request.jwt.claims',
-    json_build_object('sub', md5(p_email)::uuid, 'role', 'authenticated')::text, true);
+    json_build_object('sub', md5(p_email)::uuid, 'role', 'authenticated', 'session_id', md5(p_email || ':sessao')::uuid)::text, true);
   perform set_config('role', 'authenticated', true);
 end $$;
 
@@ -1242,6 +1242,9 @@ begin
   values ('00000000-0000-0000-0000-000000000000', v_admin, 'authenticated', 'authenticated', 'admin.plataforma@exemplo.com',
           '{"provider": "email"}', '{}', now(), now());
   insert into rest_privado.administradores (user_id) values (v_admin);
+  -- Segunda etapa (código por e-mail) já confirmada nesta sessão de teste; testes próprios mais abaixo.
+  insert into rest_privado.admin_sessoes (session_id, user_id, expira_em)
+  values (md5('admin.plataforma@exemplo.com:sessao')::uuid, v_admin, now() + interval '1 day');
 
   -- Dono de restaurante não é admin da plataforma.
   perform pg_temp.entrar('dono.brasa@exemplo.com');
@@ -2787,6 +2790,64 @@ begin
   perform pg_temp.ok(public.login_espera(array['conta:outra@x']) = 0, 'bloqueio: outra conta continua livre');
   perform public.login_resultado(array['conta:teste@x', 'ip:10.0.0.9'], true);
   perform pg_temp.ok(public.login_espera(array['conta:teste@x']) = 0, 'bloqueio: acerto zera a conta');
+  perform pg_temp.admin();
+end;
+$$;
+
+-- ======================================================================
+-- Super admin em duas etapas (senha + código por e-mail)
+-- ======================================================================
+do $$
+declare
+  v_admin constant uuid := md5('admin.plataforma@exemplo.com')::uuid;
+  v_falhou boolean;
+begin
+  perform pg_temp.admin();
+  delete from rest_privado.admin_sessoes where user_id = v_admin;
+
+  perform pg_temp.entrar('admin.plataforma@exemplo.com');
+  perform pg_temp.ok(public.admin_sou_admin() and not public.admin_sessao_verificada(), '2 etapas: só com a senha ainda não está verificado');
+  v_falhou := false;
+  begin perform public.admin_financeiro(); exception when insufficient_privilege then v_falhou := true; end;
+  perform pg_temp.ok(v_falhou, '2 etapas: só com a senha as funções de admin recusam');
+  v_falhou := false;
+  begin perform public.admin_guardar_codigo(v_admin, repeat('a', 64)); exception when insufficient_privilege then v_falhou := true; end;
+  perform pg_temp.ok(v_falhou, '2 etapas: a sessão não consegue criar o próprio código');
+
+  perform pg_temp.admin();
+  perform set_config('role', 'service_role', true);
+  perform public.admin_guardar_codigo(v_admin, encode(extensions.digest('123456', 'sha256'), 'hex'));
+  perform pg_temp.admin();
+
+  perform pg_temp.entrar('admin.plataforma@exemplo.com');
+  perform pg_temp.ok(not public.admin_confirmar_codigo('654321'), '2 etapas: código errado não entra');
+  perform pg_temp.ok(public.admin_confirmar_codigo('123 456'), '2 etapas: código certo confirma a sessão');
+  perform pg_temp.ok(public.admin_sessao_verificada(), '2 etapas: a sessão passa a valer como admin');
+  perform pg_temp.ok((select (public.admin_financeiro()) is not null), '2 etapas: funções de admin liberadas');
+  v_falhou := false;
+  begin perform public.admin_confirmar_codigo('123456'); exception when others then v_falhou := sqlerrm like '%venceu%'; end;
+  perform pg_temp.ok(v_falhou, '2 etapas: o código só vale uma vez');
+
+  -- Outra sessão do mesmo admin (outro aparelho) precisa do próprio código.
+  perform pg_temp.admin();
+  perform set_config('request.jwt.claims', json_build_object('sub', v_admin, 'role', 'authenticated', 'session_id', gen_random_uuid())::text, true);
+  perform set_config('role', 'authenticated', true);
+  perform pg_temp.ok(not public.admin_sessao_verificada(), '2 etapas: outro aparelho precisa do código');
+
+  perform pg_temp.admin();
+  perform set_config('role', 'service_role', true);
+  perform public.admin_guardar_codigo(v_admin, encode(extensions.digest('111111', 'sha256'), 'hex'));
+  perform pg_temp.admin();
+  perform pg_temp.entrar('admin.plataforma@exemplo.com');
+  for i in 1..5 loop perform public.admin_confirmar_codigo('000000'); end loop;
+  v_falhou := false;
+  begin perform public.admin_confirmar_codigo('111111'); exception when others then v_falhou := sqlerrm like '%Muitas tentativas%'; end;
+  perform pg_temp.ok(v_falhou, '2 etapas: 5 erros invalidam o código');
+
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  v_falhou := false;
+  begin perform public.admin_confirmar_codigo('111111'); exception when insufficient_privilege then v_falhou := true; end;
+  perform pg_temp.ok(v_falhou, '2 etapas: quem não é admin não usa');
   perform pg_temp.admin();
 end;
 $$;

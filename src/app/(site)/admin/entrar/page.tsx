@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 
-import { FormEntrarAdmin } from "./form-entrar";
+import { FormCodigoAdmin, FormEntrarAdmin } from "./form-entrar";
 
 export const metadata: Metadata = { title: { absolute: "Entrar · Plataforma · uau foods" }, robots: { index: false } };
 
@@ -13,12 +13,17 @@ export default async function EntrarAdminPage(props: PageProps<"/admin/entrar">)
   const params = await props.searchParams;
   const next = typeof params.next === "string" ? params.next : undefined;
 
-  // Já é admin e está logado: direto para o painel.
+  // Admin logado: com o código confirmado vai para o painel; senão, mostra a etapa do código.
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
+  let pendente: string | null = null;
   if (data?.claims?.sub) {
     const { data: admin } = await supabase.rpc("admin_sou_admin");
-    if (admin) redirect("/admin");
+    if (admin) {
+      const { data: verificada } = await supabase.rpc("admin_sessao_verificada");
+      if (verificada) redirect("/admin");
+      pendente = typeof data.claims.email === "string" ? data.claims.email : "";
+    }
   }
 
   return (
@@ -31,8 +36,8 @@ export default async function EntrarAdminPage(props: PageProps<"/admin/entrar">)
           </span>
         </div>
         <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-6 shadow-2xl">
-          <h1 className="mb-5 text-xl font-black">Entrar no painel</h1>
-          <FormEntrarAdmin next={next} />
+          <h1 className="mb-5 text-xl font-black">{pendente !== null ? "Código de acesso" : "Entrar no painel"}</h1>
+          {pendente !== null ? <FormCodigoAdmin email={pendente} next={next} /> : <FormEntrarAdmin next={next} />}
         </div>
         <p className="text-center text-xs text-uau-creme/40">Acesso restrito à equipe da plataforma.</p>
       </div>
