@@ -1,8 +1,8 @@
 {
-  "confirmacao": "Confirme seu e-mail",
   "recuperacao": "Redefinir sua senha",
+  "confirmacao": "Confirme seu e-mail e comece no uau foods",
   "troca_email": "Confirme seu novo e-mail",
   "link_acesso": "Seu link de acesso",
-  "convite": "Você foi convidado",
+  "convite": "Você foi convidado para o uau foods",
   "reautenticacao": "Seu código de confirmação"
 }

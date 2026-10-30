@@ -254,6 +254,7 @@ Já existe (QR code da mesa: cardápio e pedido pelo celular):
 ## White label
 
 - Nenhuma menção à marca da plataforma nas telas do restaurante, títulos de aba, manifest do PWA ou mensagens.
+- Exceção (decisão do cliente em 30/10): os e-mails de conta (Supabase Auth: confirmar cadastro, redefinir senha, troca de e-mail, link, convite, código) e o código do super admin saem com a marca **uau foods** (logo, cores, rodapé com o WhatsApp do suporte). Modelos em `supabase/templates/` (colar no painel do Supabase); os do app usam `emailUau()` de `src/lib/email-modelo.ts`. Remetente "uau foods <nao-responda@estudyou.com>" pelo SMTP próprio.
 - Cores do restaurante aplicadas por CSS variables no layout (`--cor-primaria`, `--cor-secundaria`).
 - `manifest` do PWA gerado dinamicamente por restaurante (nome, ícone, cor).
 

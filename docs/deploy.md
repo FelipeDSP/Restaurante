@@ -71,8 +71,8 @@ O instalador não tem assinatura de código (certificado custa caro): o Windows 
 
 - *Authentication → URL Configuration → Site URL*: `https://seu-dominio.com.br`.
 - *Authentication → URL Configuration → Redirect URLs*: adicionar `https://seu-dominio.com.br/auth/confirmar**` (cadastro e "Esqueci minha senha" voltam por ali, com `?next=`).
-- *Authentication → Emails → Templates*: colar os modelos de `supabase/templates/` (português, sem marca, links `token_hash` que funcionam em qualquer aparelho; assuntos em `supabase/templates/assuntos.json`): Confirm sign up = `confirmacao.html`, Reset password = `recuperacao.html`, Change email = `troca_email.html`, Magic link = `link_acesso.html`, Invite = `convite.html`, Reauthentication = `reautenticacao.html`.
-- *Authentication → Emails → SMTP Settings*: usar o SMTP próprio (o padrão do Supabase quase não entrega). Remetente com nome neutro (ex.: "Não responda"), porque vai também para a equipe dos restaurantes.
+- *Authentication → Emails → Templates*: colar os modelos de `supabase/templates/` (português, com a marca uau foods, links `token_hash` que funcionam em qualquer aparelho; assuntos em `supabase/templates/assuntos.json`): Confirm sign up = `confirmacao.html`, Reset password = `recuperacao.html`, Change email = `troca_email.html`, Magic link = `link_acesso.html`, Invite = `convite.html`, Reauthentication = `reautenticacao.html`.
+- *Authentication → Emails → SMTP Settings*: usar o SMTP próprio (o padrão do Supabase quase não entrega). Remetente "uau foods" (os modelos levam a marca da plataforma, decisão do cliente).
 - *Authentication → Emails → Reset Password*: trocar o link do modelo por
   `{{ .SiteURL }}/auth/confirmar?token_hash={{ .TokenHash }}&type=recovery&next=/nova-senha`
   (o link padrão só funciona no mesmo navegador em que a pessoa pediu; com o `token_hash` funciona em qualquer aparelho). Traduzir o texto do e-mail para português.

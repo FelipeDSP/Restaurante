@@ -2,6 +2,7 @@
 
 import { createHash, randomInt } from "node:crypto";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
@@ -10,6 +11,7 @@ import { entrarPeloAparelho, esquecerCookieAparelho, lembrarAparelho } from "../
 import { chavesDoLogin, esperaDoLogin, registrarLogin, textoEspera } from "@/lib/auth/bloqueio";
 import { caminhoInterno } from "@/lib/caminho-seguro";
 import { enviarEmail } from "@/lib/email";
+import { aviso, codigoEmDestaque, emailUau, escaparHtml, paragrafo } from "@/lib/email-modelo";
 import { consumirLimite, ipDoCliente } from "@/lib/limite-taxa";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -27,6 +29,13 @@ function destinoAdmin(next: string | undefined) {
   return destino.startsWith("/admin") ? destino : "/admin";
 }
 
+// "Chrome no Windows" etc., para a pessoa reconhecer de onde veio o pedido.
+function resumoNavegador(ua: string): string {
+  const navegador = /Edg\//.test(ua) ? "Edge" : /Chrome\//.test(ua) ? "Chrome" : /Firefox\//.test(ua) ? "Firefox" : /Safari\//.test(ua) ? "Safari" : "navegador";
+  const sistema = /Windows/.test(ua) ? "Windows" : /Android/.test(ua) ? "Android" : /iPhone|iPad/.test(ua) ? "iPhone" : /Mac OS/.test(ua) ? "Mac" : /Linux/.test(ua) ? "Linux" : "";
+  return sistema ? `${navegador} no ${sistema}` : navegador;
+}
+
 // Segunda etapa: código de 6 números por e-mail. O banco guarda só o hash (pela chave secreta: a
 // sessão que tem só a senha não consegue ver nem criar o código) e confere na confirmação.
 async function enviarCodigo(userId: string, email: string): Promise<string | null> {
@@ -39,16 +48,27 @@ async function enviarCodigo(userId: string, email: string): Promise<string | nul
   });
   if (error) return "Não foi possível gerar o código. Tente de novo.";
 
+  const hora = new Date().toLocaleString("pt-BR", { timeZone: "America/Porto_Velho", dateStyle: "short", timeStyle: "short" });
+  const navegador = (await headers()).get("user-agent") ?? "";
   const envio = await enviarEmail({
     para: email,
     assunto: `Código de acesso: ${codigo}`,
-    texto: `Seu código para entrar no painel da plataforma uau foods é ${codigo}.\n\nVale por 10 minutos. Se não foi você, troque sua senha: alguém sabe a senha da sua conta.`,
-    html: `<div style="font-family:Arial,sans-serif;font-size:15px;color:#2b1a12">
-<p>Seu código para entrar no painel da plataforma <strong>uau foods</strong>:</p>
-<p style="font-size:32px;font-weight:bold;letter-spacing:8px;margin:16px 0">${codigo}</p>
-<p>Vale por 10 minutos.</p>
-<p style="color:#7a5c4a;font-size:13px">Se não foi você, troque sua senha: alguém sabe a senha da sua conta.</p>
-</div>`,
+    texto: `Seu código para entrar no painel da plataforma uau foods é ${codigo}.
+
+Vale por 10 minutos e só funciona uma vez. Pedido em ${hora}.
+
+Se não foi você, troque sua senha: alguém sabe a senha da sua conta.`,
+    html: emailUau({
+      titulo: "Seu código de acesso",
+      previa: `Use ${codigo} para entrar no painel da plataforma.`,
+      corpo:
+        paragrafo("Use este código para entrar no <strong style=\"color:#2b1a12\">painel da plataforma</strong>:") +
+        codigoEmDestaque(codigo) +
+        paragrafo(
+          `Pedido em <strong style="color:#2b1a12">${escaparHtml(hora)}</strong>${navegador ? ` · ${escaparHtml(resumoNavegador(navegador))}` : ""}. O código vale por 10 minutos e só funciona uma vez.`,
+        ) +
+        aviso("<strong>Não foi você?</strong> Alguém sabe a senha da sua conta: troque a senha agora e avise a equipe."),
+    }),
   });
   return envio.ok ? null : `${envio.motivo} Fale com o suporte técnico.`;
 }
