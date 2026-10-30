@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { falhouAntiRobo, MENSAGEM_ANTI_ROBO, passeAntiRobo } from "@/lib/anti-robo";
 import { chavesDoLogin, esperaDoLogin, registrarLogin, textoEspera } from "@/lib/auth/bloqueio";
 import { gravarRestauranteAtivo } from "@/lib/auth/cookie-restaurante";
 import { COOKIE_RESTAURANTE, destinoInicial, obterVinculos } from "@/lib/auth/dal";
@@ -42,7 +43,10 @@ export async function entrar(_estado: EstadoLogin, formData: FormData): Promise<
   const { error } = await supabase.auth.signInWithPassword({
     email: dados.data.email,
     password: dados.data.senha,
+    options: { captchaToken: passeAntiRobo(formData) },
   });
+  // Faltou o passe anti-robô: não é senha errada, não conta no bloqueio.
+  if (falhouAntiRobo(error)) return { erro: MENSAGEM_ANTI_ROBO, email };
   const bloqueio = await registrarLogin(chaves, !error);
   if (error) {
     return { erro: bloqueio > 0 ? textoEspera(bloqueio) : "E-mail ou senha incorretos.", email };
@@ -90,9 +94,11 @@ export async function pedirRecuperacao(_estado: EstadoRecuperacao, formData: For
 
   const supabase = await createClient();
   // A resposta é a mesma exista ou não a conta (não revela quais e-mails estão cadastrados).
-  await supabase.auth.resetPasswordForEmail(dados.data.email, {
+  const { error } = await supabase.auth.resetPasswordForEmail(dados.data.email, {
     redirectTo: `${await origemDoSite()}/auth/confirmar?next=/nova-senha`,
+    captchaToken: passeAntiRobo(formData),
   });
+  if (falhouAntiRobo(error)) return { erro: MENSAGEM_ANTI_ROBO, email };
   return { enviado: true, email: dados.data.email };
 }
 

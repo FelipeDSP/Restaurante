@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { falhouAntiRobo, MENSAGEM_ANTI_ROBO, passeAntiRobo } from "@/lib/anti-robo";
 import { falha, falhaValidacao, type ResultadoAcao } from "@/lib/acoes";
 import { COOKIE_RESTAURANTE } from "@/lib/auth/dal";
 import { consumirLimite, ipDoCliente } from "@/lib/limite-taxa";
@@ -37,8 +38,10 @@ export async function criarConta(_estado: EstadoCadastro, formData: FormData): P
     options: {
       data: { nome: dados.data.nome, restaurante: dados.data.restaurante },
       emailRedirectTo: `${await origemDoSite()}/auth/confirmar?next=/comecar`,
+      captchaToken: passeAntiRobo(formData),
     },
   });
+  if (falhouAntiRobo(error)) return falha(MENSAGEM_ANTI_ROBO, undefined, formData);
 
   if (error) {
     switch (error.code) {

@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 
+import { falhouAntiRobo, MENSAGEM_ANTI_ROBO } from "@/lib/anti-robo";
 import { consumirLimite, ipDoCliente } from "@/lib/limite-taxa";
 import { loginClienteDisponivel } from "@/lib/mensagens";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -17,7 +18,7 @@ export type ResultadoEntrar = { ok: true; precisaNome?: boolean; nomeSugerido?: 
 const DEZ_MINUTOS = 10 * 60_000;
 
 // Cada código enviado custa uma mensagem: limita por telefone e, mais folgado, por IP.
-export async function pedirCodigo(slug: string, telefoneDigitado: string): Promise<ResultadoEntrar> {
+export async function pedirCodigo(slug: string, telefoneDigitado: string, passe?: string): Promise<ResultadoEntrar> {
   const restaurante = await buscarRestaurantePorSlug(slug);
   if (!restaurante) return { ok: false, mensagem: "Restaurante não encontrado." };
   if (!loginClienteDisponivel()) return { ok: false, mensagem: "Entrar com o celular não está disponível agora. Peça sem entrar." };
@@ -36,7 +37,11 @@ export async function pedirCodigo(slug: string, telefoneDigitado: string): Promi
     return { ok: false, mensagem: "Muitos códigos pedidos. Aguarde alguns minutos e tente de novo." };
   }
 
-  const { error } = await supabase.auth.signInWithOtp({ phone: `+${telefone}`, options: { shouldCreateUser: true } });
+  const { error } = await supabase.auth.signInWithOtp({
+    phone: `+${telefone}`,
+    options: { shouldCreateUser: true, captchaToken: typeof passe === "string" && passe ? passe : undefined },
+  });
+  if (falhouAntiRobo(error)) return { ok: false, mensagem: MENSAGEM_ANTI_ROBO };
   if (error) {
     console.error("[entrar] código não enviado:", error.code, error.message);
     if (error.status === 429) return { ok: false, mensagem: "Muitos códigos pedidos. Aguarde um pouco e tente de novo." };

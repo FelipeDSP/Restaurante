@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { salvarPerfil, trocarEmail, trocarSenha } from "@/lib/auth/perfil-actions";
 import { formatarTelefone } from "@/lib/telefone";
+import { AntiRobo } from "@/components/anti-robo";
 
 type Props = {
   usuarioId: string;
@@ -107,6 +108,7 @@ export function MeuPerfil({ usuarioId, nome, telefone, foto, email, funcao }: Pr
               <Input id="perfil-confirmacao" name="confirmacao" type="password" autoComplete="new-password" required className="h-11" />
               <ErroCampo estado={estadoSenha} campo="confirmacao" />
             </Campo>
+            <AntiRobo rodada={estadoSenha} />
             <BotaoEnviar className="h-11 self-start">Trocar senha</BotaoEnviar>
           </form>
         </CardContent>

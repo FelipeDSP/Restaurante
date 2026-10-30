@@ -8,6 +8,7 @@ import { valorCampo } from "@/components/staff/formulario";
 
 import { AvisoErro, BotaoEnviarUau, CampoUau, classeEntrada, propsErro } from "../_componentes/campos";
 import { criarConta } from "./actions";
+import { AntiRobo } from "@/components/anti-robo";
 
 export function FormCadastro() {
   const [estado, acao] = useActionState(criarConta, undefined);
@@ -96,6 +97,7 @@ export function FormCadastro() {
           </button>
         </div>
       </CampoUau>
+      <AntiRobo rodada={estado} tema="light" />
       <BotaoEnviarUau pendente="Criando conta..." className="mt-1 w-full">
         Criar conta grátis
       </BotaoEnviarUau>

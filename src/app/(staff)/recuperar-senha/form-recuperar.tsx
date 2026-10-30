@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { pedirRecuperacao } from "@/lib/auth/actions";
+import { AntiRobo } from "@/components/anti-robo";
 
 export function FormRecuperar() {
   const [estado, acao, enviando] = useActionState(pedirRecuperacao, undefined);
@@ -45,6 +46,7 @@ export function FormRecuperar() {
           className="h-12 text-base"
         />
       </div>
+      <AntiRobo rodada={estado} />
       {estado?.erro ? (
         <p role="alert" className="text-sm text-destructive">
           {estado.erro}

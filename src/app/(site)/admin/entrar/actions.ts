@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { falhouAntiRobo, MENSAGEM_ANTI_ROBO, passeAntiRobo } from "@/lib/anti-robo";
 import { chavesDoLogin, esperaDoLogin, registrarLogin, textoEspera } from "@/lib/auth/bloqueio";
 import { caminhoInterno } from "@/lib/caminho-seguro";
 import { consumirLimite, ipDoCliente } from "@/lib/limite-taxa";
@@ -34,7 +35,12 @@ export async function entrarAdmin(_estado: EstadoEntrarAdmin, formData: FormData
   if (espera > 0) return { erro: textoEspera(espera), email };
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email: dados.data.email, password: dados.data.senha });
+  const { error } = await supabase.auth.signInWithPassword({
+    email: dados.data.email,
+    password: dados.data.senha,
+    options: { captchaToken: passeAntiRobo(formData) },
+  });
+  if (falhouAntiRobo(error)) return { erro: MENSAGEM_ANTI_ROBO, email };
   const bloqueio = await registrarLogin(chaves, !error);
   if (bloqueio > 0) return { erro: textoEspera(bloqueio), email };
   const { data: admin } = error ? { data: false } : await supabase.rpc("admin_sou_admin");

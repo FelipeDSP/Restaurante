@@ -3,6 +3,7 @@
 import { refresh } from "next/cache";
 import { z } from "zod";
 
+import { falhouAntiRobo, MENSAGEM_ANTI_ROBO, passeAntiRobo } from "@/lib/anti-robo";
 import { falha, falhaValidacao, mensagemErroBanco, type ResultadoAcao, sucesso } from "@/lib/acoes";
 import { chavesDoLogin, esperaDoLogin, registrarLogin, textoEspera } from "@/lib/auth/bloqueio";
 import { obterContexto } from "@/lib/auth/dal";
@@ -86,7 +87,12 @@ export async function trocarSenha(_estado: ResultadoAcao, formData: FormData): P
   if (espera > 0) return falha(textoEspera(espera));
 
   const supabase = await createClient();
-  const { error: erroAtual } = await supabase.auth.signInWithPassword({ email: usuario.email, password: dados.data.atual });
+  const { error: erroAtual } = await supabase.auth.signInWithPassword({
+    email: usuario.email,
+    password: dados.data.atual,
+    options: { captchaToken: passeAntiRobo(formData) },
+  });
+  if (falhouAntiRobo(erroAtual)) return falha(MENSAGEM_ANTI_ROBO);
   const bloqueio = await registrarLogin(chaves, !erroAtual);
   if (erroAtual) {
     const mensagem = bloqueio > 0 ? textoEspera(bloqueio) : "A senha atual não confere.";

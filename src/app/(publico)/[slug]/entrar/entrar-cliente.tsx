@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { formatarTelefone, telefoneComPais } from "@/lib/telefone";
 
 import { concluirCadastro, confirmarCodigo, pedirCodigo, type ResultadoEntrar } from "./actions";
+import { AntiRobo } from "@/components/anti-robo";
 
 type Etapa = "telefone" | "codigo" | "nome";
 
@@ -32,6 +33,9 @@ export function EntrarCliente({ slug, nomeRestaurante, destino }: { slug: string
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, iniciar] = useTransition();
   const [reenviarEm, setReenviarEm] = useState(0);
+  // Passe anti-robô para pedir o código (vale uma vez: a rodada pede outro depois de cada envio).
+  const [passe, setPasse] = useState("");
+  const [rodada, setRodada] = useState(0);
   const campo = useRef<HTMLInputElement>(null);
 
   // Cada etapa começa com o cursor no campo (o teclado já abre no celular).
@@ -69,8 +73,9 @@ export function EntrarCliente({ slug, nomeRestaurante, destino }: { slug: string
       setErro("Informe o celular com DDD.");
       return;
     }
+    setRodada((r) => r + 1);
     executar(
-      () => pedirCodigo(slug, telefone),
+      () => pedirCodigo(slug, telefone, passe),
       () => {
         setCodigo("");
         setEtapa("codigo");
@@ -125,6 +130,7 @@ export function EntrarCliente({ slug, nomeRestaurante, destino }: { slug: string
           />
         </label>
         {mensagemErro}
+        <AntiRobo rodada={rodada} aoMudar={setPasse} />
         <Button type="submit" className="h-12 text-base" disabled={enviando}>
           {enviando ? "Enviando…" : "Receber código"}
         </Button>
@@ -159,6 +165,7 @@ export function EntrarCliente({ slug, nomeRestaurante, destino }: { slug: string
           />
         </label>
         {mensagemErro}
+        {reenviarEm <= 0 ? <AntiRobo rodada={rodada} aoMudar={setPasse} /> : null}
         <Button type="submit" className="h-12 text-base" disabled={enviando || codigo.length !== 6}>
           {enviando ? "Conferindo…" : "Entrar"}
         </Button>
@@ -177,12 +184,13 @@ export function EntrarCliente({ slug, nomeRestaurante, destino }: { slug: string
             type="button"
             className="min-h-11 underline underline-offset-4 disabled:no-underline disabled:opacity-60"
             disabled={enviando || reenviarEm > 0}
-            onClick={() =>
+            onClick={() => {
+              setRodada((r) => r + 1);
               executar(
-                () => pedirCodigo(slug, telefone),
+                () => pedirCodigo(slug, telefone, passe),
                 () => setReenviarEm(ESPERA_REENVIO_S),
-              )
-            }
+              );
+            }}
           >
             {reenviarEm > 0 ? `Reenviar em ${reenviarEm} s` : "Reenviar código"}
           </button>

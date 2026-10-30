@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useActionState } from "react";
 
 import { entrarAdmin } from "./actions";
+import { AntiRobo } from "@/components/anti-robo";
 
 const CAMPO =
   "h-12 w-full rounded-xl border border-white/15 bg-white/5 px-4 text-base text-uau-creme placeholder:text-uau-creme/40 outline-none focus:border-uau-laranja focus:ring-2 focus:ring-uau-laranja/30";
@@ -32,6 +33,7 @@ export function FormEntrarAdmin({ next }: { next?: string }) {
         Senha
         <input name="senha" type="password" autoComplete="current-password" required className={CAMPO} />
       </label>
+      <AntiRobo rodada={estado} tema="dark" />
       {estado?.erro ? (
         <p role="alert" className="rounded-lg bg-red-500/15 px-3 py-2 text-sm text-red-200">
           {estado.erro}

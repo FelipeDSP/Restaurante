@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { entrar } from "@/lib/auth/actions";
+import { AntiRobo } from "@/components/anti-robo";
 
 export function FormLogin({ next }: { next?: string }) {
   const [estado, acao, enviando] = useActionState(entrar, undefined);
@@ -43,6 +44,7 @@ export function FormLogin({ next }: { next?: string }) {
         />
       </div>
 
+      <AntiRobo rodada={estado} />
       {estado?.erro ? (
         <p role="alert" className="text-sm text-destructive">
           {estado.erro}
