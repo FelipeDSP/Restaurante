@@ -45,19 +45,23 @@ export function ImportarProdutos({ atuais }: { atuais: ProdutoAtual[] }) {
   const entrada = useRef<HTMLInputElement>(null);
   const { pendente, executar } = useAcao();
 
-  const baixarModelo = () => {
+  // "exemplo": planilha de mentira para ver como preencher; "atual": o cardápio de hoje, para editar.
+  const baixar = (qual: "exemplo" | "atual") => {
     const corpo =
-      atuais.length > 0
+      qual === "atual"
         ? atuais.map((p) => [p.categoria, p.nome, p.descricao ?? "", (p.preco / 100).toFixed(2).replace(".", ",")])
         : [
             ["Lanches", "X-Burger", "Pão, carne 150 g, queijo e salada", "25,90"],
-            ["Lanches", "X-Bacon", "", "29,90"],
+            ["", "X-Bacon", "Pão, carne 150 g, queijo e bacon", "29,90"],
+            ["", "X-Tudo", "", "34,90"],
+            ["Porções", "Batata frita", "Serve 2 pessoas", "22,00"],
             ["Bebidas", "Refrigerante lata", "350 ml", "6,00"],
+            ["", "Suco natural", "Laranja ou limão, 500 ml", "9,50"],
           ];
     const url = URL.createObjectURL(gerarCsv([["Categoria", "Produto", "Descrição", "Preço"], ...corpo]));
     const a = document.createElement("a");
     a.href = url;
-    a.download = atuais.length > 0 ? "cardapio.csv" : "modelo-cardapio.csv";
+    a.download = qual === "atual" ? "cardapio.csv" : "exemplo-cardapio.csv";
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -73,7 +77,7 @@ export function ImportarProdutos({ atuais }: { atuais: ProdutoAtual[] }) {
         return c.nome >= 0 && c.preco >= 0;
       });
       if (inicio < 0) {
-        setErro('Não achamos as colunas "Produto" e "Preço". Baixe o modelo e use os mesmos títulos.');
+        setErro('Não achamos as colunas "Produto" e "Preço". Baixe o exemplo e use os mesmos títulos.');
         return;
       }
       const col = colunas(tabela[inicio]);
@@ -141,10 +145,16 @@ export function ImportarProdutos({ atuais }: { atuais: ProdutoAtual[] }) {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" className="h-11" onClick={baixarModelo}>
+        <Button type="button" variant="outline" className="h-11" onClick={() => baixar("exemplo")}>
           <Download />
-          {atuais.length > 0 ? "Baixar cardápio atual" : "Baixar modelo"}
+          Baixar exemplo
         </Button>
+        {atuais.length > 0 ? (
+          <Button type="button" variant="outline" className="h-11" onClick={() => baixar("atual")}>
+            <Download />
+            Baixar cardápio atual
+          </Button>
+        ) : null}
         <Button type="button" className="h-11" onClick={() => entrada.current?.click()}>
           <Upload />
           Escolher planilha
