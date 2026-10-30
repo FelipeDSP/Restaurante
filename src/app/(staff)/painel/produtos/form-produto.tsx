@@ -154,7 +154,7 @@ export function FormProduto({
           <div className="sm:col-span-2">
             <UploadImagem
               bucket="rest-produtos"
-              restauranteId={restauranteId}
+              pasta={restauranteId}
               name="foto_url"
               valorInicial={estado?.valores?.foto_url ?? produto?.foto_url ?? null}
               rotulo="Foto"

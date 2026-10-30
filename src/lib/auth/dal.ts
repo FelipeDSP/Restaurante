@@ -34,6 +34,9 @@ export type RestauranteResumo = {
 export type Vinculo = {
   membroId: string;
   nome: string;
+  // Foto e telefone que a própria pessoa põe em "Meu perfil".
+  foto: string | null;
+  telefone: string | null;
   papel: Papel;
   // Nome da função (ou "Dono"), para mostrar.
   funcao: string;
@@ -63,7 +66,7 @@ export const obterVinculos = cache(async (): Promise<Vinculo[]> => {
   const { data, error } = await supabase
     .from("membros")
     .select(
-      "id, nome, papel, permissoes_extras, permissoes_removidas, funcao:funcoes(nome, permissoes), restaurante:restaurantes(id, slug, nome, logo_url, cor_primaria, cor_secundaria, fuso_horario, excluido_em)",
+      "id, nome, foto_url, telefone, papel, permissoes_extras, permissoes_removidas, funcao:funcoes(nome, permissoes), restaurante:restaurantes(id, slug, nome, logo_url, cor_primaria, cor_secundaria, fuso_horario, excluido_em)",
     )
     .eq("user_id", usuario.id)
     .eq("ativo", true);
@@ -83,6 +86,8 @@ export const obterVinculos = cache(async (): Promise<Vinculo[]> => {
         {
           membroId: m.id,
           nome: m.nome,
+          foto: m.foto_url,
+          telefone: m.telefone,
           papel: m.papel,
           funcao: m.papel === "dono" ? NOME_PAPEL.dono : (m.funcao?.nome ?? NOME_PAPEL[m.papel]),
           permissoes: permissoesEfetivas(m.papel, m.funcao?.permissoes, m.permissoes_extras, m.permissoes_removidas).filter((x) =>

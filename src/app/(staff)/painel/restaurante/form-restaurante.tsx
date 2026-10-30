@@ -110,7 +110,7 @@ export function FormRestaurante({ restaurante }: { restaurante: DadosRestaurante
           <div className="sm:col-span-2">
             <UploadImagem
               bucket="rest-logos"
-              restauranteId={restaurante.id}
+              pasta={restaurante.id}
               name="logo_url"
               valorInicial={estado?.valores?.logo_url ?? restaurante.logo_url}
               rotulo="Logo"

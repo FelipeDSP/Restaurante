@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeftRight, CreditCard, LogOut, MessageCircle, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowLeftRight, CircleUserRound, CreditCard, LogOut, MessageCircle, ShieldCheck, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useTransition } from "react";
 
@@ -26,18 +26,26 @@ type Props = {
   assinatura?: boolean;
   // Link do WhatsApp do suporte (já com o restaurante na mensagem).
   ajuda?: string;
+  // "Meu perfil" (foto, nome, telefone, e-mail e senha da própria pessoa).
+  perfil?: string;
+  foto?: string | null;
 };
 
-export function MenuUsuario({ nome, papel, podeTrocarRestaurante, outraArea, adminPlataforma, assinatura, ajuda }: Props) {
+export function MenuUsuario({ nome, papel, podeTrocarRestaurante, outraArea, adminPlataforma, assinatura, ajuda, perfil, foto }: Props) {
   const [saindo, iniciar] = useTransition();
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label="Menu do usuário"
-        className="flex size-11 items-center justify-center rounded-full border border-[var(--cor-primaria-contraste)]/30 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+        className="flex size-11 items-center justify-center overflow-hidden rounded-full border border-[var(--cor-primaria-contraste)]/30 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
       >
-        <UserRound className="size-5" />
+        {foto ? (
+          // eslint-disable-next-line @next/next/no-img-element -- foto do Storage
+          <img src={foto} alt="" className="size-full object-cover" />
+        ) : (
+          <UserRound className="size-5" />
+        )}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-56">
         <DropdownMenuGroup>
@@ -47,6 +55,12 @@ export function MenuUsuario({ nome, papel, podeTrocarRestaurante, outraArea, adm
           </DropdownMenuLabel>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
+        {perfil ? (
+          <DropdownMenuItem className="h-10" render={<Link href={perfil} />}>
+            <CircleUserRound />
+            Meu perfil
+          </DropdownMenuItem>
+        ) : null}
         {outraArea ? (
           <DropdownMenuItem className="h-10" render={<Link href={outraArea.href} />}>
             {outraArea.rotulo}

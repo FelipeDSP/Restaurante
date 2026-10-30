@@ -105,6 +105,8 @@ export default async function PainelLayout({ children }: LayoutProps<"/painel">)
               adminPlataforma={adminPlataforma}
               assinatura={acesso.papel === "dono"}
               ajuda={linkAjuda(acesso.restaurante)}
+              perfil="/painel/perfil"
+              foto={acesso.foto}
             />
           </div>
         </div>

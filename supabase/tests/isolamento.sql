@@ -2726,6 +2726,41 @@ begin
 end;
 $$;
 
+-- ======================================================================
+-- Meu perfil: cada um muda só o próprio nome, telefone e foto
+-- ======================================================================
+do $$
+declare
+  v_uid uuid := md5('garcom2.brasa@exemplo.com')::uuid;
+  v_falhou boolean;
+begin
+  perform pg_temp.entrar('garcom2.brasa@exemplo.com');
+  perform public.atualizar_meu_perfil('  Zé   Garçom ', '(69) 99999-1234',
+    'http://x/storage/v1/object/public/rest-avatares/' || v_uid || '/foto.webp');
+  perform pg_temp.admin();
+  perform pg_temp.ok((select bool_and(nome = 'Zé Garçom' and telefone = '69999991234' and foto_url like '%/rest-avatares/' || v_uid || '/foto.webp')
+    from public.membros where user_id = v_uid), 'perfil: a pessoa muda nome, telefone e foto (em todos os restaurantes dela)');
+  perform pg_temp.ok(not exists (select 1 from public.membros where user_id <> v_uid and nome = 'Zé Garçom'), 'perfil: não mexe em mais ninguém');
+
+  perform pg_temp.entrar('garcom2.brasa@exemplo.com');
+  v_falhou := false;
+  begin perform public.atualizar_meu_perfil('Zé', null, 'http://x/storage/v1/object/public/rest-avatares/' || md5('dono.brasa@exemplo.com')::uuid || '/f.webp');
+  exception when others then v_falhou := sqlerrm like 'Foto inválida%'; end;
+  perform pg_temp.ok(v_falhou, 'perfil: foto da pasta de outra pessoa é recusada');
+  v_falhou := false;
+  begin perform public.atualizar_meu_perfil('Zé', '123', null); exception when others then v_falhou := sqlerrm like 'Telefone inválido%'; end;
+  perform pg_temp.ok(v_falhou, 'perfil: telefone sem DDD é recusado');
+  v_falhou := false;
+  begin update public.membros set telefone = '69999990000' where user_id = v_uid; exception when insufficient_privilege then v_falhou := true; end;
+  perform pg_temp.ok(v_falhou, 'perfil: telefone só muda pela função (não direto na tabela)');
+
+  perform pg_temp.anonimo();
+  v_falhou := false;
+  begin perform public.atualizar_meu_perfil('X', null, null); exception when others then v_falhou := true; end;
+  perform pg_temp.ok(v_falhou, 'perfil: sem login não muda nada');
+end;
+$$;
+
 select n, ok, teste from resultado order by n;
 select count(*) filter (where not ok) as falhas, count(*) as total from resultado;
 

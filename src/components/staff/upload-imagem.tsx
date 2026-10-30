@@ -10,8 +10,9 @@ import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 type Props = {
-  bucket: "rest-logos" | "rest-produtos";
-  restauranteId: string;
+  bucket: "rest-logos" | "rest-produtos" | "rest-avatares";
+  // Pasta no bucket: id do restaurante (logo, produtos) ou do usuário (foto da pessoa).
+  pasta: string;
   // Nome do campo do formulário que recebe a URL pública.
   name: string;
   valorInicial: string | null;
@@ -19,9 +20,9 @@ type Props = {
   ladoMaximo?: number;
 };
 
-// Envia direto para o Storage com a sessão do usuário (a policy só permite o dono,
-// na pasta do próprio restaurante) e guarda a URL num campo escondido do formulário.
-export function UploadImagem({ bucket, restauranteId, name, valorInicial, rotulo, ladoMaximo = 1200 }: Props) {
+// Envia direto para o Storage com a sessão do usuário (a policy só permite o dono, na pasta do
+// restaurante, ou a própria pessoa, na pasta dela) e guarda a URL num campo escondido do formulário.
+export function UploadImagem({ bucket, pasta, name, valorInicial, rotulo, ladoMaximo = 1200 }: Props) {
   const id = useId();
   const [url, setUrl] = useState(valorInicial ?? "");
   const [enviando, setEnviando] = useState(false);
@@ -40,7 +41,7 @@ export function UploadImagem({ bucket, restauranteId, name, valorInicial, rotulo
     setErro(null);
     try {
       const imagem = await redimensionarImagem(arquivo, ladoMaximo);
-      const caminho = `${restauranteId}/${novoId()}.webp`;
+      const caminho = `${pasta}/${novoId()}.webp`;
       const supabase = createClient();
       const { error } = await supabase.storage
         .from(bucket)
@@ -59,7 +60,12 @@ export function UploadImagem({ bucket, restauranteId, name, valorInicial, rotulo
       <span className="text-sm font-medium">{rotulo}</span>
       <input type="hidden" name={name} value={url} />
       <div className="flex items-center gap-3">
-        <div className="flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-muted">
+        <div
+          className={cn(
+            "flex size-24 shrink-0 items-center justify-center overflow-hidden border bg-muted",
+            bucket === "rest-avatares" ? "rounded-full" : "rounded-lg",
+          )}
+        >
           {url ? (
             // Logo (muitas vezes horizontal) aparece inteiro; foto de produto preenche o quadro.
             // eslint-disable-next-line @next/next/no-img-element -- imagem do Storage

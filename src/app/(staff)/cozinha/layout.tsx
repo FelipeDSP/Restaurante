@@ -47,6 +47,8 @@ export default async function CozinhaLayout({ children }: LayoutProps<"/cozinha"
             podeTrocarRestaurante={acesso.vinculos.length > 1}
             outraArea={painel ? { href: "/painel", rotulo: "Abrir painel" } : undefined}
             ajuda={linkAjuda(acesso.restaurante)}
+            perfil="/cozinha/perfil"
+            foto={acesso.foto}
           />
         </div>
         <FaixaConexao />

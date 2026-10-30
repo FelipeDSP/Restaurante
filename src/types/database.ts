@@ -589,13 +589,13 @@ isOneToOne: false
                   ]
                 },"membros": {
                   Row: {
-                    "ativo": boolean,"criado_em": string,"funcao_id": string | null,"id": string,"nome": string,"papel": string,"permissoes_extras": (string)[],"permissoes_removidas": (string)[],"restaurante_id": string,"user_id": string
+                    "ativo": boolean,"criado_em": string,"foto_url": string | null,"funcao_id": string | null,"id": string,"nome": string,"papel": string,"permissoes_extras": (string)[],"permissoes_removidas": (string)[],"restaurante_id": string,"telefone": string | null,"user_id": string
                   }
                   Insert: {
-                    "ativo"?: boolean,"criado_em"?: string,"funcao_id"?: string | null,"id"?: string,"nome": string,"papel": string,"permissoes_extras"?: (string)[],"permissoes_removidas"?: (string)[],"restaurante_id": string,"user_id": string
+                    "ativo"?: boolean,"criado_em"?: string,"foto_url"?: string | null,"funcao_id"?: string | null,"id"?: string,"nome": string,"papel": string,"permissoes_extras"?: (string)[],"permissoes_removidas"?: (string)[],"restaurante_id": string,"telefone"?: string | null,"user_id": string
                   }
                   Update: {
-                    "ativo"?: boolean,"criado_em"?: string,"funcao_id"?: string | null,"id"?: string,"nome"?: string,"papel"?: string,"permissoes_extras"?: (string)[],"permissoes_removidas"?: (string)[],"restaurante_id"?: string,"user_id"?: string
+                    "ativo"?: boolean,"criado_em"?: string,"foto_url"?: string | null,"funcao_id"?: string | null,"id"?: string,"nome"?: string,"papel"?: string,"permissoes_extras"?: (string)[],"permissoes_removidas"?: (string)[],"restaurante_id"?: string,"telefone"?: string | null,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -1141,6 +1141,9 @@ isOneToOne: false
         isOneToOne: false
         isSetofReturn: true
       } },
+"atualizar_meu_perfil":
+{ Args: { "p_foto_url": string,"p_nome": string,"p_telefone": string }; Returns: undefined
+                           },
 "buscar_usuario_por_email":
 { Args: { "p_email": string }; Returns: string
                            },
