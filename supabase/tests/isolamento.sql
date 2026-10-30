@@ -2761,6 +2761,36 @@ begin
 end;
 $$;
 
+-- ======================================================================
+-- Bloqueio de senha errada (só o servidor usa)
+-- ======================================================================
+do $$
+declare
+  v_falhou boolean;
+  v_espera integer;
+begin
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  v_falhou := false;
+  begin perform public.login_resultado(array['conta:a@b'], false); exception when insufficient_privilege then v_falhou := true; end;
+  perform pg_temp.ok(v_falhou, 'bloqueio: usuário logado não mexe no contador');
+  perform pg_temp.anonimo();
+  v_falhou := false;
+  begin perform public.login_espera(array['conta:a@b']); exception when insufficient_privilege then v_falhou := true; end;
+  perform pg_temp.ok(v_falhou, 'bloqueio: anônimo não consulta o contador');
+
+  perform pg_temp.admin();
+  perform set_config('role', 'service_role', true);
+  for i in 1..4 loop perform public.login_resultado(array['conta:teste@x', 'ip:10.0.0.9'], false); end loop;
+  perform pg_temp.ok(public.login_espera(array['conta:teste@x']) = 0, 'bloqueio: 4 erros ainda deixam tentar');
+  v_espera := public.login_resultado(array['conta:teste@x', 'ip:10.0.0.9'], false);
+  perform pg_temp.ok(v_espera between 890 and 900, 'bloqueio: 5º erro trava a conta por 15 min');
+  perform pg_temp.ok(public.login_espera(array['conta:outra@x']) = 0, 'bloqueio: outra conta continua livre');
+  perform public.login_resultado(array['conta:teste@x', 'ip:10.0.0.9'], true);
+  perform pg_temp.ok(public.login_espera(array['conta:teste@x']) = 0, 'bloqueio: acerto zera a conta');
+  perform pg_temp.admin();
+end;
+$$;
+
 select n, ok, teste from resultado order by n;
 select count(*) filter (where not ok) as falhas, count(*) as total from resultado;
 

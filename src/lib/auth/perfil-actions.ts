@@ -4,6 +4,7 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 
 import { falha, falhaValidacao, mensagemErroBanco, type ResultadoAcao, sucesso } from "@/lib/acoes";
+import { chavesDoLogin, esperaDoLogin, registrarLogin, textoEspera } from "@/lib/auth/bloqueio";
 import { obterContexto } from "@/lib/auth/dal";
 import { consumirLimite } from "@/lib/limite-taxa";
 import { createClient } from "@/lib/supabase/server";
@@ -79,11 +80,18 @@ export async function trocarSenha(_estado: ResultadoAcao, formData: FormData): P
     .refine((d) => d.senha === d.confirmacao, { message: "As senhas não são iguais.", path: ["confirmacao"] })
     .safeParse({ atual: formData.get("atual"), senha: formData.get("senha"), confirmacao: formData.get("confirmacao") });
   if (!dados.success) return falhaValidacao(dados.error);
-  if (!consumirLimite(`perfil:senha:${usuario.id}`, 5, 15 * 60_000)) return falha("Muitas tentativas. Espere alguns minutos.");
+  // Senha atual errada conta no mesmo bloqueio do login (quem adivinha aqui também trava).
+  const chaves = await chavesDoLogin(usuario.email);
+  const espera = await esperaDoLogin(chaves);
+  if (espera > 0) return falha(textoEspera(espera));
 
   const supabase = await createClient();
   const { error: erroAtual } = await supabase.auth.signInWithPassword({ email: usuario.email, password: dados.data.atual });
-  if (erroAtual) return falha("A senha atual não confere.", { atual: "A senha atual não confere." });
+  const bloqueio = await registrarLogin(chaves, !erroAtual);
+  if (erroAtual) {
+    const mensagem = bloqueio > 0 ? textoEspera(bloqueio) : "A senha atual não confere.";
+    return falha(mensagem, { atual: mensagem });
+  }
 
   const { error } = await supabase.auth.updateUser({ password: dados.data.senha });
   if (error) return falha(error.code === "same_password" ? "Use uma senha diferente da atual." : "Não foi possível trocar a senha. Tente de novo.");

@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { chavesDoLogin, esperaDoLogin, registrarLogin, textoEspera } from "@/lib/auth/bloqueio";
 import { gravarRestauranteAtivo } from "@/lib/auth/cookie-restaurante";
 import { COOKIE_RESTAURANTE, destinoInicial, obterVinculos } from "@/lib/auth/dal";
 import { rotaInicial } from "@/lib/auth/papeis";
@@ -31,19 +32,20 @@ export async function entrar(_estado: EstadoLogin, formData: FormData): Promise<
     return { erro: dados.error.issues[0]?.message, email };
   }
 
-  // Tentativa de adivinhar senha: limite por e-mail e por IP (o Supabase só vê o IP do servidor).
-  const ip = await ipDoCliente();
-  if (!consumirLimite(`login:email:${dados.data.email}`, 10, 15 * 60_000) || (ip && !consumirLimite(`login:ip:${ip}`, 30, 15 * 60_000))) {
-    return { erro: "Muitas tentativas. Aguarde alguns minutos e tente de novo.", email };
-  }
+  // Tentativa de adivinhar senha: bloqueio por conta e por IP guardado no banco (o Supabase só vê o
+  // IP do servidor). Durante o bloqueio nem tenta a senha.
+  const chaves = await chavesDoLogin(dados.data.email);
+  const espera = await esperaDoLogin(chaves);
+  if (espera > 0) return { erro: textoEspera(espera), email };
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({
     email: dados.data.email,
     password: dados.data.senha,
   });
+  const bloqueio = await registrarLogin(chaves, !error);
   if (error) {
-    return { erro: "E-mail ou senha incorretos.", email };
+    return { erro: bloqueio > 0 ? textoEspera(bloqueio) : "E-mail ou senha incorretos.", email };
   }
 
   redirect(caminhoInterno(dados.data.next, "/inicio"));

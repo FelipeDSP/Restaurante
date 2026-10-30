@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { chavesDoLogin, esperaDoLogin, registrarLogin, textoEspera } from "@/lib/auth/bloqueio";
 import { caminhoInterno } from "@/lib/caminho-seguro";
 import { consumirLimite, ipDoCliente } from "@/lib/limite-taxa";
 import { createClient } from "@/lib/supabase/server";
@@ -22,14 +23,20 @@ export async function entrarAdmin(_estado: EstadoEntrarAdmin, formData: FormData
   const dados = schema.safeParse({ email, senha: formData.get("senha"), next: formData.get("next") || undefined });
   if (!dados.success) return { erro: dados.error.issues[0]?.message, email };
 
-  // Mais apertado que o login da equipe: é a porta para todos os restaurantes.
+  // Mesmo bloqueio do login da equipe (por conta e IP, no banco) e, por cima, um limite por IP mais
+  // apertado: é a porta para todos os restaurantes.
   const ip = await ipDoCliente();
-  if (!consumirLimite(`admin:email:${dados.data.email}`, 5, 15 * 60_000) || (ip && !consumirLimite(`admin:ip:${ip}`, 15, 15 * 60_000))) {
+  if (ip && !consumirLimite(`admin:ip:${ip}`, 15, 15 * 60_000)) {
     return { erro: "Muitas tentativas. Aguarde alguns minutos e tente de novo.", email };
   }
+  const chaves = await chavesDoLogin(dados.data.email);
+  const espera = await esperaDoLogin(chaves);
+  if (espera > 0) return { erro: textoEspera(espera), email };
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({ email: dados.data.email, password: dados.data.senha });
+  const bloqueio = await registrarLogin(chaves, !error);
+  if (bloqueio > 0) return { erro: textoEspera(bloqueio), email };
   const { data: admin } = error ? { data: false } : await supabase.rpc("admin_sou_admin");
   if (error || !admin) {
     if (!error) await supabase.auth.signOut();

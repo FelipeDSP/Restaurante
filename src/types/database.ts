@@ -1192,6 +1192,12 @@ isOneToOne: false
 "lancar_itens_comanda":
 { Args: { "p_comanda_id": string,"p_itens": Json,"p_lote"?: string,"p_total_esperado"?: number }; Returns: Json
                            },
+"login_espera":
+{ Args: { "p_chaves": (string)[] }; Returns: number
+                           },
+"login_resultado":
+{ Args: { "p_chaves": (string)[],"p_ok": boolean }; Returns: number
+                           },
 "marcar_pedido_visto":
 { Args: { "p_pedido_id": string }; Returns: undefined
                            },
