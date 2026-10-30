@@ -114,6 +114,7 @@ Já existe (app de impressão, fase 3):
 - Grupo `src/app/(site)/`: landing (`/`), `/cadastro` (conta do dono) e `/comecar` (cria o restaurante). Só aqui aparece a marca **uau foods** (cores e fontes `uau-*` do `globals.css`).
 - Fluxo: `/cadastro` → (confirmação de e-mail opcional, via `/auth/confirmar`) → `/comecar` → `/painel` com "Primeiros passos" e aviso de teste.
 - No painel, a assinatura aparece só para o dono e sem citar a marca da plataforma.
+- Contato (vendas e suporte, mesmo número) só em `src/lib/contato.ts` (`linkWhatsapp`, `linkAjuda`). Landing: telefone clicável, "Suporte" no rodapé e botão flutuante do WhatsApp. Painel e cozinha: "Ajuda pelo WhatsApp" no menu do usuário (mensagem já com nome e slug do restaurante; sem citar a marca).
 
 ## Papéis, funções e permissões
 

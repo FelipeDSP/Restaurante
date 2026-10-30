@@ -9,6 +9,7 @@ import { exigirAcesso } from "@/lib/auth/dal";
 import { podeAcessar } from "@/lib/auth/papeis";
 import { estiloMarca } from "@/lib/cores";
 import { urlIcone } from "@/lib/icone";
+import { linkAjuda } from "@/lib/contato";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { restaurante } = await exigirAcesso("cozinha");
@@ -45,6 +46,7 @@ export default async function CozinhaLayout({ children }: LayoutProps<"/cozinha"
             papel={acesso.funcao}
             podeTrocarRestaurante={acesso.vinculos.length > 1}
             outraArea={painel ? { href: "/painel", rotulo: "Abrir painel" } : undefined}
+            ajuda={linkAjuda(acesso.restaurante)}
           />
         </div>
         <FaixaConexao />

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeftRight, CreditCard, LogOut, ShieldCheck, UserRound } from "lucide-react";
+import { ArrowLeftRight, CreditCard, LogOut, MessageCircle, ShieldCheck, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useTransition } from "react";
 
@@ -24,9 +24,11 @@ type Props = {
   adminPlataforma?: boolean;
   // Dono: plano e pagamento ficam aqui, fora do menu do dia a dia.
   assinatura?: boolean;
+  // Link do WhatsApp do suporte (já com o restaurante na mensagem).
+  ajuda?: string;
 };
 
-export function MenuUsuario({ nome, papel, podeTrocarRestaurante, outraArea, adminPlataforma, assinatura }: Props) {
+export function MenuUsuario({ nome, papel, podeTrocarRestaurante, outraArea, adminPlataforma, assinatura, ajuda }: Props) {
   const [saindo, iniciar] = useTransition();
 
   return (
@@ -60,6 +62,12 @@ export function MenuUsuario({ nome, papel, podeTrocarRestaurante, outraArea, adm
           <DropdownMenuItem className="h-10" render={<Link href="/admin" />}>
             <ShieldCheck />
             Painel da plataforma
+          </DropdownMenuItem>
+        ) : null}
+        {ajuda ? (
+          <DropdownMenuItem className="h-10" render={<a href={ajuda} target="_blank" rel="noopener noreferrer" />}>
+            <MessageCircle />
+            Ajuda pelo WhatsApp
           </DropdownMenuItem>
         ) : null}
         {podeTrocarRestaurante ? (

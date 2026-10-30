@@ -19,6 +19,7 @@ import QRCode from "qrcode";
 
 import { formatarBRL } from "@/lib/dinheiro";
 import { DIAS_TESTE_GRATIS, PLANOS } from "@/lib/planos";
+import { linkWhatsapp, TELEFONE_CONTATO } from "@/lib/contato";
 
 import { EfeitosLanding } from "./efeitos";
 import caixa from "./img/caixa.jpg";
@@ -31,11 +32,10 @@ import "./landing.css";
 const geist = Geist({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800", "900"], variable: "--font-geist", display: "swap" });
 const geistMono = Geist_Mono({ subsets: ["latin"], weight: ["500", "700"], variable: "--font-geist-mono", display: "swap" });
 
-// Contato comercial (o mesmo da landing do Bitrix).
-const WHATSAPP = "5569999565508";
-const TELEFONE = "(69) 99956-5508";
+// Contato (vendas e suporte, o mesmo número): src/lib/contato.ts.
 const INSTAGRAM = "uaufoods.oficial";
-const LINK_WHATSAPP = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent("Olá! Quero saber mais sobre o uau foods.")}`;
+const LINK_WHATSAPP = linkWhatsapp("Olá! Quero saber mais sobre o uau foods.");
+const LINK_SUPORTE = linkWhatsapp("Olá! Já uso o uau foods e preciso de ajuda.");
 
 function Ok({ tamanho = 16 }: { tamanho?: number }) {
   return (
@@ -547,7 +547,9 @@ export async function Landing() {
                 </Link>
               </div>
               <div className="contact">
-                <span className="tel">{TELEFONE}</span>
+                <a className="tel" href={LINK_WHATSAPP} target="_blank" rel="noopener noreferrer">
+                  {TELEFONE_CONTATO}
+                </a>
                 <a href={`https://instagram.com/${INSTAGRAM}`} target="_blank" rel="noopener noreferrer">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                     <rect x="3" y="3" width="18" height="18" rx="5" />
@@ -574,11 +576,21 @@ export async function Landing() {
             <a href="#funcionalidades">Funcionalidades</a>
             <a href="#planos">Planos</a>
             <a href="#duvidas">Dúvidas</a>
+            <a href={LINK_SUPORTE} target="_blank" rel="noopener noreferrer">
+              Suporte
+            </a>
             <Link href="/login">Entrar</Link>
           </nav>
           <span>© {new Date().getFullYear()} uau foods</span>
         </div>
       </footer>
+
+      {/* Atalho do WhatsApp sempre à mão (no celular o QR do final não ajuda). */}
+      <a className="zap" href={LINK_WHATSAPP} target="_blank" rel="noopener noreferrer" aria-label={`Falar no WhatsApp ${TELEFONE_CONTATO}`}>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+          <path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.3.8 3.2.6a2.7 2.7 0 0 0 1.8-1.2 2.2 2.2 0 0 0 .2-1.2c-.1-.1-.3-.2-.5-.3Z" />
+        </svg>
+      </a>
     </div>
   );
 }

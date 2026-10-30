@@ -12,6 +12,7 @@ import { lerModoSuporte } from "@/lib/auth/suporte";
 import { estiloMarca } from "@/lib/cores";
 import { urlIcone } from "@/lib/icone";
 import { createClient } from "@/lib/supabase/server";
+import { linkAjuda } from "@/lib/contato";
 
 import { sairDoSuporte } from "../../(site)/admin/gestao-actions";
 import { AvisoChamado } from "../garcom/aviso-chamado";
@@ -103,6 +104,7 @@ export default async function PainelLayout({ children }: LayoutProps<"/painel">)
               podeTrocarRestaurante={acesso.vinculos.length > 1}
               adminPlataforma={adminPlataforma}
               assinatura={acesso.papel === "dono"}
+              ajuda={linkAjuda(acesso.restaurante)}
             />
           </div>
         </div>

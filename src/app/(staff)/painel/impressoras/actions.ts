@@ -296,7 +296,7 @@ export async function ajustarPeloTeste(impressoraId: string, problema: "nada" | 
     return falha(
       problema === "nada"
         ? "Confira se a impressora está ligada, com papel e conectada ao computador. No Windows, tente imprimir uma página de teste por ela."
-        : "Não há outro ajuste automático. Fale com o suporte.",
+        : "Não há outro ajuste automático. Fale com o suporte: menu do usuário › Ajuda pelo WhatsApp.",
     );
   }
 
