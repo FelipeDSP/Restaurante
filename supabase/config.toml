@@ -245,6 +245,31 @@ otp_expiry = 3600
 # sender_name = "Admin"
 
 # Uncomment to customize email template
+# Modelos de e-mail em português (os mesmos colados no painel do Supabase de produção).
+[auth.email.template.confirmation]
+subject = "Confirme seu e-mail"
+content_path = "./supabase/templates/confirmacao.html"
+
+[auth.email.template.recovery]
+subject = "Redefinir sua senha"
+content_path = "./supabase/templates/recuperacao.html"
+
+[auth.email.template.email_change]
+subject = "Confirme seu novo e-mail"
+content_path = "./supabase/templates/troca_email.html"
+
+[auth.email.template.magic_link]
+subject = "Seu link de acesso"
+content_path = "./supabase/templates/link_acesso.html"
+
+[auth.email.template.invite]
+subject = "Você foi convidado"
+content_path = "./supabase/templates/convite.html"
+
+[auth.email.template.reauthentication]
+subject = "Seu código de confirmação"
+content_path = "./supabase/templates/reautenticacao.html"
+
 # [auth.email.template.invite]
 # subject = "You have been invited"
 # content_path = "./supabase/templates/invite.html"
