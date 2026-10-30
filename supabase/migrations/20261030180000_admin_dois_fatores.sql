@@ -130,3 +130,87 @@ end;
 $$;
 revoke all on function public.admin_confirmar_codigo(text) from public, anon;
 grant execute on function public.admin_confirmar_codigo(text) to authenticated;
+
+-- "Lembrar deste computador por 30 dias": depois do código, o navegador guarda um cookie com uma
+-- chave aleatória (o banco guarda só o hash). Com a senha + esse cookie, a sessão nova vale sem
+-- pedir o código de novo. Outro computador continua pedindo o código.
+create table rest_privado.admin_aparelhos (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null,
+  token_hash text not null unique check (token_hash ~ '^[0-9a-f]{64}$'),
+  nome text check (length(nome) <= 200),
+  criado_em timestamptz not null default now(),
+  ultimo_uso_em timestamptz not null default now(),
+  expira_em timestamptz not null
+);
+create index admin_aparelhos_usuario_idx on rest_privado.admin_aparelhos (user_id);
+alter table rest_privado.admin_aparelhos enable row level security;
+revoke all on rest_privado.admin_aparelhos from public, anon, authenticated;
+
+-- Só uma sessão que já passou pelo código pode lembrar o computador.
+create or replace function public.admin_lembrar_aparelho(p_token_hash text, p_nome text)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if not rest_privado.eh_admin_plataforma() or not rest_privado.admin_sessao_ok() then
+    raise exception 'Acesso negado.' using errcode = '42501';
+  end if;
+  delete from rest_privado.admin_aparelhos where expira_em < now();
+  insert into rest_privado.admin_aparelhos (user_id, token_hash, nome, expira_em)
+  values ((select auth.uid()), p_token_hash, left(p_nome, 200), now() + interval '30 days');
+end;
+$$;
+revoke all on function public.admin_lembrar_aparelho(text, text) from public, anon;
+grant execute on function public.admin_lembrar_aparelho(text, text) to authenticated;
+
+-- Sessão que só passou pela senha + chave de um computador lembrado deste admin = confirmada.
+create or replace function public.admin_entrar_por_aparelho(p_token_hash text)
+returns boolean
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_uid uuid := (select auth.uid());
+  v_sessao uuid := nullif(auth.jwt() ->> 'session_id', '')::uuid;
+begin
+  if v_uid is null or v_sessao is null or not rest_privado.eh_admin_plataforma() then
+    return false;
+  end if;
+  update rest_privado.admin_aparelhos set ultimo_uso_em = now()
+  where user_id = v_uid and token_hash = p_token_hash and expira_em > now();
+  if not found then
+    return false;
+  end if;
+  insert into rest_privado.admin_sessoes (session_id, user_id, expira_em)
+  values (v_sessao, v_uid, now() + interval '12 hours')
+  on conflict (session_id) do update set user_id = excluded.user_id, verificada_em = now(), expira_em = excluded.expira_em;
+  insert into rest_privado.admin_registros (restaurante_id, user_id, acao, dados)
+  values (null, v_uid, 'entrou_no_admin', '{"computador_lembrado": true}'::jsonb);
+  return true;
+end;
+$$;
+revoke all on function public.admin_entrar_por_aparelho(text) from public, anon;
+grant execute on function public.admin_entrar_por_aparelho(text) to authenticated;
+
+-- "Esquecer os computadores": quem desconfiar apaga todos os lembrados da própria conta.
+create or replace function public.admin_esquecer_aparelhos()
+returns integer
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_qtd integer;
+begin
+  perform rest_privado.exigir_admin();
+  delete from rest_privado.admin_aparelhos where user_id = (select auth.uid());
+  get diagnostics v_qtd = row_count;
+  return v_qtd;
+end;
+$$;
+revoke all on function public.admin_esquecer_aparelhos() from public, anon;
+grant execute on function public.admin_esquecer_aparelhos() to authenticated;

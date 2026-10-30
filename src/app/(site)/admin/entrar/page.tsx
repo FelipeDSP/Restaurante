@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 
+import { entrarPeloAparelho } from "../aparelho";
 import { FormCodigoAdmin, FormEntrarAdmin } from "./form-entrar";
 
 export const metadata: Metadata = { title: { absolute: "Entrar · Plataforma · uau foods" }, robots: { index: false } };
@@ -21,7 +22,7 @@ export default async function EntrarAdminPage(props: PageProps<"/admin/entrar">)
     const { data: admin } = await supabase.rpc("admin_sou_admin");
     if (admin) {
       const { data: verificada } = await supabase.rpc("admin_sessao_verificada");
-      if (verificada) redirect("/admin");
+      if (verificada || (await entrarPeloAparelho(supabase))) redirect("/admin");
       pendente = typeof data.claims.email === "string" ? data.claims.email : "";
     }
   }

@@ -2852,6 +2852,54 @@ begin
 end;
 $$;
 
+-- ======================================================================
+-- Super admin: lembrar deste computador por 30 dias
+-- ======================================================================
+do $$
+declare
+  v_admin constant uuid := md5('admin.plataforma@exemplo.com')::uuid;
+  v_hash constant text := encode(extensions.digest('chave-do-computador', 'sha256'), 'hex');
+  v_falhou boolean;
+begin
+  perform pg_temp.admin();
+  delete from rest_privado.admin_sessoes where user_id = v_admin;
+  delete from rest_privado.admin_aparelhos where user_id = v_admin;
+
+  -- Só com a senha não dá para lembrar o computador (senão pularia o código).
+  perform pg_temp.entrar('admin.plataforma@exemplo.com');
+  v_falhou := false;
+  begin perform public.admin_lembrar_aparelho(v_hash, 'Chrome no Windows'); exception when insufficient_privilege then v_falhou := true; end;
+  perform pg_temp.ok(v_falhou, 'lembrar: só depois do código');
+
+  -- Sessão confirmada pelo código lembra o computador.
+  perform pg_temp.admin();
+  insert into rest_privado.admin_sessoes (session_id, user_id, expira_em)
+  values (md5('admin.plataforma@exemplo.com:sessao')::uuid, v_admin, now() + interval '1 hour');
+  perform pg_temp.entrar('admin.plataforma@exemplo.com');
+  perform public.admin_lembrar_aparelho(v_hash, 'Chrome no Windows');
+
+  -- Outra sessão (login novo) neste computador: entra sem código; com outra chave, não.
+  perform pg_temp.admin();
+  perform set_config('request.jwt.claims', json_build_object('sub', v_admin, 'role', 'authenticated', 'session_id', '11111111-1111-1111-1111-111111111111')::text, true);
+  perform set_config('role', 'authenticated', true);
+  perform pg_temp.ok(not public.admin_entrar_por_aparelho(encode(extensions.digest('outra', 'sha256'), 'hex')), 'lembrar: chave de outro computador não vale');
+  perform pg_temp.ok(not public.admin_sessao_verificada(), 'lembrar: sem a chave certa segue pedindo o código');
+  perform pg_temp.ok(public.admin_entrar_por_aparelho(v_hash), 'lembrar: computador lembrado entra sem código');
+  perform pg_temp.ok(public.admin_sessao_verificada(), 'lembrar: a sessão nova fica confirmada');
+
+  -- Outro admin não usa a chave deste.
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  perform pg_temp.ok(not public.admin_entrar_por_aparelho(v_hash), 'lembrar: quem não é admin não usa');
+
+  perform pg_temp.admin();
+  perform set_config('request.jwt.claims', json_build_object('sub', v_admin, 'role', 'authenticated', 'session_id', '11111111-1111-1111-1111-111111111111')::text, true);
+  perform set_config('role', 'authenticated', true);
+  perform pg_temp.ok(public.admin_esquecer_aparelhos() = 1, 'lembrar: esquecer apaga os computadores');
+  perform pg_temp.admin();
+  perform pg_temp.ok(not exists (select 1 from rest_privado.admin_aparelhos where user_id = v_admin), 'lembrar: nenhum lembrado depois de esquecer');
+end;
+$$;
+
 select n, ok, teste from resultado order by n;
 select count(*) filter (where not ok) as falhas, count(*) as total from resultado;
 

@@ -79,6 +79,10 @@ export function FormCodigoAdmin({ email, next }: { email: string; next?: string 
         aria-label="Código"
         className={`${CAMPO} text-center text-2xl tracking-[0.4em] tabular-nums`}
       />
+      <label className="flex items-center gap-2 text-sm text-uau-creme/80">
+        <input type="checkbox" name="lembrar" className="size-4 accent-uau-laranja" />
+        Lembrar deste computador por 30 dias
+      </label>
       {mensagem ? (
         <p role="alert" className="rounded-lg bg-red-500/15 px-3 py-2 text-sm text-red-200">
           {mensagem}

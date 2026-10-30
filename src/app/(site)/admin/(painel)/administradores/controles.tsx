@@ -8,6 +8,7 @@ import { useAvisoResultado, valorCampo } from "@/components/staff/formulario";
 import { BotaoConfirmar } from "@/components/staff/botao-confirmar";
 
 import { adicionarAdmin, removerAdmin } from "../../actions";
+import { esquecerComputadores } from "../../entrar/actions";
 
 export function NovoAdmin() {
   const [estado, acao, enviando] = useActionState(adicionarAdmin, undefined);
@@ -47,6 +48,23 @@ export function RemoverAdmin({ userId, email }: { userId: string; email: string 
       className="h-9 text-xs"
     >
       Tirar acesso
+    </BotaoConfirmar>
+  );
+}
+
+// Desconfiou de um computador lembrado: todos voltam a pedir o código.
+export function EsquecerComputadores() {
+  const { executar, pendente } = useAcao();
+  return (
+    <BotaoConfirmar
+      rotulo="Esquecer os computadores lembrados"
+      confirmar="Esquecer"
+      icone={false}
+      desabilitado={pendente}
+      aoConfirmar={() => executar(() => esquecerComputadores())}
+      className="h-9 text-xs"
+    >
+      Esquecer computadores lembrados
     </BotaoConfirmar>
   );
 }

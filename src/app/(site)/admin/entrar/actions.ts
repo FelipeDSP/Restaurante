@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { falhouAntiRobo, MENSAGEM_ANTI_ROBO, passeAntiRobo } from "@/lib/anti-robo";
+import { entrarPeloAparelho, esquecerCookieAparelho, lembrarAparelho } from "../aparelho";
 import { chavesDoLogin, esperaDoLogin, registrarLogin, textoEspera } from "@/lib/auth/bloqueio";
 import { caminhoInterno } from "@/lib/caminho-seguro";
 import { enviarEmail } from "@/lib/email";
@@ -84,9 +85,9 @@ export async function entrarAdmin(_estado: EstadoEntrarAdmin, formData: FormData
     return { erro: "E-mail ou senha incorretos.", email };
   }
 
-  // Já confirmou o código nesta sessão (raro: mesma sessão de antes).
+  // Já confirmou o código nesta sessão (raro) ou este computador foi lembrado: entra sem código.
   const { data: verificada } = await supabase.rpc("admin_sessao_verificada");
-  if (verificada) redirect(destinoAdmin(dados.data.next));
+  if (verificada || (await entrarPeloAparelho(supabase))) redirect(destinoAdmin(dados.data.next));
 
   const falhaEnvio = await enviarCodigo(login.user.id, dados.data.email);
   if (falhaEnvio) {
@@ -110,6 +111,9 @@ export async function confirmarCodigoAdmin(_estado: EstadoEntrarAdmin, formData:
     return { erro: error.message || "Não foi possível conferir o código." };
   }
   if (!data) return { erro: "Código errado. Confira o e-mail e tente de novo." };
+  if (formData.get("lembrar") === "on") {
+    await lembrarAparelho(supabase);
+  }
   redirect(destinoAdmin(next));
 }
 
@@ -126,6 +130,15 @@ export async function reenviarCodigoAdmin(): Promise<EstadoEntrarAdmin> {
   }
   const falha = await enviarCodigo(userId, email);
   return falha ? { erro: falha } : { aviso: "Enviamos outro código." };
+}
+
+// Apaga todos os computadores lembrados da conta (ex.: usou um computador de outra pessoa).
+export async function esquecerComputadores(): Promise<{ ok: boolean; mensagem: string }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_esquecer_aparelhos");
+  if (error) return { ok: false, mensagem: "Não foi possível agora. Tente de novo." };
+  await esquecerCookieAparelho();
+  return { ok: true, mensagem: data ? `${data} ${data === 1 ? "computador esquecido" : "computadores esquecidos"}. Na próxima entrada, o código volta a ser pedido.` : "Nenhum computador lembrado." };
 }
 
 export async function sairAdmin(): Promise<void> {

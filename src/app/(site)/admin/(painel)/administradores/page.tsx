@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { carregarAdmins, dataBR } from "../../dados";
 import { Cartao, Titulo } from "../ui";
-import { NovoAdmin, RemoverAdmin } from "./controles";
+import { EsquecerComputadores, NovoAdmin, RemoverAdmin } from "./controles";
 
 export const metadata: Metadata = { title: { absolute: "Administradores · Admin · uau foods" } };
 
@@ -30,7 +30,7 @@ export default async function AdministradoresPage() {
                   desde {dataBR(a.desde)} · {a.ultimo_acesso ? `último acesso ${dataBR(a.ultimo_acesso)}` : "nunca entrou"}
                 </span>
               </span>
-              {a.voce ? null : <RemoverAdmin userId={a.user_id} email={a.email} />}
+              {a.voce ? <EsquecerComputadores /> : <RemoverAdmin userId={a.user_id} email={a.email} />}
             </li>
           ))}
         </ul>

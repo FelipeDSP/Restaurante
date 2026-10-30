@@ -1086,14 +1086,23 @@ isOneToOne: false
 "admin_definir_modulos":
 { Args: { "p_bloqueados": (string)[],"p_liberados": (string)[],"p_restaurante_id": string }; Returns: undefined
                            },
+"admin_entrar_por_aparelho":
+{ Args: { "p_token_hash": string }; Returns: boolean
+                           },
 "admin_equipe":
 { Args: { "p_restaurante_id": string }; Returns: Json
+                           },
+"admin_esquecer_aparelhos":
+{ Args: Record<PropertyKey, never>; Returns: number
                            },
 "admin_financeiro":
 { Args: Record<PropertyKey, never>; Returns: Json
                            },
 "admin_guardar_codigo":
 { Args: { "p_codigo_hash": string,"p_user_id": string }; Returns: undefined
+                           },
+"admin_lembrar_aparelho":
+{ Args: { "p_nome": string,"p_token_hash": string }; Returns: undefined
                            },
 "admin_listar_admins":
 { Args: Record<PropertyKey, never>; Returns: Json
