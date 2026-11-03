@@ -34,6 +34,11 @@ export function AvisoAssinatura({ assinatura }: { assinatura: Assinatura | null 
       return null;
   }
 
+  if (assinatura.diasParaSuspender != null) {
+    const dias = assinatura.diasParaSuspender;
+    texto += dias <= 1 ? " O acesso será suspenso amanhã." : ` O acesso será suspenso em ${dias} dias.`;
+  }
+
   return (
     <div
       role="status"

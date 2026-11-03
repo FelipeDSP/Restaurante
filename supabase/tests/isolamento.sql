@@ -2970,6 +2970,65 @@ begin
 end;
 $$;
 
+-- ======================================================================
+-- Falta de pagamento: 5 dias depois do vencimento, suspende
+-- ======================================================================
+do $$
+declare
+  a constant uuid := md5('brasa-espetinhos')::uuid;
+  v_falhou boolean;
+begin
+  perform pg_temp.admin();
+  update public.assinaturas set status = 'teste', teste_termina_em = now() - interval '4 days', periodo_termina_em = null,
+    modulos_liberados = '{}', modulos_bloqueados = '{}' where restaurante_id = a;
+  perform pg_temp.ok(not rest_privado.restaurante_suspenso(a), 'suspensão: teste acabado há 4 dias ainda funciona');
+
+  update public.assinaturas set teste_termina_em = now() - interval '6 days' where restaurante_id = a;
+  perform pg_temp.ok(rest_privado.restaurante_suspenso(a), 'suspensão: teste acabado há 6 dias suspende');
+  perform pg_temp.ok(rest_privado.permissoes_do_plano(a) = '{}' and rest_privado.modulos_do_restaurante(a) = '{}',
+    'suspensão: nenhuma permissão nem módulo');
+  perform pg_temp.ok(public.consultar_disponibilidade_delivery(a) ->> 'motivo' = 'restaurante_indisponivel',
+    'suspensão: o site mostra indisponível');
+
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  perform pg_temp.ok((select suspenso and permissoes = '{}' from public.meus_planos() where restaurante_id = a),
+    'suspensão: o app sabe (meus_planos)');
+  perform pg_temp.ok((select count(*) = 1 from public.assinaturas where restaurante_id = a),
+    'suspensão: o dono ainda vê a assinatura para pagar');
+  v_falhou := false;
+  begin
+    update public.produtos set preco = preco where restaurante_id = a;
+    v_falhou := not found;
+  exception when others then v_falhou := true;
+  end;
+  perform pg_temp.ok(v_falhou, 'suspensão: o dono não mexe no cardápio');
+
+  perform pg_temp.admin();
+  v_falhou := false;
+  begin
+    insert into public.pedidos (restaurante_id, origem, status, cliente_nome, cliente_telefone, endereco, forma_pagamento_prevista)
+    values (a, 'delivery', 'recebido', 'X', '69999990000', '{}', 'pix');
+  exception when others then v_falhou := sqlerrm like '%não está recebendo pedidos%';
+  end;
+  perform pg_temp.ok(v_falhou, 'suspensão: nenhum pedido novo');
+
+  -- Pagou: o vencimento anda e libera na hora.
+  update public.assinaturas set status = 'ativa', periodo_termina_em = now() + interval '1 month' where restaurante_id = a;
+  perform pg_temp.ok(not rest_privado.restaurante_suspenso(a) and 'delivery' = any (rest_privado.permissoes_do_plano(a)),
+    'suspensão: pagou, libera');
+  update public.assinaturas set status = 'atrasada', periodo_termina_em = now() - interval '6 days' where restaurante_id = a;
+  perform pg_temp.ok(rest_privado.restaurante_suspenso(a), 'suspensão: fatura atrasada há 6 dias suspende');
+  update public.assinaturas set status = 'ativa' where restaurante_id = a;
+  perform pg_temp.ok(not rest_privado.restaurante_suspenso(a), 'suspensão: ativa não suspende pela data (espera o aviso do Asaas)');
+  update public.assinaturas set status = 'cortesia' where restaurante_id = a;
+  perform pg_temp.ok(not rest_privado.restaurante_suspenso(a), 'suspensão: cortesia nunca suspende');
+  perform pg_temp.ok(not rest_privado.restaurante_suspenso(md5('burger-do-ze')::uuid), 'suspensão: não afeta outro restaurante');
+
+  update public.assinaturas set status = 'teste', teste_termina_em = now() + interval '7 days', periodo_termina_em = null
+  where restaurante_id = a;
+end;
+$$;
+
 select n, ok, teste from resultado order by n;
 select count(*) filter (where not ok) as falhas, count(*) as total from resultado;
 

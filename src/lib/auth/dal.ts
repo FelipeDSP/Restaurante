@@ -44,7 +44,8 @@ export type Vinculo = {
   // Permissões que valem para a pessoa (dono: todas), já limitadas pelo plano do restaurante.
   permissoes: Permissao[];
   // O que o plano libera (no teste grátis, tudo). O dono vê com cadeado o que o plano não tem.
-  plano: { id: string | null; teste: boolean; permissoes: Permissao[]; qr: boolean };
+  // suspenso: fatura (ou teste) vencida há mais de 5 dias; o painel vira a tela de pagamento.
+  plano: { id: string | null; teste: boolean; permissoes: Permissao[]; qr: boolean; suspenso: boolean };
   restaurante: RestauranteResumo;
 };
 
@@ -96,7 +97,7 @@ export const obterVinculos = cache(async (): Promise<Vinculo[]> => {
           permissoes: permissoesEfetivas(m.papel, m.funcao?.permissoes, m.permissoes_extras, m.permissoes_removidas).filter((x) =>
             doPlano.includes(x),
           ),
-          plano: { id: p?.plano ?? null, teste: p?.teste ?? true, permissoes: doPlano, qr: p?.qr ?? true },
+          plano: { id: p?.plano ?? null, teste: p?.teste ?? true, permissoes: doPlano, qr: p?.qr ?? true, suspenso: p?.suspenso ?? false },
           restaurante: {
             id: r.id,
             slug: r.slug,
@@ -139,6 +140,7 @@ export async function destinoInicial(): Promise<string> {
   if (!usuario) return "/login";
   if (vinculos.length === 0) return "/sem-acesso";
   if (!ativo) return "/selecionar";
+  if (ativo.plano.suspenso) return "/assinatura";
   return rotaInicial(ativo.permissoes);
 }
 
@@ -150,6 +152,7 @@ export const exigirAcesso = cache(async (area: Area): Promise<Acesso> => {
   if (!usuario) redirect("/login");
   if (vinculos.length === 0) redirect("/sem-acesso");
   if (!ativo) redirect("/selecionar");
+  if (ativo.plano.suspenso) redirect("/assinatura");
   if (!podeAcessar(ativo.permissoes, area)) redirect(rotaInicial(ativo.permissoes));
   return { ...ativo, usuario, vinculos };
 });
@@ -176,6 +179,7 @@ export async function exigirAlgumaPermissao(...permissoes: Permissao[]): Promise
   if (!usuario) redirect("/login");
   if (vinculos.length === 0) redirect("/sem-acesso");
   if (!ativo) redirect("/selecionar");
+  if (ativo.plano.suspenso) redirect("/assinatura");
   if (!permissoes.some((p) => ativo.permissoes.includes(p))) redirect(rotaInicial(ativo.permissoes));
   return { ...ativo, usuario, vinculos };
 }
@@ -183,6 +187,22 @@ export async function exigirAlgumaPermissao(...permissoes: Permissao[]): Promise
 export function temPermissao(acesso: Pick<Vinculo, "permissoes">, ...permissoes: Permissao[]): boolean {
   return permissoes.some((p) => acesso.permissoes.includes(p));
 }
+
+// Restaurante suspenso por falta de pagamento: a pessoa só vê a tela de pagamento (/assinatura).
+export const obterAcessoSuspenso = cache(async (): Promise<Acesso | null> => {
+  const { usuario, vinculos, ativo } = await obterContexto();
+  if (!usuario) redirect("/login");
+  if (vinculos.length === 0) redirect("/sem-acesso");
+  if (!ativo) redirect("/selecionar");
+  return ativo.plano.suspenso ? { ...ativo, usuario, vinculos } : null;
+});
+
+// Assinar e pagar: o dono, mesmo com o restaurante suspenso.
+export const exigirDonoParaPagar = cache(async (): Promise<Acesso> => {
+  const acesso = (await obterAcessoSuspenso()) ?? (await exigirAcesso("painel"));
+  if (acesso.papel !== "dono") redirect("/painel");
+  return acesso;
+});
 
 // Cadastros e configurações do restaurante: só o dono.
 export const exigirDono = cache(async (): Promise<Acesso> => {

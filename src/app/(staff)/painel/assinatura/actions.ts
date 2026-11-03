@@ -12,7 +12,7 @@ import {
   ErroAsaas,
   faturaEmAberto,
 } from "@/lib/asaas";
-import { exigirDono } from "@/lib/auth/dal";
+import { exigirDonoParaPagar } from "@/lib/auth/dal";
 import { type IdPlano, planoPorId } from "@/lib/planos";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -28,7 +28,7 @@ function dataNoFuso(data: Date, fuso: string): string {
 // O dono escolhe (ou troca) o plano: cliente e assinatura no Asaas, e o link da fatura para pagar.
 // A assinatura só fica "Ativa" quando o Asaas avisa o pagamento (webhook); o plano escolhido já vale.
 export async function assinarPlano(plano: string, documento?: string): Promise<ResultadoAssinar> {
-  const acesso = await exigirDono();
+  const acesso = await exigirDonoParaPagar();
   const dados = z.object({ plano: z.enum(IDS), documento: z.string().max(30).optional() }).safeParse({ plano, documento });
   const escolhido = dados.success ? planoPorId(dados.data.plano) : undefined;
   if (!dados.success || !escolhido) return { ok: false, mensagem: "Plano inválido." };

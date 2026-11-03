@@ -14,9 +14,14 @@ export type Assinatura = {
   // Fatura em aberto no Asaas (botão "Pagar") e se já há cadastro de quem paga (CPF/CNPJ).
   faturaUrl: string | null;
   temCadastroPagamento: boolean;
+  // Vencido e sem pagar: dia em que o acesso fica suspenso (5 dias depois, como no banco).
+  suspendeEm: string | null;
+  diasParaSuspender: number | null;
 };
 
 const DIA_MS = 24 * 60 * 60 * 1000;
+// Mesma tolerância de rest_privado.restaurante_suspenso.
+export const DIAS_TOLERANCIA = 5;
 
 // Assinatura do restaurante (só o dono lê; para os outros papéis retorna null).
 export async function carregarAssinatura(restauranteId: string): Promise<Assinatura | null> {
@@ -38,7 +43,15 @@ export async function carregarAssinatura(restauranteId: string): Promise<Assinat
     if (restante <= 0) situacao = "teste_encerrado";
   }
 
+  const vencimento = data.periodo_termina_em ?? data.teste_termina_em;
+  const suspendeEm =
+    ["teste", "atrasada", "cancelada"].includes(data.status) && vencimento && new Date(vencimento).getTime() <= Date.now()
+      ? new Date(new Date(vencimento).getTime() + DIAS_TOLERANCIA * DIA_MS).toISOString()
+      : null;
+
   return {
+    suspendeEm,
+    diasParaSuspender: suspendeEm ? Math.max(0, Math.ceil((new Date(suspendeEm).getTime() - Date.now()) / DIA_MS)) : null,
     plano,
     situacao,
     testeTerminaEm: data.teste_termina_em,

@@ -1270,7 +1270,7 @@ isOneToOne: false
                            },
 "meus_planos":
 { Args: Record<PropertyKey, never>; Returns: {
-              "permissoes": (string)[],"plano": string,"qr": boolean,"restaurante_id": string,"teste": boolean
+              "permissoes": (string)[],"plano": string,"qr": boolean,"restaurante_id": string,"suspenso": boolean,"teste": boolean
             }[]
                            },
 "minhas_permissoes":
