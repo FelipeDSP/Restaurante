@@ -2900,6 +2900,76 @@ begin
 end;
 $$;
 
+-- ======================================================================
+-- Conversa do cliente do delivery com o restaurante
+-- ======================================================================
+do $$
+declare
+  a constant uuid := md5('brasa-espetinhos')::uuid;
+  v_pedido uuid;
+  v_json jsonb;
+  v_falhou boolean;
+  n integer;
+begin
+  perform pg_temp.admin();
+  select id into v_pedido from public.pedidos
+  where restaurante_id = a and origem = 'delivery' and status not in ('entregue', 'cancelado') order by criado_em limit 1;
+  if v_pedido is null then
+    perform pg_temp.ok(true, 'conversa: sem delivery em andamento (pulado)');
+    return;
+  end if;
+  update public.assinaturas set status = 'teste', teste_termina_em = now() + interval '7 days',
+    modulos_liberados = '{}', modulos_bloqueados = '{}' where restaurante_id = a;
+
+  perform pg_temp.anonimo();
+  perform public.cliente_enviar_mensagem(v_pedido, '  O lanche veio sem molho  ');
+  v_json := public.conversa_pedido_publica(v_pedido);
+  perform pg_temp.ok((v_json ->> 'aberta')::boolean and jsonb_array_length(v_json -> 'mensagens') = 1
+    and v_json -> 'mensagens' -> 0 ->> 'texto' = 'O lanche veio sem molho', 'conversa: cliente sem conta escreve e lê');
+  v_falhou := false;
+  begin perform count(*) from public.pedidos_mensagens; exception when insufficient_privilege then v_falhou := true; end;
+  perform pg_temp.ok(v_falhou, 'conversa: anônimo não lê a tabela direto');
+
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  perform pg_temp.ok((select count(*) = 1 from public.pedidos_mensagens where pedido_id = v_pedido and lida_em is null),
+    'conversa: o restaurante vê a mensagem não lida');
+  perform public.equipe_enviar_mensagem(v_pedido, 'Já vamos mandar o molho!');
+  perform pg_temp.ok((select count(*) = 0 from public.pedidos_mensagens where pedido_id = v_pedido and autor = 'cliente' and lida_em is null),
+    'conversa: responder marca como lida');
+  perform pg_temp.ok((select membro_id is not null from public.pedidos_mensagens where pedido_id = v_pedido and autor = 'equipe'),
+    'conversa: guarda quem respondeu');
+
+  perform pg_temp.anonimo();
+  v_json := public.conversa_pedido_publica(v_pedido);
+  perform pg_temp.ok(jsonb_array_length(v_json -> 'mensagens') = 2 and not (v_json -> 'mensagens' -> 1 ? 'membro_id'),
+    'conversa: o cliente vê a resposta, sem saber quem respondeu');
+
+  perform pg_temp.entrar('dono.burger@exemplo.com');
+  select count(*) into n from public.pedidos_mensagens where pedido_id = v_pedido;
+  perform pg_temp.ok(n = 0, 'conversa: outro restaurante não lê');
+  v_falhou := false;
+  begin perform public.equipe_enviar_mensagem(v_pedido, 'oi'); exception when insufficient_privilege then v_falhou := true; end;
+  perform pg_temp.ok(v_falhou, 'conversa: outro restaurante não responde');
+
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  v_falhou := false;
+  begin insert into public.pedidos_mensagens (restaurante_id, pedido_id, autor, texto) values (a, v_pedido, 'cliente', 'falso');
+  exception when insufficient_privilege then v_falhou := true; end;
+  perform pg_temp.ok(v_falhou, 'conversa: ninguém grava direto na tabela');
+
+  perform pg_temp.admin();
+  perform pg_temp.ok(not rest_privado.conversa_aberta('entregue', now() - interval '25 hours')
+    and rest_privado.conversa_aberta('entregue', now() - interval '2 hours'), 'conversa: fecha 24 h depois de terminar');
+
+  perform pg_temp.anonimo();
+  for i in 1..14 loop perform public.cliente_enviar_mensagem(v_pedido, 'mais uma'); end loop;
+  v_falhou := false;
+  begin perform public.cliente_enviar_mensagem(v_pedido, 'demais'); exception when others then v_falhou := sqlerrm like 'Muitas mensagens%'; end;
+  perform pg_temp.ok(v_falhou, 'conversa: limite de mensagens do cliente');
+  perform pg_temp.admin();
+end;
+$$;
+
 select n, ok, teste from resultado order by n;
 select count(*) filter (where not ok) as falhas, count(*) as total from resultado;
 

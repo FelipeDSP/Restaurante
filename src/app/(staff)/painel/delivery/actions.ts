@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { falha, mensagemErroBanco, type ResultadoAcao, sucesso } from "@/lib/acoes";
 import { exigirPermissao } from "@/lib/auth/dal";
-import { avisarCliente } from "@/lib/avisos-push";
+import { avisarCliente, avisarMensagem } from "@/lib/avisos-push";
 import { createClient } from "@/lib/supabase/server";
 import { carregarCardapioSalao } from "../../garcom/dados";
 import { id } from "@/lib/validacao";
@@ -192,4 +192,30 @@ export async function editarPedido(entrada: EdicaoPedido): Promise<ResultadoAcao
 
   refresh();
   return sucesso("Pedido atualizado.");
+}
+
+// Conversa com o cliente do delivery: a equipe responde pelo cartão do pedido; o cliente vê na
+// página do pedido e recebe aviso no celular (se ligou os avisos).
+export async function responderCliente(pedidoId: string, texto: string): Promise<ResultadoAcao> {
+  await exigirPermissao("painel", "delivery");
+  const dados = z
+    .object({ pedidoId: id, texto: z.string().trim().min(1, "Escreva a mensagem.").max(1000, "Mensagem muito longa.") })
+    .safeParse({ pedidoId, texto });
+  if (!dados.success) return falha(dados.error.issues[0]?.message ?? "Dados inválidos.");
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("equipe_enviar_mensagem", { p_pedido_id: dados.data.pedidoId, p_texto: dados.data.texto });
+  if (error) return falha(mensagemErroBanco(error));
+  after(() => avisarMensagem(dados.data.pedidoId, dados.data.texto));
+  refresh();
+  return sucesso();
+}
+
+export async function marcarConversaLida(pedidoId: string): Promise<ResultadoAcao> {
+  await exigirPermissao("painel", "delivery");
+  if (!id.safeParse(pedidoId).success) return falha("Pedido inválido.");
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("marcar_conversa_lida", { p_pedido_id: pedidoId });
+  if (error) return falha(mensagemErroBanco(error));
+  refresh();
+  return sucesso();
 }

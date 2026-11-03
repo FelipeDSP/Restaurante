@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, GripVertical, MapPin, MessageCircle, Pencil, Phone } from "lucide-react";
+import { ChevronDown, GripVertical, MapPin, MessageCircle, MessagesSquare, Pencil, Phone } from "lucide-react";
 import { useState } from "react";
 
 import { useAcao } from "@/components/staff/acoes-cliente";
@@ -12,6 +12,7 @@ import { FORMAS_PAGAMENTO, nomeForma } from "@/lib/rotulos";
 import { cn } from "@/lib/utils";
 
 import { avancarPedido, cancelarPedido, definirEntregador, entregarPedido } from "./actions";
+import { ConversaPedido } from "./conversa-pedido";
 import { EditarPedido } from "./editar-pedido";
 
 export type PedidoDelivery = {
@@ -39,6 +40,8 @@ export type PedidoDelivery = {
   // Praças da cozinha que ainda não marcaram pronto (só informa; o painel pode marcar pronto mesmo assim).
   pracasPendentes: number;
   motivoCancelamento: string | null;
+  // Conversa com o cliente (página do pedido); aberta até 24 h depois de terminar.
+  conversa: { aberta: boolean; mensagens: { id: string; autor: "cliente" | "equipe"; texto: string; hora: string; lida: boolean }[] };
   // Mudanças feitas depois do pedido (editar pedido), da mais antiga para a mais nova.
   alteracoes: { descricao: string; hora: string }[];
   itens: { id: string; nome: string; quantidade: number; observacao: string | null; adicionais: AdicionalEscolhido[]; total: number }[];
@@ -85,6 +88,23 @@ export function CartaoPedido({ pedido, entregadores, modoInicial = "normal", aoS
   const [motivo, setMotivo] = useState("");
   const [forma, setForma] = useState(pedido.formaPrevista ?? "dinheiro");
   const [editando, setEditando] = useState(false);
+  const naoLidas = pedido.conversa.mensagens.filter((m) => m.autor === "cliente" && !m.lida).length;
+  // Mensagem nova do cliente abre a conversa sozinha.
+  const [conversando, setConversando] = useState(naoLidas > 0);
+  const temConversa = pedido.conversa.mensagens.length > 0;
+  const botaoConversa = (
+    <Button
+      type="button"
+      variant={naoLidas > 0 ? "default" : "ghost"}
+      className="h-11"
+      aria-expanded={conversando}
+      onClick={() => setConversando((c) => !c)}
+    >
+      <MessagesSquare />
+      Conversa
+      {naoLidas > 0 ? <span className="rounded-full bg-background px-1.5 text-xs font-bold text-foreground">{naoLidas}</span> : null}
+    </Button>
+  );
 
   const ativo = pedido.status !== "entregue" && pedido.status !== "cancelado";
   const e = pedido.endereco;
@@ -131,6 +151,12 @@ export function CartaoPedido({ pedido, entregadores, modoInicial = "normal", aoS
             ))}
             <li>{pedido.hora} · {resumoEndereco}</li>
           </ul>
+        ) : null}
+        {temConversa || naoLidas > 0 ? (
+          <div className="flex flex-col gap-2 border-t pt-2">
+            <div>{botaoConversa}</div>
+            {conversando ? <ConversaPedido pedidoId={pedido.id} conversa={pedido.conversa} /> : null}
+          </div>
         ) : null}
       </article>
     );
@@ -326,6 +352,7 @@ export function CartaoPedido({ pedido, entregadores, modoInicial = "normal", aoS
               Entregue e pago
             </Button>
           ) : null}
+          {botaoConversa}
           <Button type="button" variant="ghost" className="h-11" disabled={pendente} onClick={() => setEditando(true)}>
             <Pencil />
             Editar
@@ -335,6 +362,7 @@ export function CartaoPedido({ pedido, entregadores, modoInicial = "normal", aoS
           </Button>
         </div>
       ) : null}
+      {conversando ? <ConversaPedido pedidoId={pedido.id} conversa={pedido.conversa} /> : null}
       <EditarPedido pedido={pedido} aberto={editando} aoFechar={() => setEditando(false)} />
 
       {modo === "entregar" ? (

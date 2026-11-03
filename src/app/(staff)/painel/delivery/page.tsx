@@ -12,16 +12,24 @@ import { QuadroDelivery } from "./quadro-delivery";
 
 export const metadata: Metadata = { title: "Delivery" };
 
+const CONVERSA_MS = 24 * 60 * 60 * 1000;
+// Limite da conversa com o cliente: até 24 h depois de o pedido terminar.
+function inicioDaConversa() {
+  return new Date(Date.now() - CONVERSA_MS).toISOString();
+}
+
 export default async function DeliveryPage() {
   const acesso = await exigirPermissao("painel", "delivery");
   const supabase = await createClient();
   const sessao = await carregarSessaoAberta(acesso.restaurante.id);
   const fuso = acesso.restaurante.fusoHorario;
 
-  // Em andamento (de qualquer sessão) + finalizados da sessão atual.
+  // Em andamento (de qualquer sessão) + finalizados da sessão atual + os que terminaram há menos de
+  // 24 h (a conversa com o cliente ainda está aberta).
+  const conversaDesde = inicioDaConversa();
   const filtro = sessao
-    ? `status.not.in.(entregue,cancelado),caixa_sessao_id.eq.${sessao.id}`
-    : "status.not.in.(entregue,cancelado)";
+    ? `status.not.in.(entregue,cancelado),caixa_sessao_id.eq.${sessao.id},finalizado_em.gt.${conversaDesde}`
+    : `status.not.in.(entregue,cancelado),finalizado_em.gt.${conversaDesde}`;
   const { data, error } = await supabase
     .from("pedidos")
     .select(
@@ -32,7 +40,8 @@ export default async function DeliveryPage() {
        pagamentos(valor, estornado_em),
        tarefas_producao(status),
        pedidos_alteracoes(descricao, criado_em),
-       entregador_id, valor_entregador`,
+       pedidos_mensagens(id, autor, texto, criado_em, lida_em),
+       entregador_id, valor_entregador, finalizado_em`,
     )
     .eq("restaurante_id", acesso.restaurante.id)
     .eq("origem", "delivery")
@@ -79,6 +88,12 @@ export default async function DeliveryPage() {
     bairroId: p.bairro_id,
     entregadorId: p.entregador_id,
     valorEntregador: p.valor_entregador,
+    conversa: {
+      aberta: !p.finalizado_em || new Date(p.finalizado_em) > new Date(conversaDesde),
+      mensagens: p.pedidos_mensagens
+        .toSorted((a, b) => a.criado_em.localeCompare(b.criado_em))
+        .map((m) => ({ id: m.id, autor: m.autor as "cliente" | "equipe", texto: m.texto, hora: horaLocal(m.criado_em, fuso), lida: m.lida_em !== null })),
+    },
     alteracoes: p.pedidos_alteracoes
       .toSorted((a, b) => a.criado_em.localeCompare(b.criado_em))
       .map((a) => ({ descricao: a.descricao, hora: horaLocal(a.criado_em, fuso) })),
@@ -96,7 +111,7 @@ export default async function DeliveryPage() {
 
   return (
     <main className="flex min-h-0 flex-1 flex-col gap-3 p-4 md:p-6">
-      <AtualizarEmTempoReal restauranteId={acesso.restaurante.id} tabelas={["pedidos", "pagamentos", "tarefas_producao"]} />
+      <AtualizarEmTempoReal restauranteId={acesso.restaurante.id} tabelas={["pedidos", "pagamentos", "tarefas_producao", "pedidos_mensagens"]} />
       <div>
         <h1 className="text-2xl font-semibold">Delivery</h1>
         {/* Só o que importa agora: com o caixa fechado, o site não recebe pedidos. */}

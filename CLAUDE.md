@@ -221,10 +221,17 @@ Já existe (entregadores e acerto):
 
 Já existe (avisos no celular do cliente, Web Push):
 - Na página de acompanhamento, "Avisar quando o pedido mudar" pede permissão, registra `/sw.js` (só avisos, sem cache) e manda a inscrição para `/api/pedidos/[id]/avisos` (aceita só serviços de push dos navegadores: FCM, Mozilla, Apple, Windows). Tabela `pedidos_avisos` só a chave secreta lê e grava.
-- O painel avisa depois de aceitar, saiu para entrega, entregar e cancelar (`after(() => avisarCliente(id))`, `src/lib/avisos-push.ts`); o status vem do banco. Pedido terminado apaga as inscrições.
+- O painel avisa depois de aceitar, saiu para entrega, entregar e cancelar (`after(() => avisarCliente(id))`, `src/lib/avisos-push.ts`); o status vem do banco. As inscrições ficam até 24 h depois de o pedido terminar (por causa da conversa) e `limparInscricoesVencidas` apaga as vencidas.
 - Chaves VAPID só em tempo de execução: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_ASSUNTO` (mailto:). Sem elas o botão some. Gerar com `npx web-push generate-vapid-keys`.
 - iPhone: só com o site na tela de início (iOS 16.4+). O site do restaurante tem manifest próprio (`/pwa/[id]/manifest?app=site`, sem start_url: abre a página de onde foi instalado).
 - Sem depender de outro produto (decisão do cliente): WhatsApp/Chatyou só como integração opcional no futuro.
+
+Já existe (conversa com o cliente do delivery, migração `conversa_pedido`, pedido do cliente em 03/11):
+- Página de acompanhamento: "Algum problema? Fale com o restaurante" (`conversa-cliente.tsx`) abre a conversa (sem conta: o id do pedido vale como senha, como no acompanhamento) e, se o restaurante tem WhatsApp, "Prefere o WhatsApp?". Confere a cada 5 s aberta e 20 s fechada (mostra "1 resposta"). API `/api/pedidos/[id]/conversa` (GET `conversa_pedido_publica`, POST `cliente_enviar_mensagem`; limite por IP; no banco, 15 mensagens do cliente em 10 min e 60 no total).
+- Aberta enquanto o pedido anda e até 24 h depois de entregue/cancelado (`pedidos.finalizado_em`, só o banco define, trigger `t45_finalizado`; `rest_privado.conversa_aberta`).
+- `pedidos_mensagens` (autor `cliente`|`equipe`, `membro_id`, `lida_em`): só quem tem `delivery` lê; escrever só pelas RPCs. A equipe responde com `equipe_enviar_mensagem` (também marca as do cliente como lidas) e `marcar_conversa_lida`.
+- Painel: botão "Conversa" no cartão do delivery (com o número de não lidas; abre sozinho quando chega mensagem; nos finalizados aparece se houver conversa). O quadro mostra também os pedidos terminados há menos de 24 h. `<AlertaPedidos>` bipa e avisa "Mensagem de cliente do delivery" em qualquer tela.
+- A resposta da equipe vai por push para o celular do cliente que ligou os avisos (`avisarMensagem`, abre a página em `#conversa`).
 
 Já existe (chamar garçom):
 - Botão "Chamar garçom" no topo do painel (dono e caixa; `painel/chamar-garcom.tsx`): escolhe o garçom e um recado (atalhos ou texto, até 120 letras). Grava em `chamados_garcom` (só dono/caixa criam; quem chamou e a hora vêm do trigger; só para membro ativo com papel `garcom`; até 20 por minuto por restaurante).

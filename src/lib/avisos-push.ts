@@ -129,12 +129,75 @@ export async function avisarCliente(pedidoId: string): Promise<void> {
       }),
     );
 
-    // Pedido terminado: as inscrições não servem mais.
-    if (FINAL.has(pedido.status)) {
-      await admin.from("pedidos_avisos").delete().eq("restaurante_id", r.id).eq("pedido_id", pedido.id);
-    } else if (recusadas.length) {
-      await admin.from("pedidos_avisos").delete().in("id", recusadas);
-    }
+    // As inscrições ficam até 24 h depois do fim: a conversa com o restaurante continua aberta e a
+    // resposta também avisa. Depois disso, a limpeza tira (limparInscricoesVencidas).
+    if (recusadas.length) await admin.from("pedidos_avisos").delete().in("id", recusadas);
+    if (FINAL.has(pedido.status)) await limparInscricoesVencidas(r.id);
+  } catch (erro) {
+    console.error("[avisos-push]", erro);
+  }
+}
+
+// Inscrições de pedidos que terminaram há mais de 24 h (a conversa já fechou): não servem mais.
+async function limparInscricoesVencidas(restauranteId: string) {
+  const admin = createAdminClient();
+  if (!admin) return;
+  const limite = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { data: velhos } = await admin
+    .from("pedidos")
+    .select("id")
+    .eq("restaurante_id", restauranteId)
+    .lt("finalizado_em", limite)
+    .limit(500);
+  const ids = (velhos ?? []).map((p) => p.id);
+  if (ids.length) await admin.from("pedidos_avisos").delete().eq("restaurante_id", restauranteId).in("pedido_id", ids);
+}
+
+// O restaurante respondeu na conversa do pedido: avisa o celular do cliente (se ele ligou os avisos).
+export async function avisarMensagem(pedidoId: string, texto: string): Promise<void> {
+  const c = chaves();
+  const admin = createAdminClient();
+  if (!c || !admin) return;
+  try {
+    const { data: pedido } = await admin
+      .from("pedidos")
+      .select("id, origem, restaurante:restaurantes!inner(id, slug, nome, logo_url, cor_primaria)")
+      .eq("id", pedidoId)
+      .maybeSingle();
+    if (!pedido || pedido.origem !== "delivery") return;
+    const { data: inscricoes } = await admin
+      .from("pedidos_avisos")
+      .select("id, endpoint, p256dh, auth")
+      .eq("restaurante_id", pedido.restaurante.id)
+      .eq("pedido_id", pedido.id);
+    if (!inscricoes?.length) return;
+
+    const r = pedido.restaurante;
+    const resumo = texto.length > 120 ? `${texto.slice(0, 117)}...` : texto;
+    const carga = JSON.stringify({
+      titulo: `${r.nome} respondeu`,
+      corpo: resumo,
+      url: `/${r.slug}/pedido/${pedido.id}#conversa`,
+      icone: urlIcone({ id: r.id, nome: r.nome, corPrimaria: r.cor_primaria, logoUrl: r.logo_url }, 192),
+      tag: `${pedido.id}-conversa`,
+    });
+    const recusadas: string[] = [];
+    await Promise.all(
+      inscricoes.map(async (i) => {
+        try {
+          await webpush.sendNotification({ endpoint: i.endpoint, keys: { p256dh: i.p256dh, auth: i.auth } }, carga, {
+            vapidDetails: { subject: c.assunto, publicKey: c.publica, privateKey: c.privada },
+            TTL: 60 * 60,
+            urgency: "high",
+            timeout: 5000,
+          });
+        } catch (erro) {
+          if (erro instanceof WebPushError && (erro.statusCode === 404 || erro.statusCode === 410)) recusadas.push(i.id);
+          else console.error("[avisos-push] mensagem não enviada", erro instanceof WebPushError ? `${erro.statusCode} ${erro.body}` : erro);
+        }
+      }),
+    );
+    if (recusadas.length) await admin.from("pedidos_avisos").delete().in("id", recusadas);
   } catch (erro) {
     console.error("[avisos-push]", erro);
   }

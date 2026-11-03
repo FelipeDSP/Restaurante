@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import type { PedidoPublico } from "../../dados";
 import { useMeusPedidos } from "../../meus-pedidos";
 import { AvisoPush } from "./aviso-push";
+import { ConversaCliente } from "./conversa-cliente";
 
 type Status = PedidoPublico["status"];
 
@@ -233,21 +234,13 @@ export function Acompanhamento({ inicial, chaveAvisos, restaurante }: Props) {
         ) : null}
       </section>
 
+      <ConversaCliente pedidoId={pedido.id} numero={pedido.numero} whatsapp={whatsapp ?? null} fusoHorario={restaurante.fusoHorario} />
+
       <div className="flex flex-col items-center gap-3 text-center">
         <Button type="button" variant="outline" className="h-11 w-full max-w-xs" onClick={compartilhar}>
           <Share2 aria-hidden />
           Copiar ou compartilhar o link do pedido
         </Button>
-        {whatsapp ? (
-          <a
-            href={`https://wa.me/${whatsapp}?text=${encodeURIComponent(`Olá! Sobre o pedido nº ${pedido.numero}`)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex min-h-11 items-center font-medium underline underline-offset-4"
-          >
-            Falar com o restaurante no WhatsApp
-          </a>
-        ) : null}
         <div className="flex gap-6">
           <Link href={`/${restaurante.slug}/pedidos`} className="flex min-h-11 items-center text-sm text-muted-foreground underline">
             Meus pedidos
