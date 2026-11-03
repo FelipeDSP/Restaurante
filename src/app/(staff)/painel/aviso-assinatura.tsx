@@ -15,6 +15,11 @@ export function AvisoAssinatura({ assinatura }: { assinatura: Assinatura | null 
       const dias = assinatura.diasRestantesTeste ?? 0;
       texto = dias <= 1 ? "Seu teste grátis termina hoje." : `Teste grátis: faltam ${dias} dias.`;
       urgente = dias <= 3;
+      // Acabou o teste, o sistema trava na hora: avisa nos últimos dias.
+      if (urgente) {
+        texto += " Depois, o sistema fica bloqueado até você assinar.";
+        acao = "Assinar";
+      }
       break;
     }
     case "teste_encerrado":

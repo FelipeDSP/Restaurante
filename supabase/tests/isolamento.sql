@@ -2979,12 +2979,12 @@ declare
   v_falhou boolean;
 begin
   perform pg_temp.admin();
-  update public.assinaturas set status = 'teste', teste_termina_em = now() - interval '4 days', periodo_termina_em = null,
+  update public.assinaturas set status = 'teste', teste_termina_em = now() + interval '1 hour', periodo_termina_em = null,
     modulos_liberados = '{}', modulos_bloqueados = '{}' where restaurante_id = a;
-  perform pg_temp.ok(not rest_privado.restaurante_suspenso(a), 'suspensão: teste acabado há 4 dias ainda funciona');
+  perform pg_temp.ok(not rest_privado.restaurante_suspenso(a), 'suspensão: durante o teste funciona');
 
-  update public.assinaturas set teste_termina_em = now() - interval '6 days' where restaurante_id = a;
-  perform pg_temp.ok(rest_privado.restaurante_suspenso(a), 'suspensão: teste acabado há 6 dias suspende');
+  update public.assinaturas set teste_termina_em = now() - interval '1 minute' where restaurante_id = a;
+  perform pg_temp.ok(rest_privado.restaurante_suspenso(a), 'suspensão: teste acabou, suspende na hora');
   perform pg_temp.ok(rest_privado.permissoes_do_plano(a) = '{}' and rest_privado.modulos_do_restaurante(a) = '{}',
     'suspensão: nenhuma permissão nem módulo');
   perform pg_temp.ok(public.consultar_disponibilidade_delivery(a) ->> 'motivo' = 'restaurante_indisponivel',
@@ -3016,6 +3016,8 @@ begin
   update public.assinaturas set status = 'ativa', periodo_termina_em = now() + interval '1 month' where restaurante_id = a;
   perform pg_temp.ok(not rest_privado.restaurante_suspenso(a) and 'delivery' = any (rest_privado.permissoes_do_plano(a)),
     'suspensão: pagou, libera');
+  update public.assinaturas set status = 'atrasada', periodo_termina_em = now() - interval '4 days' where restaurante_id = a;
+  perform pg_temp.ok(not rest_privado.restaurante_suspenso(a), 'suspensão: fatura atrasada há 4 dias ainda funciona');
   update public.assinaturas set status = 'atrasada', periodo_termina_em = now() - interval '6 days' where restaurante_id = a;
   perform pg_temp.ok(rest_privado.restaurante_suspenso(a), 'suspensão: fatura atrasada há 6 dias suspende');
   update public.assinaturas set status = 'ativa' where restaurante_id = a;
