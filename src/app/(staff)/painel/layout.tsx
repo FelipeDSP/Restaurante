@@ -57,16 +57,31 @@ async function contarPedidosNovos(restauranteId: string): Promise<number> {
   return count ?? 0;
 }
 
+// Mensagens de clientes do delivery ainda não lidas (contador de Conversas).
+async function contarMensagensNaoLidas(restauranteId: string): Promise<number> {
+  const supabase = await createClient();
+  const { count } = await supabase
+    .from("pedidos_mensagens")
+    .select("id", { count: "exact", head: true })
+    .eq("restaurante_id", restauranteId)
+    .eq("autor", "cliente")
+    .is("lida_em", null);
+  return count ?? 0;
+}
+
 export default async function PainelLayout({ children }: LayoutProps<"/painel">) {
   const acesso = await exigirAcesso("painel");
   const itens = itensDoMenu(acesso.papel, acesso.permissoes);
   const bloqueados = itensBloqueadosPeloPlano(acesso.papel, itens);
-  const [novos, assinatura, adminPlataforma, suporte] = await Promise.all([
-    acesso.permissoes.includes("delivery") ? contarPedidosNovos(acesso.restaurante.id) : 0,
+  const delivery = acesso.permissoes.includes("delivery");
+  const [novos, naoLidas, assinatura, adminPlataforma, suporte] = await Promise.all([
+    delivery ? contarPedidosNovos(acesso.restaurante.id) : 0,
+    delivery ? contarMensagensNaoLidas(acesso.restaurante.id) : 0,
     acesso.papel === "dono" ? carregarAssinatura(acesso.restaurante.id) : null,
     ehAdminPlataforma(),
     lerModoSuporte(),
   ]);
+  const contadores = { "/painel/delivery": novos, "/painel/conversas": naoLidas };
   return (
     <div className="flex min-h-full flex-1 flex-col" style={estiloMarca(acesso.restaurante)}>
       <PreferenciaSom preferencia={acesso.usuario.som} />
@@ -136,7 +151,7 @@ export default async function PainelLayout({ children }: LayoutProps<"/painel">)
         </>
       ) : null}
       <div className="flex flex-1">
-        <MenuLateral itens={itens} novos={novos} bloqueados={bloqueados} />
+        <MenuLateral itens={itens} contadores={contadores} bloqueados={bloqueados} />
         <div className="flex min-w-0 flex-1 flex-col">
           <AvisoAssinatura assinatura={assinatura} />
           {/* No celular, espaço para a barra de abas do rodapé. */}
@@ -146,7 +161,7 @@ export default async function PainelLayout({ children }: LayoutProps<"/painel">)
           </div>
         </div>
       </div>
-      <BarraApp itens={itens} novos={novos} bloqueados={bloqueados} />
+      <BarraApp itens={itens} contadores={contadores} bloqueados={bloqueados} />
     </div>
   );
 }

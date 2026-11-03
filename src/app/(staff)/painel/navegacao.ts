@@ -22,6 +22,8 @@ export const GRUPOS: GrupoNavegacao[] = ["Operação", "Cadastros", "Ajustes"];
 export const NAVEGACAO: ItemNavegacao[] = [
   { href: "/painel", rotulo: "Início", grupo: "Operação", acesso: "inicio" },
   { href: "/painel/delivery", rotulo: "Delivery", grupo: "Operação", acesso: ["delivery"] },
+  // Conversas com os clientes do delivery (página do pedido), com o pedido ao lado.
+  { href: "/painel/conversas", rotulo: "Conversas", grupo: "Operação", acesso: ["delivery"] },
   // Mapa de mesas no próprio painel (abrir, lançar, cobrar, fechar), largo para o computador.
   {
     href: "/painel/comandas",

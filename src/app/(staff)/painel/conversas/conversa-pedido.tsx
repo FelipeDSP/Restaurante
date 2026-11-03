@@ -7,10 +7,10 @@ import { useAcao } from "@/components/staff/acoes-cliente";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-import { marcarConversaLida, responderCliente } from "./actions";
-import type { PedidoDelivery } from "./cartao-pedido";
+import { marcarConversaLida, responderCliente } from "../delivery/actions";
+import type { PedidoDelivery } from "../delivery/cartao-pedido";
 
-// Conversa com o cliente, aberta no cartão do pedido. Abrir marca as mensagens do cliente como lidas.
+// Conversa com o cliente do delivery. Aberta, marca as mensagens do cliente como lidas.
 export function ConversaPedido({ pedidoId, conversa }: { pedidoId: string; conversa: PedidoDelivery["conversa"] }) {
   const [texto, setTexto] = useState("");
   const { pendente, executar } = useAcao();
@@ -31,15 +31,15 @@ export function ConversaPedido({ pedidoId, conversa }: { pedidoId: string; conve
   };
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg bg-muted/60 p-3">
+    <div className="flex min-h-80 flex-col gap-3 rounded-xl border bg-muted/40 p-3 lg:h-[calc(100dvh-14rem)]">
       {conversa.mensagens.length > 0 ? (
-        <ol className="flex max-h-64 flex-col gap-2 overflow-y-auto">
+        <ol className="flex flex-1 flex-col gap-2 overflow-y-auto" aria-live="polite">
           {conversa.mensagens.map((m) => (
             <li key={m.id} className={cn("flex flex-col", m.autor === "equipe" ? "items-end" : "items-start")}>
               <span
                 className={cn(
                   "max-w-[85%] rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap",
-                  m.autor === "equipe" ? "bg-[var(--cor-primaria)] text-[var(--cor-primaria-contraste)]" : "bg-background",
+                  m.autor === "equipe" ? "bg-[var(--cor-primaria)] text-[var(--cor-primaria-contraste)]" : "border bg-background",
                 )}
               >
                 {m.texto}
@@ -53,7 +53,7 @@ export function ConversaPedido({ pedidoId, conversa }: { pedidoId: string; conve
           <div ref={fim} />
         </ol>
       ) : (
-        <p className="text-sm text-muted-foreground">Nenhuma mensagem. O cliente vê o que você escrever na página do pedido.</p>
+        <p className="flex-1 text-sm text-muted-foreground">Nenhuma mensagem ainda. O cliente vê o que você escrever na página do pedido.</p>
       )}
       {conversa.aberta ? (
         <form onSubmit={enviar} className="flex items-end gap-2">

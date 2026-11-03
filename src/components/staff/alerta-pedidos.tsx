@@ -175,14 +175,14 @@ export function AlertaPedidos({ restauranteId }: { restauranteId: string }) {
     restauranteId,
     ["pedidos_mensagens"],
     (mudanca) => {
-      const mensagem = mudanca.new as { autor?: string; texto?: string };
+      const mensagem = mudanca.new as { autor?: string; texto?: string; pedido_id?: string };
       if (mensagem.autor !== "cliente") return;
       bipar();
       if (document.visibilityState !== "visible") setNovos((n) => n + 1);
       toast.info("Mensagem de cliente do delivery", {
         description: mensagem.texto && mensagem.texto.length > 80 ? `${mensagem.texto.slice(0, 80)}…` : mensagem.texto,
         duration: 15000,
-        action: { label: "Ver", onClick: () => router.push("/painel/delivery") },
+        action: { label: "Responder", onClick: () => router.push(`/painel/conversas/${mensagem.pedido_id ?? ""}`) },
       });
       router.refresh();
     },

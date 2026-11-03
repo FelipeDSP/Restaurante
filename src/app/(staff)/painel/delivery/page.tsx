@@ -1,113 +1,27 @@
 import type { Metadata } from "next";
 
 import { AtualizarEmTempoReal } from "@/components/staff/atualizar-em-tempo-real";
-import { lerAdicionais } from "@/lib/adicionais";
 import { exigirPermissao } from "@/lib/auth/dal";
-import { createClient } from "@/lib/supabase/server";
-import { horaLocal, tempoDesde } from "@/lib/tempo";
 
 import { carregarSessaoAberta } from "../caixa/dados";
-import type { PedidoDelivery } from "./cartao-pedido";
+import { carregarEntregadores, carregarPedidosDelivery } from "./dados";
 import { QuadroDelivery } from "./quadro-delivery";
 
 export const metadata: Metadata = { title: "Delivery" };
 
-const CONVERSA_MS = 24 * 60 * 60 * 1000;
-// Limite da conversa com o cliente: até 24 h depois de o pedido terminar.
-function inicioDaConversa() {
-  return new Date(Date.now() - CONVERSA_MS).toISOString();
-}
-
 export default async function DeliveryPage() {
   const acesso = await exigirPermissao("painel", "delivery");
-  const supabase = await createClient();
   const sessao = await carregarSessaoAberta(acesso.restaurante.id);
   const fuso = acesso.restaurante.fusoHorario;
 
-  // Em andamento (de qualquer sessão) + finalizados da sessão atual + os que terminaram há menos de
-  // 24 h (a conversa com o cliente ainda está aberta).
-  const conversaDesde = inicioDaConversa();
+  // Em andamento (de qualquer sessão) + finalizados da sessão atual.
   const filtro = sessao
-    ? `status.not.in.(entregue,cancelado),caixa_sessao_id.eq.${sessao.id},finalizado_em.gt.${conversaDesde}`
-    : `status.not.in.(entregue,cancelado),finalizado_em.gt.${conversaDesde}`;
-  const { data, error } = await supabase
-    .from("pedidos")
-    .select(
-      `id, numero, status, criado_em, cliente_nome, cliente_telefone, endereco, bairro_id, forma_pagamento_prevista, troco_para,
-       observacao, subtotal, taxa_entrega, total, motivo_cancelamento, desconto, cupom_codigo, cupom_tipo, cupom_valor,
-       bairro:bairros_entrega!pedidos_restaurante_id_bairro_id_fkey(nome),
-       itens_pedido(id, nome_produto, quantidade, observacao, adicionais, total, cancelado_em),
-       pagamentos(valor, estornado_em),
-       tarefas_producao(status),
-       pedidos_alteracoes(descricao, criado_em),
-       pedidos_mensagens(id, autor, texto, criado_em, lida_em),
-       entregador_id, valor_entregador, finalizado_em`,
-    )
-    .eq("restaurante_id", acesso.restaurante.id)
-    .eq("origem", "delivery")
-    .or(filtro)
-    .order("criado_em", { ascending: true })
-    .limit(200);
-  if (error) throw new Error(error.message);
-
-  const { data: entregadores } = await supabase
-    .from("entregadores")
-    .select("id, nome")
-    .eq("restaurante_id", acesso.restaurante.id)
-    .eq("ativo", true)
-    .order("nome");
-
-  const pedidos: PedidoDelivery[] = data.map((p) => ({
-    id: p.id,
-    numero: p.numero,
-    status: p.status as PedidoDelivery["status"],
-    hora: horaLocal(p.criado_em, fuso),
-    tempo: tempoDesde(p.criado_em),
-    clienteNome: p.cliente_nome ?? "",
-    clienteTelefone: p.cliente_telefone ?? "",
-    endereco:
-      p.endereco && typeof p.endereco === "object" && !Array.isArray(p.endereco)
-        ? (p.endereco as Record<string, string | null>)
-        : {},
-    bairro:
-      p.bairro?.nome ??
-      (p.endereco && typeof p.endereco === "object" && !Array.isArray(p.endereco)
-        ? ((p.endereco as Record<string, string | null>).bairro ?? null)
-        : null),
-    formaPrevista: p.forma_pagamento_prevista,
-    trocoPara: p.troco_para,
-    observacao: p.observacao,
-    subtotal: p.subtotal,
-    taxaEntrega: p.taxa_entrega,
-    desconto: p.desconto,
-    cupom: p.cupom_codigo ? { codigo: p.cupom_codigo, tipo: p.cupom_tipo ?? "", valor: p.cupom_valor ?? 0 } : null,
-    total: p.total,
-    pago: p.pagamentos.filter((pg) => !pg.estornado_em).reduce((soma, pg) => soma + pg.valor, 0),
-    pracasPendentes: p.tarefas_producao.filter((t) => t.status === "pendente").length,
-    motivoCancelamento: p.motivo_cancelamento,
-    bairroId: p.bairro_id,
-    entregadorId: p.entregador_id,
-    valorEntregador: p.valor_entregador,
-    conversa: {
-      aberta: !p.finalizado_em || new Date(p.finalizado_em) > new Date(conversaDesde),
-      mensagens: p.pedidos_mensagens
-        .toSorted((a, b) => a.criado_em.localeCompare(b.criado_em))
-        .map((m) => ({ id: m.id, autor: m.autor as "cliente" | "equipe", texto: m.texto, hora: horaLocal(m.criado_em, fuso), lida: m.lida_em !== null })),
-    },
-    alteracoes: p.pedidos_alteracoes
-      .toSorted((a, b) => a.criado_em.localeCompare(b.criado_em))
-      .map((a) => ({ descricao: a.descricao, hora: horaLocal(a.criado_em, fuso) })),
-    itens: p.itens_pedido
-      .filter((i) => !i.cancelado_em)
-      .map((i) => ({
-        id: i.id,
-        nome: i.nome_produto,
-        quantidade: i.quantidade,
-        observacao: i.observacao,
-        adicionais: lerAdicionais(i.adicionais),
-        total: i.total,
-      })),
-  }));
+    ? `status.not.in.(entregue,cancelado),caixa_sessao_id.eq.${sessao.id}`
+    : "status.not.in.(entregue,cancelado)";
+  const [pedidos, entregadores] = await Promise.all([
+    carregarPedidosDelivery(acesso.restaurante.id, fuso, { ou: filtro }),
+    carregarEntregadores(acesso.restaurante.id),
+  ]);
 
   return (
     <main className="flex min-h-0 flex-1 flex-col gap-3 p-4 md:p-6">

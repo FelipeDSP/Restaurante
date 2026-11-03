@@ -11,7 +11,8 @@ import { cn } from "@/lib/utils";
 import { GRUPOS, type ItemNavegacao, itemAtivo, itemDaPagina } from "./navegacao";
 
 // `bloqueados`: o que o plano não tem (só o dono vê, com cadeado, levando aos planos).
-type Props = { itens: ItemNavegacao[]; novos: number; bloqueados?: ItemNavegacao[] };
+// contadores: número no item do menu (ex.: deliveries novos, mensagens de cliente não lidas).
+type Props = { itens: ItemNavegacao[]; contadores: Record<string, number>; bloqueados?: ItemNavegacao[] };
 
 function Contador({ valor }: { valor: number }) {
   return (
@@ -24,7 +25,7 @@ function Contador({ valor }: { valor: number }) {
   );
 }
 
-function ListaAgrupada({ itens, novos, bloqueados = [], ativo, aoNavegar }: Props & { ativo: string | null; aoNavegar?: () => void }) {
+function ListaAgrupada({ itens, contadores, bloqueados = [], ativo, aoNavegar }: Props & { ativo: string | null; aoNavegar?: () => void }) {
   return (
     <div className="flex flex-col gap-5">
       {GRUPOS.map((grupo) => {
@@ -48,7 +49,7 @@ function ListaAgrupada({ itens, novos, bloqueados = [], ativo, aoNavegar }: Prop
                   )}
                 >
                   {item.rotulo}
-                  {item.href === "/painel/delivery" && novos > 0 ? <Contador valor={novos} /> : null}
+                  {contadores[item.href] ? <Contador valor={contadores[item.href]} /> : null}
                 </Link>
               );
             })}
@@ -72,11 +73,11 @@ function ListaAgrupada({ itens, novos, bloqueados = [], ativo, aoNavegar }: Prop
 }
 
 // Computador: barra lateral com todos os itens agrupados (antes, metade do menu ficava escondida).
-export function MenuLateral({ itens, novos, bloqueados }: Props) {
+export function MenuLateral({ itens, contadores, bloqueados }: Props) {
   const ativo = itemAtivo(itens, usePathname());
   return (
     <nav aria-label="Painel" className="sticky top-16 hidden h-[calc(100dvh-4rem)] w-56 shrink-0 overflow-y-auto border-r bg-background p-3 lg:block print:hidden">
-      <ListaAgrupada itens={itens} novos={novos} bloqueados={bloqueados} ativo={ativo} />
+      <ListaAgrupada itens={itens} contadores={contadores} bloqueados={bloqueados} ativo={ativo} />
     </nav>
   );
 }
@@ -105,7 +106,7 @@ function abasDeDentro(itens: ItemNavegacao[]) {
 // Celular e tablet: o painel vira app, com as áreas da pessoa em abas no rodapé (alcance do polegar)
 // e "Mais" com o menu completo. Quem tem poucas áreas (ex.: garçom) vê as abas de dentro delas
 // (Mesas e Praças).
-export function BarraApp({ itens, novos, bloqueados }: Props) {
+export function BarraApp({ itens, contadores, bloqueados }: Props) {
   const caminho = usePathname();
   const [aberto, setAberto] = useState(false);
   // O portal fica dentro da tela do restaurante para herdar as cores da marca.
@@ -147,9 +148,9 @@ export function BarraApp({ itens, novos, bloqueados }: Props) {
             >
               <Icone className="size-6" aria-hidden />
               <span className="max-w-full truncate">{aba.rotulo}</span>
-              {aba.href === "/painel/delivery" && novos > 0 ? (
+              {contadores[aba.href] ? (
                 <span className="absolute top-1.5 left-1/2 ml-2">
-                  <Contador valor={novos} />
+                  <Contador valor={contadores[aba.href]} />
                 </span>
               ) : null}
             </Link>
@@ -172,7 +173,7 @@ export function BarraApp({ itens, novos, bloqueados }: Props) {
                   </Dialog.Close>
                 </div>
                 <div className="flex-1 overflow-y-auto p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-                  <ListaAgrupada itens={itens} novos={novos} bloqueados={bloqueados} ativo={ativo} aoNavegar={() => setAberto(false)} />
+                  <ListaAgrupada itens={itens} contadores={contadores} bloqueados={bloqueados} ativo={ativo} aoNavegar={() => setAberto(false)} />
                 </div>
               </Dialog.Popup>
             </Dialog.Portal>
