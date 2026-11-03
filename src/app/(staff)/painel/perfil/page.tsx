@@ -16,6 +16,7 @@ export default async function PerfilPage() {
         foto={acesso.foto}
         email={acesso.usuario.email}
         funcao={acesso.funcao}
+        som={acesso.usuario.som}
       />
     </main>
   );

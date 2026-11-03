@@ -6,6 +6,7 @@ import { AlertaPedidos } from "@/components/staff/alerta-pedidos";
 import { FaixaConexao } from "@/components/staff/faixa-conexao";
 import { MarcaRestaurante } from "@/components/staff/marca-restaurante";
 import { MenuUsuario } from "@/components/staff/menu-usuario";
+import { PreferenciaSom } from "@/components/staff/preferencia-som";
 import { carregarAssinatura } from "@/lib/assinatura";
 import { ehAdminPlataforma, exigirAcesso, temPermissao } from "@/lib/auth/dal";
 import { lerModoSuporte } from "@/lib/auth/suporte";
@@ -68,6 +69,7 @@ export default async function PainelLayout({ children }: LayoutProps<"/painel">)
   ]);
   return (
     <div className="flex min-h-full flex-1 flex-col" style={estiloMarca(acesso.restaurante)}>
+      <PreferenciaSom preferencia={acesso.usuario.som} />
       <header className="sticky top-0 z-10 bg-[var(--cor-primaria)] text-[var(--cor-primaria-contraste)] shadow-sm print:hidden">
         <div className="flex h-16 w-full items-center justify-between gap-3 px-4">
           <Link href="/painel" className="min-w-0 flex-1">

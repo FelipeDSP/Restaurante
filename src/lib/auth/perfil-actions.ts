@@ -8,6 +8,7 @@ import { falha, falhaValidacao, mensagemErroBanco, type ResultadoAcao, sucesso }
 import { chavesDoLogin, esperaDoLogin, registrarLogin, textoEspera } from "@/lib/auth/bloqueio";
 import { obterContexto } from "@/lib/auth/dal";
 import { consumirLimite } from "@/lib/limite-taxa";
+import { SONS, VOLUMES } from "@/lib/som";
 import { createClient } from "@/lib/supabase/server";
 import { origemDoSite } from "@/lib/url";
 
@@ -102,4 +103,25 @@ export async function trocarSenha(_estado: ResultadoAcao, formData: FormData): P
   const { error } = await supabase.auth.updateUser({ password: dados.data.senha });
   if (error) return falha(error.code === "same_password" ? "Use uma senha diferente da atual." : "Não foi possível trocar a senha. Tente de novo.");
   return sucesso("Senha trocada.");
+}
+
+// Som dos avisos: fica nos dados da conta (vale em qualquer aparelho em que a pessoa entrar).
+export async function salvarSom(escolha: { som: string; volume: string; vezes: number }): Promise<ResultadoAcao> {
+  if (!(await exigirMembro())) return falha("Entre de novo para mudar o som.");
+  const dados = z
+    .object({
+      som: z.enum(Object.keys(SONS) as [keyof typeof SONS]),
+      volume: z.enum(Object.keys(VOLUMES) as [keyof typeof VOLUMES]),
+      vezes: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+    })
+    .safeParse(escolha);
+  if (!dados.success) return falha("Escolha o som de novo.");
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({ data: { som: dados.data } });
+  if (error) return falha("Não foi possível salvar. Tente de novo.");
+  // A sessão nova já leva a escolha (o painel lê dela).
+  await supabase.auth.refreshSession();
+  refresh();
+  return sucesso("Som salvo.");
 }

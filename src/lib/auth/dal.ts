@@ -16,6 +16,7 @@ import {
   podeAcessar,
   rotaInicial,
 } from "@/lib/auth/papeis";
+import { lerPreferenciaDeSom, type PreferenciaDeSom } from "@/lib/som";
 import { createClient } from "@/lib/supabase/server";
 
 // Restaurante escolhido no seletor. Sempre revalidado contra `membros`.
@@ -47,14 +48,16 @@ export type Vinculo = {
   restaurante: RestauranteResumo;
 };
 
-export type Usuario = { id: string; email: string | null };
+// som: escolha da pessoa em "Meu perfil" (guardada nos dados da conta, vale em qualquer aparelho).
+export type Usuario = { id: string; email: string | null; som: PreferenciaDeSom };
 
 export const obterUsuario = cache(async (): Promise<Usuario | null> => {
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
   const claims = data?.claims;
   if (!claims?.sub) return null;
-  return { id: claims.sub, email: typeof claims.email === "string" ? claims.email : null };
+  const metadados = (claims.user_metadata ?? {}) as Record<string, unknown>;
+  return { id: claims.sub, email: typeof claims.email === "string" ? claims.email : null, som: lerPreferenciaDeSom(metadados.som) };
 });
 
 export const obterVinculos = cache(async (): Promise<Vinculo[]> => {
