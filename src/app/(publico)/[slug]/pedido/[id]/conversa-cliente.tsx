@@ -97,19 +97,26 @@ export function ConversaCliente({
   return (
     <section id="conversa" aria-labelledby="titulo-conversa" className="flex scroll-mt-4 flex-col gap-3 rounded-xl border bg-background p-4">
       {!aberta ? (
-        <button type="button" onClick={abrir} className="flex min-h-11 items-center justify-between gap-3 text-left">
-          <span className="flex items-center gap-2">
-            <MessageCircle className="size-5 text-[var(--cor-primaria-texto)]" aria-hidden />
-            <span id="titulo-conversa" className="font-semibold">
-              Algum problema? Fale com o restaurante
-            </span>
-          </span>
-          {novas > 0 ? (
-            <span className="rounded-full bg-[var(--cor-primaria)] px-2.5 py-0.5 text-xs font-bold text-[var(--cor-primaria-contraste)]">
-              {novas === 1 ? "1 resposta" : `${novas} respostas`}
-            </span>
-          ) : null}
-        </button>
+        <>
+          <div className="flex items-center justify-between gap-3">
+            <h2 id="titulo-conversa" className="font-semibold">
+              Algum problema?
+            </h2>
+            {novas > 0 ? (
+              <span className="rounded-full bg-[var(--cor-primaria)] px-2.5 py-0.5 text-xs font-bold text-[var(--cor-primaria-contraste)]">
+                {novas === 1 ? "1 resposta nova" : `${novas} respostas novas`}
+              </span>
+            ) : null}
+          </div>
+          <Button
+            type="button"
+            onClick={abrir}
+            className="h-12 w-full bg-[var(--cor-primaria)] text-base font-semibold text-[var(--cor-primaria-contraste)] hover:bg-[var(--cor-primaria)]/90"
+          >
+            <MessageCircle className="size-5" aria-hidden />
+            {novas > 0 ? "Ver resposta" : "Fale conosco"}
+          </Button>
+        </>
       ) : (
         <>
           <h2 id="titulo-conversa" className="font-semibold">
