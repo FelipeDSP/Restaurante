@@ -1,6 +1,6 @@
 "use client";
 
-import { Minus, Plus, ReceiptText, ShoppingBag } from "lucide-react";
+import { Minus, Plus, ReceiptText, ShoppingBag, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type ReactNode, useState } from "react";
@@ -140,6 +140,25 @@ export function IconeMeusPedidos({ slug }: { slug: string }) {
       className="flex size-11 items-center justify-center rounded-full hover:bg-black/10"
     >
       <ReceiptText className="size-5" />
+    </Link>
+  );
+}
+
+// Perfil do cliente: inicial do nome (com conta) ou o ícone de pessoa (leva ao "Entrar").
+export function IconeConta({ slug, inicial }: { slug: string; inicial: string | null }) {
+  return (
+    <Link
+      href={`/${slug}/conta`}
+      aria-label="Minha conta"
+      className="flex size-11 items-center justify-center rounded-full hover:bg-black/10"
+    >
+      {inicial ? (
+        <span className="flex size-8 items-center justify-center rounded-full bg-[var(--cor-primaria-contraste)] text-sm font-bold text-[var(--cor-primaria)]">
+          {inicial}
+        </span>
+      ) : (
+        <UserRound className="size-5" />
+      )}
     </Link>
   );
 }

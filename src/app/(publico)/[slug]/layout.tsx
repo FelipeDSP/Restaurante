@@ -3,9 +3,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { estiloMarca } from "@/lib/cores";
+import { loginClienteDisponivel } from "@/lib/mensagens";
 import { urlIcone } from "@/lib/icone";
 
-import { IconeCarrinho, IconeMeusPedidos, SoNoDelivery } from "./componentes-carrinho";
+import { IconeCarrinho, IconeConta, IconeMeusPedidos, SoNoDelivery } from "./componentes-carrinho";
+import { obterConta } from "./conta";
 import { buscarRestaurantePorSlug } from "./dados";
 
 export async function generateMetadata(props: LayoutProps<"/[slug]">): Promise<Metadata> {
@@ -32,6 +34,9 @@ export default async function SiteLayout(props: LayoutProps<"/[slug]">) {
   const { slug } = await props.params;
   const restaurante = await buscarRestaurantePorSlug(slug);
   if (!restaurante) notFound();
+  // Ícone da conta: a inicial de quem entrou; sem login disponível nem conta, nada.
+  const conta = await obterConta(restaurante.id);
+  const mostrarConta = Boolean(conta) || loginClienteDisponivel();
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-muted/30" style={estiloMarca(restaurante)}>
@@ -54,6 +59,7 @@ export default async function SiteLayout(props: LayoutProps<"/[slug]">) {
           <div className="flex shrink-0 items-center">
             <SoNoDelivery>
               <IconeMeusPedidos slug={restaurante.slug} />
+              {mostrarConta ? <IconeConta slug={restaurante.slug} inicial={conta?.nome.trim().charAt(0).toUpperCase() || null} /> : null}
               <IconeCarrinho restauranteId={restaurante.id} slug={restaurante.slug} />
             </SoNoDelivery>
           </div>
