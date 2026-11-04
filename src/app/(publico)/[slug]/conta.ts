@@ -23,6 +23,9 @@ export type ContaCliente = {
   id: string;
   nome: string;
   telefone: string;
+  // Como entrou: e-mail (código ou Google) e/ou celular confirmado pelo SMS (esse não muda pela conta).
+  email: string | null;
+  telefoneConfirmado: boolean;
   enderecos: EnderecoSalvo[];
 };
 
@@ -34,13 +37,25 @@ export type PedidoDaConta = {
   criado_em: string;
 };
 
-// Usuário logado com telefone (cliente); conta de equipe (e-mail) não conta como cliente.
+// Usuário logado que não é da equipe (e-mail, Google ou celular). Conta da equipe está em `membros`
+// e não vira cliente (o banco também recusa).
 export async function usuarioCliente() {
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
   const claims = data?.claims;
-  if (!claims?.sub || !claims.phone || claims.email) return null;
-  return { supabase, userId: claims.sub };
+  if (!claims?.sub) return null;
+  const { count } = await supabase.from("membros").select("id", { count: "exact", head: true }).eq("user_id", claims.sub).eq("ativo", true);
+  if (count) return null;
+  const meta = (claims.user_metadata ?? {}) as Record<string, unknown>;
+  const texto = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
+  return {
+    supabase,
+    userId: claims.sub,
+    email: texto(claims.email),
+    telefoneConfirmado: Boolean(texto(claims.phone)),
+    // Nome que veio do Google, para sugerir no cadastro.
+    nomeSugerido: texto(meta.full_name) ?? texto(meta.name),
+  };
 }
 
 export async function obterConta(restauranteId: string): Promise<ContaCliente | null> {
@@ -57,6 +72,8 @@ export async function obterConta(restauranteId: string): Promise<ContaCliente | 
     id: data.id,
     nome: data.nome,
     telefone: data.telefone,
+    email: usuario.email,
+    telefoneConfirmado: usuario.telefoneConfirmado,
     enderecos: [...data.clientes_enderecos]
       .sort((a, b) => b.usado_em.localeCompare(a.usado_em))
       .map((e) => ({

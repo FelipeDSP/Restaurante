@@ -15,11 +15,11 @@ import { formatarTelefone } from "@/lib/telefone";
 import { cn } from "@/lib/utils";
 
 import type { EnderecoSalvo, PedidoDaConta } from "../conta";
-import { excluirConta, mudarNome, removerEndereco, type ResultadoEntrar, sair } from "../entrar/actions";
+import { excluirConta, removerEndereco, type ResultadoEntrar, sair, salvarCadastro } from "../entrar/actions";
 
 type Props = {
   slug: string;
-  conta: { nome: string; telefone: string; enderecos: EnderecoSalvo[] };
+  conta: { nome: string; telefone: string; email: string | null; telefoneConfirmado: boolean; enderecos: EnderecoSalvo[] };
   pedidos: { id: string; numero: number; status: PedidoDaConta["status"]; total: number; quando: string }[];
 };
 
@@ -30,6 +30,7 @@ export function TelaConta({ slug, conta, pedidos }: Props) {
   const [pendente, iniciar] = useTransition();
   const [editandoNome, setEditandoNome] = useState(false);
   const [nome, setNome] = useState(conta.nome);
+  const [celular, setCelular] = useState(formatarTelefone(conta.telefone));
   const [removendo, setRemovendo] = useState<string | null>(null);
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
 
@@ -63,22 +64,44 @@ export function TelaConta({ slug, conta, pedidos }: Props) {
         </span>
         {editandoNome ? (
           <form
-            className="flex flex-1 gap-2"
+            className="flex flex-1 flex-col gap-2"
             onSubmit={(e) => {
               e.preventDefault();
-              executar(() => mudarNome(slug, nome), () => setEditandoNome(false));
+              executar(() => salvarCadastro(slug, nome, celular), () => setEditandoNome(false));
             }}
           >
-            <Input value={nome} onChange={(e) => setNome(e.target.value)} aria-label="Seu nome" maxLength={120} className="h-11 flex-1" autoFocus />
-            <Button type="submit" className="h-11" disabled={pendente}>
-              Salvar
-            </Button>
+            <label className="flex flex-col gap-1 text-sm font-medium">
+              Nome
+              <Input value={nome} onChange={(e) => setNome(e.target.value)} maxLength={120} className="h-11" autoFocus />
+            </label>
+            {conta.telefoneConfirmado ? null : (
+              <label className="flex flex-col gap-1 text-sm font-medium">
+                Celular (WhatsApp)
+                <Input
+                  value={celular}
+                  onChange={(e) => setCelular(e.target.value)}
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel-national"
+                  className="h-11"
+                />
+              </label>
+            )}
+            <div className="flex gap-2">
+              <Button type="submit" className="h-11" disabled={pendente}>
+                Salvar
+              </Button>
+              <Button type="button" variant="ghost" className="h-11" onClick={() => setEditandoNome(false)}>
+                Cancelar
+              </Button>
+            </div>
           </form>
         ) : (
           <>
             <div className="flex min-w-0 flex-1 flex-col">
               <span className="truncate text-lg font-semibold">{conta.nome}</span>
               <span className="text-sm text-muted-foreground">{formatarTelefone(conta.telefone)}</span>
+              {conta.email ? <span className="truncate text-sm text-muted-foreground">{conta.email}</span> : null}
             </div>
             <Button type="button" variant="outline" className="h-11" onClick={() => setEditandoNome(true)}>
               <Pencil />

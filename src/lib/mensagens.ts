@@ -20,8 +20,8 @@ function provedorAtual() {
   return process.env.MENSAGENS_PROVEDOR || (process.env.NODE_ENV === "production" ? "" : "console");
 }
 
-// Sem provedor ou sem o segredo do gancho, o site esconde o "Entrar" (pedir sem conta continua).
-export function loginClienteDisponivel(): boolean {
+// Sem provedor ou sem o segredo do gancho, o site não oferece entrar com o celular (e-mail e Google continuam).
+export function loginSmsDisponivel(): boolean {
   return Boolean(provedorAtual() && process.env.SEND_SMS_HOOK_SECRET);
 }
 

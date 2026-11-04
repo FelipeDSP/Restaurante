@@ -1190,6 +1190,9 @@ isOneToOne: false
         isOneToOne: false
         isSetofReturn: true
       } },
+"atualizar_meu_cadastro_cliente":
+{ Args: { "p_nome": string,"p_restaurante_id": string,"p_telefone": string }; Returns: undefined
+                           },
 "atualizar_meu_perfil":
 { Args: { "p_foto_url": string,"p_nome": string,"p_telefone": string }; Returns: undefined
                            },
@@ -1227,7 +1230,7 @@ isOneToOne: false
 { Args: { "p_adicionar"?: Json,"p_campos"?: Json,"p_motivo"?: string,"p_pedido_id": string,"p_remover"?: (string)[] }; Returns: Json
                            },
 "entrar_como_cliente":
-{ Args: { "p_nome": string,"p_restaurante_id": string }; Returns: string
+{ Args: { "p_nome": string,"p_restaurante_id": string,"p_telefone"?: string }; Returns: string
                            },
 "entregar_pedido_delivery":
 { Args: { "p_forma": string,"p_pedido_id": string }; Returns: undefined

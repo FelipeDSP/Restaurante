@@ -27,5 +27,7 @@ export async function GET(request: NextRequest) {
 
   // Origem pública (atrás do proxy, request.nextUrl pode ter o host interno do container).
   const origem = await origemDoSite();
-  return NextResponse.redirect(new URL(ok ? destino : "/login?erro=link-invalido", origem));
+  // Cliente do delivery voltando do Google: o erro aparece na própria página de entrar do restaurante.
+  const falha = /^\/[^/]+\/entrar(\?|$)/.test(destino) ? `${destino}${destino.includes("?") ? "&" : "?"}erro=1` : "/login?erro=link-invalido";
+  return NextResponse.redirect(new URL(ok ? destino : falha, origem));
 }

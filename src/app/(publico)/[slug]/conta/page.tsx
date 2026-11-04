@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
-import { loginClienteDisponivel } from "@/lib/mensagens";
 import { dataHoraLocal } from "@/lib/tempo";
 
 import { obterConta, pedidosDaConta, usuarioCliente } from "../conta";
@@ -21,7 +20,6 @@ export default async function MinhaContaPage(props: PageProps<"/[slug]/conta">) 
   if (!conta) {
     // Entrou pelo telefone mas ainda não se cadastrou aqui: termina o cadastro.
     if (await usuarioCliente()) redirect(`/${restaurante.slug}/entrar?voltar=/${restaurante.slug}/conta`);
-    if (!loginClienteDisponivel()) redirect(`/${restaurante.slug}/pedidos`);
     return (
       <main className="flex flex-col gap-4 p-4">
         <h1 className="text-2xl font-bold">Minha conta</h1>
@@ -39,6 +37,8 @@ export default async function MinhaContaPage(props: PageProps<"/[slug]/conta">) 
       conta={{
         nome: conta.nome,
         telefone: conta.telefone,
+        email: conta.email,
+        telefoneConfirmado: conta.telefoneConfirmado,
         enderecos: conta.enderecos.map((e) => ({
           ...e,
           bairro: e.bairro ?? (e.bairroId ? (nomeBairro.get(e.bairroId) ?? null) : null),

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { loginClienteDisponivel } from "@/lib/mensagens";
+import { loginClienteDisponivel } from "@/lib/login-cliente";
 
 import {
   buscarRestaurantePorSlug,

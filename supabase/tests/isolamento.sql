@@ -1054,13 +1054,34 @@ begin
     insert into public.caixa_sessoes (restaurante_id, valor_inicial) values (a, 0);
   end if;
 
-  -- Sem telefone confirmado não vira cliente.
+  -- Sem telefone confirmado (entrou por e-mail ou Google): precisa informar o celular.
   perform set_config('request.jwt.claims', json_build_object('sub', v_sem, 'role', 'authenticated')::text, true);
   begin
     perform public.entrar_como_cliente(a, 'Sem Código');
-    perform pg_temp.ok(false, 'cliente: exige telefone confirmado');
+    perform pg_temp.ok(false, 'cliente: sem telefone confirmado, pede o celular');
   exception when others then
-    perform pg_temp.ok(sqlerrm like 'Confirme o seu telefone%', 'cliente: exige telefone confirmado');
+    perform pg_temp.ok(sqlerrm like 'Informe o seu celular%', 'cliente: sem telefone confirmado, pede o celular');
+  end;
+  perform public.entrar_como_cliente(a, 'Eva Email', '(69) 98888-7777');
+  perform pg_temp.ok((select telefone = '5569988887777' from public.clientes where restaurante_id = a and user_id = v_sem),
+    'cliente: conta por e-mail guarda o celular informado, com o 55');
+  perform public.atualizar_meu_cadastro_cliente(a, 'Eva E.', '69 97777-6666');
+  perform pg_temp.ok((select nome = 'Eva E.' and telefone = '5569977776666' from public.clientes where restaurante_id = a and user_id = v_sem),
+    'cliente: conta por e-mail muda nome e celular');
+  begin
+    perform public.atualizar_meu_cadastro_cliente(a, 'Eva E.', '123');
+    perform pg_temp.ok(false, 'cliente: recusa celular inválido');
+  exception when others then
+    perform pg_temp.ok(sqlerrm like 'Informe o seu celular%', 'cliente: recusa celular inválido');
+  end;
+  perform pg_temp.admin();
+  delete from public.clientes where restaurante_id = a and user_id = v_sem;
+  perform pg_temp.entrar('caixa.brasa@exemplo.com');
+  begin
+    perform public.entrar_como_cliente(a, 'Caixa Pedindo', '69999998888');
+    perform pg_temp.ok(false, 'cliente: conta da equipe não vira cliente');
+  exception when others then
+    perform pg_temp.ok(sqlerrm like 'Esta conta é da equipe%', 'cliente: conta da equipe não vira cliente');
   end;
 
   perform set_config('request.jwt.claims', json_build_object('sub', v_cli, 'role', 'authenticated')::text, true);
@@ -1068,6 +1089,9 @@ begin
   perform pg_temp.ok(public.entrar_como_cliente(a, 'Carla C.') = v_cliente_a, 'cliente: entrar de novo reaproveita o cadastro');
   select count(*) into n from public.clientes where id = v_cliente_a and nome = 'Carla C.' and telefone = '5569999990001';
   perform pg_temp.ok(n = 1, 'cliente: telefone vem do Auth, nome atualizado');
+  perform public.atualizar_meu_cadastro_cliente(a, 'Carla C.', '69911112222');
+  perform pg_temp.ok((select telefone = '5569999990001' from public.clientes where id = v_cliente_a),
+    'cliente: telefone confirmado pelo SMS não muda pela conta');
   begin
     insert into public.clientes (restaurante_id, user_id, nome, telefone) values (a, v_cli, 'Direto', '5569999990001');
     perform pg_temp.ok(false, 'cliente: não insere cadastro direto');

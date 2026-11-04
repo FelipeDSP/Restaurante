@@ -126,14 +126,38 @@ modelos["troca_email"] = ("Confirme seu novo e-mail", base(
     + aviso("A troca só vale depois de tocar no botão. <strong>Não foi você?</strong> Ignore este e-mail e troque sua senha em Meu perfil.")
     + link_reserva(l)))
 
-l = L("magiclink", "/inicio")
-modelos["link_acesso"] = ("Seu link de acesso", base(
-    "Seu link de acesso",
-    "Toque no botão para entrar. O link vale por 1 hora.",
-    p(f"Toque no botão para entrar na sua conta {EMAIL}, sem precisar da senha.")
-    + botao(l, "Entrar")
-    + aviso("O link vale por 1 hora e só funciona uma vez. <strong>Não foi você que pediu?</strong> Ignore este e-mail.")
-    + link_reserva(l)))
+# Código de acesso do CLIENTE do delivery (entrar com o e-mail no site do restaurante): neutro, sem a
+# marca da plataforma (white label) e sem link (o cliente digita o código na tela em que pediu).
+def base_neutra(titulo, previa, corpo):
+    return f"""<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{titulo}</title></head>
+<body style="margin:0;padding:0;background:#f4f4f5">
+<div style="display:none;max-height:0;overflow:hidden">{previa}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:28px 12px">
+<tr><td align="center">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:16px;border:1px solid #e4e4e7;font-family:{F};color:#18181b">
+<tr><td style="padding:30px 28px 26px">
+<h1 style="margin:0 0 14px;font-size:22px;line-height:1.3;color:#18181b">{titulo}</h1>
+{corpo}
+</td></tr>
+</table>
+<p style="margin:16px 0 0;font-family:{F};font-size:12px;line-height:1.6;color:#71717a">Este é um e-mail automático, não precisa responder.</p>
+</td></tr>
+</table>
+</body>
+</html>
+"""
+
+
+modelos["link_acesso"] = ("Seu código de acesso", base_neutra(
+    "Seu código de acesso",
+    "Digite o código na tela de entrada para acompanhar seus pedidos.",
+    '<p style="margin:0 0 16px;font-size:15px;line-height:1.65;color:#3f3f46">Digite este código na tela de entrada para acessar seus pedidos com o e-mail <strong style="color:#18181b">{{ .Email }}</strong>:</p>\n'
+    + '<table role="presentation" cellpadding="0" cellspacing="0" style="margin:4px 0 20px"><tr>'
+      '<td style="background:#f4f4f5;border:2px dashed #a1a1aa;border-radius:12px;padding:14px 26px;font-size:32px;font-weight:bold;letter-spacing:8px;color:#18181b">{{ .Token }}</td>'
+      '</tr></table>\n'
+    + '<p style="margin:0;font-size:13px;line-height:1.6;color:#52525b">O código vale por 1 hora e só funciona uma vez. <strong>Não foi você que pediu?</strong> Ignore este e-mail: ninguém entra sem o código.</p>\n'))
 
 l = L("invite", "/nova-senha")
 modelos["convite"] = ("Você foi convidado para o uau foods", base(

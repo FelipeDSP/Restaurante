@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { estiloMarca } from "@/lib/cores";
-import { loginClienteDisponivel } from "@/lib/mensagens";
+import { loginClienteDisponivel } from "@/lib/login-cliente";
 import { urlIcone } from "@/lib/icone";
 
 import { IconeCarrinho, IconeConta, IconeMeusPedidos, SoNoDelivery } from "./componentes-carrinho";

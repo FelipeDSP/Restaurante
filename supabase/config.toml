@@ -259,7 +259,7 @@ subject = "Confirme seu novo e-mail"
 content_path = "./supabase/templates/troca_email.html"
 
 [auth.email.template.magic_link]
-subject = "Seu link de acesso"
+subject = "Seu código de acesso"
 content_path = "./supabase/templates/link_acesso.html"
 
 [auth.email.template.invite]

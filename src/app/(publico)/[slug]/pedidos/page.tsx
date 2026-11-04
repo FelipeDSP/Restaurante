@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { loginClienteDisponivel } from "@/lib/mensagens";
+import { loginClienteDisponivel } from "@/lib/login-cliente";
 
 import { obterConta, pedidosDaConta } from "../conta";
 import { buscarRestaurantePorSlug, carregarBairros } from "../dados";
