@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 
 type Passo = { titulo: string; descricao: string; href: string; feito: boolean };
 
-async function contar(tabela: "produtos" | "mesas" | "membros" | "caixa_sessoes" | "impressoras", restauranteId: string) {
+async function contar(tabela: "produtos" | "mesas" | "caixa_sessoes", restauranteId: string) {
   const supabase = await createClient();
   const { count } = await supabase
     .from(tabela)
@@ -17,70 +17,45 @@ async function contar(tabela: "produtos" | "mesas" | "membros" | "caixa_sessoes"
   return count ?? 0;
 }
 
-// Checklist de configuração do dono; some quando tudo estiver feito.
+// Checklist do dono só com o essencial para começar a vender (logo, equipe e impressora são
+// opcionais e ficam no menu); some quando tudo estiver feito. Mesas só para quem tem no plano.
 export async function PrimeirosPassos({ acesso }: { acesso: Acesso }) {
   const id = acesso.restaurante.id;
   const supabase = await createClient();
-  const [produtos, mesas, membros, sessoes, impressoras, { data: restaurante }] = await Promise.all([
+  const temMesas = acesso.permissoes.includes("mesas");
+  const [produtos, mesas, sessoes, { data: restaurante }] = await Promise.all([
     contar("produtos", id),
-    contar("mesas", id),
-    contar("membros", id),
+    temMesas ? contar("mesas", id) : 0,
     contar("caixa_sessoes", id),
-    contar("impressoras", id),
     supabase.from("restaurantes").select("aceita_delivery").eq("id", id).maybeSingle(),
   ]);
 
-  const temMesas = acesso.permissoes.includes("mesas");
   const passos: Passo[] = [
     {
-      titulo: "Envie o logo",
-      descricao: "Ele aparece no site de delivery, no painel e no app do garçom.",
-      href: "/painel/restaurante",
-      feito: Boolean(acesso.restaurante.logoUrl),
-    },
-    {
       titulo: "Monte o cardápio",
-      descricao: "Categorias, produtos, preços e fotos.",
+      descricao: "Categorias, produtos e preços (dá para importar por planilha).",
       href: "/painel/produtos",
       feito: produtos > 0,
     },
-    // Plano só de delivery não tem mesas.
-    ...(temMesas
-      ? [
-          {
-            titulo: "Cadastre as mesas",
-            descricao: "Elas formam o mapa do garçom.",
-            href: "/painel/mesas",
-            feito: mesas > 0,
-          },
-        ]
-      : []),
     {
       titulo: "Ligue o delivery",
       descricao: "Taxa de entrega, horários e pedido mínimo.",
       href: "/painel/restaurante#delivery",
       feito: Boolean(restaurante?.aceita_delivery),
     },
-    {
-      titulo: "Chame a equipe",
-      descricao: "Crie o acesso do caixa e dos garçons.",
-      href: "/painel/equipe",
-      feito: membros > 1,
-    },
-    // Plano sem cozinha e impressão não tem impressora.
-    ...(acesso.permissoes.includes("impressao")
+    ...(temMesas
       ? [
           {
-            titulo: "Configure a impressora",
-            descricao: "Instale o app de impressão no computador do caixa e escolha a impressora.",
-            href: "/painel/impressoras",
-            feito: impressoras > 0,
+            titulo: "Cadastre as mesas",
+            descricao: "Elas formam o mapa de mesas.",
+            href: "/painel/mesas",
+            feito: mesas > 0,
           },
         ]
       : []),
     {
-      titulo: "Abra o caixa e faça um teste",
-      descricao: "Lance um pedido de mentira e feche a conta.",
+      titulo: "Abra o caixa",
+      descricao: "Com o caixa aberto, o site recebe pedidos.",
       href: "/painel/caixa",
       feito: sessoes > 0,
     },
