@@ -377,7 +377,11 @@ export async function Landing() {
                   <div className="lid">
                     <div className="screen">
                       <div className="scr-top">
-                        <span className="av">U</span>Uau Lanches
+                        <span className="av">
+                          {/* eslint-disable-next-line @next/next/no-img-element -- ícone pequeno da ilustração */}
+                          <img src="/marca/uau-icone.png" alt="" />
+                        </span>
+                        uau foods
                       </div>
                       <div className="scr-side">
                         <span>Início</span>
@@ -388,23 +392,23 @@ export async function Landing() {
                       </div>
                       <div className="scr-main">
                         <h4>Caixa</h4>
-                        <div className="sub">Aberto em 24/10, 10:00 por Teste</div>
+                        <div className="sub">Aberto em 04/11, 18:30 por Carla</div>
                         <div className="scr-cards">
                           <div className="scr-card r">
                             <small>Total vendido</small>
-                            <b>R$ 59,70</b>
+                            <b>R$ 512,00</b>
                           </div>
                           <div className="scr-card r">
                             <small>Total recebido</small>
-                            <b>R$ 59,70</b>
+                            <b>R$ 304,00</b>
                           </div>
                           <div className="scr-card">
                             <small>Itens vendidos</small>
-                            <b>3</b>
+                            <b>42</b>
                           </div>
                           <div className="scr-card">
                             <small>Comandas fechadas</small>
-                            <b>1</b>
+                            <b>2</b>
                           </div>
                         </div>
                         <div className="scr-cols">
@@ -412,30 +416,30 @@ export async function Landing() {
                             <h5>Gaveta (dinheiro)</h5>
                             <div className="scr-row">
                               <span>Troco inicial</span>
-                              <span>R$ 0,00</span>
+                              <span>R$ 150,00</span>
                             </div>
                             <div className="scr-row">
                               <span>Recebido em dinheiro</span>
-                              <span>R$ 0,00</span>
-                            </div>
-                            <div className="scr-row">
-                              <span>Sangrias (–)</span>
-                              <span>R$ 10,00</span>
+                              <span>R$ 50,00</span>
                             </div>
                             <div className="scr-row t">
                               <span>Esperado na gaveta</span>
-                              <span>-R$ 10,00</span>
+                              <span>R$ 200,00</span>
                             </div>
                           </div>
                           <div className="scr-box">
                             <h5>Por forma de pagamento</h5>
-                            <div className="scr-row t">
-                              <span>Pix</span>
-                              <span>R$ 59,70</span>
+                            <div className="scr-row">
+                              <span>Crédito</span>
+                              <span>R$ 170,00</span>
                             </div>
                             <div className="scr-row">
-                              <span>3 pagamentos</span>
-                              <span />
+                              <span>Pix</span>
+                              <span>R$ 84,00</span>
+                            </div>
+                            <div className="scr-row">
+                              <span>Dinheiro</span>
+                              <span>R$ 50,00</span>
                             </div>
                           </div>
                         </div>
