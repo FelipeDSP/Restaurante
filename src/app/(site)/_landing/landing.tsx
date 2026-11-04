@@ -5,11 +5,13 @@ import {
   ChefHat,
   ClipboardList,
   Megaphone,
+  Menu,
   QrCode,
   ShoppingBag,
   Smartphone,
   Ticket,
   Wallet,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import { Geist, Geist_Mono } from "next/font/google";
@@ -151,6 +153,20 @@ export async function Landing() {
           <Link className="btn btn-primary" href="/cadastro">
             Testar grátis
           </Link>
+          {/* Celular: os links do topo ficam num menu (sem JavaScript; fechar ao tocar fica em efeitos.tsx). */}
+          <details className="menu-mobile">
+            <summary aria-label="Abrir menu">
+              <Menu className="abrir size-6" strokeWidth={2.4} aria-hidden />
+              <X className="fechar size-6" strokeWidth={2.4} aria-hidden />
+            </summary>
+            <nav aria-label="Menu">
+              <a href="#funcionalidades">Funcionalidades</a>
+              <a href="#como-funciona">Como funciona</a>
+              <a href="#planos">Planos</a>
+              <a href="#duvidas">Dúvidas</a>
+              <Link href="/login">Entrar</Link>
+            </nav>
+          </details>
         </div>
       </header>
 

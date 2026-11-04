@@ -23,6 +23,25 @@ export function EfeitosLanding() {
     aoRolar();
     limpar.push(() => window.removeEventListener("scroll", aoRolar));
 
+    // Menu do celular: fecha ao escolher um link, ao tocar fora ou com Esc.
+    const menu = raiz.querySelector<HTMLDetailsElement>("details.menu-mobile");
+    if (menu) {
+      const aoClicar = (e: MouseEvent) => {
+        if (!menu.open) return;
+        const alvo = e.target as Node;
+        if (!menu.contains(alvo) || (alvo instanceof Element && alvo.closest("nav a"))) menu.open = false;
+      };
+      const aoTeclar = (e: KeyboardEvent) => {
+        if (e.key === "Escape" && menu.open) menu.open = false;
+      };
+      document.addEventListener("click", aoClicar);
+      document.addEventListener("keydown", aoTeclar);
+      limpar.push(() => {
+        document.removeEventListener("click", aoClicar);
+        document.removeEventListener("keydown", aoTeclar);
+      });
+    }
+
     const reduzir = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
     // Revela ao rolar: só esconde o que ainda está abaixo da dobra.
