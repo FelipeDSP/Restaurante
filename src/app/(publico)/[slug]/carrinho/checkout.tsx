@@ -29,7 +29,7 @@ type Props = {
   mensagemFechado: string | null;
   bairros: { id: string; nome: string; taxa: number }[];
   produtosDisponiveis: Record<string, { nome: string; preco: number; grupos: GrupoAdicionais[] }>;
-  // Conta do cliente (entrou com o celular): preenche nome e telefone e oferece os endereços usados.
+  // Conta do cliente: preenche nome e telefone e oferece os endereços usados.
   conta: ContaCliente | null;
   // Envio de código configurado: mostra o convite para entrar.
   podeEntrar: boolean;
@@ -304,7 +304,7 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
               href={`/${restaurante.slug}/entrar?voltar=/${restaurante.slug}/carrinho`}
               className="inline-flex min-h-11 items-center font-medium text-foreground underline underline-offset-4"
             >
-              Entre com o celular
+              Entre ou crie sua conta
             </Link>{" "}
             para salvar seus dados e acompanhar os pedidos em qualquer aparelho (opcional).
           </p>

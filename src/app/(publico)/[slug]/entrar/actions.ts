@@ -2,9 +2,9 @@
 
 import { z } from "zod";
 
-import { falhouAntiRobo, MENSAGEM_ANTI_ROBO } from "@/lib/anti-robo";
+import { chavesDoLogin, esperaDoLogin, registrarLogin, textoEspera } from "@/lib/auth/bloqueio";
+import { enviarEmail } from "@/lib/email";
 import { consumirLimite, ipDoCliente } from "@/lib/limite-taxa";
-import { formasDeEntrar } from "@/lib/login-cliente";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { telefoneComPais } from "@/lib/telefone";
@@ -14,173 +14,197 @@ import { id } from "@/lib/validacao";
 import { usuarioCliente } from "../conta";
 import { buscarRestaurantePorSlug } from "../dados";
 
+// Conta do cliente do delivery: cadastro normal (nome, e-mail, celular e senha), sem captcha
+// (decisão do cliente em 04/11). O Supabase cobra o captcha em todo login pela chave pública, então
+// o servidor cria a conta e confere a senha com a chave secreta e só depois passa a sessão ao
+// navegador. A proteção contra robô aqui é o bloqueio por senha errada (por conta e IP) e limites.
+
 export type ResultadoEntrar =
-  | { ok: true; precisaNome?: boolean; precisaTelefone?: boolean; nomeSugerido?: string; url?: string }
+  | { ok: true; precisaNome?: boolean; nomeSugerido?: string }
   | { ok: false; mensagem: string };
 
 const DEZ_MINUTOS = 10 * 60_000;
-const MENSAGEM_EQUIPE = "Este navegador está conectado com uma conta da equipe. Saia dela para entrar como cliente.";
+const MENSAGEM_EQUIPE = "Este e-mail é de uma conta da equipe de um restaurante. Para pedir, use outro e-mail.";
+const SEM_CHAVE = "Não foi possível entrar agora. Tente de novo em instantes.";
 
-type Supabase = Awaited<ReturnType<typeof createClient>>;
+const emailSchema = z.email("Informe um e-mail válido.").trim().toLowerCase();
+const nomeSchema = z.string().trim().min(2, "Informe o seu nome.").max(120, "Nome muito longo.");
+const senhaSchema = z.string().min(8, "A senha precisa ter pelo menos 8 caracteres.").max(72, "Senha muito longa.");
 
-// A sessão aberta neste navegador é de alguém da equipe? (o caixa não vira cliente sem querer)
-async function sessaoDaEquipe(supabase: Supabase): Promise<boolean> {
-  const { data } = await supabase.auth.getClaims();
-  const sub = data?.claims?.sub;
-  if (!sub) return false;
-  const { count } = await supabase.from("membros").select("id", { count: "exact", head: true }).eq("user_id", sub).eq("ativo", true);
+type Admin = NonNullable<ReturnType<typeof createAdminClient>>;
+
+async function ehDaEquipe(admin: Admin, userId: string): Promise<boolean> {
+  const { count } = await admin.from("membros").select("id", { count: "exact", head: true }).eq("user_id", userId).eq("ativo", true);
   return Boolean(count);
 }
 
-// Depois de entrar: já é cliente deste restaurante? Senão pede o nome (e o celular, sem SMS confirmado).
-async function depoisDeEntrar(supabase: Supabase, restauranteId: string): Promise<ResultadoEntrar> {
-  if (await sessaoDaEquipe(supabase)) {
-    await supabase.auth.signOut({ scope: "local" });
-    return { ok: false, mensagem: "Este e-mail é de uma conta da equipe de um restaurante. Para pedir, use outro e-mail." };
+// Confere e-mail e senha pela chave secreta (sem captcha) e grava a sessão nos cookies do navegador.
+async function abrirSessao(email: string, senha: string): Promise<{ ok: true; userId: string } | { ok: false; mensagem: string }> {
+  const conferencia = createAdminClient();
+  const admin = createAdminClient();
+  if (!conferencia || !admin) return { ok: false, mensagem: SEM_CHAVE };
+
+  const chaves = await chavesDoLogin(email);
+  const espera = await esperaDoLogin(chaves);
+  if (espera > 0) return { ok: false, mensagem: textoEspera(espera) };
+
+  const { data, error } = await conferencia.auth.signInWithPassword({ email, password: senha });
+  const bloqueio = await registrarLogin(chaves, !error);
+  if (bloqueio > 0) return { ok: false, mensagem: textoEspera(bloqueio) };
+  if (error || !data.session) return { ok: false, mensagem: "E-mail ou senha incorretos." };
+
+  if (await ehDaEquipe(admin, data.session.user.id)) {
+    await conferencia.auth.signOut({ scope: "local" });
+    return { ok: false, mensagem: MENSAGEM_EQUIPE };
   }
-  const usuario = await usuarioCliente();
-  if (!usuario) return { ok: false, mensagem: "Não foi possível entrar. Tente de novo." };
-  const { data: cadastros } = await supabase.from("clientes").select("restaurante_id, nome").eq("user_id", usuario.userId);
-  if (cadastros?.some((c) => c.restaurante_id === restauranteId)) return { ok: true };
-  return {
-    ok: true,
-    precisaNome: true,
-    precisaTelefone: !usuario.telefoneConfirmado,
-    nomeSugerido: cadastros?.[0]?.nome ?? usuario.nomeSugerido ?? undefined,
-  };
+  const supabase = await createClient();
+  const { error: erroSessao } = await supabase.auth.setSession({
+    access_token: data.session.access_token,
+    refresh_token: data.session.refresh_token,
+  });
+  if (erroSessao) return { ok: false, mensagem: SEM_CHAVE };
+  return { ok: true, userId: data.session.user.id };
 }
 
-const emailSchema = z.email("Informe um e-mail válido.").trim().toLowerCase();
+// Criar conta: nome, e-mail, celular e senha. Já fica cadastrado neste restaurante.
+export async function cadastrarCliente(
+  slug: string,
+  dados: { nome: string; email: string; celular: string; senha: string },
+): Promise<ResultadoEntrar> {
+  const restaurante = await buscarRestaurantePorSlug(slug);
+  if (!restaurante) return { ok: false, mensagem: "Restaurante não encontrado." };
+  const v = z
+    .object({ nome: nomeSchema, email: emailSchema, senha: senhaSchema })
+    .safeParse({ nome: dados.nome, email: dados.email, senha: dados.senha });
+  if (!v.success) return { ok: false, mensagem: v.error.issues[0].message };
+  const celular = telefoneComPais(String(dados.celular ?? ""));
+  if (!celular) return { ok: false, mensagem: "Informe o seu celular com DDD." };
 
-// Código de 6 números por e-mail, sem senha. A conta é criada antes, já confirmada, para o e-mail sair
-// sempre no modelo do código de acesso (o modelo de cadastro é o do dono de restaurante).
-export async function pedirCodigoEmail(slug: string, emailDigitado: string, passe?: string): Promise<ResultadoEntrar> {
+  const ip = await ipDoCliente();
+  if (ip && !consumirLimite(`cadastro-cliente:ip:${ip}`, 5, DEZ_MINUTOS)) {
+    return { ok: false, mensagem: "Muitos cadastros seguidos. Aguarde alguns minutos e tente de novo." };
+  }
+  const admin = createAdminClient();
+  if (!admin) return { ok: false, mensagem: SEM_CHAVE };
+
+  const { error } = await admin.auth.admin.createUser({
+    email: v.data.email,
+    password: v.data.senha,
+    email_confirm: true,
+    user_metadata: { nome: v.data.nome },
+  });
+  if (error) {
+    if (error.code === "email_exists") return { ok: false, mensagem: "Já existe uma conta com este e-mail. Entre com a sua senha." };
+    if (error.code === "weak_password") return { ok: false, mensagem: "Senha fraca: misture letras e números." };
+    console.error("[cadastro cliente]", error.code, error.message);
+    return { ok: false, mensagem: "Não foi possível criar a conta agora. Tente de novo." };
+  }
+
+  const sessao = await abrirSessao(v.data.email, v.data.senha);
+  if (!sessao.ok) return sessao;
+  const supabase = await createClient();
+  const { error: erroCadastro } = await supabase.rpc("entrar_como_cliente", {
+    p_restaurante_id: restaurante.id,
+    p_nome: v.data.nome,
+    p_telefone: celular,
+  });
+  if (erroCadastro) return { ok: false, mensagem: erroCadastro.code === "P0001" ? erroCadastro.message : "Não foi possível salvar. Tente de novo." };
+  return { ok: true };
+}
+
+// Entrar com e-mail e senha. Conta de outro restaurante: pede nome e celular para este.
+export async function entrarCliente(slug: string, emailDigitado: string, senha: string): Promise<ResultadoEntrar> {
+  const restaurante = await buscarRestaurantePorSlug(slug);
+  if (!restaurante) return { ok: false, mensagem: "Restaurante não encontrado." };
+  const email = emailSchema.safeParse(emailDigitado);
+  if (!email.success) return { ok: false, mensagem: email.error.issues[0].message };
+  if (!senha) return { ok: false, mensagem: "Informe a senha." };
+
+  const ip = await ipDoCliente();
+  if (ip && !consumirLimite(`entrar-cliente:ip:${ip}`, 20, DEZ_MINUTOS)) {
+    return { ok: false, mensagem: "Muitas tentativas. Aguarde alguns minutos e tente de novo." };
+  }
+  const sessao = await abrirSessao(email.data, senha);
+  if (!sessao.ok) return sessao;
+
+  const supabase = await createClient();
+  const { data: cadastros } = await supabase.from("clientes").select("restaurante_id, nome").eq("user_id", sessao.userId);
+  if (cadastros?.some((c) => c.restaurante_id === restaurante.id)) return { ok: true };
+  return { ok: true, precisaNome: true, nomeSugerido: cadastros?.[0]?.nome };
+}
+
+// "Esqueci minha senha": link por e-mail (gerado pelo servidor, sem captcha) para /<slug>/nova-senha.
+// Responde igual exista ou não a conta (não revela quem tem cadastro).
+export async function esqueciSenhaCliente(slug: string, emailDigitado: string): Promise<ResultadoEntrar> {
   const restaurante = await buscarRestaurantePorSlug(slug);
   if (!restaurante) return { ok: false, mensagem: "Restaurante não encontrado." };
   const email = emailSchema.safeParse(emailDigitado);
   if (!email.success) return { ok: false, mensagem: email.error.issues[0].message };
 
-  const supabase = await createClient();
-  if (await sessaoDaEquipe(supabase)) return { ok: false, mensagem: MENSAGEM_EQUIPE };
-
   const ip = await ipDoCliente();
-  if (!consumirLimite(`codigo:email:${email.data}`, 3, DEZ_MINUTOS) || (ip && !consumirLimite(`codigo:ip:${ip}`, 10, DEZ_MINUTOS))) {
-    return { ok: false, mensagem: "Muitos códigos pedidos. Aguarde alguns minutos e tente de novo." };
+  if (!consumirLimite(`senha-cliente:${email.data}`, 3, DEZ_MINUTOS) || (ip && !consumirLimite(`senha-cliente:ip:${ip}`, 10, DEZ_MINUTOS))) {
+    return { ok: false, mensagem: "Muitos pedidos seguidos. Aguarde alguns minutos e tente de novo." };
   }
-
   const admin = createAdminClient();
-  if (admin) {
-    const { error } = await admin.auth.admin.createUser({ email: email.data, email_confirm: true });
-    if (error && error.code !== "email_exists") console.error("[entrar] conta não criada:", error.code, error.message);
-  }
-  const { error } = await supabase.auth.signInWithOtp({
-    email: email.data,
-    options: { shouldCreateUser: !admin, captchaToken: typeof passe === "string" && passe ? passe : undefined },
-  });
-  if (falhouAntiRobo(error)) return { ok: false, mensagem: MENSAGEM_ANTI_ROBO };
-  if (error) {
-    console.error("[entrar] código por e-mail não enviado:", error.code, error.message);
-    if (error.status === 429) return { ok: false, mensagem: "Muitos códigos pedidos. Aguarde um pouco e tente de novo." };
-    return { ok: false, mensagem: "Não foi possível enviar o código agora. Tente de novo ou peça sem entrar." };
-  }
-  return { ok: true };
-}
+  if (!admin) return { ok: false, mensagem: SEM_CHAVE };
 
-export async function confirmarCodigoEmail(slug: string, emailDigitado: string, codigoDigitado: string): Promise<ResultadoEntrar> {
-  const restaurante = await buscarRestaurantePorSlug(slug);
-  if (!restaurante) return { ok: false, mensagem: "Restaurante não encontrado." };
-  const email = emailSchema.safeParse(emailDigitado);
-  const codigo = String(codigoDigitado).replace(/\D/g, "");
-  if (!email.success) return { ok: false, mensagem: "Informe um e-mail válido." };
-  // O tamanho do código é configurado no Supabase (6 a 10 números).
-  if (codigo.length < 6 || codigo.length > 10) return { ok: false, mensagem: "Confira o código que chegou no e-mail." };
-  if (!consumirLimite(`codigo:verificar:${email.data}`, 6, DEZ_MINUTOS)) {
-    return { ok: false, mensagem: "Muitas tentativas. Peça um código novo daqui a alguns minutos." };
-  }
+  const { data, error } = await admin.auth.admin.generateLink({ type: "recovery", email: email.data });
+  if (error || !data.properties?.hashed_token || (await ehDaEquipe(admin, data.user.id))) return { ok: true };
 
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.verifyOtp({ email: email.data, token: codigo, type: "email" });
-  if (error || !data.user) return { ok: false, mensagem: "Código errado ou vencido. Confira ou peça outro." };
-  return depoisDeEntrar(supabase, restaurante.id);
-}
-
-// "Continuar com Google": devolve o endereço do Google. A volta passa por /auth/confirmar e cai de novo
-// em /<slug>/entrar, que pede nome e celular se for a primeira vez neste restaurante.
-export async function entrarComGoogle(slug: string, destino: string): Promise<ResultadoEntrar> {
-  const restaurante = await buscarRestaurantePorSlug(slug);
-  if (!restaurante) return { ok: false, mensagem: "Restaurante não encontrado." };
-  if (!formasDeEntrar().google) return { ok: false, mensagem: "Entrar com o Google não está disponível agora." };
-  const supabase = await createClient();
-  if (await sessaoDaEquipe(supabase)) return { ok: false, mensagem: MENSAGEM_EQUIPE };
-
-  const volta = destino.startsWith(`/${restaurante.slug}/`) && !destino.startsWith("//") ? destino : `/${restaurante.slug}/pedidos`;
-  const depois = `/${restaurante.slug}/entrar?voltar=${encodeURIComponent(volta)}`;
   const origem = await origemDoSite();
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: "google",
-    options: {
-      redirectTo: `${origem}/auth/confirmar?next=${encodeURIComponent(depois)}`,
-      skipBrowserRedirect: true,
-      queryParams: { prompt: "select_account" },
-    },
+  const link = `${origem}/auth/confirmar?token_hash=${data.properties.hashed_token}&type=recovery&next=${encodeURIComponent(`/${restaurante.slug}/nova-senha`)}`;
+  const envio = await enviarEmail({
+    para: email.data,
+    assunto: `Nova senha · ${restaurante.nome}`,
+    texto: `Para escolher uma senha nova da sua conta no ${restaurante.nome}, abra o link (vale por 1 hora):\n\n${link}\n\nNão foi você que pediu? Ignore este e-mail: sua senha continua a mesma.`,
+    html: emailNovaSenha(restaurante.nome, link),
   });
-  if (error || !data.url) {
-    console.error("[entrar] Google:", error?.code, error?.message);
-    return { ok: false, mensagem: "Não foi possível abrir o Google agora. Tente de novo ou entre com o e-mail." };
-  }
-  return { ok: true, url: data.url };
-}
-
-// Celular + código por SMS (só quando há provedor de mensagens). Cada código custa uma mensagem.
-export async function pedirCodigo(slug: string, telefoneDigitado: string, passe?: string): Promise<ResultadoEntrar> {
-  const restaurante = await buscarRestaurantePorSlug(slug);
-  if (!restaurante) return { ok: false, mensagem: "Restaurante não encontrado." };
-  if (!formasDeEntrar().sms) return { ok: false, mensagem: "Entrar com o celular não está disponível agora. Use o e-mail." };
-  const telefone = telefoneComPais(String(telefoneDigitado));
-  if (!telefone) return { ok: false, mensagem: "Informe o celular com DDD." };
-
-  const supabase = await createClient();
-  if (await sessaoDaEquipe(supabase)) return { ok: false, mensagem: MENSAGEM_EQUIPE };
-
-  const ip = await ipDoCliente();
-  if (!consumirLimite(`codigo:tel:${telefone}`, 3, DEZ_MINUTOS) || (ip && !consumirLimite(`codigo:ip:${ip}`, 10, DEZ_MINUTOS))) {
-    return { ok: false, mensagem: "Muitos códigos pedidos. Aguarde alguns minutos e tente de novo." };
-  }
-
-  const { error } = await supabase.auth.signInWithOtp({
-    phone: `+${telefone}`,
-    options: { shouldCreateUser: true, captchaToken: typeof passe === "string" && passe ? passe : undefined },
-  });
-  if (falhouAntiRobo(error)) return { ok: false, mensagem: MENSAGEM_ANTI_ROBO };
-  if (error) {
-    console.error("[entrar] código não enviado:", error.code, error.message);
-    if (error.status === 429) return { ok: false, mensagem: "Muitos códigos pedidos. Aguarde um pouco e tente de novo." };
-    return { ok: false, mensagem: "Não foi possível enviar o código agora. Tente de novo ou peça sem entrar." };
+  if (!envio.ok) {
+    console.error("[esqueci senha cliente]", envio.motivo);
+    return { ok: false, mensagem: "Não foi possível enviar o e-mail agora. Tente de novo." };
   }
   return { ok: true };
 }
 
-export async function confirmarCodigo(slug: string, telefoneDigitado: string, codigoDigitado: string): Promise<ResultadoEntrar> {
-  const restaurante = await buscarRestaurantePorSlug(slug);
-  if (!restaurante) return { ok: false, mensagem: "Restaurante não encontrado." };
-  const telefone = telefoneComPais(String(telefoneDigitado));
-  const codigo = String(codigoDigitado).replace(/\D/g, "");
-  if (!telefone) return { ok: false, mensagem: "Informe o celular com DDD." };
-  if (codigo.length !== 6) return { ok: false, mensagem: "O código tem 6 números." };
-  if (!consumirLimite(`codigo:verificar:${telefone}`, 6, DEZ_MINUTOS)) {
-    return { ok: false, mensagem: "Muitas tentativas. Peça um código novo daqui a alguns minutos." };
-  }
-
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.verifyOtp({ phone: `+${telefone}`, token: codigo, type: "sms" });
-  if (error || !data.user) return { ok: false, mensagem: "Código errado ou vencido. Confira ou peça outro." };
-  return depoisDeEntrar(supabase, restaurante.id);
+function escapar(texto: string) {
+  return texto.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] ?? c);
 }
 
-const nomeSchema = z.string().trim().min(2, "Informe o seu nome.").max(120, "Nome muito longo.");
+// E-mail neutro (cliente do restaurante: sem a marca da plataforma).
+function emailNovaSenha(restaurante: string, link: string) {
+  const nome = escapar(restaurante);
+  const url = escapar(link);
+  return `<!doctype html><html lang="pt-BR"><body style="margin:0;padding:0;background:#f4f4f5">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:28px 12px"><tr><td align="center">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:16px;border:1px solid #e4e4e7;font-family:Arial,Helvetica,sans-serif;color:#18181b">
+<tr><td style="padding:30px 28px 26px">
+<h1 style="margin:0 0 14px;font-size:22px;line-height:1.3">Escolha uma senha nova</h1>
+<p style="margin:0 0 18px;font-size:15px;line-height:1.65;color:#3f3f46">Recebemos um pedido para trocar a senha da sua conta no <strong>${nome}</strong>.</p>
+<p style="margin:0 0 20px"><a href="${url}" style="display:inline-block;padding:14px 26px;background:#18181b;color:#ffffff;font-weight:bold;text-decoration:none;border-radius:12px">Escolher senha nova</a></p>
+<p style="margin:0;font-size:13px;line-height:1.6;color:#52525b">O link vale por 1 hora. <strong>Não foi você?</strong> Ignore este e-mail: sua senha continua a mesma.</p>
+</td></tr></table>
+<p style="margin:16px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#71717a">Este é um e-mail automático, não precisa responder.</p>
+</td></tr></table></body></html>`;
+}
 
-// Primeira vez neste restaurante: nome e, sem celular confirmado pelo SMS, o celular para contato.
-export async function concluirCadastro(slug: string, nomeDigitado: string, telefoneDigitado?: string): Promise<ResultadoEntrar> {
+// Depois do link do e-mail: grava a senha nova (a sessão veio do link).
+export async function definirSenhaCliente(slug: string, senha: string, confirmacao: string): Promise<ResultadoEntrar> {
+  const restaurante = await buscarRestaurantePorSlug(slug);
+  if (!restaurante) return { ok: false, mensagem: "Restaurante não encontrado." };
+  const v = senhaSchema.safeParse(senha);
+  if (!v.success) return { ok: false, mensagem: v.error.issues[0].message };
+  if (senha !== confirmacao) return { ok: false, mensagem: "As senhas não são iguais." };
+  const usuario = await usuarioCliente();
+  if (!usuario) return { ok: false, mensagem: "O link expirou. Peça outro em “Esqueci minha senha”." };
+  const { error } = await usuario.supabase.auth.updateUser({ password: v.data });
+  if (error) {
+    return { ok: false, mensagem: error.code === "same_password" ? "Use uma senha diferente da anterior." : "Não foi possível trocar a senha. Tente de novo." };
+  }
+  return { ok: true };
+}
+
+// Primeira vez neste restaurante (a conta já existia em outro): nome e celular.
+export async function concluirCadastro(slug: string, nomeDigitado: string, telefoneDigitado: string): Promise<ResultadoEntrar> {
   const restaurante = await buscarRestaurantePorSlug(slug);
   if (!restaurante) return { ok: false, mensagem: "Restaurante não encontrado." };
   const nome = nomeSchema.safeParse(nomeDigitado);

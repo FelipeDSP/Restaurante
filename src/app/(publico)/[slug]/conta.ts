@@ -2,7 +2,7 @@ import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
 
-// Conta opcional do cliente do delivery (entrou com o telefone + código).
+// Conta opcional do cliente do delivery (e-mail e senha; contas antigas pelo SMS).
 // Só existe para o restaurante onde a pessoa se cadastrou; a sessão do Auth é a mesma do navegador.
 
 export type EnderecoSalvo = {
@@ -23,7 +23,7 @@ export type ContaCliente = {
   id: string;
   nome: string;
   telefone: string;
-  // Como entrou: e-mail (código ou Google) e/ou celular confirmado pelo SMS (esse não muda pela conta).
+  // E-mail da conta e se o celular foi confirmado pelo SMS (contas antigas; esse não muda pela conta).
   email: string | null;
   telefoneConfirmado: boolean;
   enderecos: EnderecoSalvo[];
@@ -53,8 +53,8 @@ export async function usuarioCliente() {
     userId: claims.sub,
     email: texto(claims.email),
     telefoneConfirmado: Boolean(texto(claims.phone)),
-    // Nome que veio do Google, para sugerir no cadastro.
-    nomeSugerido: texto(meta.full_name) ?? texto(meta.name),
+    // Nome informado ao criar a conta, para sugerir no cadastro de outro restaurante.
+    nomeSugerido: texto(meta.nome) ?? texto(meta.full_name) ?? texto(meta.name),
   };
 }
 

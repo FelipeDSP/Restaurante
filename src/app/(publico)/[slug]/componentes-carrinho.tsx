@@ -131,7 +131,7 @@ export function IconeCarrinho({ restauranteId, slug }: { restauranteId: string; 
   );
 }
 
-// Atalho para "Meus pedidos" no topo (pedidos do aparelho e da conta; entrar com o celular).
+// Atalho para "Meus pedidos" no topo (pedidos do aparelho e da conta; e a conta do cliente).
 export function IconeMeusPedidos({ slug }: { slug: string }) {
   return (
     <Link
