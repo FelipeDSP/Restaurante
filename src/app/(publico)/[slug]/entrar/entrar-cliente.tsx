@@ -290,7 +290,7 @@ export function EntrarCliente({ slug, nomeRestaurante, destino, formas, cadastro
     return (
       <form onSubmit={enviarCodigo} className="flex flex-col gap-4 rounded-xl bg-background p-4 shadow-sm" noValidate>
         <p className="text-sm">
-          Enviamos um código de 6 números para{" "}
+          Enviamos um código para{" "}
           <strong className="break-all">{canal === "email" ? email.trim().toLowerCase() : formatarTelefone(telefone)}</strong>.
           {canal === "email" ? " Confira também a caixa de spam." : null}
         </p>
@@ -299,17 +299,17 @@ export function EntrarCliente({ slug, nomeRestaurante, destino, formas, cadastro
           <Input
             ref={campo}
             value={codigo}
-            onChange={(e) => setCodigo(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            onChange={(e) => setCodigo(e.target.value.replace(/\D/g, "").slice(0, 8))}
             inputMode="numeric"
             autoComplete="one-time-code"
-            placeholder="000000"
-            className="h-12 text-center text-2xl tracking-[0.5em] tabular-nums"
+            placeholder="Código"
+            className="h-12 text-center text-2xl tracking-[0.3em] tabular-nums placeholder:tracking-normal"
             aria-invalid={!!erro}
           />
         </label>
         {mensagemErro}
         {reenviarEm <= 0 ? <AntiRobo rodada={rodada} aoMudar={setPasse} /> : null}
-        <Button type="submit" className="h-12 text-base" disabled={enviando || codigo.length !== 6}>
+        <Button type="submit" className="h-12 text-base" disabled={enviando || codigo.length < 6}>
           {enviando ? "Conferindo…" : "Entrar"}
         </Button>
         <div className="flex flex-wrap justify-between gap-2 text-sm">

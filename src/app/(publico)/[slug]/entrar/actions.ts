@@ -92,7 +92,8 @@ export async function confirmarCodigoEmail(slug: string, emailDigitado: string, 
   const email = emailSchema.safeParse(emailDigitado);
   const codigo = String(codigoDigitado).replace(/\D/g, "");
   if (!email.success) return { ok: false, mensagem: "Informe um e-mail válido." };
-  if (codigo.length !== 6) return { ok: false, mensagem: "O código tem 6 números." };
+  // O tamanho do código é configurado no Supabase (6 a 10 números).
+  if (codigo.length < 6 || codigo.length > 10) return { ok: false, mensagem: "Confira o código que chegou no e-mail." };
   if (!consumirLimite(`codigo:verificar:${email.data}`, 6, DEZ_MINUTOS)) {
     return { ok: false, mensagem: "Muitas tentativas. Peça um código novo daqui a alguns minutos." };
   }
