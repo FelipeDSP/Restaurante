@@ -8,6 +8,10 @@ export const COOKIE_SUPORTE = "modo_suporte";
 
 export type ModoSuporte = { admin: string; dono: string; restaurante: string };
 
+// Volta do suporte: a sessão do admin guardada ao "Entrar como" (refresh token, httpOnly) e o
+// restaurante, para "Sair do modo suporte" voltar à ficha sem pedir login de novo.
+export const COOKIE_VOLTA_SUPORTE = "modo_suporte_volta";
+
 export async function lerModoSuporte(): Promise<ModoSuporte | null> {
   const valor = (await cookies()).get(COOKIE_SUPORTE)?.value;
   if (!valor) return null;

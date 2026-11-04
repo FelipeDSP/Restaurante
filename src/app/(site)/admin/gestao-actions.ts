@@ -9,7 +9,7 @@ import { z } from "zod";
 
 import { falha, mensagemErroBanco, type ResultadoAcao, sucesso } from "@/lib/acoes";
 import { gravarRestauranteAtivo } from "@/lib/auth/cookie-restaurante";
-import { COOKIE_SUPORTE } from "@/lib/auth/suporte";
+import { COOKIE_SUPORTE, COOKIE_VOLTA_SUPORTE } from "@/lib/auth/suporte";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { id, textoObrigatorio } from "@/lib/validacao";
@@ -205,6 +205,10 @@ export async function entrarComo(restauranteId: string): Promise<ResultadoAcao> 
   });
   if (erroRegistro) return falha(mensagemErroBanco(erroRegistro));
 
+  // Guarda a sessão do admin antes de trocar (o "Sair do modo suporte" volta com ela).
+  const { data: sessaoAdmin } = await supabase.auth.getSession();
+  const voltaAdmin = sessaoAdmin.session?.refresh_token;
+
   const { data: link, error: erroLink } = await admin.auth.admin.generateLink({ type: "magiclink", email: emailDono });
   if (erroLink || !link.properties?.hashed_token) return falha("Não foi possível abrir a conta do dono.");
   const { error: erroSessao } = await supabase.auth.verifyOtp({ type: "magiclink", token_hash: link.properties.hashed_token });
@@ -217,16 +221,44 @@ export async function entrarComo(restauranteId: string): Promise<ResultadoAcao> 
     path: "/",
     maxAge: 60 * 60 * 4,
   });
+  if (voltaAdmin) {
+    (await cookies()).set(COOKIE_VOLTA_SUPORTE, JSON.stringify({ token: voltaAdmin, restauranteId }), {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 60 * 60 * 4,
+    });
+  }
   await gravarRestauranteAtivo(restauranteId);
   // O navegador recarrega em /painel (página inteira) para começar já com a sessão do dono.
   return sucesso();
 }
 
-// Sai do modo suporte: encerra a sessão do dono e volta para a entrada do admin.
+// Sai do modo suporte: encerra a sessão do dono só neste navegador (o dono continua logado nos
+// aparelhos dele) e volta para a ficha do restaurante com a sessão do admin guardada ao entrar.
+// Sem ela (venceu ou não existe), volta para a entrada do admin.
 export async function sairDoSuporte(): Promise<void> {
   const supabase = await createClient();
-  await supabase.auth.signOut();
   const c = await cookies();
+  let volta: { token?: unknown; restauranteId?: unknown } = {};
+  try {
+    volta = JSON.parse(c.get(COOKIE_VOLTA_SUPORTE)?.value ?? "{}");
+  } catch {
+    volta = {};
+  }
   c.delete(COOKIE_SUPORTE);
+  c.delete(COOKIE_VOLTA_SUPORTE);
+  await supabase.auth.signOut({ scope: "local" });
+
+  if (typeof volta.token === "string") {
+    const { error } = await supabase.auth.refreshSession({ refresh_token: volta.token });
+    const { data: ehAdmin } = error ? { data: false } : await supabase.rpc("admin_sou_admin");
+    if (!error && ehAdmin) {
+      const restaurante = typeof volta.restauranteId === "string" && id.safeParse(volta.restauranteId).success ? volta.restauranteId : null;
+      redirect(restaurante ? `/admin/restaurantes/${restaurante}` : "/admin");
+    }
+    if (!error) await supabase.auth.signOut({ scope: "local" });
+  }
   redirect("/admin/entrar");
 }
