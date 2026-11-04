@@ -3055,6 +3055,54 @@ begin
 end;
 $$;
 
+-- ======================================================================
+-- Conta encerrada não muda mais (histórico confiável)
+-- ======================================================================
+do $$
+declare
+  a constant uuid := md5('brasa-espetinhos')::uuid;
+  v_comanda uuid;
+  v_item uuid;
+  v_prod uuid;
+  v_total int;
+  v_falhou boolean;
+begin
+  perform pg_temp.admin();
+  update public.assinaturas set status = 'teste', teste_termina_em = now() + interval '7 days', periodo_termina_em = null where restaurante_id = a;
+  perform pg_temp.entrar('caixa.brasa@exemplo.com');
+  if not exists (select 1 from public.caixa_sessoes where restaurante_id = a and fechada_em is null) then
+    insert into public.caixa_sessoes (restaurante_id, valor_inicial) values (a, 0);
+  end if;
+  select id into v_prod from public.produtos where restaurante_id = a and nome = 'Refrigerante lata';
+  insert into public.comandas (restaurante_id, mesa_id, pessoas)
+  select a, id, 2 from public.mesas where restaurante_id = a and numero = '8' returning id into v_comanda;
+  perform public.lancar_itens_comanda(v_comanda, jsonb_build_array(jsonb_build_object('produto_id', v_prod, 'quantidade', 2)));
+  update public.comandas set cobrar_couvert = true where id = v_comanda;
+  select total into v_total from public.comandas where id = v_comanda;
+  insert into public.pagamentos (restaurante_id, comanda_id, valor, forma) values (a, v_comanda, v_total, 'pix');
+  update public.comandas set status = 'fechada' where id = v_comanda;
+  select id into v_item from public.itens_pedido where pedido_id in (select id from public.pedidos where comanda_id = v_comanda) limit 1;
+
+  v_falhou := false;
+  begin update public.comandas set pessoas = 6 where id = v_comanda; exception when others then v_falhou := sqlerrm like 'Conta encerrada%'; end;
+  perform pg_temp.ok(v_falhou, 'histórico: comanda fechada não muda as pessoas');
+  v_falhou := false;
+  begin update public.comandas set cobrar_couvert = false where id = v_comanda; exception when others then v_falhou := sqlerrm like 'Conta encerrada%'; end;
+  perform pg_temp.ok(v_falhou, 'histórico: comanda fechada não tira couvert nem serviço');
+  v_falhou := false;
+  begin update public.itens_pedido set observacao = 'mudou depois' where id = v_item; exception when others then v_falhou := sqlerrm like 'Conta encerrada%'; end;
+  perform pg_temp.ok(v_falhou, 'histórico: item de comanda fechada não muda');
+  v_falhou := false;
+  begin update public.comandas set status = 'aberta' where id = v_comanda; exception when others then v_falhou := true; end;
+  perform pg_temp.ok(v_falhou, 'histórico: comanda fechada não reabre');
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  v_falhou := false;
+  begin update public.comandas set pessoas = 6 where id = v_comanda; exception when others then v_falhou := sqlerrm like 'Conta encerrada%'; end;
+  perform pg_temp.ok(v_falhou, 'histórico: nem o dono altera a conta encerrada');
+  perform pg_temp.admin();
+end;
+$$;
+
 select n, ok, teste from resultado order by n;
 select count(*) filter (where not ok) as falhas, count(*) as total from resultado;
 

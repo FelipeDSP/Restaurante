@@ -38,6 +38,8 @@ export const NAVEGACAO: ItemNavegacao[] = [
   },
   { href: "/painel/caixa", rotulo: "Caixa", grupo: "Operação", acesso: ["caixa_operar"] },
   { href: "/painel/relatorios", rotulo: "Relatórios", grupo: "Operação", acesso: ["relatorios"] },
+  // Contas encerradas e deliveries terminados, só leitura (o banco não deixa mudar).
+  { href: "/painel/historico", rotulo: "Histórico", grupo: "Operação", acesso: ["caixa_operar", "relatorios"] },
   { href: "/cozinha", rotulo: "Tela da cozinha", grupo: "Operação", acesso: ["cozinha_tela"] },
   {
     href: "/painel/produtos",
