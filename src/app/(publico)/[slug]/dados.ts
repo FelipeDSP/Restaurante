@@ -153,6 +153,7 @@ export type PedidoPublico = {
   forma_pagamento_prevista: string | null;
   troco_para: number | null;
   motivo_cancelamento: string | null;
+  cancelado_pelo_cliente?: boolean;
   tempo_estimado_entrega_min: number | null;
   itens: {
     nome_produto: string;

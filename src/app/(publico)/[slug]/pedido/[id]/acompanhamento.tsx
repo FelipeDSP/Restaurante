@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import type { PedidoPublico } from "../../dados";
 import { useMeusPedidos } from "../../meus-pedidos";
 import { AvisoPush } from "./aviso-push";
+import { CancelarPedido } from "./cancelar-pedido";
 import { ConversaCliente } from "./conversa-cliente";
 
 type Status = PedidoPublico["status"];
@@ -118,6 +119,16 @@ export function Acompanhamento({ inicial, chaveAvisos, restaurante }: Props) {
     }
   }
 
+  // Depois de cancelar (ou se o restaurante aceitou no meio), busca o status na hora.
+  async function recarregar() {
+    try {
+      const resposta = await fetch(`/api/pedidos/${inicial.id}`, { cache: "no-store" });
+      if (resposta.ok) setPedido((await resposta.json()) as PedidoPublico);
+    } catch {
+      // a consulta periódica tenta de novo
+    }
+  }
+
   const whatsapp = restaurante.whatsapp?.replace(/\D/g, "");
 
   return (
@@ -150,9 +161,15 @@ export function Acompanhamento({ inicial, chaveAvisos, restaurante }: Props) {
         <section className="flex items-start gap-3 rounded-xl bg-red-50 p-4 text-red-900">
           <CircleX className="size-6 shrink-0" aria-hidden />
           <div className="flex flex-col gap-1">
-            <p>O restaurante cancelou este pedido.</p>
-            {pedido.motivo_cancelamento ? <p className="font-medium">Motivo: {pedido.motivo_cancelamento}</p> : null}
-            <p className="text-sm">Fale com eles para mais informações.</p>
+            {pedido.cancelado_pelo_cliente ? (
+              <p>Você cancelou este pedido.</p>
+            ) : (
+              <>
+                <p>O restaurante cancelou este pedido.</p>
+                {pedido.motivo_cancelamento ? <p className="font-medium">Motivo: {pedido.motivo_cancelamento}</p> : null}
+                <p className="text-sm">Fale com eles para mais informações.</p>
+              </>
+            )}
           </div>
         </section>
       ) : (
@@ -233,6 +250,8 @@ export function Acompanhamento({ inicial, chaveAvisos, restaurante }: Props) {
           </p>
         ) : null}
       </section>
+
+      {pedido.status === "recebido" ? <CancelarPedido pedidoId={pedido.id} numero={pedido.numero} aoCancelar={recarregar} /> : null}
 
       <ConversaCliente pedidoId={pedido.id} numero={pedido.numero} whatsapp={whatsapp ?? null} fusoHorario={restaurante.fusoHorario} />
 

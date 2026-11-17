@@ -3099,6 +3099,66 @@ begin
   v_falhou := false;
   begin update public.comandas set pessoas = 6 where id = v_comanda; exception when others then v_falhou := sqlerrm like 'Conta encerrada%'; end;
   perform pg_temp.ok(v_falhou, 'histórico: nem o dono altera a conta encerrada');
+
+  perform pg_temp.admin();
+end;
+$$;
+
+do $$
+declare
+  a constant uuid := md5('brasa-espetinhos')::uuid;
+  v_produto_a2 uuid;
+  v_bairro_a uuid;
+  v_json jsonb;
+  v_pedido uuid;
+  v_falhou boolean;
+begin
+  perform pg_temp.admin();
+  v_produto_a2 := md5('brasa-espetinhos/Burgers/Burger artesanal')::uuid;
+  select id into v_bairro_a from public.bairros_entrega where restaurante_id = a and nome = 'Centro';
+  -- ======================================================================
+  -- Cliente cancela o delivery antes do aceite
+  -- ======================================================================
+  perform pg_temp.anonimo();
+  v_json := public.criar_pedido_delivery(a, 'Cancela', '69988880001', v_bairro_a, '{"rua": "R", "numero": "1", "bairro": "Centro"}', 'pix',
+    jsonb_build_array(jsonb_build_object('produto_id', v_produto_a2, 'quantidade', 1)));
+  v_pedido := (v_json ->> 'id')::uuid;
+  perform public.cliente_cancelar_pedido(v_pedido, 'demorou');
+  perform public.cliente_cancelar_pedido(v_pedido, null); -- toque repetido: sem erro
+  v_json := public.consultar_pedido_publico(v_pedido);
+  perform pg_temp.ok(v_json ->> 'status' = 'cancelado' and (v_json ->> 'cancelado_pelo_cliente')::boolean
+    and v_json ->> 'motivo_cancelamento' = 'Cancelado pelo cliente: demorou', 'cancelamento: cliente cancela antes do aceite');
+
+  v_json := public.criar_pedido_delivery(a, 'Aceito', '69988880002', v_bairro_a, '{"rua": "R", "numero": "1", "bairro": "Centro"}', 'pix',
+    jsonb_build_array(jsonb_build_object('produto_id', v_produto_a2, 'quantidade', 1)));
+  v_pedido := (v_json ->> 'id')::uuid;
+  perform pg_temp.entrar('caixa.brasa@exemplo.com');
+  update public.pedidos set status = 'em_preparo' where id = v_pedido;
+  perform pg_temp.anonimo();
+  v_falhou := false;
+  begin perform public.cliente_cancelar_pedido(v_pedido); exception when others then v_falhou := sqlerrm like 'O restaurante já aceitou%'; end;
+  perform pg_temp.ok(v_falhou, 'cancelamento: cliente não cancela depois do aceite');
+  perform pg_temp.entrar('caixa.brasa@exemplo.com');
+  update public.pedidos set status = 'cancelado', motivo_cancelamento = 'teste' where id = v_pedido;
+  perform pg_temp.ok(not (select cancelado_pelo_cliente from public.pedidos where id = v_pedido), 'cancelamento: o da equipe não fica como do cliente');
+  v_falhou := false;
+  begin update public.pedidos set cancelado_pelo_cliente = true where id = v_pedido; exception when others then v_falhou := true; end;
+  perform pg_temp.ok(not (select cancelado_pelo_cliente from public.pedidos where id = v_pedido), 'cancelamento: equipe não marca como do cliente');
+
+  -- Logado sem a permissão do delivery (ex.: conta do cliente) cancela só pela RPC.
+  perform pg_temp.anonimo();
+  v_json := public.criar_pedido_delivery(a, 'Logado', '69988880003', v_bairro_a, '{"rua": "R", "numero": "1", "bairro": "Centro"}', 'pix',
+    jsonb_build_array(jsonb_build_object('produto_id', v_produto_a2, 'quantidade', 1)));
+  v_pedido := (v_json ->> 'id')::uuid;
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  v_falhou := false;
+  begin update public.pedidos set status = 'cancelado', motivo_cancelamento = 'x' where id = v_pedido; exception when others then v_falhou := true; end;
+  perform pg_temp.admin();
+  perform pg_temp.ok(v_falhou or (select status from public.pedidos where id = v_pedido) = 'recebido', 'cancelamento: sem permissão não cancela direto');
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  perform public.cliente_cancelar_pedido(v_pedido);
+  perform pg_temp.admin();
+  perform pg_temp.ok((select status = 'cancelado' and cancelado_pelo_cliente from public.pedidos where id = v_pedido), 'cancelamento: logado cancela pela RPC');
   perform pg_temp.admin();
 end;
 $$;

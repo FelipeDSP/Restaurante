@@ -49,6 +49,7 @@ export function AlertaPedidos({ restauranteId }: { restauranteId: string }) {
   // Deliveries já "pronto": anotados ao abrir a tela, para mexer neles depois (entregador, edição)
   // não tocar "pronto para sair" de novo.
   const prontosAvisados = useRef(new Set<string>());
+  const canceladosAvisados = useRef(new Set<string>());
 
   // Qualquer interação com a página já libera o som (se a pessoa não desligou).
   useEffect(() => {
@@ -158,13 +159,26 @@ export function AlertaPedidos({ restauranteId }: { restauranteId: string }) {
     () => void conferir(),
   );
 
-  // A cozinha terminou um delivery: o caixa chama o entregador.
+  // A cozinha terminou um delivery (o caixa chama o entregador) ou o cliente cancelou.
   useMudancasRealtime(
     restauranteId,
     ["pedidos"],
     (mudanca) => {
-      const pedido = mudanca.new as { id?: string; origem?: string; status?: string; numero?: number };
-      if (pedido.origem !== "delivery" || pedido.status !== "pronto" || !pedido.id) return;
+      const pedido = mudanca.new as { id?: string; origem?: string; status?: string; numero?: number; cancelado_pelo_cliente?: boolean };
+      if (pedido.origem !== "delivery" || !pedido.id) return;
+      // O cliente cancelou pelo site antes do aceite.
+      if (pedido.status === "cancelado" && pedido.cancelado_pelo_cliente) {
+        if (canceladosAvisados.current.has(pedido.id)) return;
+        canceladosAvisados.current.add(pedido.id);
+        bipar();
+        toast.warning(`O cliente cancelou o delivery nº ${pedido.numero ?? ""}`, {
+          duration: 15000,
+          action: { label: "Ver", onClick: () => router.push("/painel/delivery") },
+        });
+        router.refresh();
+        return;
+      }
+      if (pedido.status !== "pronto") return;
       if (prontosAvisados.current.has(pedido.id)) return;
       prontosAvisados.current.add(pedido.id);
       bipar();
