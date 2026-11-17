@@ -9,7 +9,9 @@ import { tocarAlerta } from "@/lib/som";
 import { createClient } from "@/lib/supabase/client";
 
 // Avisa o garçom quando a cozinha termina um pedido das mesas dele (todas as praças prontas):
-// aviso que fica na tela até ele tocar, vibração e bipe. Mesas sem garçom definido avisam todos.
+// aviso que fica na tela até ele tocar, vibração e bipe. Mesa sem garçom aparece para todos, sem
+// vibrar nem bipar (como o pedido pelo QR). Só com a mesa aberta e algum item valendo: fechar a
+// mesa encerra os tickets pendentes (vira "pronto" no banco) e isso não é prato para levar.
 export function AvisoPronto({ restauranteId, membroId }: { restauranteId: string; membroId: string }) {
   const router = useRouter();
   const audio = useRef<AudioContext | null>(null);
@@ -36,11 +38,13 @@ export function AvisoPronto({ restauranteId, membroId }: { restauranteId: string
       const supabase = createClient();
       const { data: pedido } = await supabase
         .from("pedidos")
-        .select("numero, origem, comanda:comandas(garcom_id, mesa_id, mesa:mesas(numero)), tarefas_producao(status, retirada)")
+        .select("numero, origem, status, comanda:comandas(garcom_id, mesa_id, status, mesa:mesas(numero)), tarefas_producao(status, retirada), itens_pedido(cancelado_em)")
         .eq("id", tarefa.pedido_id)
         .eq("restaurante_id", restauranteId)
         .maybeSingle();
-      if (!pedido || pedido.origem !== "mesa" || !pedido.comanda) return;
+      if (!pedido || pedido.origem !== "mesa" || !pedido.comanda || pedido.status === "cancelado") return;
+      if (pedido.comanda.status !== "aberta" && pedido.comanda.status !== "conta_pedida") return; // mesa já encerrada
+      if (!pedido.itens_pedido.some((i) => !i.cancelado_em)) return; // tudo cancelado
       if (pedido.tarefas_producao.some((t) => t.status === "pendente")) return; // ainda falta praça
       if (pedido.tarefas_producao.every((t) => t.retirada)) return; // já entregue
       if (pedido.comanda.garcom_id && pedido.comanda.garcom_id !== membroId) return;
@@ -48,8 +52,10 @@ export function AvisoPronto({ restauranteId, membroId }: { restauranteId: string
       avisados.current.add(tarefa.pedido_id);
 
       const mesaId = pedido.comanda.mesa_id;
-      navigator.vibrate?.([300, 150, 300]);
-      if (audio.current?.state === "running") tocarAlerta(audio.current);
+      if (pedido.comanda.garcom_id === membroId) {
+        navigator.vibrate?.([300, 150, 300]);
+        if (audio.current?.state === "running") tocarAlerta(audio.current);
+      }
       toast.success(`Mesa ${pedido.comanda.mesa?.numero ?? ""}: pedido nº ${pedido.numero} pronto`, {
         description: "Pode levar para a mesa.",
         duration: Infinity,

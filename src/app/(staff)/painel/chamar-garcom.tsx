@@ -10,6 +10,7 @@ import { mensagemFalhaRede, useAcao } from "@/components/staff/acoes-cliente";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useMudancasRealtime } from "@/lib/realtime";
+import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 import { chamarGarcom, type GarcomParaChamar, garconsParaChamar } from "./chamados";
@@ -40,12 +41,18 @@ export function ChamarGarcom({ restauranteId, membroId }: { restauranteId: strin
   useMudancasRealtime(
     restauranteId,
     ["chamados_garcom"],
-    (mudanca) => {
+    async (mudanca) => {
       const c = mudanca.new as { garcom_id?: string; chamado_por?: string; atendido_em?: string | null };
       if (!c.atendido_em || c.chamado_por !== membroId) return;
       const antes = mudanca.old as { atendido_em?: string | null };
       if (antes?.atendido_em) return;
-      toast.success(`${nomes.current.get(c.garcom_id ?? "") ?? "O garçom"} está indo`);
+      // Tela recarregada (ou chamado feito em outra aba): o nome não está guardado aqui.
+      let nome = nomes.current.get(c.garcom_id ?? "");
+      if (!nome && c.garcom_id) {
+        const { data } = await createClient().from("membros").select("nome").eq("id", c.garcom_id).maybeSingle();
+        nome = data?.nome;
+      }
+      toast.success(`${nome ?? "O garçom"} está indo`);
     },
     "UPDATE",
   );

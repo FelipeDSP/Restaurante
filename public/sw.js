@@ -32,8 +32,17 @@ self.addEventListener("notificationclick", (evento) => {
   }
   evento.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((janelas) => {
-      const aberta = janelas.find((j) => j.url === destino.href);
-      return aberta ? aberta.focus() : self.clients.openWindow(destino.href);
+      // A página do pedido já aberta (com ou sem "#conversa"): usa a mesma aba em vez de abrir outra.
+      const aberta = janelas.find((j) => {
+        try {
+          return new URL(j.url).pathname === destino.pathname;
+        } catch {
+          return false;
+        }
+      });
+      if (!aberta) return self.clients.openWindow(destino.href);
+      const foco = aberta.focus();
+      return destino.hash && aberta.url !== destino.href && "navigate" in aberta ? foco.then((j) => j.navigate(destino.href)) : foco;
     }),
   );
 });

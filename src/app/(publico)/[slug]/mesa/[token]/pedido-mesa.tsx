@@ -35,32 +35,32 @@ export function BarraPedidoMesa({
   const prontos = itens.filter((i) => semPreparo.includes(i.produtoId));
   // Só faz sentido perguntar quando o pedido tem comida e algo que já sai pronto.
   const perguntar = prontos.length > 0 && prontos.length < itens.length;
-  // A mesma chave até dar certo: reenviar (internet caiu, toque duplo) não pede em dobro.
-  const lote = useRef<string | null>(null);
+  // Mesmo pedido = mesma chave: reenviar depois de uma falha (internet caiu, toque duplo) não pede
+  // em dobro. Se o carrinho mudou, é outro pedido e ganha outra chave (como no checkout do delivery):
+  // reaproveitar a chave faria o banco devolver o pedido antigo e o item novo sumiria calado.
+  const lote = useRef<{ conteudo: string; chave: string } | null>(null);
 
   async function enviar() {
     if (enviando || itens.length === 0) return;
     setEnviando(true);
-    lote.current ??= crypto.randomUUID();
+    const itensDoPedido = itens.map((i) => ({
+      produto_id: i.produtoId,
+      quantidade: i.quantidade,
+      observacao: i.observacao,
+      adicionais: i.adicionais.map((a) => a.id),
+      com_a_comida: perguntar && comAComida && semPreparo.includes(i.produtoId),
+    }));
+    const conteudo = JSON.stringify({ itensDoPedido, subtotal });
+    if (lote.current?.conteudo !== conteudo) lote.current = { conteudo, chave: crypto.randomUUID() };
+    const soBebida = itens.every((i) => semPreparo.includes(i.produtoId));
     try {
-      const r = await pedirPelaMesa(slug, {
-        token,
-        lote: lote.current,
-        total: subtotal,
-        itens: itens.map((i) => ({
-          produto_id: i.produtoId,
-          quantidade: i.quantidade,
-          observacao: i.observacao,
-          adicionais: i.adicionais.map((a) => a.id),
-          com_a_comida: perguntar && comAComida && semPreparo.includes(i.produtoId),
-        })),
-      });
+      const r = await pedirPelaMesa(slug, { token, lote: lote.current.chave, total: subtotal, itens: itensDoPedido });
       if (r.ok) {
         lote.current = null;
         limpar();
         setComAComida(false);
         setAberto(false);
-        toast.success("Pedido enviado! Já foi para a cozinha.", { duration: 6000 });
+        toast.success(soBebida ? "Pedido enviado! Já vamos levar." : "Pedido enviado! Já foi para a cozinha.", { duration: 6000 });
       } else {
         if (r.atualizar) {
           lote.current = null;

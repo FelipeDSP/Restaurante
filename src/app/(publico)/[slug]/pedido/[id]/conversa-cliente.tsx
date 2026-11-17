@@ -10,6 +10,21 @@ import { cn } from "@/lib/utils";
 type Mensagem = { id: string; autor: "cliente" | "equipe"; texto: string; em: string };
 type Conversa = { aberta: boolean; mensagens: Mensagem[] };
 
+function lerVistas(chave: string): number {
+  try {
+    return typeof window === "undefined" ? 0 : Number(localStorage.getItem(chave)) || 0;
+  } catch {
+    return 0;
+  }
+}
+function gravarVistas(chave: string, quantas: number) {
+  try {
+    localStorage.setItem(chave, String(quantas));
+  } catch {
+    // armazenamento bloqueado: só não lembra
+  }
+}
+
 // Aberta: confere a cada 5 s; fechada (só o botão): a cada 20 s, para mostrar "nova resposta".
 const INTERVALO_ABERTA_MS = 5_000;
 const INTERVALO_FECHADA_MS = 20_000;
@@ -32,26 +47,54 @@ export function ConversaCliente({
   const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-  const [vistas, setVistas] = useState(0);
+  // Respostas já vistas ficam no aparelho: recarregar a página não mostra "resposta nova" de novo.
+  const chaveVistas = `conversa-vistas:${pedidoId}`;
+  const [vistas, setVistas] = useState(() => lerVistas(chaveVistas));
   const fim = useRef<HTMLDivElement>(null);
+  const abertaAtual = useRef(aberta);
+  useEffect(() => {
+    abertaAtual.current = aberta;
+  }, [aberta]);
 
   const carregar = useCallback(async () => {
     try {
       const r = await fetch(`/api/pedidos/${pedidoId}/conversa`, { cache: "no-store" });
-      if (r.ok) setConversa((await r.json()) as Conversa);
+      if (!r.ok) return;
+      const nova = (await r.json()) as Conversa;
+      setConversa(nova);
+      // Com a conversa aberta na tela, o que chegou já foi visto.
+      if (abertaAtual.current) gravarVistas(chaveVistas, nova.mensagens.filter((m) => m.autor === "equipe").length);
     } catch {
       // Sem internet: tenta na próxima volta.
     }
-  }, [pedidoId]);
+  }, [pedidoId, chaveVistas]);
 
+  // Conversa encerrada (24 h depois do pedido) não muda mais: para de consultar.
+  const encerrada = conversa?.aberta === false;
   useEffect(() => {
     const agora = setTimeout(() => void carregar(), 0);
-    const t = setInterval(() => void carregar(), aberta ? INTERVALO_ABERTA_MS : INTERVALO_FECHADA_MS);
+    if (encerrada) return () => clearTimeout(agora);
+    // Com a aba escondida não consulta; ao voltar, confere na hora.
+    const t = setInterval(() => {
+      if (!document.hidden) void carregar();
+    }, aberta ? INTERVALO_ABERTA_MS : INTERVALO_FECHADA_MS);
+    const aoVoltar = () => {
+      if (!document.hidden) void carregar();
+    };
+    document.addEventListener("visibilitychange", aoVoltar);
     return () => {
       clearTimeout(agora);
       clearInterval(t);
+      document.removeEventListener("visibilitychange", aoVoltar);
     };
-  }, [carregar, aberta]);
+  }, [carregar, aberta, encerrada]);
+
+  // Veio do aviso no celular ("#conversa"): já abre a conversa.
+  useEffect(() => {
+    if (window.location.hash !== "#conversa") return;
+    const t = setTimeout(() => setAberta(true), 0);
+    return () => clearTimeout(t);
+  }, []);
 
   const mensagens = conversa?.mensagens ?? [];
   const respostas = mensagens.filter((m) => m.autor === "equipe").length;
@@ -62,6 +105,7 @@ export function ConversaCliente({
   const novas = aberta ? 0 : Math.max(0, respostas - vistas);
   const abrir = () => {
     setVistas(respostas);
+    gravarVistas(chaveVistas, respostas);
     setAberta(true);
   };
 

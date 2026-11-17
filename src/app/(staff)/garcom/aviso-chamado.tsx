@@ -22,7 +22,15 @@ type Chamado = { id: string; recado: string | null; chamado_por: string | null; 
 export function AvisoChamado({ restauranteId, membroId }: { restauranteId: string; membroId: string }) {
   const audio = useRef<AudioContext | null>(null);
   const abertos = useRef(new Map<string, number>());
+  // Respondidos ou fechados neste aparelho: não voltam numa nova consulta (só o "Vou" grava no banco).
+  const encerrados = useRef(new Set<string>());
   const { executar } = useAcao();
+  // `executar` muda a cada render; pela ref, `mostrar` e `conferir` ficam estáveis e a consulta
+  // não se repete a cada atualização da tela.
+  const executarAtual = useRef(executar);
+  useEffect(() => {
+    executarAtual.current = executar;
+  });
 
   // Navegadores só liberam som depois de um toque na página.
   useEffect(() => {
@@ -45,6 +53,7 @@ export function AvisoChamado({ restauranteId, membroId }: { restauranteId: strin
   }, []);
 
   const encerrar = useCallback((chamadoId: string) => {
+    encerrados.current.add(chamadoId);
     clearInterval(abertos.current.get(chamadoId));
     abertos.current.delete(chamadoId);
     navigator.vibrate?.(0);
@@ -52,13 +61,13 @@ export function AvisoChamado({ restauranteId, membroId }: { restauranteId: strin
 
   const mostrar = useCallback(
     async (chamado: Chamado) => {
-      if (abertos.current.has(chamado.id)) return;
+      if (abertos.current.has(chamado.id) || encerrados.current.has(chamado.id)) return;
       let quem = "Caixa";
       if (chamado.chamado_por) {
         const { data } = await createClient().from("membros").select("nome").eq("id", chamado.chamado_por).maybeSingle();
         if (data?.nome) quem = data.nome;
       }
-      if (abertos.current.has(chamado.id)) return;
+      if (abertos.current.has(chamado.id) || encerrados.current.has(chamado.id)) return;
 
       const vence = (chamado.criado_em ? new Date(chamado.criado_em).getTime() : Date.now()) + VALIDADE_MS;
       const idAviso = `chamado-${chamado.id}`;
@@ -86,7 +95,7 @@ export function AvisoChamado({ restauranteId, membroId }: { restauranteId: strin
           onClick: (evento) => {
             // O aviso (e a vibração) só some quando o "Vou" chega ao sistema; sem internet, continua.
             evento.preventDefault();
-            executar(
+            executarAtual.current(
               () => atenderChamado(chamado.id),
               () => {
                 encerrar(chamado.id);
@@ -98,7 +107,7 @@ export function AvisoChamado({ restauranteId, membroId }: { restauranteId: strin
         onDismiss: () => encerrar(chamado.id),
       });
     },
-    [alertar, encerrar, executar],
+    [alertar, encerrar],
   );
 
   // Chamados que chegaram com o app fechado (ou durante uma queda de conexão).

@@ -31,10 +31,23 @@ export async function avancarPedido(pedidoId: string, status: string): Promise<R
     .eq("id", dados.data.pedidoId)
     .eq("restaurante_id", acesso.restaurante.id)
     .eq("origem", "delivery")
+    .neq("status", dados.data.status)
     .not("status", "in", "(entregue,cancelado)")
     .select("id");
   if (error) return falha(mensagemErroBanco(error));
-  if (!data.length) return falha("Pedido não encontrado ou já finalizado.");
+  if (!data.length) {
+    // Já estava nesse status (dois aparelhos tocaram juntos, ou a rede caiu depois de gravar):
+    // vale como feito, sem avisar o cliente de novo.
+    const { data: atual } = await supabase
+      .from("pedidos")
+      .select("status")
+      .eq("id", dados.data.pedidoId)
+      .eq("restaurante_id", acesso.restaurante.id)
+      .maybeSingle();
+    if (atual?.status !== dados.data.status) return falha("Pedido não encontrado ou já finalizado.");
+    refresh();
+    return sucesso(ROTULO[dados.data.status]);
+  }
 
   after(() => avisarCliente(dados.data.pedidoId));
   refresh();

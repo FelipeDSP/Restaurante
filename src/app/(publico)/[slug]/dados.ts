@@ -165,9 +165,12 @@ export type PedidoPublico = {
   }[];
 };
 
+// null = o pedido não existe (ou o restaurante saiu do ar). Falha do banco lança erro: quem chama
+// não pode confundir com "não existe" (o aparelho do cliente esqueceria o pedido).
 export async function consultarPedido(pedidoId: string): Promise<PedidoPublico | null> {
   const supabase = createPublicClient();
-  const { data } = await supabase.rpc("consultar_pedido_publico", { p_pedido_id: pedidoId });
+  const { data, error } = await supabase.rpc("consultar_pedido_publico", { p_pedido_id: pedidoId });
+  if (error) throw new Error(`consultar_pedido_publico: ${error.message}`);
   return (data as PedidoPublico | null) ?? null;
 }
 

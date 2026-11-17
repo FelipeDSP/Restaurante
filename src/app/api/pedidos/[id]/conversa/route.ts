@@ -13,7 +13,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const { id: pedidoId } = await params;
   if (!id.safeParse(pedidoId).success) return Response.json({ erro: "Pedido inválido." }, { status: 400, headers: semCache });
   const ip = await ipDoCliente();
-  if (ip && !consumirLimite(`conversa:ler:${ip}`, 240, 10 * 60_000)) {
+  // Por pedido (uma aba consulta ~120 vezes em 10 min) e um teto folgado por IP: vários clientes
+  // atrás do mesmo IP da operadora não se bloqueiam.
+  if (ip && (!consumirLimite(`conversa:ler:${ip}:${pedidoId}`, 240, 10 * 60_000) || !consumirLimite(`conversa:ler:${ip}`, 3000, 10 * 60_000))) {
     return Response.json({ erro: "Muitas consultas." }, { status: 429, headers: semCache });
   }
   const { data, error } = await createPublicClient().rpc("conversa_pedido_publica", { p_pedido_id: pedidoId });

@@ -42,8 +42,12 @@ export function AlertaPedidos({ restauranteId }: { restauranteId: string }) {
   const [mudo, setMudo] = useState(false);
   const mudoAtual = useRef(false);
   const [novos, setNovos] = useState(0);
-  // Pedidos "recebido" já avisados (null até a primeira conferência, que não avisa nada).
-  const avisados = useRef<Set<string> | null>(null);
+  // Pedidos "recebido" já avisados. A primeira conferência não avisa nada (só anota o que já existia),
+  // mesmo que um pedido novo chegue pelo tempo real antes dela responder.
+  const avisados = useRef(new Set<string>());
+  const primeiraCarga = useRef(false);
+  // Deliveries já "pronto": anotados ao abrir a tela, para mexer neles depois (entregador, edição)
+  // não tocar "pronto para sair" de novo.
   const prontosAvisados = useRef(new Set<string>());
 
   // Qualquer interação com a página já libera o som (se a pessoa não desligou).
@@ -86,7 +90,6 @@ export function AlertaPedidos({ restauranteId }: { restauranteId: string }) {
 
   const avisar = useCallback(
     (pedido: PedidoNovo) => {
-      avisados.current ??= new Set();
       if (avisados.current.has(pedido.id)) return;
       avisados.current.add(pedido.id);
       bipar();
@@ -104,21 +107,24 @@ export function AlertaPedidos({ restauranteId }: { restauranteId: string }) {
     const supabase = createClient();
     const { data, error } = await supabase
       .from("pedidos")
-      .select("id, numero, cliente_nome")
+      .select("id, numero, cliente_nome, status")
       .eq("restaurante_id", restauranteId)
       .eq("origem", "delivery")
-      .eq("status", "recebido");
+      .in("status", ["recebido", "pronto"]);
     if (error || !data) return;
+    const recebidos = data.filter((p) => p.status === "recebido");
+    data.filter((p) => p.status === "pronto").forEach((p) => prontosAvisados.current.add(p.id));
 
-    if (avisados.current === null) {
-      avisados.current = new Set(data.map((p) => p.id));
+    if (!primeiraCarga.current) {
+      primeiraCarga.current = true;
+      recebidos.forEach((p) => avisados.current.add(p.id));
       return;
     }
-    const naoAvisados = data.filter((p) => !avisados.current?.has(p.id));
+    const naoAvisados = recebidos.filter((p) => !avisados.current.has(p.id));
     if (naoAvisados.length > 0) {
       naoAvisados.forEach(avisar);
       router.refresh();
-    } else if (data.length > 0) {
+    } else if (recebidos.length > 0) {
       bipar(); // lembrete: ainda tem pedido esperando o aceite
     }
   }, [restauranteId, avisar, router]);

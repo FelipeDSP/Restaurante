@@ -227,16 +227,19 @@ export function TelaCozinha({ restauranteId, restauranteNome, fuso, pracas, prac
     };
   }, []);
 
-  // Ticket novo na tela: bipe (a primeira carga não toca).
+  // Ticket novo na tela: bipe (a primeira carga não toca). Guarda todos os tickets já vistos, de
+  // qualquer praça: trocar o filtro de praça ou "Voltar" um pronto não é ticket novo.
+  const idsPendentes = pendentes.map((t) => t.id).join(",");
   const idsVisiveis = visiveis.map((t) => t.id).join(",");
   useEffect(() => {
-    const atuais = new Set(idsVisiveis ? idsVisiveis.split(",") : []);
+    const atuais = idsPendentes ? idsPendentes.split(",") : [];
     const anteriores = vistos.current;
-    vistos.current = atuais;
+    vistos.current = new Set([...(anteriores ?? []), ...atuais]);
     if (!anteriores) return;
-    const chegou = [...atuais].some((id) => !anteriores.has(id));
+    const naTela = new Set(idsVisiveis ? idsVisiveis.split(",") : []);
+    const chegou = atuais.some((id) => !anteriores.has(id) && naTela.has(id));
     if (chegou && audio.current?.state === "running") tocarAlerta(audio.current);
-  }, [idsVisiveis]);
+  }, [idsPendentes, idsVisiveis]);
 
   // Imprime o ticket da vez (manual ou da fila automática) pelo navegador.
   const idParaImprimir = paraImprimir?.id ?? null;
