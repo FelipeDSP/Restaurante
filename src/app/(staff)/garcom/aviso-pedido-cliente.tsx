@@ -82,7 +82,13 @@ export function AvisoPedidoCliente({ restauranteId, membroId }: { restauranteId:
         ),
         duration: Infinity,
         // Botão grande: o garçom responde com uma mão.
-        classNames: { actionButton: "!h-11 !rounded-full !px-6 !text-base !font-semibold" },
+        classNames: {
+          actionButton: "!h-11 !rounded-full !px-6 !text-base !font-semibold",
+          cancelButton: "!h-11 !rounded-full !px-4 !text-base",
+        },
+        // "Depois": tira o aviso só deste aparelho (ele fica por cima do botão de cobrar, por exemplo);
+        // sem "Ver pedido", volta ao abrir o app de novo.
+        cancel: { label: "Depois", onClick: () => toast.dismiss(idAviso) },
         action: {
           label: "Ver pedido",
           onClick: (evento) => {
