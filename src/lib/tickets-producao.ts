@@ -3,6 +3,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { type AdicionalEscolhido, lerAdicionais } from "@/lib/adicionais";
+import { type Etapa, lerEtapas } from "@/lib/preparo";
 import type { Database } from "@/types/database";
 
 // Ticket de praça (pedido x praça) com a rota de cada item: usado pela tela da cozinha
@@ -22,7 +23,8 @@ export type ItemTicket = {
   depois: string[];
 };
 
-// Um ticket = os itens de um pedido para uma praça.
+// Um ticket = os itens de um pedido para uma etapa de uma praça (o que espera outra praça sai num
+// ticket separado do que pode ser feito na hora).
 export type Ticket = {
   id: string;
   status: "pendente" | "pronto";
@@ -42,7 +44,7 @@ export type Ticket = {
   itens: ItemTicket[];
 };
 
-const CAMPOS_TICKET = `id, status, criado_em, pronto_em, estacao_id,
+const CAMPOS_TICKET = `id, status, criado_em, pronto_em, estacao_id, ordem,
   praca:estacoes!tarefas_producao_restaurante_id_estacao_id_fkey(id, nome),
   pedido:pedidos!tarefas_producao_restaurante_id_pedido_id_fkey(
     numero, origem, status, cliente_nome, observacao, aceito_em,
@@ -50,18 +52,10 @@ const CAMPOS_TICKET = `id, status, criado_em, pronto_em, estacao_id,
     autor:membros!pedidos_restaurante_id_criado_por_fkey(nome),
     itens_pedido(id, quantidade, nome_produto, adicionais, observacao, cancelado_em, etapas, para_viagem, criado_em),
     tarefas:tarefas_producao!tarefas_producao_restaurante_id_pedido_id_fkey(
-      estacao_id, status, estacao:estacoes!tarefas_producao_restaurante_id_estacao_id_fkey(nome)
+      estacao_id, ordem, status, estacao:estacoes!tarefas_producao_restaurante_id_estacao_id_fkey(nome)
     )
   )`;
 
-type Etapa = { estacao_id: string; ordem: number };
-
-function lerEtapas(valor: unknown): Etapa[] {
-  if (!Array.isArray(valor)) return [];
-  return valor.flatMap((e): Etapa[] =>
-    e && typeof e === "object" && typeof e.estacao_id === "string" ? [{ estacao_id: e.estacao_id, ordem: Number(e.ordem) || 1 }] : [],
-  );
-}
 
 export function consultarTarefas(client: SupabaseClient<Database>) {
   return client.from("tarefas_producao").select(CAMPOS_TICKET);
@@ -76,14 +70,16 @@ export function montarTickets(linhas: LinhaTarefa[]): Ticket[] {
     if (!p || !t.praca || p.status === "cancelado") return [];
     // Delivery só entra na cozinha depois que o caixa aceita.
     if (p.origem === "delivery" && p.status === "recebido") return [];
-    const situacao = new Map(p.tarefas.map((x) => [x.estacao_id, { pendente: x.status === "pendente", nome: x.estacao?.nome ?? "" }]));
+    const chave = (estacao: string, ordem: number) => `${estacao}:${ordem}`;
+    const situacao = new Map(p.tarefas.map((x) => [chave(x.estacao_id, x.ordem), { pendente: x.status === "pendente", nome: x.estacao?.nome ?? "" }]));
+    const nomePraca = new Map(p.tarefas.map((x) => [x.estacao_id, x.estacao?.nome ?? ""]));
     const itens = p.itens_pedido
       .map((i) => ({ i, etapas: lerEtapas(i.etapas) }))
-      .filter(({ etapas }) => etapas.some((e) => e.estacao_id === t.estacao_id))
+      .filter(({ etapas }) => etapas.some((e) => e.estacao_id === t.estacao_id && e.ordem === t.ordem))
       .sort((a, b) => a.i.criado_em.localeCompare(b.i.criado_em))
       .map(({ i, etapas }) => {
-        const aqui = etapas.find((e) => e.estacao_id === t.estacao_id)!.ordem;
-        const nome = (e: Etapa) => situacao.get(e.estacao_id)?.nome ?? "";
+        const aqui = t.ordem;
+        const nome = (e: Etapa) => nomePraca.get(e.estacao_id) ?? "";
         return {
           id: i.id,
           quantidade: i.quantidade,
@@ -92,7 +88,7 @@ export function montarTickets(linhas: LinhaTarefa[]): Ticket[] {
           observacao: i.observacao,
           cancelado: i.cancelado_em !== null,
           paraViagem: i.para_viagem,
-          aguardando: etapas.filter((e) => e.ordem < aqui && situacao.get(e.estacao_id)?.pendente).map(nome),
+          aguardando: etapas.filter((e) => e.ordem < aqui && situacao.get(chave(e.estacao_id, e.ordem))?.pendente).map(nome),
           depois: etapas.filter((e) => e.ordem > aqui).map(nome),
         };
       });

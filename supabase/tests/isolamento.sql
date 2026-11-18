@@ -2151,13 +2151,18 @@ begin
   perform pg_temp.admin();
   perform pg_temp.ok((select garcom_id from public.comandas where id = v_comanda) = v_g1,
                      'permissões: sem "gerenciar mesas" a mesa abre no próprio nome');
-  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  -- Quem não atende mesas (cozinha) não cancela; o garçom libera a mesa sem consumo.
+  perform pg_temp.entrar('cozinha.brasa@exemplo.com');
   begin
     update public.comandas set status = 'cancelada' where id = v_comanda;
-    perform pg_temp.ok(false, 'permissões: sem "gerenciar mesas" não cancela comanda');
+    perform pg_temp.ok((select status from public.comandas where id = v_comanda) <> 'cancelada', 'permissões: sem atender mesas não cancela comanda');
   exception when others then
-    perform pg_temp.ok(true, 'permissões: sem "gerenciar mesas" não cancela comanda');
+    perform pg_temp.ok(true, 'permissões: sem atender mesas não cancela comanda');
   end;
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  update public.comandas set status = 'cancelada' where id = v_comanda;
+  perform pg_temp.admin();
+  perform pg_temp.ok((select status from public.comandas where id = v_comanda) = 'cancelada', 'permissões: garçom libera a mesa sem consumo');
 
   -- Função em uso não some; de outro restaurante, nem aparece.
   perform pg_temp.entrar('dono.brasa@exemplo.com');
@@ -3159,6 +3164,20 @@ begin
   perform public.cliente_cancelar_pedido(v_pedido);
   perform pg_temp.admin();
   perform pg_temp.ok((select status = 'cancelado' and cancelado_pelo_cliente from public.pedidos where id = v_pedido), 'cancelamento: logado cancela pela RPC');
+
+  -- Ticket por etapa: o burger que só vai na Chapa não espera o que passa antes na Churrasqueira.
+  perform pg_temp.anonimo();
+  v_json := public.criar_pedido_delivery(a, 'Etapas', '69988880004', v_bairro_a, '{"rua": "R", "numero": "1", "bairro": "Centro"}', 'pix',
+    jsonb_build_array(
+      jsonb_build_object('produto_id', v_produto_a2, 'quantidade', 1),
+      jsonb_build_object('produto_id', md5('brasa-espetinhos/Burgers/Burger bacon')::uuid, 'quantidade', 1,
+        'adicionais', (select jsonb_agg(ad.id) from public.adicionais ad join public.grupos_adicionais g on g.id = ad.grupo_id
+                       where g.restaurante_id = a and g.nome = 'Ponto da carne' and ad.nome = 'Ao ponto'))));
+  perform pg_temp.admin();
+  perform pg_temp.ok((select string_agg(e.nome || ':' || t.ordem, ',' order by e.nome, t.ordem)
+                      from public.tarefas_producao t join public.estacoes e on e.id = t.estacao_id
+                      where t.pedido_id = (v_json ->> 'id')::uuid) = 'Chapa:1,Chapa:2,Churrasqueira:1',
+                     'cozinha: um ticket por etapa (Chapa:1 sai na hora, Chapa:2 depois da Churrasqueira)');
   perform pg_temp.admin();
 end;
 $$;
