@@ -52,7 +52,6 @@ export default async function MesaPainelPage(props: PageProps<"/painel/comandas/
           key={comanda.id}
           mesaId={mesa.id}
           comanda={comanda}
-          podeGerenciar={acesso.permissoes.includes("comandas_gerenciar")}
           podeEstornar={acesso.permissoes.includes("caixa_estornar")}
           fusoHorario={acesso.restaurante.fusoHorario}
           origem="painel"

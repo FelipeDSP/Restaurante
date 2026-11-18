@@ -33,6 +33,8 @@ export function AbrirCaixa() {
               name="valor_inicial"
               inputMode="decimal"
               defaultValue={valorCampo(estado, "valor_inicial", "0,00")}
+              // Vem "0,00": tocar e digitar substitui (senão vira "0,00100").
+              onFocus={(e) => e.currentTarget.select()}
               required
               className="h-12 text-lg"
             />

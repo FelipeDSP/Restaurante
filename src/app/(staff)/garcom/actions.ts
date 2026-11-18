@@ -349,9 +349,10 @@ export async function fecharComanda(comandaId: string): Promise<ResultadoAcao> {
   return sucesso("Comanda fechada. Mesa liberada.");
 }
 
+// Mesa aberta por engano (sem itens valendo e sem pagamento): quem atende libera. O banco recusa se
+// houver consumo ou pagamento.
 export async function cancelarComanda(comandaId: string): Promise<ResultadoAcao> {
   const acesso = await exigirAlgumaPermissao("garcom_app", "comandas_painel");
-  if (!acesso.permissoes.includes("comandas_gerenciar")) return falha("Sem permissão para cancelar a comanda.");
   if (!id.safeParse(comandaId).success) return falha("Comanda inválida.");
 
   const supabase = await createClient();
@@ -363,7 +364,7 @@ export async function cancelarComanda(comandaId: string): Promise<ResultadoAcao>
   if (error) return falha(mensagemErroBanco(error));
 
   refresh();
-  return sucesso("Comanda cancelada. Mesa liberada.");
+  return sucesso("Mesa liberada.");
 }
 
 // Cozinha e churrasqueira não têm tela (gordura): quem retira o prato marca a praça como pronta

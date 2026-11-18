@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { useAcao } from "@/components/staff/acoes-cliente";
 import { Badge } from "@/components/ui/badge";
+import { BotaoConfirmar } from "@/components/staff/botao-confirmar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { resumoAdicionais } from "@/lib/adicionais";
@@ -380,8 +381,9 @@ function PainelPagamento({
   // O pagamento quitou a conta e a mesa fechou junto.
   aoFecharMesa: () => void;
 }) {
-  // Uma ou mais formas (pagamento combinado: parte no Pix, parte no cartão...).
-  const [partes, setPartes] = useState<Parte[]>(() => [novaParte("pix", falta)]);
+  // Uma ou mais formas (pagamento combinado: parte no Pix, parte no cartão...). A forma começa sem
+  // escolha: cada pagamento pede a forma de novo (o próximo cliente pode pagar diferente).
+  const [partes, setPartes] = useState<Parte[]>(() => [novaParte("", falta)]);
   const [faltaBase, setFaltaBase] = useState(falta);
   const [calculando, setCalculando] = useState(false);
   // Valor que esta pessoa vai pagar (calculadora ou "1 de N"); sem ele, a conta toda.
@@ -391,11 +393,20 @@ function PainelPagamento({
   const { pendente, executar } = useAcao();
   const secao = useRef<HTMLElement>(null);
 
-  // Registrou um pagamento (aqui ou em outro aparelho): recomeça com o que falta agora.
+  // Conta dividida por pessoa: depois de um pagamento, a próxima pessoa continua em "1 de N".
+  const [dividindo, setDividindo] = useState(false);
+  // Em quantos dividir: as pessoas da mesa; sem esse número (mesa aberta pelo QR), escolhe aqui.
+  const [divisor, setDivisor] = useState<number | null>(pessoas && pessoas > 1 ? pessoas : null);
+  // Parte de cada pessoa sobre o total da conta (não sobre o que falta), limitada ao que falta.
+  const porPessoa = divisor && divisor > 1 ? Math.min(falta, Math.ceil(total / divisor)) : null;
+
+  // Registrou um pagamento (aqui ou em outro aparelho): recomeça com o que falta agora, sem forma
+  // marcada (um toque a mais não pode cobrar o resto na forma do cliente anterior).
   if (falta !== faltaBase) {
     setFaltaBase(falta);
-    setPartes([novaParte("pix", falta)]);
-    setAlvo(null);
+    const proxima = dividindo && porPessoa ? porPessoa : falta;
+    setPartes([novaParte("", proxima)]);
+    setAlvo(dividindo && porPessoa ? porPessoa : null);
     setMarcados([]);
   }
 
@@ -415,12 +426,12 @@ function PainelPagamento({
     return recebido !== null && v !== null ? recebido - v : null;
   };
   const trocoNegativo = partes.some((p, n) => (trocoDe(p, valores[n]) ?? 0) < 0);
-  // Parte de cada pessoa sobre o total da conta (não sobre o que falta), limitada ao que falta.
-  const porPessoa = pessoas && pessoas > 1 ? Math.min(falta, Math.ceil(total / pessoas)) : null;
+  const semForma = partes.some((p) => !p.forma);
 
   const mudar = (chave: number, campo: Partial<Parte>) => setPartes((ps) => ps.map((p) => (p.chave === chave ? { ...p, ...campo } : p)));
   // Valor de uma forma só (atalhos "Tudo", "por pessoa", calculadora): vira uma parte única.
-  const usarValor = (valor: number, daPessoa: boolean) => {
+  const usarValor = (valor: number, daPessoa: boolean, porDivisao = false) => {
+    setDividindo(porDivisao);
     setAlvo(daPessoa ? valor : null);
     setMarcados([]);
     setPartes((ps) => [{ ...ps[0], valorTexto: textoDeCentavos(valor), recebidoTexto: "" }]);
@@ -452,10 +463,14 @@ function PainelPagamento({
               Tudo ({formatarBRL(falta)})
             </Button>
             {porPessoa ? (
-              <Button type="button" variant="outline" className="h-11" onClick={() => usarValor(porPessoa, true)}>
-                1 de {pessoas} ({formatarBRL(porPessoa)})
+              <Button type="button" variant="outline" className="h-11" onClick={() => usarValor(porPessoa, true, true)}>
+                1 de {divisor} ({formatarBRL(porPessoa)})
               </Button>
-            ) : null}
+            ) : (
+              <Button type="button" variant="outline" className="h-11" onClick={() => setDivisor(2)}>
+                Dividir
+              </Button>
+            )}
             <Button
               type="button"
               variant={calculando ? "default" : "outline"}
@@ -467,6 +482,13 @@ function PainelPagamento({
               Por item
             </Button>
           </div>
+
+          {divisor && !(pessoas && pessoas > 1) ? (
+            <div className="flex items-center gap-3 text-sm font-medium">
+              Dividir em
+              <Stepper valor={divisor} aoMudar={(n) => setDivisor(Math.max(2, n))} rotulo="em quantas pessoas dividir" />
+            </div>
+          ) : null}
 
           {calculando ? (
             <CalculadoraItens
@@ -508,6 +530,7 @@ function PainelPagamento({
                     <Input
                       value={p.valorTexto}
                       onChange={(e) => mudar(p.chave, { valorTexto: e.target.value })}
+                      onFocus={(e) => e.currentTarget.select()}
                       inputMode="decimal"
                       className="h-12 text-lg"
                       aria-invalid={valores[n] === null || acima}
@@ -550,7 +573,7 @@ function PainelPagamento({
               variant="outline"
               className="h-11 self-start"
               disabled={restante === 0}
-              onClick={() => setPartes((ps) => [...ps, novaParte(ps.some((x) => x.forma === "pix") ? "credito" : "pix", restante)])}
+              onClick={() => setPartes((ps) => [...ps, novaParte("", restante)])}
             >
               <Plus />
               Outra forma {restante > 0 ? `(${formatarBRL(restante)})` : ""}
@@ -586,7 +609,7 @@ function PainelPagamento({
           <Button
             type="button"
             className={cn("h-14 text-lg", quita && "bg-green-700 text-white hover:bg-green-800")}
-            disabled={pendente || invalido || acima || trocoNegativo}
+            disabled={pendente || invalido || acima || trocoNegativo || semForma}
             onClick={() =>
               executar(
                 () =>
@@ -600,7 +623,13 @@ function PainelPagamento({
               )
             }
           >
-            {pendente ? "Registrando..." : quita ? `Receber ${formatarBRL(soma)} e fechar mesa` : `Receber ${soma > 0 ? formatarBRL(soma) : ""}`}
+            {pendente
+              ? "Registrando..."
+              : semForma
+                ? "Escolha a forma de pagamento"
+                : quita
+                  ? `Receber ${formatarBRL(soma)} e fechar mesa`
+                  : `Receber ${soma > 0 ? formatarBRL(soma) : ""}`}
           </Button>
         </>
       )}
@@ -771,7 +800,7 @@ function EditarPessoas({ comandaId, pessoas }: { comandaId: string; pessoas: num
           setEditando(true);
         }}
       >
-        · {pessoas ? `${pessoas} ${pessoas === 1 ? "pessoa" : "pessoas"}` : "pessoas?"}
+        · {pessoas ? `${pessoas} ${pessoas === 1 ? "pessoa" : "pessoas"}` : "quantas pessoas?"}
         <Pencil className="size-3.5" aria-hidden />
         <span className="sr-only">Mudar a quantidade de pessoas</span>
       </button>
@@ -801,13 +830,12 @@ type Props = {
   // De onde a tela foi aberta: define para onde voltar depois de fechar/lançar.
   origem?: "garcom" | "painel";
   comanda: DetalheComanda;
-  // Cancelar a comanda (módulo comandas) e estornar pagamento (módulo caixa).
-  podeGerenciar: boolean;
+  // Estornar pagamento (módulo caixa).
   podeEstornar: boolean;
   fusoHorario: string;
 };
 
-export function TelaComanda({ mesaId, comanda, podeGerenciar, podeEstornar, fusoHorario, origem = "garcom" }: Props) {
+export function TelaComanda({ mesaId, comanda, podeEstornar, fusoHorario, origem = "garcom" }: Props) {
   const router = useRouter();
   const [pagando, setPagando] = useState(false);
   // Histórico por pedido (cada rodada separada) ou tudo somado por produto.
@@ -817,9 +845,10 @@ export function TelaComanda({ mesaId, comanda, podeGerenciar, podeEstornar, fuso
   const falta = Math.max(0, comanda.total - comanda.pago);
   const quitada = comanda.total > 0 && comanda.pago >= comanda.total;
   const pagoAMais = Math.max(0, comanda.pago - comanda.total);
-  // Fecha quando está paga; se todos os itens foram cancelados (total zero), fecha sem pagamento.
-  const podeFechar = comanda.itens.length > 0 && comanda.pago >= comanda.total;
   const itensAtivos = comanda.itens.filter((i) => !i.cancelado);
+  // Fecha quando está paga. Sem consumo (abriu por engano ou tudo cancelado) a mesa é liberada.
+  const podeFechar = itensAtivos.length > 0 && comanda.pago >= comanda.total;
+  const semConsumo = itensAtivos.length === 0 && comanda.pago === 0;
   const voltarAoMapa = () => router.push("/painel/comandas");
 
   const painel = origem === "painel";
@@ -958,18 +987,6 @@ export function TelaComanda({ mesaId, comanda, podeGerenciar, podeEstornar, fuso
           />
         ) : null}
 
-        {podeGerenciar && itensAtivos.length === 0 && comanda.pago === 0 ? (
-          <Button
-            type="button"
-            variant="ghost"
-            className="self-start text-destructive"
-            disabled={pendente}
-            onClick={() => executar(() => cancelarComanda(comanda.id), voltarAoMapa)}
-          >
-            Cancelar comanda (abriu por engano)
-          </Button>
-        ) : null}
-
         <div
           className={cn(
             "fixed inset-x-0 bottom-0 z-10 border-t bg-background/95 p-3 backdrop-blur",
@@ -982,7 +999,17 @@ export function TelaComanda({ mesaId, comanda, podeGerenciar, podeEstornar, fuso
               Lançar itens
             </Button>
             {/* Paga: fecha num toque. Falta pagar: abre o recebimento, que fecha a mesa quando quita. */}
-            {podeFechar ? (
+            {semConsumo ? (
+              <BotaoConfirmar
+                rotulo="Liberar mesa sem consumo"
+                confirmar="Liberar"
+                desabilitado={pendente}
+                className="h-14 text-base"
+                aoConfirmar={() => executar(() => cancelarComanda(comanda.id), voltarAoMapa)}
+              >
+                Liberar mesa
+              </BotaoConfirmar>
+            ) : podeFechar ? (
               <Button
                 type="button"
                 className="h-14 bg-green-700 text-base text-white hover:bg-green-800"
