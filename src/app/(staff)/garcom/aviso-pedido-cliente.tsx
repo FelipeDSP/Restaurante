@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import { useAcao } from "@/components/staff/acoes-cliente";
 import { useMudancasRealtime } from "@/lib/realtime";
-import { tocarAlerta } from "@/lib/som";
+import { novoContextoDeSom, tocarAlerta } from "@/lib/som";
 import { createClient } from "@/lib/supabase/client";
 
 import { marcarPedidoVisto } from "./actions";
@@ -29,7 +29,7 @@ export function AvisoPedidoCliente({ restauranteId, membroId }: { restauranteId:
   // Navegadores só liberam som depois de um toque na página.
   useEffect(() => {
     const liberar = () => {
-      audio.current ??= new AudioContext();
+      audio.current ??= novoContextoDeSom();
       void audio.current.resume();
     };
     window.addEventListener("pointerdown", liberar, { once: true });

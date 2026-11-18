@@ -110,3 +110,29 @@ export function tocarAlerta(contexto: AudioContext, escolha: PreferenciaDeSom = 
     tocarNotas(contexto, escolha.som, volume, contexto.currentTime + i * (melodia.duracao + 0.35));
   }
 }
+
+// O iPhone (e alguns Android) suspende o áudio quando a tela bloqueia ou o app vai para segundo plano,
+// e o contexto não volta sozinho: ao voltar para a tela (ou no próximo toque), retoma todos.
+const contextos = new Set<AudioContext>();
+let ouvindo = false;
+
+function retomarSom() {
+  if (document.visibilityState !== "visible") return;
+  contextos.forEach((c) => {
+    if (c.state !== "running" && c.state !== "closed") void c.resume().catch(() => {});
+  });
+}
+
+// Cria o contexto de áudio dos avisos e o mantém ativo depois de bloquear a tela.
+export function novoContextoDeSom(): AudioContext {
+  const contexto = new AudioContext();
+  contextos.add(contexto);
+  if (!ouvindo) {
+    ouvindo = true;
+    document.addEventListener("visibilitychange", retomarSom);
+    window.addEventListener("pageshow", retomarSom);
+    window.addEventListener("focus", retomarSom);
+    window.addEventListener("pointerdown", retomarSom);
+  }
+  return contexto;
+}

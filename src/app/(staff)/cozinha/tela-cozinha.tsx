@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAcao } from "@/components/staff/acoes-cliente";
 import { Button } from "@/components/ui/button";
 import { resumoAdicionais } from "@/lib/adicionais";
-import { tocarAlerta } from "@/lib/som";
+import { novoContextoDeSom, tocarAlerta } from "@/lib/som";
 import { horaLocal } from "@/lib/tempo";
 import { cn } from "@/lib/utils";
 
@@ -216,7 +216,7 @@ export function TelaCozinha({ restauranteId, restauranteNome, fuso, pracas, prac
   // Navegadores só tocam som depois de um toque na página.
   useEffect(() => {
     const liberar = () => {
-      audio.current ??= new AudioContext();
+      audio.current ??= novoContextoDeSom();
       void audio.current.resume().then(() => setSomAtivo(audio.current?.state === "running"));
     };
     window.addEventListener("pointerdown", liberar, { once: true });
@@ -235,10 +235,18 @@ export function TelaCozinha({ restauranteId, restauranteNome, fuso, pracas, prac
     const atuais = idsPendentes ? idsPendentes.split(",") : [];
     const anteriores = vistos.current;
     vistos.current = new Set([...(anteriores ?? []), ...atuais]);
-    if (!anteriores) return;
     const naTela = new Set(idsVisiveis ? idsVisiveis.split(",") : []);
+    // Impressão automática só do que aparece nesta tela: ticket de outra praça conta como já
+    // impresso aqui (é da impressora de lá). Senão, trocar o filtro para "Todas" soltava de uma vez
+    // tudo o que chegou nas outras praças.
+    if (auto.ligada) {
+      const deOutraPraca = atuais.filter((id) => !naTela.has(id) && !auto.impressos.has(id));
+      if (deOutraPraca.length > 0) auto.marcarImpressos(deOutraPraca);
+    }
+    if (!anteriores) return;
     const chegou = atuais.some((id) => !anteriores.has(id) && naTela.has(id));
     if (chegou && audio.current?.state === "running") tocarAlerta(audio.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `auto` muda a cada render; só reage aos tickets
   }, [idsPendentes, idsVisiveis]);
 
   // Imprime o ticket da vez (manual ou da fila automática) pelo navegador.

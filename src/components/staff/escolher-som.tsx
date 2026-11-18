@@ -7,7 +7,7 @@ import { useAcao } from "@/components/staff/acoes-cliente";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { salvarSom } from "@/lib/auth/perfil-actions";
-import { definirPreferenciaDeSom, type PreferenciaDeSom, SONS, type Som, tocarAlerta, type Volume } from "@/lib/som";
+import { definirPreferenciaDeSom, novoContextoDeSom, type PreferenciaDeSom, SONS, type Som, tocarAlerta, type Volume } from "@/lib/som";
 import { cn } from "@/lib/utils";
 
 const NOMES_VOLUME: Record<Volume, string> = { baixo: "Baixo", medio: "Médio", alto: "Alto" };
@@ -20,7 +20,7 @@ export function EscolherSom({ atual }: { atual: PreferenciaDeSom }) {
   const mudou = escolha.som !== atual.som || escolha.volume !== atual.volume || escolha.vezes !== atual.vezes;
 
   const ouvir = (p: PreferenciaDeSom) => {
-    audio.current ??= new AudioContext();
+    audio.current ??= novoContextoDeSom();
     void audio.current.resume().then(() => audio.current && tocarAlerta(audio.current, p));
   };
   const mudar = (parte: Partial<PreferenciaDeSom>) => {

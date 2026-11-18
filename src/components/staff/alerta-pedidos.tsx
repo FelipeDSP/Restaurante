@@ -6,12 +6,17 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { useMudancasRealtime } from "@/lib/realtime";
-import { tocarAlerta } from "@/lib/som";
+import { novoContextoDeSom, tocarAlerta } from "@/lib/som";
 import { createClient } from "@/lib/supabase/client";
 
 // Conferência de reserva: pega o pedido que chegou enquanto o tempo real estava caído
 // e repete o bipe enquanto houver delivery esperando o aceite.
 const CONFERIR_MS = 30_000;
+// O lembrete (bipe a cada conferência) vale para pedido recente: um delivery esquecido de outra
+// noite aparece no quadro, mas não fica bipando para sempre.
+const LEMBRETE_ATE_MS = 3 * 60 * 60_000;
+// Mensagens, prontos e cancelamentos perdidos numa queda de conexão: a conferência pega os recentes.
+const RECUPERAR_MS = 60 * 60_000;
 // Som desligado pela pessoa: lembrado no aparelho.
 const CHAVE_MUDO = "alerta-pedidos:mudo";
 
@@ -50,6 +55,7 @@ export function AlertaPedidos({ restauranteId }: { restauranteId: string }) {
   // não tocar "pronto para sair" de novo.
   const prontosAvisados = useRef(new Set<string>());
   const canceladosAvisados = useRef(new Set<string>());
+  const mensagensAvisadas = useRef(new Set<string>());
 
   // Qualquer interação com a página já libera o som (se a pessoa não desligou).
   useEffect(() => {
@@ -58,7 +64,7 @@ export function AlertaPedidos({ restauranteId }: { restauranteId: string }) {
       setMudo(mudoAtual.current);
     });
     const liberar = () => {
-      audio.current ??= new AudioContext();
+      audio.current ??= novoContextoDeSom();
       void audio.current.resume().then(() => setSomAtivo(audio.current?.state === "running"));
     };
     window.addEventListener("pointerdown", liberar, { once: true });
@@ -104,31 +110,97 @@ export function AlertaPedidos({ restauranteId }: { restauranteId: string }) {
     [router],
   );
 
+  const avisarPronto = useCallback(
+    (pedido: { id: string; numero: number | null }) => {
+      if (prontosAvisados.current.has(pedido.id)) return;
+      prontosAvisados.current.add(pedido.id);
+      bipar();
+      toast.success(`Delivery nº ${pedido.numero ?? ""} pronto para sair`, {
+        duration: 15000,
+        action: { label: "Ver", onClick: () => router.push("/painel/delivery") },
+      });
+    },
+    [router],
+  );
+
+  const avisarCancelado = useCallback(
+    (pedido: { id: string; numero: number | null }) => {
+      if (canceladosAvisados.current.has(pedido.id)) return;
+      canceladosAvisados.current.add(pedido.id);
+      bipar();
+      toast.warning(`O cliente cancelou o delivery nº ${pedido.numero ?? ""}`, {
+        duration: 15000,
+        action: { label: "Ver", onClick: () => router.push("/painel/delivery") },
+      });
+    },
+    [router],
+  );
+
+  const avisarMensagem = useCallback(
+    (mensagem: { id: string; texto: string | null; pedido_id: string | null }) => {
+      if (mensagensAvisadas.current.has(mensagem.id)) return;
+      mensagensAvisadas.current.add(mensagem.id);
+      bipar();
+      if (document.visibilityState !== "visible") setNovos((n) => n + 1);
+      toast.info("Mensagem de cliente do delivery", {
+        description: mensagem.texto && mensagem.texto.length > 80 ? `${mensagem.texto.slice(0, 80)}…` : (mensagem.texto ?? undefined),
+        duration: 15000,
+        action: { label: "Responder", onClick: () => router.push(`/painel/conversas/${mensagem.pedido_id ?? ""}`) },
+      });
+    },
+    [router],
+  );
+
   const conferir = useCallback(async () => {
     const supabase = createClient();
-    const { data, error } = await supabase
-      .from("pedidos")
-      .select("id, numero, cliente_nome, status")
-      .eq("restaurante_id", restauranteId)
-      .eq("origem", "delivery")
-      .in("status", ["recebido", "pronto"]);
-    if (error || !data) return;
-    const recebidos = data.filter((p) => p.status === "recebido");
-    data.filter((p) => p.status === "pronto").forEach((p) => prontosAvisados.current.add(p.id));
+    const desde = new Date(Date.now() - RECUPERAR_MS).toISOString();
+    const [pedidos, cancelados, mensagens] = await Promise.all([
+      supabase
+        .from("pedidos")
+        .select("id, numero, cliente_nome, status, criado_em")
+        .eq("restaurante_id", restauranteId)
+        .eq("origem", "delivery")
+        .in("status", ["recebido", "pronto"]),
+      supabase
+        .from("pedidos")
+        .select("id, numero")
+        .eq("restaurante_id", restauranteId)
+        .eq("origem", "delivery")
+        .eq("cancelado_pelo_cliente", true)
+        .gte("cancelado_em", desde),
+      supabase
+        .from("pedidos_mensagens")
+        .select("id, texto, pedido_id")
+        .eq("restaurante_id", restauranteId)
+        .eq("autor", "cliente")
+        .is("lida_em", null)
+        .gte("criado_em", desde),
+    ]);
+    if (pedidos.error || !pedidos.data) return;
+    const recebidos = pedidos.data.filter((p) => p.status === "recebido");
+    const prontos = pedidos.data.filter((p) => p.status === "pronto");
 
     if (!primeiraCarga.current) {
+      // Ao abrir a tela só anota o que já existia (nada toca).
       primeiraCarga.current = true;
       recebidos.forEach((p) => avisados.current.add(p.id));
+      prontos.forEach((p) => prontosAvisados.current.add(p.id));
+      (cancelados.data ?? []).forEach((p) => canceladosAvisados.current.add(p.id));
+      (mensagens.data ?? []).forEach((m) => mensagensAvisadas.current.add(m.id));
       return;
     }
+    // O que chegou enquanto o tempo real estava caído.
+    prontos.forEach(avisarPronto);
+    (cancelados.data ?? []).forEach(avisarCancelado);
+    (mensagens.data ?? []).forEach(avisarMensagem);
     const naoAvisados = recebidos.filter((p) => !avisados.current.has(p.id));
     if (naoAvisados.length > 0) {
       naoAvisados.forEach(avisar);
       router.refresh();
-    } else if (recebidos.length > 0) {
-      bipar(); // lembrete: ainda tem pedido esperando o aceite
+    } else if (recebidos.some((p) => Date.now() - new Date(p.criado_em).getTime() < LEMBRETE_ATE_MS)) {
+      bipar(); // lembrete: ainda tem pedido recente esperando o aceite
     }
-  }, [restauranteId, avisar, router]);
+  }, [restauranteId, avisar, avisarPronto, avisarCancelado, avisarMensagem, router]);
 
   // Intervalo estável: não reinicia quando o router ou o callback mudam de referência.
   const conferirAtual = useRef(conferir);
@@ -168,26 +240,14 @@ export function AlertaPedidos({ restauranteId }: { restauranteId: string }) {
       if (pedido.origem !== "delivery" || !pedido.id) return;
       // O cliente cancelou pelo site antes do aceite.
       if (pedido.status === "cancelado" && pedido.cancelado_pelo_cliente) {
-        if (canceladosAvisados.current.has(pedido.id)) return;
-        canceladosAvisados.current.add(pedido.id);
-        bipar();
-        toast.warning(`O cliente cancelou o delivery nº ${pedido.numero ?? ""}`, {
-          duration: 15000,
-          action: { label: "Ver", onClick: () => router.push("/painel/delivery") },
-        });
+        avisarCancelado({ id: pedido.id, numero: pedido.numero ?? null });
         router.refresh();
         return;
       }
-      if (pedido.status !== "pronto") return;
-      if (prontosAvisados.current.has(pedido.id)) return;
-      prontosAvisados.current.add(pedido.id);
-      bipar();
-      toast.success(`Delivery nº ${pedido.numero ?? ""} pronto para sair`, {
-        duration: 15000,
-        action: { label: "Ver", onClick: () => router.push("/painel/delivery") },
-      });
+      if (pedido.status === "pronto") avisarPronto({ id: pedido.id, numero: pedido.numero ?? null });
     },
     "UPDATE",
+    () => void conferir(),
   );
 
   // O cliente escreveu na conversa do pedido.
@@ -195,25 +255,30 @@ export function AlertaPedidos({ restauranteId }: { restauranteId: string }) {
     restauranteId,
     ["pedidos_mensagens"],
     (mudanca) => {
-      const mensagem = mudanca.new as { autor?: string; texto?: string; pedido_id?: string };
-      if (mensagem.autor !== "cliente") return;
-      bipar();
-      if (document.visibilityState !== "visible") setNovos((n) => n + 1);
-      toast.info("Mensagem de cliente do delivery", {
-        description: mensagem.texto && mensagem.texto.length > 80 ? `${mensagem.texto.slice(0, 80)}…` : mensagem.texto,
-        duration: 15000,
-        action: { label: "Responder", onClick: () => router.push(`/painel/conversas/${mensagem.pedido_id ?? ""}`) },
-      });
+      const mensagem = mudanca.new as { id?: string; autor?: string; texto?: string; pedido_id?: string };
+      if (mensagem.autor !== "cliente" || !mensagem.id) return;
+      avisarMensagem({ id: mensagem.id, texto: mensagem.texto ?? null, pedido_id: mensagem.pedido_id ?? null });
       router.refresh();
     },
     "INSERT",
+    () => void conferir(),
+  );
+
+  // Conversa lida em outro aparelho: o contador do menu diminui aqui também.
+  useMudancasRealtime(
+    restauranteId,
+    ["pedidos_mensagens"],
+    (mudanca) => {
+      if ((mudanca.new as { lida_em?: string | null }).lida_em) router.refresh();
+    },
+    "UPDATE",
   );
 
   function ligarSom() {
     mudoAtual.current = false;
     setMudo(false);
     gravarMudo(false);
-    audio.current ??= new AudioContext();
+    audio.current ??= novoContextoDeSom();
     void audio.current.resume().then(() => {
       setSomAtivo(audio.current?.state === "running");
       if (audio.current) tocarAlerta(audio.current);

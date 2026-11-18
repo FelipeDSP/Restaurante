@@ -1,11 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
 
 import { useMudancasRealtime } from "@/lib/realtime";
-import { tocarAlerta } from "@/lib/som";
+import { novoContextoDeSom, tocarAlerta } from "@/lib/som";
 import { itensProntosParaLevar } from "@/lib/preparo";
 import { createClient } from "@/lib/supabase/client";
 
@@ -14,6 +14,9 @@ import { createClient } from "@/lib/supabase/client";
 // aviso que fica na tela até ele tocar, vibração e bipe. Mesa sem garçom aparece para todos, sem
 // vibrar nem bipar (como o pedido pelo QR). Só com a mesa aberta e algum item valendo: fechar a
 // mesa encerra os tickets pendentes (vira "pronto" no banco) e isso não é prato para levar.
+// Na volta da conexão, confere o que ficou pronto nesse intervalo.
+const RECENTES_MS = 30 * 60_000;
+
 export function AvisoPronto({ restauranteId, membroId }: { restauranteId: string; membroId: string }) {
   const router = useRouter();
   const audio = useRef<AudioContext | null>(null);
@@ -22,28 +25,23 @@ export function AvisoPronto({ restauranteId, membroId }: { restauranteId: string
   // Navegadores só liberam som depois de um toque na página.
   useEffect(() => {
     const liberar = () => {
-      audio.current ??= new AudioContext();
+      audio.current ??= novoContextoDeSom();
       void audio.current.resume();
     };
     window.addEventListener("pointerdown", liberar, { once: true });
     return () => window.removeEventListener("pointerdown", liberar);
   }, []);
 
-  useMudancasRealtime(
-    restauranteId,
-    ["tarefas_producao"],
-    async (mudanca) => {
-      const tarefa = mudanca.new as { pedido_id?: string; status?: string; retirada?: boolean };
-      // Retirado pelo garçom ("Retirei"): ele já está com o prato, não precisa de aviso.
-      if (tarefa.status !== "pronto" || tarefa.retirada || !tarefa.pedido_id) return;
-
+  // Confere um pedido: avisa os itens que ficaram prontos e ainda não foram avisados.
+  const conferirPedido = useCallback(
+    async (pedidoId: string) => {
       const supabase = createClient();
       const { data: pedido } = await supabase
         .from("pedidos")
         .select(
           "numero, origem, status, comanda:comandas(garcom_id, mesa_id, status, mesa:mesas(numero)), tarefas_producao(estacao_id, ordem, status, pronto_em, retirada), itens_pedido(id, nome_produto, quantidade, etapas, cancelado_em, entregue_em)",
         )
-        .eq("id", tarefa.pedido_id)
+        .eq("id", pedidoId)
         .eq("restaurante_id", restauranteId)
         .maybeSingle();
       if (!pedido || pedido.origem !== "mesa" || !pedido.comanda || pedido.status === "cancelado") return;
@@ -67,7 +65,32 @@ export function AvisoPronto({ restauranteId, membroId }: { restauranteId: string
         cancel: { label: "Ok", onClick: () => {} },
       });
     },
+    [restauranteId, membroId, router],
+  );
+
+  // Queda de conexão: os tickets que ficaram prontos nesse meio tempo (ainda não retirados).
+  const conferirRecentes = useCallback(async () => {
+    const { data } = await createClient()
+      .from("tarefas_producao")
+      .select("pedido_id")
+      .eq("restaurante_id", restauranteId)
+      .eq("status", "pronto")
+      .eq("retirada", false)
+      .gte("pronto_em", new Date(Date.now() - RECENTES_MS).toISOString());
+    new Set((data ?? []).map((t) => t.pedido_id)).forEach((id) => void conferirPedido(id));
+  }, [restauranteId, conferirPedido]);
+
+  useMudancasRealtime(
+    restauranteId,
+    ["tarefas_producao"],
+    (mudanca) => {
+      const tarefa = mudanca.new as { pedido_id?: string; status?: string; retirada?: boolean };
+      // Retirado pelo garçom ("Retirei"): ele já está com o prato, não precisa de aviso.
+      if (tarefa.status !== "pronto" || tarefa.retirada || !tarefa.pedido_id) return;
+      void conferirPedido(tarefa.pedido_id);
+    },
     "UPDATE",
+    () => void conferirRecentes(),
   );
 
   return null;
