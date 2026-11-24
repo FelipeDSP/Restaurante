@@ -75,16 +75,20 @@ export const CONFIGURACOES: ItemNavegacao[] = [
       { href: "/painel/mesas/qrcode", rotulo: "QR code" },
     ],
   },
+  // Um cartão por assunto: cupom e entregador não têm nada a ver um com o outro.
   {
     href: "/painel/cupons",
-    rotulo: "Cupons e entregadores",
+    rotulo: "Cupons",
     grupo: "Configurações",
-    acesso: ["cupons", "entregadores"],
-    descricao: "Descontos do delivery e quem leva os pedidos.",
-    secoes: [
-      { href: "/painel/cupons", rotulo: "Cupons", acesso: "cupons" },
-      { href: "/painel/entregadores", rotulo: "Entregadores", acesso: "entregadores" },
-    ],
+    acesso: ["cupons"],
+    descricao: "Descontos do delivery: código, validade e limite de uso.",
+  },
+  {
+    href: "/painel/entregadores",
+    rotulo: "Entregadores",
+    grupo: "Configurações",
+    acesso: ["entregadores"],
+    descricao: "Quem leva os pedidos e quanto recebe por entrega.",
   },
   {
     href: "/painel/restaurante",
@@ -95,23 +99,18 @@ export const CONFIGURACOES: ItemNavegacao[] = [
   },
   {
     href: "/painel/pracas",
-    rotulo: "Cozinha e impressão",
+    rotulo: "Setores da cozinha",
     grupo: "Configurações",
     acesso: ["impressao"],
-    descricao: "Setores da cozinha, impressoras e os computadores pareados.",
-    secoes: [
-      { href: "/painel/pracas", rotulo: "Setores" },
-      { href: "/painel/impressoras", rotulo: "Impressoras" },
-    ],
+    descricao: "Churrasqueira, chapa, bar: por onde cada produto passa.",
   },
-  // Quem abre o caixa (sem cuidar dos setores) só vê e testa as impressoras.
+  // Quem abre o caixa (sem cuidar dos setores) também vê e testa as impressoras.
   {
     href: "/painel/impressoras",
     rotulo: "Impressoras",
     grupo: "Configurações",
-    acesso: ["caixa_operar"],
-    ocultarCom: "impressao",
-    descricao: "Ver e testar as impressoras do restaurante.",
+    acesso: ["impressao", "caixa_operar"],
+    descricao: "Impressoras, teste de impressão e computadores pareados.",
   },
   {
     href: "/painel/equipe",
