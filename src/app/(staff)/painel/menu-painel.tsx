@@ -1,14 +1,14 @@
 "use client";
 
 import { Dialog } from "@base-ui/react/dialog";
-import { Bike, ChartColumn, ChefHat, CookingPot, House, LayoutGrid, Lock, type LucideIcon, Menu, Wallet, X } from "lucide-react";
+import { Bike, ChartColumn, ChefHat, ChevronLeft, CookingPot, House, LayoutGrid, Lock, type LucideIcon, Menu, Wallet, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 import { cn } from "@/lib/utils";
 
-import { GRUPOS, type ItemNavegacao, itemAtivo, itemDaPagina } from "./navegacao";
+import { CONFIGURACOES_HREF, type ItemNavegacao, itemAtivo, itemDaPagina } from "./navegacao";
 
 // `bloqueados`: o que o plano não tem (só o dono vê, com cadeado, levando aos planos).
 // contadores: número no item do menu (ex.: deliveries novos, mensagens de cliente não lidas).
@@ -25,49 +25,45 @@ function Contador({ valor }: { valor: number }) {
   );
 }
 
-function ListaAgrupada({ itens, contadores, bloqueados = [], ativo, aoNavegar }: Props & { ativo: string | null; aoNavegar?: () => void }) {
+// Menu do dia a dia, em lista única. O que é de configurar fica atrás do último item
+// ("Configurações"), separado por uma linha: o menu deixou de misturar os dois assuntos.
+function ListaMenu({ itens, contadores, bloqueados = [], ativo, aoNavegar }: Props & { ativo: string | null; aoNavegar?: () => void }) {
+  // Do plano, só o que é área de operação aparece com cadeado aqui; o resto vai na tela de Configurações.
+  const travados = bloqueados.filter((i) => i.grupo === "Operação");
   return (
-    <div className="flex flex-col gap-5">
-      {GRUPOS.map((grupo) => {
-        const doGrupo = itens.filter((i) => i.grupo === grupo);
-        const travados = bloqueados.filter((i) => i.grupo === grupo);
-        if (doGrupo.length === 0 && travados.length === 0) return null;
+    <div className="flex flex-col gap-0.5">
+      {itens.map((item) => {
+        const atual = item.href === ativo;
+        const porta = item.href === CONFIGURACOES_HREF;
         return (
-          <div key={grupo} className="flex flex-col gap-0.5">
-            <p className="px-3 pb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{grupo}</p>
-            {doGrupo.map((item) => {
-              const atual = item.href === ativo;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={aoNavegar}
-                  aria-current={atual ? "page" : undefined}
-                  className={cn(
-                    "flex min-h-10 items-center justify-between gap-2 rounded-md px-3 text-sm font-medium",
-                    atual ? "bg-[var(--cor-primaria)] text-[var(--cor-primaria-contraste)]" : "hover:bg-muted",
-                  )}
-                >
-                  {item.rotulo}
-                  {contadores[item.href] ? <Contador valor={contadores[item.href]} /> : null}
-                </Link>
-              );
-            })}
-            {travados.map((item) => (
-              <Link
-                key={item.href}
-                href="/painel/assinatura"
-                onClick={aoNavegar}
-                title="Não faz parte do seu plano"
-                className="flex min-h-10 items-center justify-between gap-2 rounded-md px-3 text-sm font-medium text-muted-foreground hover:bg-muted"
-              >
-                {item.rotulo}
-                <Lock className="size-3.5" aria-label="Não faz parte do seu plano" />
-              </Link>
-            ))}
-          </div>
+          <Link
+            key={item.href}
+            href={item.href}
+            onClick={aoNavegar}
+            aria-current={atual ? "page" : undefined}
+            className={cn(
+              "flex min-h-10 items-center justify-between gap-2 rounded-md px-3 text-sm font-medium",
+              porta && "mt-3 border-t pt-3",
+              atual ? "bg-[var(--cor-primaria)] text-[var(--cor-primaria-contraste)]" : "hover:bg-muted",
+            )}
+          >
+            {item.rotulo}
+            {contadores[item.href] ? <Contador valor={contadores[item.href]} /> : null}
+          </Link>
         );
       })}
+      {travados.map((item) => (
+        <Link
+          key={item.href}
+          href="/painel/assinatura"
+          onClick={aoNavegar}
+          title="Não faz parte do seu plano"
+          className="flex min-h-10 items-center justify-between gap-2 rounded-md px-3 text-sm font-medium text-muted-foreground hover:bg-muted"
+        >
+          {item.rotulo}
+          <Lock className="size-3.5" aria-label="Não faz parte do seu plano" />
+        </Link>
+      ))}
     </div>
   );
 }
@@ -77,7 +73,7 @@ export function MenuLateral({ itens, contadores, bloqueados }: Props) {
   const ativo = itemAtivo(itens, usePathname());
   return (
     <nav aria-label="Painel" className="sticky top-16 hidden h-[calc(100dvh-4rem)] w-56 shrink-0 overflow-y-auto border-r bg-background p-3 lg:block print:hidden">
-      <ListaAgrupada itens={itens} contadores={contadores} bloqueados={bloqueados} ativo={ativo} />
+      <ListaMenu itens={itens} contadores={contadores} bloqueados={bloqueados} ativo={ativo} />
     </nav>
   );
 }
@@ -103,6 +99,27 @@ function abasDeDentro(itens: ItemNavegacao[]) {
   return itens.filter((i) => i.grupo === "Operação").length < 3;
 }
 
+// Quem fica no alcance do polegar quando não cabe todo mundo: o que tem hora marcada no dia.
+// Antes valia a ordem da lista, e o Caixa (abrir, sangria, fechar) caía dentro do "Mais".
+const PRIORIDADE_ABAS = ["/painel/comandas", "/painel/caixa", "/painel/delivery", "/painel"];
+
+// Escolhe quais abas ficam no rodapé (por prioridade) e devolve na ordem do menu.
+function abasVisiveis(abas: Aba[], quantas: number): Aba[] {
+  if (abas.length <= quantas) return abas;
+  const peso = (href: string) => {
+    const i = PRIORIDADE_ABAS.indexOf(href);
+    return i === -1 ? PRIORIDADE_ABAS.length : i;
+  };
+  const escolhidas = new Set(
+    [...abas]
+      .map((aba, ordem) => ({ aba, ordem }))
+      .sort((a, b) => peso(a.aba.href) - peso(b.aba.href) || a.ordem - b.ordem)
+      .slice(0, quantas)
+      .map((x) => x.aba.href),
+  );
+  return abas.filter((a) => escolhidas.has(a.href));
+}
+
 // Celular e tablet: o painel vira app, com as áreas da pessoa em abas no rodapé (alcance do polegar)
 // e "Mais" com o menu completo. Quem tem poucas áreas (ex.: garçom) vê as abas de dentro delas
 // (Mesas e Praças).
@@ -120,9 +137,13 @@ export function BarraApp({ itens, contadores, bloqueados }: Props) {
   }
   // Cabem 5 abas no rodapé: com o "Mais" (outras áreas no menu), ficam 4 e ele.
   const menuTemOutros = itens.length > operacao.length;
-  const visiveis = abas.length > 5 || (menuTemOutros && abas.length > 4) ? abas.slice(0, 4) : abas;
+  const visiveis = abas.length > 5 || (menuTemOutros && abas.length > 4) ? abasVisiveis(abas, 4) : abas;
   const temMais = menuTemOutros || abas.length > visiveis.length;
   const ativo = itemAtivo(itens, caminho);
+  // O que ficou escondido não perde o aviso: o número aparece em cima do "Mais".
+  const escondidos = itens
+    .filter((i) => !visiveis.some((a) => a.href === i.href))
+    .reduce((soma, i) => soma + (contadores[i.href] ?? 0), 0);
   const abaAtiva = (href: string) =>
     visiveis.some((a) => a.href === caminho) ? href === caminho : href === ativo;
   const colunas = visiveis.length + (temMais ? 1 : 0);
@@ -159,9 +180,14 @@ export function BarraApp({ itens, contadores, bloqueados }: Props) {
         {temMais ? (
           <Dialog.Root open={aberto} onOpenChange={setAberto}>
             <span ref={setAncora} hidden />
-            <Dialog.Trigger className="flex h-16 min-w-0 flex-col items-center justify-center gap-0.5 px-1 text-xs font-semibold text-muted-foreground">
+            <Dialog.Trigger className="relative flex h-16 min-w-0 flex-col items-center justify-center gap-0.5 px-1 text-xs font-semibold text-muted-foreground">
               <Menu className="size-6" aria-hidden />
               Mais
+              {escondidos > 0 ? (
+                <span className="absolute top-1.5 left-1/2 ml-2">
+                  <Contador valor={escondidos} />
+                </span>
+              ) : null}
             </Dialog.Trigger>
             <Dialog.Portal container={ancora?.parentElement ?? undefined}>
               <Dialog.Backdrop className="fixed inset-0 z-40 bg-black/50 transition-opacity data-[ending-style]:opacity-0 data-[starting-style]:opacity-0" />
@@ -173,7 +199,7 @@ export function BarraApp({ itens, contadores, bloqueados }: Props) {
                   </Dialog.Close>
                 </div>
                 <div className="flex-1 overflow-y-auto p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-                  <ListaAgrupada itens={itens} contadores={contadores} bloqueados={bloqueados} ativo={ativo} aoNavegar={() => setAberto(false)} />
+                  <ListaMenu itens={itens} contadores={contadores} bloqueados={bloqueados} ativo={ativo} aoNavegar={() => setAberto(false)} />
                 </div>
               </Dialog.Popup>
             </Dialog.Portal>
@@ -181,6 +207,26 @@ export function BarraApp({ itens, contadores, bloqueados }: Props) {
         ) : null}
       </div>
     </nav>
+  );
+}
+
+// Dentro de Configurações: de onde você veio e onde está (as telas de cadastro não tinham título
+// visível, então no celular dava para abrir o Cardápio e não saber onde estava).
+export function TopoConfiguracao({ itens }: { itens: ItemNavegacao[] }) {
+  const caminho = usePathname();
+  const item = itemDaPagina(itens, caminho);
+  if (!item) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-4 pt-3 text-sm md:px-6 print:hidden">
+      <Link href={CONFIGURACOES_HREF} className="flex min-h-9 items-center gap-1 text-muted-foreground hover:text-foreground">
+        <ChevronLeft className="size-4" aria-hidden />
+        Configurações
+      </Link>
+      <span className="text-muted-foreground" aria-hidden>
+        /
+      </span>
+      <span className="font-semibold">{item.rotulo}</span>
+    </div>
   );
 }
 

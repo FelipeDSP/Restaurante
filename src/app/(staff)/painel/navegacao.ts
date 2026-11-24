@@ -1,11 +1,13 @@
 import { type Papel, type Permissao, PERMISSOES, PERMISSOES_INICIO } from "@/lib/auth/papeis";
 
-export type GrupoNavegacao = "Operação" | "Cadastros" | "Ajustes";
+// Duas listas, não um menu só: o que se usa no dia (NAVEGACAO) e o que se configura uma vez
+// (CONFIGURACOES, atrás de uma porta só). Antes o menu tinha 14 itens de assuntos diferentes.
+export type GrupoNavegacao = "Operação" | "Configurações";
 
 // Aba de um item; "acesso" restringe a aba a uma permissão.
 export type Secao = { href: string; rotulo: string; acesso?: Permissao };
 
-// "secoes": páginas que ficam dentro do mesmo item do menu, mostradas como abas no topo.
+// "secoes": páginas que ficam dentro do mesmo item, mostradas como abas no topo.
 // "acesso": permissões que mostram o item (qualquer uma); "inicio" = quem tem o Início (não só mesas);
 // "dono" = só o dono. "ocultarCom": some para quem tem esta permissão (vê a versão completa noutro item).
 export type ItemNavegacao = {
@@ -15,9 +17,11 @@ export type ItemNavegacao = {
   acesso: Permissao[] | "inicio" | "dono";
   ocultarCom?: Permissao;
   secoes?: Secao[];
+  // Só nos cartões de Configurações: uma linha dizendo o que tem ali dentro.
+  descricao?: string;
 };
 
-export const GRUPOS: GrupoNavegacao[] = ["Operação", "Cadastros", "Ajustes"];
+export const CONFIGURACOES_HREF = "/painel/configuracoes";
 
 export const NAVEGACAO: ItemNavegacao[] = [
   { href: "/painel", rotulo: "Início", grupo: "Operação", acesso: "inicio" },
@@ -41,11 +45,17 @@ export const NAVEGACAO: ItemNavegacao[] = [
   // Contas encerradas e deliveries terminados, só leitura (o banco não deixa mudar).
   { href: "/painel/historico", rotulo: "Histórico", grupo: "Operação", acesso: ["caixa_operar", "relatorios"] },
   { href: "/cozinha", rotulo: "Tela da cozinha", grupo: "Operação", acesso: ["cozinha_tela"] },
+];
+
+// Cada cartão da tela de Configurações. Os endereços são os mesmos de sempre (nada quebra);
+// o que mudou é que eles saíram do menu do dia a dia.
+export const CONFIGURACOES: ItemNavegacao[] = [
   {
     href: "/painel/produtos",
     rotulo: "Cardápio",
-    grupo: "Cadastros",
+    grupo: "Configurações",
     acesso: ["cardapio"],
+    descricao: "Produtos, preços, categorias, adicionais e os horários de cada cardápio.",
     secoes: [
       { href: "/painel/produtos", rotulo: "Produtos" },
       { href: "/painel/categorias", rotulo: "Categorias" },
@@ -54,46 +64,78 @@ export const NAVEGACAO: ItemNavegacao[] = [
       { href: "/painel/cardapios", rotulo: "Horários" },
     ],
   },
-  { href: "/painel/mesas", rotulo: "Cadastro de mesas", grupo: "Cadastros", acesso: ["mesas"] },
-  { href: "/painel/cupons", rotulo: "Cupons", grupo: "Cadastros", acesso: ["cupons"] },
   {
-    href: "/painel/equipe",
-    rotulo: "Equipe",
-    grupo: "Cadastros",
-    acesso: "dono",
+    href: "/painel/mesas",
+    rotulo: "Mesas",
+    grupo: "Configurações",
+    acesso: ["mesas"],
+    descricao: "Quais mesas existem e o QR code de cada uma.",
     secoes: [
-      { href: "/painel/equipe", rotulo: "Pessoas" },
-      { href: "/painel/equipe/funcoes", rotulo: "Funções" },
+      { href: "/painel/mesas", rotulo: "Cadastro" },
+      { href: "/painel/mesas/qrcode", rotulo: "QR code" },
+    ],
+  },
+  {
+    href: "/painel/cupons",
+    rotulo: "Cupons e entregadores",
+    grupo: "Configurações",
+    acesso: ["cupons", "entregadores"],
+    descricao: "Descontos do delivery e quem leva os pedidos.",
+    secoes: [
+      { href: "/painel/cupons", rotulo: "Cupons", acesso: "cupons" },
+      { href: "/painel/entregadores", rotulo: "Entregadores", acesso: "entregadores" },
     ],
   },
   {
     href: "/painel/restaurante",
     rotulo: "Restaurante",
-    grupo: "Ajustes",
-    acesso: ["restaurante", "entregadores"],
-    secoes: [
-      { href: "/painel/restaurante", rotulo: "Dados e delivery", acesso: "restaurante" },
-      { href: "/painel/entregadores", rotulo: "Entregadores", acesso: "entregadores" },
-    ],
+    grupo: "Configurações",
+    acesso: ["restaurante"],
+    descricao: "Nome, contato, marca, horários, taxa de entrega, serviço e couvert.",
   },
   {
     href: "/painel/pracas",
     rotulo: "Cozinha e impressão",
-    grupo: "Ajustes",
+    grupo: "Configurações",
     acesso: ["impressao"],
+    descricao: "Setores da cozinha, impressoras e os computadores pareados.",
     secoes: [
       { href: "/painel/pracas", rotulo: "Setores" },
       { href: "/painel/impressoras", rotulo: "Impressoras" },
     ],
   },
   // Quem abre o caixa (sem cuidar dos setores) só vê e testa as impressoras.
-  { href: "/painel/impressoras", rotulo: "Impressoras", grupo: "Ajustes", acesso: ["caixa_operar"], ocultarCom: "impressao" },
+  {
+    href: "/painel/impressoras",
+    rotulo: "Impressoras",
+    grupo: "Configurações",
+    acesso: ["caixa_operar"],
+    ocultarCom: "impressao",
+    descricao: "Ver e testar as impressoras do restaurante.",
+  },
+  {
+    href: "/painel/equipe",
+    rotulo: "Equipe",
+    grupo: "Configurações",
+    acesso: "dono",
+    descricao: "Quem entra no sistema e o que cada função pode fazer.",
+    secoes: [
+      { href: "/painel/equipe", rotulo: "Pessoas" },
+      { href: "/painel/equipe/funcoes", rotulo: "Funções" },
+    ],
+  },
+  {
+    href: "/painel/assinatura",
+    rotulo: "Assinatura",
+    grupo: "Configurações",
+    acesso: "dono",
+    descricao: "Seu plano, faturas e troca de plano.",
+  },
 ];
 
-// Itens do menu que a pessoa vê (com as abas que ela pode abrir; o item leva à primeira).
-export function itensDoMenu(papel: Papel, permissoes: readonly Permissao[]): ItemNavegacao[] {
+function filtrar(lista: ItemNavegacao[], papel: Papel, permissoes: readonly Permissao[]): ItemNavegacao[] {
   const tem = (p: Permissao) => permissoes.includes(p);
-  return NAVEGACAO.flatMap((item): ItemNavegacao[] => {
+  return lista.flatMap((item): ItemNavegacao[] => {
     if (item.ocultarCom && tem(item.ocultarCom)) return [];
     const pode =
       item.acesso === "dono" ? papel === "dono" : item.acesso === "inicio" ? PERMISSOES_INICIO.some(tem) : item.acesso.some(tem);
@@ -104,18 +146,36 @@ export function itensDoMenu(papel: Papel, permissoes: readonly Permissao[]): Ite
   });
 }
 
-// Dono: o que o plano não tem (aparece no menu com cadeado e leva aos planos).
+// Cartões de Configurações que a pessoa pode abrir.
+export function itensDeConfiguracao(papel: Papel, permissoes: readonly Permissao[]): ItemNavegacao[] {
+  return filtrar(CONFIGURACOES, papel, permissoes);
+}
+
+// Itens do menu do dia a dia (com as abas que a pessoa pode abrir; o item leva à primeira).
+// "Configurações" entra no fim, como porta única, para quem tem algo para configurar.
+export function itensDoMenu(papel: Papel, permissoes: readonly Permissao[]): ItemNavegacao[] {
+  const itens = filtrar(NAVEGACAO, papel, permissoes);
+  if (itensDeConfiguracao(papel, permissoes).length > 0) {
+    itens.push({ href: CONFIGURACOES_HREF, rotulo: "Configurações", grupo: "Configurações", acesso: "dono" });
+  }
+  return itens;
+}
+
+// Dono: o que o plano não tem (aparece com cadeado e leva aos planos).
+// A chave inclui o grupo porque "Mesas" existe nos dois lados (o mapa e o cadastro).
 export function itensBloqueadosPeloPlano(papel: Papel, itens: ItemNavegacao[]): ItemNavegacao[] {
   if (papel !== "dono") return [];
-  const visiveis = new Set(itens.map((i) => i.rotulo));
-  return itensDoMenu("dono", PERMISSOES).filter((i) => !visiveis.has(i.rotulo));
+  const chave = (i: ItemNavegacao) => `${i.grupo}/${i.rotulo}`;
+  const visiveis = new Set(itens.map(chave));
+  const tudo = [...filtrar(NAVEGACAO, "dono", PERMISSOES), ...filtrar(CONFIGURACOES, "dono", PERMISSOES)];
+  return tudo.filter((i) => !visiveis.has(chave(i)));
 }
 
 function casa(href: string, caminho: string) {
   return href === "/painel" ? caminho === "/painel" : caminho === href || caminho.startsWith(`${href}/`);
 }
 
-// Item do menu que contém a página atual (pelo próprio endereço ou por uma das abas).
+// Item (do menu ou de Configurações) que contém a página atual, pelo endereço ou por uma das abas.
 export function itemDaPagina(itens: ItemNavegacao[], caminho: string): ItemNavegacao | null {
   let melhor: { item: ItemNavegacao; tamanho: number } | null = null;
   for (const item of itens) {

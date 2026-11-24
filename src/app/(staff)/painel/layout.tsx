@@ -21,8 +21,8 @@ import { AvisoPedidoCliente } from "../garcom/aviso-pedido-cliente";
 import { AvisoPronto } from "../garcom/aviso-pronto";
 import { AvisoAssinatura } from "./aviso-assinatura";
 import { ChamarGarcom } from "./chamar-garcom";
-import { AbasSecao, BarraApp, MenuLateral } from "./menu-painel";
-import { itensBloqueadosPeloPlano, itensDoMenu } from "./navegacao";
+import { AbasSecao, BarraApp, MenuLateral, TopoConfiguracao } from "./menu-painel";
+import { itensBloqueadosPeloPlano, itensDeConfiguracao, itensDoMenu } from "./navegacao";
 
 // App da equipe com a marca do restaurante: manifest e ícones em rotas públicas por restaurante
 // (instala pelo navegador: "Adicionar à tela de início").
@@ -72,7 +72,9 @@ async function contarMensagensNaoLidas(restauranteId: string): Promise<number> {
 export default async function PainelLayout({ children }: LayoutProps<"/painel">) {
   const acesso = await exigirAcesso("painel");
   const itens = itensDoMenu(acesso.papel, acesso.permissoes);
-  const bloqueados = itensBloqueadosPeloPlano(acesso.papel, itens);
+  // As telas de configuração não estão no menu, mas ainda mandam nas abas do topo e no "voltar".
+  const configuracoes = itensDeConfiguracao(acesso.papel, acesso.permissoes);
+  const bloqueados = itensBloqueadosPeloPlano(acesso.papel, [...itens, ...configuracoes]);
   const delivery = acesso.permissoes.includes("delivery");
   const [novos, naoLidas, assinatura, adminPlataforma, suporte] = await Promise.all([
     delivery ? contarPedidosNovos(acesso.restaurante.id) : 0,
@@ -156,7 +158,8 @@ export default async function PainelLayout({ children }: LayoutProps<"/painel">)
           <AvisoAssinatura assinatura={assinatura} />
           {/* No celular, espaço para a barra de abas do rodapé. */}
           <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col pb-20 lg:pb-0">
-            <AbasSecao itens={itens} />
+            <TopoConfiguracao itens={configuracoes} />
+            <AbasSecao itens={[...itens, ...configuracoes]} />
             {children}
           </div>
         </div>
