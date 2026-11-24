@@ -4,7 +4,7 @@ import { exigirDono } from "@/lib/auth/dal";
 import { ehPermissao } from "@/lib/auth/papeis";
 import { createClient } from "@/lib/supabase/server";
 
-import { type FuncaoComUso, ListaFuncoes, NovaFuncao } from "./lista-funcoes";
+import { type FuncaoComUso, ListaFuncoes, NovaFuncao, type PessoaDaEquipe } from "./lista-funcoes";
 
 export const metadata: Metadata = { title: "Funções" };
 
@@ -13,7 +13,13 @@ export default async function FuncoesPage() {
   const supabase = await createClient();
   const [{ data, error }, { data: membros, error: erroMembros }] = await Promise.all([
     supabase.from("funcoes").select("id, nome, permissoes").eq("restaurante_id", acesso.restaurante.id).order("nome"),
-    supabase.from("membros").select("funcao_id").eq("restaurante_id", acesso.restaurante.id).not("funcao_id", "is", null),
+    // Com nome e papel: dá para aplicar a função em várias pessoas aqui mesmo.
+    supabase
+      .from("membros")
+      .select("id, nome, papel, funcao_id, ativo")
+      .eq("restaurante_id", acesso.restaurante.id)
+      .eq("ativo", true)
+      .order("nome"),
   ]);
   if (error) throw new Error(error.message);
   if (erroMembros) throw new Error(erroMembros.message);
@@ -27,11 +33,22 @@ export default async function FuncoesPage() {
     pessoas: uso.get(f.id) ?? 0,
   }));
 
+  const nomeDaFuncao = new Map(data.map((f) => [f.id, f.nome]));
+  // O dono não tem função e não entra na troca (ninguém perde o acesso de dono por aqui).
+  const pessoas: PessoaDaEquipe[] = membros
+    .filter((m) => m.papel !== "dono")
+    .map((m) => ({
+      id: m.id,
+      nome: m.nome,
+      funcao: (m.funcao_id && nomeDaFuncao.get(m.funcao_id)) || "Sem função",
+      funcaoId: m.funcao_id,
+    }));
+
   return (
     <main className="flex flex-col gap-6 p-4 md:p-6">
       <h1 className="sr-only">Funções</h1>
       <NovaFuncao />
-      <ListaFuncoes funcoes={funcoes} />
+      <ListaFuncoes funcoes={funcoes} pessoas={pessoas} />
     </main>
   );
 }

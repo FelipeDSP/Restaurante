@@ -232,3 +232,36 @@ export async function redefinirSenha(membroId: string, _estado: ResultadoAcao, f
 
   return sucesso("Senha redefinida.");
 }
+
+// Aplicar uma função em várias pessoas de uma vez, pelo lado da função. Pessoa tem uma função só,
+// então aqui ela troca de função (e o dono fica de fora: dono não tem função).
+const pessoasSchema = z.preprocess((valor) => {
+  try {
+    return JSON.parse(typeof valor === "string" && valor ? valor : "[]");
+  } catch {
+    return null;
+  }
+}, z.array(id, { error: "Pessoas inválidas." }).min(1, "Escolha pelo menos uma pessoa.").max(200));
+
+export async function aplicarFuncaoEmPessoas(funcaoId: string, pessoasJson: string): Promise<ResultadoAcao> {
+  const acesso = await exigirDono();
+  if (!id.safeParse(funcaoId).success) return falha("Função inválida.");
+  const pessoas = pessoasSchema.safeParse(pessoasJson);
+  if (!pessoas.success) return falha(pessoas.error.issues[0]?.message ?? "Pessoas inválidas.");
+
+  const escolhidas = [...new Set(pessoas.data)].filter((m) => m !== acesso.membroId);
+  if (escolhidas.length === 0) return falha("Você não pode mudar a sua própria função por aqui.");
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("membros")
+    .update({ papel: "equipe", funcao_id: funcaoId })
+    .eq("restaurante_id", acesso.restaurante.id)
+    .in("id", escolhidas)
+    // Por segurança, nunca tira o acesso de um dono por aqui.
+    .neq("papel", "dono");
+  if (error) return falha(mensagemErroBanco(error));
+
+  refresh();
+  return sucesso(`Função aplicada em ${escolhidas.length} ${escolhidas.length === 1 ? "pessoa" : "pessoas"}.`);
+}

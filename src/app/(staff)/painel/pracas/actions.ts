@@ -100,3 +100,66 @@ export async function excluirPraca(pracaId: string): Promise<ResultadoAcao> {
   refresh();
   return sucesso("Praça excluída.");
 }
+
+// Quais produtos passam por este setor, aplicado pelo lado do setor. A rota do produto tem ordem
+// (churrasqueira antes da chapa), então entrar por aqui coloca o setor no FIM da rota do produto;
+// sair apaga aquela etapa. Quem precisa montar a sequência continua fazendo no produto.
+const produtosSchema = z.preprocess((valor) => {
+  try {
+    return JSON.parse(typeof valor === "string" && valor ? valor : "[]");
+  } catch {
+    return null;
+  }
+}, z.array(id, { error: "Produtos inválidos." }).max(1000));
+
+export async function aplicarPracaEmProdutos(pracaId: string, produtosJson: string): Promise<ResultadoAcao> {
+  const acesso = await exigirPermissao("painel", "impressao");
+  if (!id.safeParse(pracaId).success) return falha("Setor inválido.");
+  const produtos = produtosSchema.safeParse(produtosJson);
+  if (!produtos.success) return falha("Produtos inválidos.");
+
+  const restauranteId = acesso.restaurante.id;
+  const supabase = await createClient();
+  const escolhidos = [...new Set(produtos.data)];
+
+  // Rota atual de todo mundo que está em jogo: a deste setor e a dos produtos que vão entrar.
+  const [atuais, rotas] = await Promise.all([
+    supabase.from("produto_etapas").select("produto_id").eq("restaurante_id", restauranteId).eq("estacao_id", pracaId),
+    escolhidos.length > 0
+      ? supabase.from("produto_etapas").select("produto_id, ordem").eq("restaurante_id", restauranteId).in("produto_id", escolhidos)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (atuais.error) return falha(mensagemErroBanco(atuais.error));
+  if (rotas.error) return falha(mensagemErroBanco(rotas.error));
+
+  const existentes = atuais.data.map((l) => l.produto_id);
+  const remover = existentes.filter((p) => !escolhidos.includes(p));
+  const incluir = escolhidos.filter((p) => !existentes.includes(p));
+
+  if (remover.length > 0) {
+    const { error } = await supabase
+      .from("produto_etapas")
+      .delete()
+      .eq("restaurante_id", restauranteId)
+      .eq("estacao_id", pracaId)
+      .in("produto_id", remover);
+    if (error) return falha(mensagemErroBanco(error));
+  }
+
+  if (incluir.length > 0) {
+    const ultima = new Map<string, number>();
+    for (const r of rotas.data) ultima.set(r.produto_id, Math.max(ultima.get(r.produto_id) ?? 0, r.ordem));
+    // O banco só aceita ordem de 1 a 10: rota cheia é erro de cadastro, não silêncio.
+    const cheios = incluir.filter((p) => (ultima.get(p) ?? 0) >= 10);
+    if (cheios.length > 0) return falha("Algum produto já tem 10 etapas de preparo. Ajuste a rota pelo produto.");
+
+    const { error } = await supabase
+      .from("produto_etapas")
+      .insert(incluir.map((produtoId) => ({ restaurante_id: restauranteId, produto_id: produtoId, estacao_id: pracaId, ordem: (ultima.get(produtoId) ?? 0) + 1 })));
+    if (error) return falha(mensagemErroBanco(error));
+  }
+
+  refresh();
+  const total = escolhidos.length;
+  return sucesso(total === 0 ? "Setor saiu de todos os produtos." : `Setor em ${total} ${total === 1 ? "produto" : "produtos"}.`);
+}

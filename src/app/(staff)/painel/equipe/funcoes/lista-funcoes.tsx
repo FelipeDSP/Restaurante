@@ -10,11 +10,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import type { Permissao } from "@/lib/auth/papeis";
+import { cn } from "@/lib/utils";
 
-import { criarFuncao, excluirFuncao, salvarFuncao } from "../actions";
+import { aplicarFuncaoEmPessoas, criarFuncao, excluirFuncao, salvarFuncao } from "../actions";
 import { ChipsPermissoes } from "../permissoes-ui";
 
 export type FuncaoComUso = { id: string; nome: string; permissoes: Permissao[]; pessoas: number };
+export type PessoaDaEquipe = { id: string; nome: string; funcao: string; funcaoId: string | null };
 
 const mesmas = (a: readonly Permissao[], b: readonly Permissao[]) => a.length === b.length && a.every((p) => b.includes(p));
 
@@ -70,7 +72,7 @@ export function NovaFuncao() {
   );
 }
 
-function CartaoFuncao({ funcao }: { funcao: FuncaoComUso }) {
+function CartaoFuncao({ funcao, pessoas }: { funcao: FuncaoComUso; pessoas: PessoaDaEquipe[] }) {
   const [estado, acao] = useActionState(salvarFuncao.bind(null, funcao.id), undefined);
   useAvisoResultado(estado);
   const { pendente, executar } = useAcao();
@@ -116,15 +118,81 @@ function CartaoFuncao({ funcao }: { funcao: FuncaoComUso }) {
         <ErroCampo estado={estado} campo="nome" />
         <ChipsPermissoes marcadas={permissoes} aoMudar={setPermissoes} />
       </form>
+      <AplicarEmPessoas funcao={funcao} pessoas={pessoas} />
     </li>
   );
 }
 
-export function ListaFuncoes({ funcoes }: { funcoes: FuncaoComUso[] }) {
+// Pessoa tem uma função só: aqui ela troca de função. Por isso a lista mostra só quem está em
+// outra função, e a escolha começa vazia.
+function AplicarEmPessoas({ funcao, pessoas }: { funcao: FuncaoComUso; pessoas: PessoaDaEquipe[] }) {
+  const { pendente, executar } = useAcao();
+  const [abrir, setAbrir] = useState(false);
+  const [escolhidas, setEscolhidas] = useState<string[]>([]);
+  const outras = pessoas.filter((p) => p.funcaoId !== funcao.id);
+
+  if (outras.length === 0) return null;
+
+  return (
+    <div className="mt-3 flex flex-col gap-3 border-t pt-3">
+      <Button type="button" variant="ghost" size="sm" className="self-start" onClick={() => setAbrir((a) => !a)}>
+        {abrir ? "Fechar" : "Aplicar esta função em pessoas"}
+      </Button>
+      {abrir ? (
+        <div className="flex flex-col gap-3 rounded-lg border p-3">
+          <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {outras.map((pessoa) => {
+              const marcada = escolhidas.includes(pessoa.id);
+              return (
+                <li key={pessoa.id}>
+                  <label
+                    className={cn(
+                      "flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border p-2 transition-colors",
+                      marcada ? "border-primary bg-primary/5" : "hover:bg-muted/50",
+                    )}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={marcada}
+                      onChange={(e) =>
+                        setEscolhidas((atual) => (e.target.checked ? [...atual, pessoa.id] : atual.filter((x) => x !== pessoa.id)))
+                      }
+                      className="size-5 accent-[var(--cor-primaria-texto)]"
+                    />
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <span className="truncate text-sm font-medium">{pessoa.nome}</span>
+                      <span className="truncate text-xs text-muted-foreground">{pessoa.funcao}</span>
+                    </span>
+                  </label>
+                </li>
+              );
+            })}
+          </ul>
+          <Button
+            type="button"
+            size="sm"
+            className="self-start"
+            disabled={pendente || escolhidas.length === 0}
+            onClick={() =>
+              executar(() => aplicarFuncaoEmPessoas(funcao.id, JSON.stringify(escolhidas)), () => {
+                setEscolhidas([]);
+                setAbrir(false);
+              })
+            }
+          >
+            {escolhidas.length === 0 ? "Escolha as pessoas" : `Aplicar em ${escolhidas.length}`}
+          </Button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+export function ListaFuncoes({ funcoes, pessoas }: { funcoes: FuncaoComUso[]; pessoas: PessoaDaEquipe[] }) {
   return (
     <ul className="flex flex-col gap-3">
       {funcoes.map((f) => (
-        <CartaoFuncao key={f.id} funcao={f} />
+        <CartaoFuncao key={f.id} funcao={f} pessoas={pessoas} />
       ))}
     </ul>
   );

@@ -4,14 +4,63 @@ import { useActionState, useState } from "react";
 
 import { ControlesOrdem, useAcao } from "@/components/staff/acoes-cliente";
 import { BotaoConfirmar } from "@/components/staff/botao-confirmar";
+import { type CategoriaComProdutos, EscolherProdutos } from "@/components/staff/escolher-produtos";
 import { BotaoEnviar, ErroCampo, useAvisoResultado, valorCampo } from "@/components/staff/formulario";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-import { alternarCategoria, criarCategoria, excluirCategoria, moverCategoria, renomearCategoria } from "./actions";
+import {
+  alternarCategoria,
+  criarCategoria,
+  excluirCategoria,
+  moverCategoria,
+  renomearCategoria,
+  trazerProdutosParaCategoria,
+} from "./actions";
 
 export type Categoria = { id: string; nome: string; ativa: boolean; produtos: number };
+
+// Produto tem uma categoria só: aqui não se "marca", se traz para cá. Por isso a lista mostra
+// apenas o que está nas outras categorias e a escolha começa vazia.
+function TrazerProdutos({ categoria, outras }: { categoria: Categoria; outras: CategoriaComProdutos[] }) {
+  const { pendente, executar } = useAcao();
+  const [abrir, setAbrir] = useState(false);
+  const [escolhidos, setEscolhidos] = useState<string[]>([]);
+
+  if (outras.length === 0) return null;
+
+  return (
+    <div className="flex flex-col gap-3">
+      <Button type="button" variant="ghost" size="sm" className="self-start" onClick={() => setAbrir((a) => !a)}>
+        {abrir ? "Fechar" : "Trazer produtos para cá"}
+      </Button>
+      {abrir ? (
+        <div className="flex flex-col gap-3 rounded-lg border p-3">
+          <p className="text-sm text-muted-foreground">
+            Os produtos escolhidos saem da categoria atual e passam para {categoria.nome}.
+          </p>
+          <EscolherProdutos categorias={outras} escolhidos={escolhidos} aoMudar={setEscolhidos} />
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              disabled={pendente || escolhidos.length === 0}
+              onClick={() =>
+                executar(() => trazerProdutosParaCategoria(categoria.id, JSON.stringify(escolhidos)), () => {
+                  setEscolhidos([]);
+                  setAbrir(false);
+                })
+              }
+            >
+              {escolhidos.length === 0 ? "Escolha os produtos" : `Trazer ${escolhidos.length}`}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 export function NovaCategoria() {
   const [estado, acao] = useActionState(criarCategoria, undefined);
@@ -32,14 +81,25 @@ export function NovaCategoria() {
   );
 }
 
-function LinhaCategoria({ categoria, primeiro, ultimo }: { categoria: Categoria; primeiro: boolean; ultimo: boolean }) {
+function LinhaCategoria({
+  categoria,
+  outras,
+  primeiro,
+  ultimo,
+}: {
+  categoria: Categoria;
+  outras: CategoriaComProdutos[];
+  primeiro: boolean;
+  ultimo: boolean;
+}) {
   const [estado, acao] = useActionState(renomearCategoria.bind(null, categoria.id), undefined);
   useAvisoResultado(estado);
   const { pendente, executar } = useAcao();
   const [nome, setNome] = useState(categoria.nome);
 
   return (
-    <li className="flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-center">
+    <li className="flex flex-col gap-3 rounded-lg border p-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
       <ControlesOrdem
         rotulo={categoria.nome}
         primeiro={primeiro}
@@ -65,32 +125,40 @@ function LinhaCategoria({ categoria, primeiro, ultimo }: { categoria: Categoria;
           </BotaoEnviar>
         ) : null}
       </form>
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-muted-foreground">
-          {categoria.produtos} {categoria.produtos === 1 ? "produto" : "produtos"}
-        </span>
-        {!categoria.ativa ? <Badge variant="secondary">Inativa</Badge> : null}
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={pendente}
-          onClick={() => executar(() => alternarCategoria(categoria.id, !categoria.ativa))}
-        >
-          {categoria.ativa ? "Desativar" : "Ativar"}
-        </Button>
-        <BotaoConfirmar
-          rotulo={`Excluir ${categoria.nome}`}
-          desabilitado={pendente || categoria.produtos > 0}
-          titulo={categoria.produtos > 0 ? "Categoria com produtos não pode ser excluída" : undefined}
-          aoConfirmar={() => executar(() => excluirCategoria(categoria.id))}
-        />
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">
+            {categoria.produtos} {categoria.produtos === 1 ? "produto" : "produtos"}
+          </span>
+          {!categoria.ativa ? <Badge variant="secondary">Inativa</Badge> : null}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={pendente}
+            onClick={() => executar(() => alternarCategoria(categoria.id, !categoria.ativa))}
+          >
+            {categoria.ativa ? "Desativar" : "Ativar"}
+          </Button>
+          <BotaoConfirmar
+            rotulo={`Excluir ${categoria.nome}`}
+            desabilitado={pendente || categoria.produtos > 0}
+            titulo={categoria.produtos > 0 ? "Categoria com produtos não pode ser excluída" : undefined}
+            aoConfirmar={() => executar(() => excluirCategoria(categoria.id))}
+          />
+        </div>
       </div>
+      <TrazerProdutos categoria={categoria} outras={outras} />
     </li>
   );
 }
 
-export function ListaCategorias({ categorias }: { categorias: Categoria[] }) {
+export function ListaCategorias({
+  categorias,
+  produtosPorCategoria,
+}: {
+  categorias: Categoria[];
+  produtosPorCategoria: CategoriaComProdutos[];
+}) {
   if (categorias.length === 0) {
     return <p className="text-muted-foreground">Nenhuma categoria ainda. Crie a primeira acima.</p>;
   }
@@ -100,6 +168,7 @@ export function ListaCategorias({ categorias }: { categorias: Categoria[] }) {
         <LinhaCategoria
           key={categoria.id}
           categoria={categoria}
+          outras={produtosPorCategoria.filter((c) => c.id !== categoria.id && c.produtos.length > 0)}
           primeiro={i === 0}
           ultimo={i === categorias.length - 1}
         />
