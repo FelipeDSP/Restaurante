@@ -55,7 +55,7 @@ export const CONFIGURACOES: ItemNavegacao[] = [
     rotulo: "Cardápio",
     grupo: "Configurações",
     acesso: ["cardapio"],
-    descricao: "Produtos, preços, categorias, adicionais e os cardápios de cada horário.",
+    descricao: "Produtos, preços e adicionais.",
     secoes: [
       { href: "/painel/produtos", rotulo: "Produtos" },
       { href: "/painel/categorias", rotulo: "Categorias" },
@@ -69,7 +69,7 @@ export const CONFIGURACOES: ItemNavegacao[] = [
     rotulo: "Mesas",
     grupo: "Configurações",
     acesso: ["mesas"],
-    descricao: "Quais mesas existem e o QR code de cada uma.",
+    descricao: "Mesas e QR code.",
     secoes: [
       { href: "/painel/mesas", rotulo: "Cadastro" },
       { href: "/painel/mesas/qrcode", rotulo: "QR code" },
@@ -81,28 +81,28 @@ export const CONFIGURACOES: ItemNavegacao[] = [
     rotulo: "Cupons",
     grupo: "Configurações",
     acesso: ["cupons"],
-    descricao: "Descontos do delivery: código, validade e limite de uso.",
+    descricao: "Descontos do delivery.",
   },
   {
     href: "/painel/entregadores",
     rotulo: "Entregadores",
     grupo: "Configurações",
     acesso: ["entregadores"],
-    descricao: "Quem leva os pedidos e quanto recebe por entrega.",
+    descricao: "Quem leva e quanto recebe.",
   },
   {
     href: "/painel/restaurante",
     rotulo: "Restaurante",
     grupo: "Configurações",
     acesso: ["restaurante"],
-    descricao: "Nome, contato, marca, horários, taxa de entrega, serviço e couvert.",
+    descricao: "Dados, marca, horários e taxa.",
   },
   {
     href: "/painel/pracas",
     rotulo: "Setores da cozinha",
     grupo: "Configurações",
     acesso: ["impressao"],
-    descricao: "Churrasqueira, chapa, bar: por onde cada produto passa.",
+    descricao: "Por onde cada produto passa.",
   },
   // Quem abre o caixa (sem cuidar dos setores) também vê e testa as impressoras.
   {
@@ -110,14 +110,14 @@ export const CONFIGURACOES: ItemNavegacao[] = [
     rotulo: "Impressoras",
     grupo: "Configurações",
     acesso: ["impressao", "caixa_operar"],
-    descricao: "Impressoras, teste de impressão e computadores pareados.",
+    descricao: "Impressoras e computadores.",
   },
   {
     href: "/painel/equipe",
     rotulo: "Equipe",
     grupo: "Configurações",
     acesso: "dono",
-    descricao: "Quem entra no sistema e o que cada função pode fazer.",
+    descricao: "Pessoas e funções.",
     secoes: [
       { href: "/painel/equipe", rotulo: "Pessoas" },
       { href: "/painel/equipe/funcoes", rotulo: "Funções" },
@@ -128,7 +128,7 @@ export const CONFIGURACOES: ItemNavegacao[] = [
     rotulo: "Assinatura",
     grupo: "Configurações",
     acesso: "dono",
-    descricao: "Seu plano, faturas e troca de plano.",
+    descricao: "Plano e faturas.",
   },
 ];
 
