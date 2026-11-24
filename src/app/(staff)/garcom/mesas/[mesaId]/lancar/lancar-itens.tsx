@@ -112,7 +112,7 @@ function LinhaProdutoSimples({
           <span className="font-medium">{produto.nome}</span>
           <span className="text-sm text-muted-foreground">
             {formatarBRL(produto.preco)}
-            {produto.foraDoCardapio ? ` · ${produto.foraDoCardapio.toLowerCase()}` : ""}
+            {produto.foraDoCardapio ? ` · ${produto.foraDoCardapio}` : ""}
           </span>
         </button>
         {quantidade > 0 ? (
@@ -173,7 +173,7 @@ function LinhaProdutoComOpcoes({
           <span className="font-medium">{produto.nome}</span>
           <span className="text-sm text-muted-foreground">
             {formatarBRL(produto.preco)}
-            {produto.foraDoCardapio ? ` · ${produto.foraDoCardapio.toLowerCase()}` : ""}
+            {produto.foraDoCardapio ? ` · ${produto.foraDoCardapio}` : ""}
             {obrigatorios.length > 0 ? ` · escolher ${obrigatorios.join(", ").toLowerCase()}` : ` · ${regraDoGrupo(produto.grupos[0]).toLowerCase()}`}
           </span>
         </button>
