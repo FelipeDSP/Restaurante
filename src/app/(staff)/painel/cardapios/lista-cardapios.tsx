@@ -131,7 +131,8 @@ export function ListaCardapios({ cardapios }: { cardapios: CardapioLista[] }) {
   if (cardapios.length === 0) {
     return (
       <p className="text-muted-foreground">
-        Sem cardápios por horário: todos os produtos disponíveis aparecem a qualquer hora.
+        Nenhum cardápio: todo produto disponível aparece a qualquer hora. Crie um por horário
+        (Almoço das 11h às 15h, Janta das 18h às 23h) e escolha quais produtos entram em cada um.
       </p>
     );
   }

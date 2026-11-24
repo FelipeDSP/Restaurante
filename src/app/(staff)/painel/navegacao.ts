@@ -55,13 +55,13 @@ export const CONFIGURACOES: ItemNavegacao[] = [
     rotulo: "Cardápio",
     grupo: "Configurações",
     acesso: ["cardapio"],
-    descricao: "Produtos, preços, categorias, adicionais e os horários de cada cardápio.",
+    descricao: "Produtos, preços, categorias, adicionais e os cardápios de cada horário.",
     secoes: [
       { href: "/painel/produtos", rotulo: "Produtos" },
       { href: "/painel/categorias", rotulo: "Categorias" },
       { href: "/painel/adicionais", rotulo: "Adicionais" },
-      // Cardápios por horário (almoço e janta): o produto aparece só na janela do cardápio dele.
-      { href: "/painel/cardapios", rotulo: "Horários" },
+      // Um cardápio por horário (almoço e janta): o produto aparece só na janela do cardápio dele.
+      { href: "/painel/cardapios", rotulo: "Cardápios" },
     ],
   },
   {
