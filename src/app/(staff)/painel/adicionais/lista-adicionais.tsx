@@ -1,11 +1,11 @@
 "use client";
 
 import { ChevronRight, Plus, Trash2 } from "lucide-react";
-import Link from "next/link";
 import { useActionState, useState } from "react";
 
 import { ControlesOrdem, useAcao } from "@/components/staff/acoes-cliente";
 import { BotaoConfirmar } from "@/components/staff/botao-confirmar";
+import { type CategoriaComProdutos, EscolherProdutos } from "@/components/staff/escolher-produtos";
 import { BotaoEnviar, ErroCampo, useAvisoResultado, valorCampo } from "@/components/staff/formulario";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import {
   alternarGrupo,
   alternarOpcao,
+  aplicarGrupoEmProdutos,
   criarGrupo,
   criarOpcao,
   excluirGrupo,
@@ -300,8 +301,94 @@ function NovaOpcao({ grupoId }: { grupoId: string }) {
   );
 }
 
+// A escolha vive aqui dentro: quando a lista salva muda, quem chama troca a `key` e o editor
+// nasce de novo com o que está no banco (sem efeito sincronizando estado).
+function EditorProdutosDoGrupo({
+  grupoId,
+  salvos,
+  categorias,
+  aoTerminar,
+}: {
+  grupoId: string;
+  salvos: string[];
+  categorias: CategoriaComProdutos[];
+  aoTerminar: () => void;
+}) {
+  const { pendente, executar } = useAcao();
+  const [escolhidos, setEscolhidos] = useState<string[]>(salvos);
+  const mudou = escolhidos.length !== salvos.length || escolhidos.some((p) => !salvos.includes(p));
+
+  return (
+    <>
+      <EscolherProdutos categorias={categorias} escolhidos={escolhidos} aoMudar={setEscolhidos} />
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          size="sm"
+          disabled={pendente || !mudou}
+          onClick={() => executar(() => aplicarGrupoEmProdutos(grupoId, JSON.stringify(escolhidos)), aoTerminar)}
+        >
+          {escolhidos.length === 0 ? "Tirar de todos" : `Aplicar em ${escolhidos.length}`}
+        </Button>
+        {mudou ? (
+          <Button type="button" variant="ghost" size="sm" onClick={() => setEscolhidos(salvos)}>
+            Desfazer
+          </Button>
+        ) : null}
+      </div>
+    </>
+  );
+}
+
+// Em quais produtos este grupo entra — e dá para mudar aqui mesmo, sem abrir produto por produto.
+function ProdutosDoGrupo({ grupo, categorias }: { grupo: Grupo; categorias: CategoriaComProdutos[] }) {
+  const [abrir, setAbrir] = useState(false);
+  const salvos = grupo.produtos.map((p) => p.id);
+
+  return (
+    <section aria-label={`Produtos com ${grupo.nome}`} className="flex flex-col gap-3 rounded-lg border p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-sm">
+          {grupo.produtos.length === 0 ? (
+            <span className="text-muted-foreground">Ainda não está em nenhum produto.</span>
+          ) : (
+            <>
+              <span className="font-medium">
+                Em {grupo.produtos.length} {grupo.produtos.length === 1 ? "produto" : "produtos"}:
+              </span>{" "}
+              <span className="text-muted-foreground">{grupo.produtos.map((p) => p.nome).join(", ")}</span>
+            </>
+          )}
+        </span>
+        <Button type="button" variant="outline" size="sm" onClick={() => setAbrir((a) => !a)}>
+          {abrir ? "Fechar" : grupo.produtos.length === 0 ? "Aplicar em produtos" : "Mudar produtos"}
+        </Button>
+      </div>
+      {abrir ? (
+        <EditorProdutosDoGrupo
+          key={salvos.join(",")}
+          grupoId={grupo.id}
+          salvos={salvos}
+          categorias={categorias}
+          aoTerminar={() => setAbrir(false)}
+        />
+      ) : null}
+    </section>
+  );
+}
+
 // Fechado mostra só o resumo (nome, regra e opções); aberto mostra as opções para editar.
-function CartaoGrupo({ grupo, primeiro, ultimo }: { grupo: Grupo; primeiro: boolean; ultimo: boolean }) {
+function CartaoGrupo({
+  grupo,
+  categorias,
+  primeiro,
+  ultimo,
+}: {
+  grupo: Grupo;
+  categorias: CategoriaComProdutos[];
+  primeiro: boolean;
+  ultimo: boolean;
+}) {
   const [estado, acao] = useActionState(salvarGrupo.bind(null, grupo.id), undefined);
   useAvisoResultado(estado);
   const { pendente, executar } = useAcao();
@@ -349,23 +436,7 @@ function CartaoGrupo({ grupo, primeiro, ultimo }: { grupo: Grupo; primeiro: bool
           </p>
         ) : null}
 
-        <p className="text-sm text-muted-foreground">
-          {grupo.produtos.length === 0 ? (
-            <>Ainda não está em nenhum produto.</>
-          ) : (
-            <>
-              Em:{" "}
-              {grupo.produtos.map((p, i) => (
-                <span key={p.id}>
-                  {i > 0 ? ", " : ""}
-                  <Link href={`/painel/produtos/${p.id}`} className="underline underline-offset-4">
-                    {p.nome}
-                  </Link>
-                </span>
-              ))}
-            </>
-          )}
-        </p>
+        <ProdutosDoGrupo grupo={grupo} categorias={categorias} />
 
         <details className="rounded-lg border p-3">
           <summary className="cursor-pointer text-sm font-medium">Nome, regra e posição</summary>
@@ -430,16 +501,20 @@ function CartaoGrupo({ grupo, primeiro, ultimo }: { grupo: Grupo; primeiro: bool
   );
 }
 
-export function ListaGrupos({ grupos }: { grupos: Grupo[] }) {
+export function ListaGrupos({ grupos, categorias }: { grupos: Grupo[]; categorias: CategoriaComProdutos[] }) {
   if (grupos.length === 0) {
-    return (
-      <p className="text-muted-foreground">Nenhum grupo ainda.</p>
-    );
+    return <p className="text-muted-foreground">Nenhum grupo ainda.</p>;
   }
   return (
     <div className="flex flex-col gap-2">
       {grupos.map((grupo, i) => (
-        <CartaoGrupo key={grupo.id} grupo={grupo} primeiro={i === 0} ultimo={i === grupos.length - 1} />
+        <CartaoGrupo
+          key={grupo.id}
+          grupo={grupo}
+          categorias={categorias}
+          primeiro={i === 0}
+          ultimo={i === grupos.length - 1}
+        />
       ))}
     </div>
   );

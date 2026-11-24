@@ -6,16 +6,16 @@ import { useActionState, useState } from "react";
 import { useAcao } from "@/components/staff/acoes-cliente";
 import { BotaoConfirmar } from "@/components/staff/botao-confirmar";
 import { EscolherDias } from "@/components/staff/escolher-dias";
+import { type CategoriaComProdutos, EscolherProdutos } from "@/components/staff/escolher-produtos";
 import { BotaoEnviar, Campo, ErroCampo, useAvisoResultado, valorCampo } from "@/components/staff/formulario";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
 
 import { excluirCardapio, salvarCardapio } from "../actions";
 
 export type CardapioEditavel = { id: string; nome: string; dias: number[]; abre: string; fecha: string };
-export type CategoriaDoCardapio = { id: string; nome: string; produtos: { id: string; nome: string }[] };
+export type CategoriaDoCardapio = CategoriaComProdutos;
 
 type Props = {
   cardapio: CardapioEditavel;
@@ -30,15 +30,6 @@ export function FormCardapio({ cardapio, categorias, produtosDoCardapio }: Props
   // Fora do <form>: sobrevive à remontagem depois de um erro (o React 19 reseta o formulário).
   const [dias, setDias] = useState<number[]>(cardapio.dias);
   const [produtos, setProdutos] = useState<string[]>(produtosDoCardapio);
-
-  function alternar(produtoId: string, marcado: boolean) {
-    setProdutos((atual) => (marcado ? [...atual, produtoId] : atual.filter((p) => p !== produtoId)));
-  }
-
-  function alternarCategoria(categoria: CategoriaDoCardapio, marcar: boolean) {
-    const ids = categoria.produtos.map((p) => p.id);
-    setProdutos((atual) => (marcar ? [...new Set([...atual, ...ids])] : atual.filter((p) => !ids.includes(p))));
-  }
 
   return (
     <form key={estado?.chave} action={acao} className="flex flex-col gap-6">
@@ -96,52 +87,7 @@ export function FormCardapio({ cardapio, categorias, produtosDoCardapio }: Props
             </Link>
           </div>
           <input type="hidden" name="produtos" value={JSON.stringify(produtos)} />
-          {categorias.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum produto cadastrado ainda.</p>
-          ) : (
-            categorias.map((categoria) => {
-              const ids = categoria.produtos.map((p) => p.id);
-              const todos = ids.every((id) => produtos.includes(id));
-              return (
-                <div key={categoria.id} className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between gap-2 border-b pb-1">
-                    <span className="text-sm font-semibold">{categoria.nome}</span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => alternarCategoria(categoria, !todos)}
-                    >
-                      {todos ? "Tirar todos" : "Marcar todos"}
-                    </Button>
-                  </div>
-                  <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                    {categoria.produtos.map((produto) => {
-                      const marcado = produtos.includes(produto.id);
-                      return (
-                        <li key={produto.id}>
-                          <label
-                            className={cn(
-                              "flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border p-2 transition-colors",
-                              marcado ? "border-primary bg-primary/5" : "hover:bg-muted/50",
-                            )}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={marcado}
-                              onChange={(e) => alternar(produto.id, e.target.checked)}
-                              className="size-5 accent-[var(--cor-primaria-texto)]"
-                            />
-                            <span className="min-w-0 flex-1 truncate text-sm">{produto.nome}</span>
-                          </label>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              );
-            })
-          )}
+          <EscolherProdutos categorias={categorias} escolhidos={produtos} aoMudar={setProdutos} />
         </CardContent>
       </Card>
 

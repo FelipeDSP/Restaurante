@@ -193,3 +193,55 @@ export async function excluirOpcao(opcaoId: string): Promise<ResultadoAcao> {
   refresh();
   return sucesso("Opção excluída.");
 }
+
+// Aplicar o grupo direto pelo lado dele: em quais produtos ele entra. Antes só dava para ligar
+// abrindo produto por produto, e o grupo "Ponto da carne" tinha que ser repetido em cada burger.
+const produtosSchema = z.preprocess((valor) => {
+  try {
+    return JSON.parse(typeof valor === "string" && valor ? valor : "[]");
+  } catch {
+    return null;
+  }
+}, z.array(id, { error: "Produtos inválidos." }).max(1000));
+
+export async function aplicarGrupoEmProdutos(grupoId: string, produtosJson: string): Promise<ResultadoAcao> {
+  const acesso = await exigirPermissao("painel", "cardapio");
+  if (!id.safeParse(grupoId).success) return falha("Grupo inválido.");
+  const produtos = produtosSchema.safeParse(produtosJson);
+  if (!produtos.success) return falha("Produtos inválidos.");
+
+  const restauranteId = acesso.restaurante.id;
+  const supabase = await createClient();
+  const escolhidos = [...new Set(produtos.data)];
+
+  const { data: atuais, error } = await supabase
+    .from("produtos_grupos_adicionais")
+    .select("produto_id")
+    .eq("restaurante_id", restauranteId)
+    .eq("grupo_id", grupoId);
+  if (error) return falha(mensagemErroBanco(error));
+
+  const existentes = atuais.map((l) => l.produto_id);
+  const remover = existentes.filter((p) => !escolhidos.includes(p));
+  const incluir = escolhidos.filter((p) => !existentes.includes(p));
+
+  if (remover.length > 0) {
+    const { error: erro } = await supabase
+      .from("produtos_grupos_adicionais")
+      .delete()
+      .eq("restaurante_id", restauranteId)
+      .eq("grupo_id", grupoId)
+      .in("produto_id", remover);
+    if (erro) return falha(mensagemErroBanco(erro));
+  }
+  if (incluir.length > 0) {
+    const { error: erro } = await supabase
+      .from("produtos_grupos_adicionais")
+      .insert(incluir.map((produtoId) => ({ restaurante_id: restauranteId, produto_id: produtoId, grupo_id: grupoId })));
+    if (erro) return falha(mensagemErroBanco(erro));
+  }
+
+  refresh();
+  const total = escolhidos.length;
+  return sucesso(total === 0 ? "Grupo tirado de todos os produtos." : `Grupo em ${total} ${total === 1 ? "produto" : "produtos"}.`);
+}

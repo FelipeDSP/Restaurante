@@ -12,7 +12,7 @@ export default async function AdicionaisPage() {
   const supabase = await createClient();
 
   // Sempre filtrar pelo restaurante ativo: a RLS também libera o cardápio público de outros restaurantes.
-  const [grupos, ligacoes] = await Promise.all([
+  const [grupos, ligacoes, categorias] = await Promise.all([
     supabase
       .from("grupos_adicionais")
       .select("id, nome, minimo, maximo, repetir, ativo, adicionais(id, nome, preco, disponivel, ordem)")
@@ -25,9 +25,18 @@ export default async function AdicionaisPage() {
       .from("produtos_grupos_adicionais")
       .select("grupo_id, produto:produtos!produtos_grupos_adicionais_restaurante_id_produto_id_fkey(id, nome)")
       .eq("restaurante_id", acesso.restaurante.id),
+    // Para aplicar o grupo em vários produtos sem sair daqui.
+    supabase
+      .from("categorias")
+      .select("id, nome, produtos(id, nome, ordem)")
+      .eq("restaurante_id", acesso.restaurante.id)
+      .order("ordem")
+      .order("ordem", { referencedTable: "produtos" })
+      .order("nome", { referencedTable: "produtos" }),
   ]);
   if (grupos.error) throw new Error(grupos.error.message);
   if (ligacoes.error) throw new Error(ligacoes.error.message);
+  if (categorias.error) throw new Error(categorias.error.message);
 
   const lista: Grupo[] = grupos.data.map((g) => ({
     id: g.id,
@@ -47,7 +56,12 @@ export default async function AdicionaisPage() {
     <main className="flex flex-col gap-6 p-4 md:p-6">
       <h1 className="sr-only">Adicionais e opções</h1>
       <NovoGrupo />
-      <ListaGrupos grupos={lista} />
+      <ListaGrupos
+        grupos={lista}
+        categorias={categorias.data
+          .map((c) => ({ id: c.id, nome: c.nome, produtos: c.produtos.map((p) => ({ id: p.id, nome: p.nome })) }))
+          .filter((c) => c.produtos.length > 0)}
+      />
     </main>
   );
 }
