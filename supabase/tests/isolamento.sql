@@ -3182,6 +3182,144 @@ begin
 end;
 $$;
 
+
+-- ======================================================================
+-- Cardápios por horário (almoço e janta) e dia da semana do produto
+-- ======================================================================
+do $$
+declare
+  a constant uuid := md5('brasa-espetinhos')::uuid;
+  b constant uuid := md5('burger-do-ze')::uuid;
+  v_almoco uuid;
+  v_janta uuid;
+  v_espeto constant uuid := md5('brasa-espetinhos/Espetos/Espeto de carne')::uuid;
+  v_burger constant uuid := md5('brasa-espetinhos/Burgers/Burger artesanal')::uuid;
+  v_refri constant uuid := md5('brasa-espetinhos/Bebidas/Refrigerante lata')::uuid;
+  -- Quarta-feira no fuso do restaurante A (America/Porto_Velho, UTC-4).
+  v_qua_12h constant timestamptz := timestamptz '2026-11-25 12:00:00-04';
+  v_qua_20h constant timestamptz := timestamptz '2026-11-25 20:00:00-04';
+  v_qui_12h constant timestamptz := timestamptz '2026-11-26 12:00:00-04';
+  v_pedido_balcao uuid;
+  n integer;
+begin
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  insert into public.cardapios (restaurante_id, nome, dias, abre, fecha, ordem)
+  values (a, 'Almoço', '{1,2,3,4,5}', '11:00', '15:00', 1) returning id into v_almoco;
+  insert into public.cardapios (restaurante_id, nome, dias, abre, fecha, ordem)
+  values (a, 'Janta', '{0,1,2,3,4,5,6}', '18:00', '23:30', 2) returning id into v_janta;
+  insert into public.cardapios_produtos (restaurante_id, cardapio_id, produto_id) values (a, v_almoco, v_espeto);
+  insert into public.cardapios_produtos (restaurante_id, cardapio_id, produto_id) values (a, v_janta, v_burger);
+
+  perform pg_temp.admin();
+  perform pg_temp.ok(rest_privado.produto_no_cardapio(a, v_espeto, v_qua_12h), 'cardápio: produto do almoço aparece ao meio-dia');
+  perform pg_temp.ok(not rest_privado.produto_no_cardapio(a, v_espeto, v_qua_20h), 'cardápio: produto do almoço some de noite');
+  perform pg_temp.ok(rest_privado.produto_no_cardapio(a, v_burger, v_qua_20h), 'cardápio: produto da janta aparece de noite');
+  perform pg_temp.ok(not rest_privado.produto_no_cardapio(a, v_burger, v_qua_12h), 'cardápio: produto da janta some no almoço');
+  perform pg_temp.ok(rest_privado.produto_no_cardapio(a, v_refri, v_qua_12h)
+                 and rest_privado.produto_no_cardapio(a, v_refri, v_qua_20h),
+                 'cardápio: produto sem cardápio aparece a qualquer hora');
+  perform pg_temp.ok(rest_privado.cardapios_agora(a, v_qua_12h) = array[v_almoco],
+                 'cardápio: só o cardápio da janela conta como o de agora');
+
+  -- Dia da semana do produto (prato do dia): quarta só na quarta, e a noite de quarta vira
+  -- quinta só depois das 5h.
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  update public.produtos set dias = '{3}' where id = v_refri and restaurante_id = a;
+  perform pg_temp.admin();
+  perform pg_temp.ok(rest_privado.produto_no_cardapio(a, v_refri, v_qua_20h), 'dias: prato da quarta aparece na quarta');
+  perform pg_temp.ok(not rest_privado.produto_no_cardapio(a, v_refri, v_qui_12h), 'dias: prato da quarta some na quinta');
+  perform pg_temp.ok(rest_privado.produto_no_cardapio(a, v_refri, timestamptz '2026-11-26 01:00:00-04'),
+                 'dias: 1h da manhã ainda é a noite de quarta');
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  update public.produtos set dias = null where id = v_refri and restaurante_id = a;
+
+  -- Cardápio desligado não esconde nada.
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  update public.cardapios set ativo = false where id = v_almoco;
+  perform pg_temp.admin();
+  perform pg_temp.ok(rest_privado.produto_no_cardapio(a, v_espeto, v_qua_20h),
+                 'cardápio: desligado devolve o produto para qualquer horário');
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  update public.cardapios set ativo = true where id = v_almoco;
+
+  -- Isolamento: o dono de B não lê nem mexe nos cardápios de A.
+  perform pg_temp.entrar('dono.burger@exemplo.com');
+  select count(*) into n from public.cardapios where restaurante_id = a;
+  perform pg_temp.ok(n = 0, 'cardápio: dono de B não lê os cardápios de A');
+  select count(*) into n from public.cardapios_produtos where restaurante_id = a;
+  perform pg_temp.ok(n = 0, 'cardápio: dono de B não lê os vínculos de A');
+  update public.cardapios set nome = 'Invadido' where id = v_almoco;
+  perform pg_temp.admin();
+  perform pg_temp.ok((select nome from public.cardapios where id = v_almoco) = 'Almoço', 'cardápio: dono de B não renomeia cardápio de A');
+
+  -- Garçom lê (para a tela avisar o que é de outro horário) mas não mexe.
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  select count(*) into n from public.cardapios where restaurante_id = a;
+  perform pg_temp.ok(n = 2, 'cardápio: garçom lê os cardápios do próprio restaurante');
+  begin
+    insert into public.cardapios (restaurante_id, nome, abre, fecha) values (a, 'Do garçom', '10:00', '11:00');
+    perform pg_temp.ok(false, 'cardápio: garçom não cria cardápio');
+  exception when others then
+    perform pg_temp.ok(true, 'cardápio: garçom não cria cardápio');
+  end;
+
+  -- O anônimo não vê o produto fora do horário, mas a equipe lança o que quiser.
+  perform pg_temp.anonimo();
+  select count(*) into n from public.produtos where id = v_espeto;
+  perform pg_temp.ok(n = case when rest_privado.produto_no_cardapio(a, v_espeto) then 1 else 0 end,
+                 'cardápio: o site do cliente mostra só o que está no cardápio de agora');
+
+
+  -- Trava de verdade: com o espeto num cardápio de outro dia, o cliente não consegue pedir,
+  -- mas a equipe lança (o dono não é impedido).
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  update public.cardapios set dias = array[((rest_privado.dia_do_servico(a)::integer + 3) % 7)::smallint],
+    abre = '11:00', fecha = '15:00' where id = v_almoco;
+  if not exists (select 1 from public.caixa_sessoes where restaurante_id = a and fechada_em is null) then
+    insert into public.caixa_sessoes (restaurante_id, valor_inicial) values (a, 0);
+  end if;
+
+  perform pg_temp.anonimo();
+  begin
+    perform public.criar_pedido_delivery(a, 'Fora do Horário', '69988880098',
+      (select id from public.bairros_entrega where restaurante_id = a and ativo limit 1),
+      '{"rua": "R", "numero": "1", "bairro": "Centro"}', 'pix',
+      jsonb_build_array(jsonb_build_object('produto_id', v_espeto, 'quantidade', 1)));
+    perform pg_temp.ok(false, 'cardápio: cliente não pede o que está fora do cardápio de agora');
+  exception when others then
+    perform pg_temp.ok(sqlerrm like 'Fora do cardápio%' and sqlerrm like '%(indisponivel)',
+                   'cardápio: cliente não pede o que está fora do cardápio de agora');
+  end;
+
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  insert into public.pedidos (restaurante_id, origem, numero, caixa_sessao_id)
+  values (a, 'balcao', 0, (select id from public.caixa_sessoes where restaurante_id = a and fechada_em is null))
+  returning id into v_pedido_balcao;
+  insert into public.itens_pedido (restaurante_id, pedido_id, produto_id, nome_produto, preco_unitario, quantidade)
+  values (a, v_pedido_balcao, v_espeto, '', 0, 1);
+  perform pg_temp.ok((select count(*) from public.itens_pedido where pedido_id = v_pedido_balcao) = 1,
+                 'cardápio: a equipe lança fora do horário (o dono não é impedido)');
+
+  -- O pedido guarda o cardápio que estava valendo (relatório por turno).
+  perform pg_temp.admin();
+  perform pg_temp.ok((select cardapio_id is null from public.pedidos where id = v_pedido_balcao),
+                 'cardápio: pedido fora de qualquer janela fica sem cardápio');
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  update public.cardapios set dias = '{0,1,2,3,4,5,6}', abre = '00:00', fecha = '00:00' where id = v_almoco;
+  insert into public.pedidos (restaurante_id, origem, numero, caixa_sessao_id)
+  values (a, 'balcao', 0, (select id from public.caixa_sessoes where restaurante_id = a and fechada_em is null))
+  returning id into v_pedido_balcao;
+  perform pg_temp.admin();
+  perform pg_temp.ok((select cardapio_id = v_almoco from public.pedidos where id = v_pedido_balcao),
+                 'cardápio: pedido novo guarda o cardápio de agora');
+  -- Tentar apagar o cardápio do pedido pela API não funciona: o banco devolve o de sempre.
+  update public.pedidos set cardapio_id = null where id = v_pedido_balcao;
+  perform pg_temp.ok((select cardapio_id = v_almoco from public.pedidos where id = v_pedido_balcao),
+                 'cardápio: o cardápio do pedido não muda depois');
+  perform pg_temp.admin();
+end;
+$$;
+
 select n, ok, teste from resultado order by n;
 select count(*) filter (where not ok) as falhas, count(*) as total from resultado;
 

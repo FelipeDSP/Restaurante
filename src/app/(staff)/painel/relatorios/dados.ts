@@ -27,18 +27,25 @@ export type Relatorio = {
   produtos: { produto_id: string; nome: string; categoria: string | null; quantidade: number; total: number }[];
   bairros: { nome: string; pedidos: number; vendido: number; taxas: number }[];
   garcons: { nome: string; comandas: number; vendido: number; pessoas: number | null; servico: number }[];
+  // Vendido por cardápio de horário (vendas_por_cardapio); só tem mais de uma linha em quem usa.
+  cardapios: { nome: string; pedidos: number; vendido: number }[];
   // Acerto dos entregadores no período (entregas_do_periodo).
   entregadores: { nome: string; entregas: number; valor: number }[];
 };
 
 export async function carregarRelatorio(restauranteId: string, de: string, ate: string): Promise<Relatorio> {
   const supabase = await createClient();
-  const [{ data, error }, entregas] = await Promise.all([
+  const [{ data, error }, entregas, cardapios] = await Promise.all([
     supabase.rpc("relatorio_vendas", { p_restaurante_id: restauranteId, p_de: de, p_ate: ate }),
     supabase.rpc("entregas_do_periodo", { p_restaurante_id: restauranteId, p_de: de, p_ate: ate }),
+    supabase.rpc("vendas_por_cardapio", { p_restaurante_id: restauranteId, p_de: de, p_ate: ate }),
   ]);
   if (error) throw new Error(error.message);
-  return { ...(data as unknown as Omit<Relatorio, "entregadores">), entregadores: (entregas.data as Relatorio["entregadores"] | null) ?? [] };
+  return {
+    ...(data as unknown as Omit<Relatorio, "entregadores" | "cardapios">),
+    entregadores: (entregas.data as Relatorio["entregadores"] | null) ?? [],
+    cardapios: (cardapios.data as Relatorio["cardapios"] | null) ?? [],
+  };
 }
 
 // ---- Período ----------------------------------------------------------------

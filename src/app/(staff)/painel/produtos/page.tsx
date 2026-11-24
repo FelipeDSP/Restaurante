@@ -14,14 +14,26 @@ export default async function ProdutosPage() {
   const acesso = await exigirPermissao("painel", "cardapio");
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from("categorias")
-    .select("id, nome, ativa, produtos(id, nome, descricao, preco, foto_url, disponivel, disponivel_delivery, ordem)")
-    .eq("restaurante_id", acesso.restaurante.id)
-    .order("ordem")
-    .order("ordem", { referencedTable: "produtos" })
-    .order("nome", { referencedTable: "produtos" });
+  const [{ data, error }, cardapios] = await Promise.all([
+    supabase
+      .from("categorias")
+      .select(
+        "id, nome, ativa, produtos(id, nome, descricao, preco, foto_url, disponivel, disponivel_delivery, ordem, dias, cardapios_produtos(cardapio_id))",
+      )
+      .eq("restaurante_id", acesso.restaurante.id)
+      .order("ordem")
+      .order("ordem", { referencedTable: "produtos" })
+      .order("nome", { referencedTable: "produtos" }),
+    supabase.from("cardapios").select("id, nome").eq("restaurante_id", acesso.restaurante.id).order("ordem"),
+  ]);
   if (error) throw new Error(error.message);
+  if (cardapios.error) throw new Error(cardapios.error.message);
+
+  const nomesDeCardapio = Object.fromEntries(cardapios.data.map((c) => [c.id, c.nome]));
+  const categorias = data.map((c) => ({
+    ...c,
+    produtos: c.produtos.map((p) => ({ ...p, cardapios: p.cardapios_produtos.map((l) => l.cardapio_id) })),
+  }));
 
   return (
     <main className="flex flex-col gap-6 p-4 md:p-6">
@@ -37,10 +49,10 @@ export default async function ProdutosPage() {
           Novo produto
         </Button>
       </div>
-      {data.length === 0 ? (
+      {categorias.length === 0 ? (
         <p className="text-muted-foreground">Nenhum produto ainda.</p>
       ) : (
-        <ListaProdutos categorias={data} />
+        <ListaProdutos categorias={categorias} nomesDeCardapio={nomesDeCardapio} />
       )}
     </main>
   );

@@ -110,7 +110,10 @@ function LinhaProdutoSimples({
           aria-label={`Adicionar ${produto.nome}`}
         >
           <span className="font-medium">{produto.nome}</span>
-          <span className="text-sm text-muted-foreground">{formatarBRL(produto.preco)}</span>
+          <span className="text-sm text-muted-foreground">
+            {formatarBRL(produto.preco)}
+            {produto.foraDoCardapio ? ` · ${produto.foraDoCardapio.toLowerCase()}` : ""}
+          </span>
         </button>
         {quantidade > 0 ? (
           <Contador rotulo={produto.nome} quantidade={quantidade} aoMudar={(q) => mudar(q)} />
@@ -170,6 +173,7 @@ function LinhaProdutoComOpcoes({
           <span className="font-medium">{produto.nome}</span>
           <span className="text-sm text-muted-foreground">
             {formatarBRL(produto.preco)}
+            {produto.foraDoCardapio ? ` · ${produto.foraDoCardapio.toLowerCase()}` : ""}
             {obrigatorios.length > 0 ? ` · escolher ${obrigatorios.join(", ").toLowerCase()}` : ` · ${regraDoGrupo(produto.grupos[0]).toLowerCase()}`}
           </span>
         </button>

@@ -2,6 +2,7 @@ import "server-only";
 
 import { type AdicionalEscolhido, type GrupoAdicionais, lerAdicionais } from "@/lib/adicionais";
 import { carregarAdicionaisPorProduto } from "@/lib/adicionais-dados";
+import { foraDoCardapio } from "@/lib/cardapios";
 import { itensProntosParaLevar, type Preparo, prontoEmDoItem, situacaoDosTickets, type TicketPreparo, ticketsDoItem } from "@/lib/preparo";
 import { createClient } from "@/lib/supabase/server";
 
@@ -270,23 +271,34 @@ export type ProdutoCardapio = {
   descricao: string | null;
   grupos: GrupoAdicionais[];
   paraViagem: boolean; // padrão definido pelo dono
+  // Aviso de "isto é de outro horário" ("Só no cardápio Almoço", "Só qua"); null = no cardápio de agora.
+  // A equipe nunca fica impedida de lançar: é só um aviso na tela.
+  foraDoCardapio: string | null;
 };
 export type CategoriaCardapio = { id: string; nome: string; produtos: ProdutoCardapio[] };
 
-// Cardápio do salão: categorias ativas e produtos disponíveis.
+// Cardápio do salão: categorias ativas e produtos disponíveis. A equipe vê tudo, com o que é de
+// outro horário marcado e no fim da lista.
 export async function carregarCardapioSalao(restauranteId: string): Promise<CategoriaCardapio[]> {
   const supabase = await createClient();
   const adicionais = carregarAdicionaisPorProduto(supabase, restauranteId);
-  const { data, error } = await supabase
-    .from("categorias")
-    .select("id, nome, produtos(id, nome, preco, descricao, disponivel, para_viagem, ordem)")
-    .eq("restaurante_id", restauranteId)
-    .eq("ativa", true)
-    .order("ordem")
-    .order("ordem", { referencedTable: "produtos" })
-    .order("nome", { referencedTable: "produtos" });
+  const [{ data, error }, cardapios, { data: agora }] = await Promise.all([
+    supabase
+      .from("categorias")
+      .select("id, nome, produtos(id, nome, preco, descricao, disponivel, para_viagem, ordem, dias, cardapios_produtos(cardapio_id))")
+      .eq("restaurante_id", restauranteId)
+      .eq("ativa", true)
+      .order("ordem")
+      .order("ordem", { referencedTable: "produtos" })
+      .order("nome", { referencedTable: "produtos" }),
+    supabase.from("cardapios").select("id, nome").eq("restaurante_id", restauranteId),
+    supabase.rpc("cardapio_agora", { p_restaurante_id: restauranteId }),
+  ]);
   if (error) throw new Error(error.message);
   const gruposPorProduto = await adicionais;
+
+  const nomesDeCardapio = new Map((cardapios.data ?? []).map((c) => [c.id, c.nome]));
+  const valendo = (agora as { cardapios?: string[]; dia?: number } | null) ?? null;
 
   return data
     .map((c) => ({
@@ -301,7 +313,17 @@ export async function carregarCardapioSalao(restauranteId: string): Promise<Cate
           descricao: p.descricao,
           grupos: gruposPorProduto.get(p.id) ?? [],
           paraViagem: p.para_viagem,
-        })),
+          foraDoCardapio:
+            valendo && typeof valendo.dia === "number"
+              ? foraDoCardapio(
+                  { dias: p.dias, cardapios: p.cardapios_produtos.map((l) => l.cardapio_id) },
+                  { cardapios: valendo.cardapios ?? [], dia: valendo.dia },
+                  nomesDeCardapio,
+                )
+              : null,
+        }))
+        // O que é de outro horário desce para o fim da categoria, sem desaparecer.
+        .sort((a, b) => Number(Boolean(a.foraDoCardapio)) - Number(Boolean(b.foraDoCardapio))),
     }))
     .filter((c) => c.produtos.length > 0);
 }

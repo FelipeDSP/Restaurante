@@ -2,7 +2,7 @@ import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
 
-import type { GrupoParaProduto } from "./form-produto";
+import type { CardapioParaProduto, GrupoParaProduto } from "./form-produto";
 
 // Praças ativas, para escolher onde o produto é preparado.
 export async function carregarPracas(
@@ -40,4 +40,19 @@ export async function carregarGruposParaProduto(
     ativo: g.ativo,
     opcoes: g.adicionais.map((a) => a.nome),
   }));
+}
+
+// Cardápios por horário do restaurante, para ligar ao produto.
+export async function carregarCardapiosParaProduto(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  restauranteId: string,
+): Promise<CardapioParaProduto[]> {
+  const { data, error } = await supabase
+    .from("cardapios")
+    .select("id, nome, dias, abre, fecha, ativo")
+    .eq("restaurante_id", restauranteId)
+    .order("ordem")
+    .order("nome");
+  if (error) throw new Error(error.message);
+  return data;
 }

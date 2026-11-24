@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { id as idSchema } from "@/lib/validacao";
 
 import { FormProduto } from "../form-produto";
-import { carregarGruposParaProduto, carregarPracas } from "../grupos";
+import { carregarCardapiosParaProduto, carregarGruposParaProduto, carregarPracas } from "../grupos";
 
 export const metadata: Metadata = { title: "Editar produto" };
 
@@ -16,10 +16,10 @@ export default async function EditarProdutoPage(props: PageProps<"/painel/produt
   if (!idSchema.safeParse(id).success) notFound();
 
   const supabase = await createClient();
-  const [produto, categorias, grupos, ligacoes, pracas, etapas] = await Promise.all([
+  const [produto, categorias, grupos, ligacoes, pracas, etapas, cardapios, cardapiosDoProduto] = await Promise.all([
     supabase
       .from("produtos")
-      .select("id, nome, descricao, preco, categoria_id, foto_url, disponivel, disponivel_delivery, para_viagem")
+      .select("id, nome, descricao, preco, categoria_id, foto_url, disponivel, disponivel_delivery, para_viagem, dias")
       .eq("id", id)
       .eq("restaurante_id", acesso.restaurante.id)
       .maybeSingle(),
@@ -36,7 +36,14 @@ export default async function EditarProdutoPage(props: PageProps<"/painel/produt
       .select("estacao_id, ordem")
       .eq("restaurante_id", acesso.restaurante.id)
       .eq("produto_id", id),
+    carregarCardapiosParaProduto(supabase, acesso.restaurante.id),
+    supabase
+      .from("cardapios_produtos")
+      .select("cardapio_id")
+      .eq("restaurante_id", acesso.restaurante.id)
+      .eq("produto_id", id),
   ]);
+  if (cardapiosDoProduto.error) throw new Error(cardapiosDoProduto.error.message);
   if (etapas.error) throw new Error(etapas.error.message);
   if (ligacoes.error) throw new Error(ligacoes.error.message);
   if (produto.error) throw new Error(produto.error.message);
@@ -54,6 +61,8 @@ export default async function EditarProdutoPage(props: PageProps<"/painel/produt
         gruposDoProduto={ligacoes.data.map((l) => l.grupo_id)}
         pracas={pracas}
         etapasDoProduto={etapas.data}
+        cardapios={cardapios}
+        cardapiosDoProduto={cardapiosDoProduto.data.map((l) => l.cardapio_id)}
       />
     </main>
   );

@@ -50,6 +50,8 @@ export const NAVEGACAO: ItemNavegacao[] = [
       { href: "/painel/produtos", rotulo: "Produtos" },
       { href: "/painel/categorias", rotulo: "Categorias" },
       { href: "/painel/adicionais", rotulo: "Adicionais" },
+      // Cardápios por horário (almoço e janta): o produto aparece só na janela do cardápio dele.
+      { href: "/painel/cardapios", rotulo: "Horários" },
     ],
   },
   { href: "/painel/mesas", rotulo: "Cadastro de mesas", grupo: "Cadastros", acesso: ["mesas"] },

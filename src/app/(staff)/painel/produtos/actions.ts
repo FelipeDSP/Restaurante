@@ -35,6 +35,63 @@ const etapasSchema = z.preprocess(
     .refine((lista) => new Set(lista.map((e) => e.estacao_id)).size === lista.length, "Cada praça só pode aparecer uma vez."),
 );
 
+// Cardápios por horário ligados ao produto (campo oculto com JSON de ids).
+const cardapiosSchema = z.preprocess((valor) => {
+  try {
+    return JSON.parse(typeof valor === "string" && valor ? valor : "[]");
+  } catch {
+    return null;
+  }
+}, z.array(id, { error: "Cardápios inválidos." }).max(20));
+
+// Dias da semana em que o produto aparece. Vazio = todos os dias (null no banco).
+const diasSchema = z.preprocess(
+  (valor) => {
+    try {
+      return JSON.parse(typeof valor === "string" && valor ? valor : "[]");
+    } catch {
+      return null;
+    }
+  },
+  z.array(z.number().int().min(0).max(6), { error: "Dias inválidos." }).max(7),
+);
+
+// Deixa as ligações produto-cardápio iguais à lista escolhida.
+async function sincronizarCardapios(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  restauranteId: string,
+  produtoId: string,
+  cardapios: string[],
+): Promise<string | null> {
+  const { data: atuais, error } = await supabase
+    .from("cardapios_produtos")
+    .select("cardapio_id")
+    .eq("restaurante_id", restauranteId)
+    .eq("produto_id", produtoId);
+  if (error) return error.message;
+
+  const existentes = atuais.map((l) => l.cardapio_id);
+  const remover = existentes.filter((c) => !cardapios.includes(c));
+  const incluir = cardapios.filter((c) => !existentes.includes(c));
+
+  if (remover.length > 0) {
+    const { error: erro } = await supabase
+      .from("cardapios_produtos")
+      .delete()
+      .eq("restaurante_id", restauranteId)
+      .eq("produto_id", produtoId)
+      .in("cardapio_id", remover);
+    if (erro) return erro.message;
+  }
+  if (incluir.length > 0) {
+    const { error: erro } = await supabase
+      .from("cardapios_produtos")
+      .insert(incluir.map((cardapioId) => ({ restaurante_id: restauranteId, produto_id: produtoId, cardapio_id: cardapioId })));
+    if (erro) return erro.message;
+  }
+  return null;
+}
+
 // Troca a rota de preparo do produto pela lista enviada.
 async function salvarEtapas(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -121,6 +178,13 @@ export async function salvarProduto(
   if (!etapas.success) {
     return falha("Confira a rota de preparo.", { etapas: etapas.error.issues[0]?.message ?? "Rota inválida." }, formData);
   }
+  const cardapios = cardapiosSchema.safeParse(formData.get("cardapios"));
+  if (!cardapios.success) return falha("Cardápios inválidos.", undefined, formData);
+  const dias = diasSchema.safeParse(formData.get("dias"));
+  if (!dias.success) return falha("Dias da semana inválidos.", undefined, formData);
+  // Todos os dias marcados é o mesmo que não escolher dia.
+  const lista = [...new Set(dias.data)].sort((a, b) => a - b);
+  const diasDoProduto = lista.length === 0 || lista.length === 7 ? null : lista;
 
   const supabase = await createClient();
 
@@ -141,7 +205,7 @@ export async function salvarProduto(
 
     const { error } = await supabase
       .from("produtos")
-      .update({ ...dados.data, ...ordem })
+      .update({ ...dados.data, dias: diasDoProduto, ...ordem })
       .eq("id", produtoId)
       .eq("restaurante_id", restauranteId);
     if (error) return falha(mensagemErroBanco(error), undefined, formData);
@@ -151,11 +215,14 @@ export async function salvarProduto(
     if (await salvarEtapas(supabase, restauranteId, produtoId, etapas.data)) {
       return falha("Produto salvo, mas não foi possível atualizar a rota de preparo.", undefined, formData);
     }
+    if (await sincronizarCardapios(supabase, restauranteId, produtoId, cardapios.data)) {
+      return falha("Produto salvo, mas não foi possível atualizar os cardápios.", undefined, formData);
+    }
   } else {
     const ordem = await proximaOrdem(supabase, "produtos", restauranteId, { coluna: "categoria_id", valor: dados.data.categoria_id });
     const { data: criado, error } = await supabase
       .from("produtos")
-      .insert({ ...dados.data, restaurante_id: restauranteId, ordem })
+      .insert({ ...dados.data, dias: diasDoProduto, restaurante_id: restauranteId, ordem })
       .select("id")
       .single();
     if (error) return falha(mensagemErroBanco(error), undefined, formData);
@@ -164,6 +231,9 @@ export async function salvarProduto(
     }
     if (await salvarEtapas(supabase, restauranteId, criado.id, etapas.data)) {
       return falha("Produto criado, mas não foi possível salvar a rota de preparo. Edite o produto para tentar de novo.");
+    }
+    if (await sincronizarCardapios(supabase, restauranteId, criado.id, cardapios.data)) {
+      return falha("Produto criado, mas não foi possível ligar os cardápios. Edite o produto para tentar de novo.");
     }
   }
 

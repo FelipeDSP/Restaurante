@@ -222,6 +222,23 @@ export default async function RelatoriosPage(props: PageProps<"/painel/relatorio
             </Painel>
           </div>
 
+          {/* Almoço x janta: só aparece para quem usa cardápios por horário. */}
+          {r.cardapios.length > 1 ? (
+            <Painel titulo="Por cardápio">
+              <Rosca
+                centro={formatarBRL(r.vendido)}
+                rotuloCentro="vendido"
+                fatias={r.cardapios.map((c, i) => ({
+                  chave: c.nome,
+                  rotulo: `${c.nome} · ${plural(c.pedidos, "conta", "contas")}`,
+                  valor: c.vendido,
+                  texto: formatarBRL(c.vendido),
+                  cor: CORES[i % CORES.length],
+                }))}
+              />
+            </Painel>
+          ) : null}
+
           <div className="grid gap-5 lg:grid-cols-2">
             <Painel titulo="Pedidos por horário">
               {r.por_hora.length === 0 ? (

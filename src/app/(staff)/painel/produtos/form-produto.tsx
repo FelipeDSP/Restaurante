@@ -6,6 +6,7 @@ import { useActionState, useState } from "react";
 
 import { useAcao } from "@/components/staff/acoes-cliente";
 import { BotaoConfirmar } from "@/components/staff/botao-confirmar";
+import { EscolherDias } from "@/components/staff/escolher-dias";
 import { BotaoEnviar, Campo, ErroCampo, marcadoCampo, Selecao, useAvisoResultado, valorCampo } from "@/components/staff/formulario";
 import { UploadImagem } from "@/components/staff/upload-imagem";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { regraDoGrupo } from "@/lib/adicionais";
+import { rotuloDias, rotuloJanela } from "@/lib/cardapios";
 import { textoDeCentavos } from "@/lib/dinheiro";
 import { cn } from "@/lib/utils";
 
@@ -30,9 +32,11 @@ export type ProdutoEditavel = {
   disponivel: boolean;
   disponivel_delivery: boolean;
   para_viagem: boolean;
+  dias: number[] | null;
 };
 
 export type GrupoParaProduto = { id: string; nome: string; minimo: number; maximo: number; ativo: boolean; opcoes: string[] };
+export type CardapioParaProduto = { id: string; nome: string; dias: number[]; abre: string; fecha: string; ativo: boolean };
 
 type Props = {
   restauranteId: string;
@@ -43,6 +47,8 @@ type Props = {
   gruposDoProduto?: string[];
   pracas: { id: string; nome: string }[];
   etapasDoProduto?: { estacao_id: string; ordem: number }[];
+  cardapios: CardapioParaProduto[];
+  cardapiosDoProduto?: string[];
 };
 
 export function FormProduto({
@@ -54,6 +60,8 @@ export function FormProduto({
   gruposDoProduto = [],
   pracas,
   etapasDoProduto = [],
+  cardapios,
+  cardapiosDoProduto = [],
 }: Props) {
   const [estado, acao] = useActionState(salvarProduto.bind(null, produto?.id ?? null), undefined);
   useAvisoResultado(estado);
@@ -61,6 +69,9 @@ export function FormProduto({
   // Fora do <form>: sobrevive à remontagem após erro (o React 19 reseta o formulário).
   const [gruposEscolhidos, setGruposEscolhidos] = useState<string[]>(gruposDoProduto);
   const [etapas, setEtapas] = useState<EtapaEditavel[]>(() => etapasDoBanco(etapasDoProduto));
+  const [cardapiosEscolhidos, setCardapiosEscolhidos] = useState<string[]>(cardapiosDoProduto);
+  // null = todos os dias (o normal); lista = prato do dia que só aparece em certos dias.
+  const [dias, setDias] = useState<number[] | null>(produto?.dias ?? null);
   // Categorias criadas aqui mesmo entram na lista e já ficam escolhidas.
   const [criadas, setCriadas] = useState<{ id: string; nome: string }[]>([]);
   const [categoriaNova, setCategoriaNova] = useState<string | undefined>(undefined);
@@ -178,8 +189,77 @@ export function FormProduto({
             />
             Aparece no delivery
           </label>
+          {/* Dia da semana (prato do dia): fica escondido para quem não usa. */}
+          <div className="flex flex-col gap-2 sm:col-span-2">
+            <input type="hidden" name="dias" value={dias ? JSON.stringify(dias) : ""} />
+            {dias ? (
+              <Campo rotulo="Aparece só nestes dias" htmlFor="dias-produto">
+                <EscolherDias dias={dias} aoMudar={setDias} nome={null} mostrarTodos={false} />
+                <Button type="button" variant="ghost" size="sm" className="self-start" onClick={() => setDias(null)}>
+                  Volta a aparecer todos os dias
+                </Button>
+              </Campo>
+            ) : (
+              <Button type="button" variant="ghost" size="sm" className="self-start" onClick={() => setDias([new Date().getDay()])}>
+                Só em alguns dias da semana
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
+
+      {/* Cardápios por horário: só aparece para quem cadastrou algum. */}
+      {cardapios.length > 0 ? (
+        <Card>
+          <CardContent className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="font-semibold">Em que horário aparece</h2>
+              <Link href="/painel/cardapios" className="text-sm underline underline-offset-4">
+                Editar cardápios
+              </Link>
+            </div>
+            <input type="hidden" name="cardapios" value={JSON.stringify(cardapiosEscolhidos)} />
+            <ul className="grid gap-2 sm:grid-cols-2">
+              {cardapios.map((c) => {
+                const marcado = cardapiosEscolhidos.includes(c.id);
+                return (
+                  <li key={c.id}>
+                    <label
+                      className={cn(
+                        "flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors",
+                        marcado ? "border-primary bg-primary/5" : "hover:bg-muted/50",
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={marcado}
+                        onChange={(e) =>
+                          setCardapiosEscolhidos((atual) =>
+                            e.target.checked ? [...atual, c.id] : atual.filter((id) => id !== c.id),
+                          )
+                        }
+                        className="mt-0.5 size-5 accent-[var(--cor-primaria-texto)]"
+                      />
+                      <span className="flex min-w-0 flex-col gap-0.5">
+                        <span className="font-medium">
+                          {c.nome}
+                          {!c.ativo ? <span className="ml-2 text-xs font-normal text-muted-foreground">(desligado)</span> : null}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {rotuloDias(c.dias)}, {rotuloJanela(c.abre, c.fecha)}
+                        </span>
+                      </span>
+                    </label>
+                  </li>
+                );
+              })}
+            </ul>
+            {cardapiosEscolhidos.length === 0 ? (
+              <p className="text-xs text-muted-foreground">Sem marcar nenhum, aparece a qualquer hora.</p>
+            ) : null}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardContent className="flex flex-col gap-3">

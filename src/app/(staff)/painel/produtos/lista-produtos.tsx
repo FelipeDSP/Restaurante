@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ControlesOrdem, useAcao } from "@/components/staff/acoes-cliente";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { rotuloDias } from "@/lib/cardapios";
 import { formatarBRL } from "@/lib/dinheiro";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +19,9 @@ export type ProdutoLista = {
   foto_url: string | null;
   disponivel: boolean;
   disponivel_delivery: boolean;
+  // Horário e dia em que o produto aparece para o cliente (vazio = qualquer hora, todo dia).
+  dias: number[] | null;
+  cardapios: string[];
 };
 
 export type CategoriaComProdutos = {
@@ -71,13 +75,22 @@ function LinhaProduto({
   categoriaId,
   primeiro,
   ultimo,
+  nomesDeCardapio,
 }: {
   produto: ProdutoLista;
   categoriaId: string;
   primeiro: boolean;
   ultimo: boolean;
+  nomesDeCardapio: Record<string, string>;
 }) {
   const { pendente, executar } = useAcao();
+  // "Almoço · só qua": o que limita o horário e o dia deste produto.
+  const quando = [
+    produto.cardapios.map((id) => nomesDeCardapio[id]).filter(Boolean).join(" / "),
+    produto.dias ? `só ${rotuloDias(produto.dias)}` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <li className="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center">
@@ -99,7 +112,10 @@ function LinhaProduto({
         </div>
         <div className="flex min-w-0 flex-col">
           <span className="truncate font-medium">{produto.nome}</span>
-          <span className="text-sm text-muted-foreground">{formatarBRL(produto.preco)}</span>
+          <span className="text-sm text-muted-foreground">
+            {formatarBRL(produto.preco)}
+            {quando ? ` · ${quando}` : ""}
+          </span>
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-1">
@@ -126,7 +142,13 @@ function LinhaProduto({
   );
 }
 
-export function ListaProdutos({ categorias }: { categorias: CategoriaComProdutos[] }) {
+export function ListaProdutos({
+  categorias,
+  nomesDeCardapio = {},
+}: {
+  categorias: CategoriaComProdutos[];
+  nomesDeCardapio?: Record<string, string>;
+}) {
   return (
     <div className="flex flex-col gap-8">
       {categorias.map((categoria) => (
@@ -156,6 +178,7 @@ export function ListaProdutos({ categorias }: { categorias: CategoriaComProdutos
                   categoriaId={categoria.id}
                   primeiro={i === 0}
                   ultimo={i === categoria.produtos.length - 1}
+                  nomesDeCardapio={nomesDeCardapio}
                 />
               ))}
             </ul>
