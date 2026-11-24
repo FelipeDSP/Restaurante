@@ -77,6 +77,13 @@ export const CONFIGURACOES: ItemNavegacao[] = [
   },
   // Um cartão por assunto: cupom e entregador não têm nada a ver um com o outro.
   {
+    href: "/painel/estoque",
+    rotulo: "Estoque",
+    grupo: "Configurações",
+    acesso: ["estoque"],
+    descricao: "O que tem, o que acabou e o que cada produto gasta.",
+  },
+  {
     href: "/painel/cupons",
     rotulo: "Cupons",
     grupo: "Configurações",

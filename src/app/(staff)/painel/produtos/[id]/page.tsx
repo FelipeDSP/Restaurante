@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { exigirPermissao } from "@/lib/auth/dal";
+import { exigirPermissao, temPermissao } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { id as idSchema } from "@/lib/validacao";
+
+import { carregarEstoqueDoProduto } from "../../estoque/dados";
+import { EstoqueDoProduto } from "../../estoque/estoque-do-produto";
 
 import { FormProduto } from "../form-produto";
 import { carregarCardapiosParaProduto, carregarGruposParaProduto, carregarPracas } from "../grupos";
@@ -44,6 +47,9 @@ export default async function EditarProdutoPage(props: PageProps<"/painel/produt
       .eq("produto_id", id),
   ]);
   if (cardapiosDoProduto.error) throw new Error(cardapiosDoProduto.error.message);
+
+  // Só para quem cuida do estoque (e cujo plano tem o módulo).
+  const estoque = temPermissao(acesso, "estoque") ? await carregarEstoqueDoProduto(supabase, acesso.restaurante.id, id) : null;
   if (etapas.error) throw new Error(etapas.error.message);
   if (ligacoes.error) throw new Error(ligacoes.error.message);
   if (produto.error) throw new Error(produto.error.message);
@@ -64,6 +70,10 @@ export default async function EditarProdutoPage(props: PageProps<"/painel/produt
         cardapios={cardapios}
         cardapiosDoProduto={cardapiosDoProduto.data.map((l) => l.cardapio_id)}
       />
+      {/* Estoque fica fora do formulário: cada mudança vale na hora (o resto salva junto). */}
+      {estoque ? (
+        <EstoqueDoProduto produtoId={id} insumos={estoque.insumos} disponiveis={estoque.disponiveis} />
+      ) : null}
     </main>
   );
 }

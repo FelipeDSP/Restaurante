@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import {
   Bike,
   BookOpen,
+  Boxes,
   ChefHat,
   ChevronRight,
   CreditCard,
@@ -32,6 +33,7 @@ const ICONES: Record<string, LucideIcon> = {
   "Setores da cozinha": ChefHat,
   Impressoras: Printer,
   Equipe: Users,
+  Estoque: Boxes,
   Assinatura: CreditCard,
 };
 

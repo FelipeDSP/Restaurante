@@ -3320,6 +3320,85 @@ begin
 end;
 $$;
 
+
+-- ======================================================================
+-- Controle de estoque
+-- ======================================================================
+do $$
+declare
+  a constant uuid := md5('brasa-espetinhos')::uuid;
+  b constant uuid := md5('burger-do-ze')::uuid;
+  v_produto constant uuid := md5('brasa-espetinhos/Burgers/Burger artesanal')::uuid;
+  v_pao uuid;
+  v_blend uuid;
+  v_pedido uuid;
+  v_item uuid;
+  n numeric;
+begin
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  insert into public.estoque_itens (restaurante_id, nome, unidade, minimo) values (a, 'Pão', 'un', 5) returning id into v_pao;
+  insert into public.estoque_itens (restaurante_id, nome, unidade) values (a, 'Blend', 'kg') returning id into v_blend;
+  insert into public.produto_insumos (restaurante_id, produto_id, item_id, quantidade) values (a, v_produto, v_pao, 1);
+  insert into public.produto_insumos (restaurante_id, produto_id, item_id, quantidade) values (a, v_produto, v_blend, 0.180);
+
+  perform public.movimentar_estoque(v_pao, 10, 'compra', 'nota 1', 4500);
+  perform public.movimentar_estoque(v_blend, 2, 'compra');
+  perform pg_temp.ok((select saldo from public.estoque_itens where id = v_pao) = 10, 'estoque: entrada soma no saldo');
+
+  -- Venda de 3: o extrato é quem manda no saldo.
+  if not exists (select 1 from public.caixa_sessoes where restaurante_id = a and fechada_em is null) then
+    insert into public.caixa_sessoes (restaurante_id, valor_inicial) values (a, 0);
+  end if;
+  insert into public.pedidos (restaurante_id, origem, numero, caixa_sessao_id)
+  values (a, 'balcao', 0, (select id from public.caixa_sessoes where restaurante_id = a and fechada_em is null))
+  returning id into v_pedido;
+  insert into public.itens_pedido (restaurante_id, pedido_id, produto_id, nome_produto, preco_unitario, quantidade)
+  values (a, v_pedido, v_produto, '', 0, 3) returning id into v_item;
+  perform pg_temp.ok((select saldo from public.estoque_itens where id = v_pao) = 7, 'estoque: venda baixa pela ficha');
+  perform pg_temp.ok((select saldo from public.estoque_itens where id = v_blend) = 1.460, 'estoque: ficha com decimal (0,180 x 3)');
+
+  -- Cancelar devolve exatamente o que saiu, e só uma vez.
+  update public.itens_pedido set cancelado_em = now(), motivo_cancelamento = 'teste' where id = v_item;
+  perform pg_temp.ok((select saldo from public.estoque_itens where id = v_pao) = 10, 'estoque: cancelamento devolve');
+  perform pg_temp.ok((select count(*) from public.estoque_movimentos where item_pedido_id = v_item and motivo = 'devolucao') = 2,
+                 'estoque: devolve uma vez por item da ficha');
+
+  -- Zerou: some do cardápio do cliente, mas a equipe continua lançando.
+  perform public.ajustar_estoque(v_pao, 0, 'contagem');
+  perform pg_temp.admin();
+  perform pg_temp.ok(not rest_privado.produto_no_cardapio(a, v_produto), 'estoque: zerado some do cardápio do cliente');
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  insert into public.itens_pedido (restaurante_id, pedido_id, produto_id, nome_produto, preco_unitario, quantidade)
+  values (a, v_pedido, v_produto, '', 0, 1) returning id into v_item;
+  perform pg_temp.ok((select saldo from public.estoque_itens where id = v_pao) = -1, 'estoque: a equipe lança com saldo zero (fica negativo)');
+
+  perform public.movimentar_estoque(v_pao, 5, 'compra');
+  perform pg_temp.admin();
+  perform pg_temp.ok(rest_privado.produto_no_cardapio(a, v_produto), 'estoque: repôs e o produto volta sozinho');
+
+  -- Extrato imutável.
+  begin
+    update public.estoque_movimentos set quantidade = 99 where item_id = v_pao;
+    perform pg_temp.ok(false, 'estoque: extrato não muda');
+  exception when others then
+    perform pg_temp.ok(true, 'estoque: extrato não muda');
+  end;
+
+  -- Isolamento e permissão.
+  perform pg_temp.entrar('dono.burger@exemplo.com');
+  perform pg_temp.ok((select count(*) from public.estoque_itens where restaurante_id = a) = 0, 'estoque: dono de B não lê o estoque de A');
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  perform pg_temp.ok((select count(*) from public.estoque_itens where restaurante_id = a) = 0, 'estoque: garçom sem a permissão não lê o estoque');
+  begin
+    perform public.movimentar_estoque(v_pao, 1, 'compra');
+    perform pg_temp.ok(false, 'estoque: garçom não dá entrada');
+  exception when others then
+    perform pg_temp.ok(sqlerrm like 'Sem permissão%', 'estoque: garçom não dá entrada');
+  end;
+  perform pg_temp.admin();
+end;
+$$;
+
 select n, ok, teste from resultado order by n;
 select count(*) filter (where not ok) as falhas, count(*) as total from resultado;
 

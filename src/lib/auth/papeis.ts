@@ -20,6 +20,7 @@ export const PERMISSOES = [
   "entregadores",
   "impressao",
   "restaurante",
+  "estoque",
 ] as const;
 export type Permissao = (typeof PERMISSOES)[number];
 
@@ -38,6 +39,7 @@ export const NOME_PERMISSAO: Record<Permissao, string> = {
   entregadores: "Entregadores",
   impressao: "Setores e impressoras",
   restaurante: "Dados do restaurante",
+  estoque: "Estoque",
 };
 
 export const GRUPOS_PERMISSOES: { titulo: string; itens: Permissao[] }[] = [
@@ -45,7 +47,7 @@ export const GRUPOS_PERMISSOES: { titulo: string; itens: Permissao[] }[] = [
     titulo: "Operação",
     itens: ["caixa_operar", "caixa_estornar", "delivery", "comandas_painel", "comandas_gerenciar", "garcom_app", "cozinha_tela"],
   },
-  { titulo: "Gestão", itens: ["relatorios", "cardapio", "mesas", "cupons", "entregadores", "impressao", "restaurante"] },
+  { titulo: "Gestão", itens: ["relatorios", "cardapio", "mesas", "estoque", "cupons", "entregadores", "impressao", "restaurante"] },
 ];
 
 // Permissões que abrem cada área. O painel é o app de toda a equipe (no celular, com abas embaixo);

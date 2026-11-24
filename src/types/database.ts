@@ -464,6 +464,68 @@ isOneToOne: false
       referencedColumns: ["restaurante_id","id"]
     }
                   ]
+                },"estoque_itens": {
+                  Row: {
+                    "ativo": boolean,"criado_em": string,"id": string,"minimo": number,"nome": string,"restaurante_id": string,"saldo": number,"unidade": string
+                  }
+                  Insert: {
+                    "ativo"?: boolean,"criado_em"?: string,"id"?: string,"minimo"?: number,"nome": string,"restaurante_id": string,"saldo"?: number,"unidade"?: string
+                  }
+                  Update: {
+                    "ativo"?: boolean,"criado_em"?: string,"id"?: string,"minimo"?: number,"nome"?: string,"restaurante_id"?: string,"saldo"?: number,"unidade"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "estoque_itens_restaurante_id_fkey"
+      columns: ["restaurante_id"]
+isOneToOne: false
+      referencedRelation: "restaurantes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "estoque_itens_restaurante_id_fkey"
+      columns: ["restaurante_id"]
+isOneToOne: false
+      referencedRelation: "restaurantes_publicos"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"estoque_movimentos": {
+                  Row: {
+                    "criado_em": string,"custo_total": number | null,"feito_por": string | null,"id": string,"item_id": string,"item_pedido_id": string | null,"motivo": string,"observacao": string | null,"quantidade": number,"restaurante_id": string,"saldo_depois": number
+                  }
+                  Insert: {
+                    "criado_em"?: string,"custo_total"?: number | null,"feito_por"?: string | null,"id"?: string,"item_id": string,"item_pedido_id"?: string | null,"motivo": string,"observacao"?: string | null,"quantidade": number,"restaurante_id": string,"saldo_depois": number
+                  }
+                  Update: {
+                    "criado_em"?: string,"custo_total"?: number | null,"feito_por"?: string | null,"id"?: string,"item_id"?: string,"item_pedido_id"?: string | null,"motivo"?: string,"observacao"?: string | null,"quantidade"?: number,"restaurante_id"?: string,"saldo_depois"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "estoque_movimentos_restaurante_id_item_id_fkey"
+      columns: ["restaurante_id","item_id"]
+isOneToOne: false
+      referencedRelation: "estoque_itens"
+      referencedColumns: ["restaurante_id","id"]
+    },{
+      foreignKeyName: "estoque_movimentos_restaurante_id_item_pedido_id_fkey"
+      columns: ["restaurante_id","item_pedido_id"]
+isOneToOne: false
+      referencedRelation: "itens_pedido"
+      referencedColumns: ["restaurante_id","id"]
+    },{
+      foreignKeyName: "estoque_movimentos_restaurante_id_feito_por_fkey"
+      columns: ["restaurante_id","feito_por"]
+isOneToOne: false
+      referencedRelation: "membros"
+      referencedColumns: ["restaurante_id","id"]
+    },{
+      foreignKeyName: "estoque_movimentos_restaurante_id_fkey"
+      columns: ["restaurante_id"]
+isOneToOne: false
+      referencedRelation: "restaurantes"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"fila_impressao": {
                   Row: {
                     "agente_id": string | null,"comanda_id": string | null,"criado_em": string,"erro": string | null,"id": string,"impresso_em": string | null,"impressora_id": string,"item_id": string | null,"pedido_id": string | null,"pego_em": string | null,"restaurante_id": string,"status": string,"tarefa_id": string | null,"tentar_depois_em": string | null,"tentativas": number,"tipo": string
@@ -1012,6 +1074,37 @@ isOneToOne: false
       referencedColumns: ["restaurante_id","id"]
     }
                   ]
+                },"produto_insumos": {
+                  Row: {
+                    "item_id": string,"produto_id": string,"quantidade": number,"restaurante_id": string
+                  }
+                  Insert: {
+                    "item_id": string,"produto_id": string,"quantidade": number,"restaurante_id": string
+                  }
+                  Update: {
+                    "item_id"?: string,"produto_id"?: string,"quantidade"?: number,"restaurante_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "produto_insumos_restaurante_id_item_id_fkey"
+      columns: ["restaurante_id","item_id"]
+isOneToOne: false
+      referencedRelation: "estoque_itens"
+      referencedColumns: ["restaurante_id","id"]
+    },{
+      foreignKeyName: "produto_insumos_restaurante_id_produto_id_fkey"
+      columns: ["restaurante_id","produto_id"]
+isOneToOne: false
+      referencedRelation: "produtos"
+      referencedColumns: ["restaurante_id","id"]
+    },{
+      foreignKeyName: "produto_insumos_restaurante_id_fkey"
+      columns: ["restaurante_id"]
+isOneToOne: false
+      referencedRelation: "restaurantes"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"produtos": {
                   Row: {
                     "categoria_id": string,"criado_em": string,"descricao": string | null,"dias": number[] | null,"disponivel": boolean,"disponivel_delivery": boolean,"foto_url": string | null,"id": string,"nome": string,"ordem": number,"para_viagem": boolean,"preco": number,"restaurante_id": string
@@ -1255,6 +1348,9 @@ isOneToOne: false
 "atualizar_meu_cadastro_cliente":
 { Args: { "p_nome": string,"p_restaurante_id": string,"p_telefone": string }; Returns: undefined
                            },
+"ajustar_estoque":
+{ Args: { "p_item_id": string,"p_observacao"?: string,"p_saldo": number }; Returns: Json
+                           },
 "atualizar_meu_perfil":
 { Args: { "p_foto_url": string,"p_nome": string,"p_telefone": string }; Returns: undefined
                            },
@@ -1326,6 +1422,9 @@ isOneToOne: false
                            },
 "login_resultado":
 { Args: { "p_chaves": (string)[],"p_ok": boolean }; Returns: number
+                           },
+"movimentar_estoque":
+{ Args: { "p_custo_total"?: number,"p_item_id": string,"p_motivo": string,"p_observacao"?: string,"p_quantidade": number }; Returns: Json
                            },
 "marcar_conversa_lida":
 { Args: { "p_pedido_id": string }; Returns: undefined

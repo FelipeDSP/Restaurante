@@ -167,6 +167,7 @@ export const MODULOS = [
   { id: "relatorios", nome: "Relatórios" },
   { id: "cupons", nome: "Cupons" },
   { id: "entregadores", nome: "Entregadores" },
+  { id: "estoque", nome: "Controle de estoque" },
 ] as const;
 export type IdModulo = (typeof MODULOS)[number]["id"];
 

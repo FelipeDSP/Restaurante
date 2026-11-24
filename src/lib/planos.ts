@@ -43,7 +43,7 @@ export const PLANOS: Plano[] = [
     paraQuem: "Salão com garçons e delivery",
     precoMensal: 19990,
     destaque: false,
-    itens: ["Tudo do Delivery + Presencial", "App do garçom no celular", SEM_LIMITES],
+    itens: ["Tudo do Delivery + Presencial", "App do garçom no celular", "Controle de estoque", SEM_LIMITES],
   },
   {
     id: "completo",
