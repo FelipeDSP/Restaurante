@@ -3,11 +3,12 @@
 import { Dialog } from "@base-ui/react/dialog";
 import { Minus, Plus, Send, ShoppingBag, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { formatarBRL } from "@/lib/dinheiro";
+import { useChaveDeEnvio } from "@/lib/envio";
 import { cn } from "@/lib/utils";
 
 import { precoUnitario, useCarrinho } from "../../carrinho-store";
@@ -35,10 +36,11 @@ export function BarraPedidoMesa({
   const prontos = itens.filter((i) => semPreparo.includes(i.produtoId));
   // Só faz sentido perguntar quando o pedido tem comida e algo que já sai pronto.
   const perguntar = prontos.length > 0 && prontos.length < itens.length;
-  // Mesmo pedido = mesma chave: reenviar depois de uma falha (internet caiu, toque duplo) não pede
-  // em dobro. Se o carrinho mudou, é outro pedido e ganha outra chave (como no checkout do delivery):
-  // reaproveitar a chave faria o banco devolver o pedido antigo e o item novo sumiria calado.
-  const lote = useRef<{ conteudo: string; chave: string } | null>(null);
+  // Mesmo pedido = mesma chave, guardada no aparelho junto com o carrinho: reenviar depois de uma
+  // falha (internet caiu, toque duplo, a página recarregou) não pede em dobro. Se o carrinho mudou,
+  // é outro pedido e ganha outra chave: reaproveitar a chave faria o banco devolver o pedido antigo
+  // e o item novo sumiria calado — por isso a chave é limpa no sucesso.
+  const { chaveDe, limpar: limparChave } = useChaveDeEnvio(`mesa:${token}`);
 
   async function enviar() {
     if (enviando || itens.length === 0) return;
@@ -50,20 +52,19 @@ export function BarraPedidoMesa({
       adicionais: i.adicionais.map((a) => a.id),
       com_a_comida: perguntar && comAComida && semPreparo.includes(i.produtoId),
     }));
-    const conteudo = JSON.stringify({ itensDoPedido, subtotal });
-    if (lote.current?.conteudo !== conteudo) lote.current = { conteudo, chave: crypto.randomUUID() };
+    const chave = chaveDe(JSON.stringify({ itensDoPedido, subtotal }));
     const soBebida = itens.every((i) => semPreparo.includes(i.produtoId));
     try {
-      const r = await pedirPelaMesa(slug, { token, lote: lote.current.chave, total: subtotal, itens: itensDoPedido });
+      const r = await pedirPelaMesa(slug, { token, lote: chave, total: subtotal, itens: itensDoPedido });
       if (r.ok) {
-        lote.current = null;
+        limparChave();
         limpar();
         setComAComida(false);
         setAberto(false);
         toast.success(soBebida ? "Pedido enviado! Já vamos levar." : "Pedido enviado! Já foi para a cozinha.", { duration: 6000 });
       } else {
         if (r.atualizar) {
-          lote.current = null;
+          limparChave();
           router.refresh();
         }
         toast.error(r.mensagem);

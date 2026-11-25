@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { type AdicionalEscolhido, type GrupoAdicionais, resumoAdicionais, validarEscolha } from "@/lib/adicionais";
 import { centavosDeTexto, formatarBRL } from "@/lib/dinheiro";
-import { novoId } from "@/lib/id";
+import { useChaveDeEnvio } from "@/lib/envio";
 import { formatarTelefone } from "@/lib/telefone";
 import { cn } from "@/lib/utils";
 
@@ -159,8 +159,9 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
     setForm((f) => ({ ...f, [campo]: e.target.value }));
   };
 
-  // Mesmo pedido = mesma chave: tocar "Enviar" de novo depois de uma falha não cria pedido duplicado.
-  const envioAtual = useRef<{ conteudo: string; chave: string } | null>(null);
+  // Mesmo pedido = mesma chave, guardada no aparelho junto com o carrinho: tocar "Enviar" de novo
+  // depois de uma falha (ou depois de recarregar a página) não cria pedido duplicado.
+  const { chaveDe, limpar: limparChave } = useChaveDeEnvio(`checkout:${restaurante.id}`);
 
   function enviar(e: React.FormEvent) {
     e.preventDefault();
@@ -176,9 +177,7 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
       totalEsperado: total,
       cupom: cupomVale ? cupom.codigo : "",
     };
-    const conteudo = JSON.stringify(dados);
-    if (envioAtual.current?.conteudo !== conteudo) envioAtual.current = { conteudo, chave: novoId() };
-    const chave = envioAtual.current.chave;
+    const chave = chaveDe(JSON.stringify(dados));
     iniciar(async () => {
       let resultado: Awaited<ReturnType<typeof enviarPedido>>;
       try {
@@ -194,6 +193,7 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
       if (resultado.ok) {
         toast.dismiss();
         limpar();
+        limparChave();
         setForm((f) => ({ ...f, trocoPara: "", observacao: "" }));
         router.push(`/${restaurante.slug}/pedido/${resultado.pedidoId}`);
       } else {

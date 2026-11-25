@@ -3,7 +3,7 @@
 import { Dialog } from "@base-ui/react/dialog";
 import { ListPlus, MessageSquarePlus, Minus, Plus, Search, Send, ShoppingBag, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { EscolherOpcoes } from "@/components/adicionais/escolher-opcoes";
 import { useAcao } from "@/components/staff/acoes-cliente";
@@ -25,7 +25,12 @@ const SEM_LINHAS: Record<string, Linha> = {};
 
 // Rascunho por mesa, lembrando para qual comanda foi montado: se a comanda for fechada por
 // outra pessoa, os itens não se perdem nem vão sozinhos para a comanda do próximo cliente.
-type Rascunho = { comandaId: string; linhas: Record<string, Linha> };
+// `envio` é a chave de idempotência do lançamento, guardada junto com os itens de propósito:
+// em useRef ela morria na recarga — o carrinho voltava, a chave não, e o reenvio depois de uma
+// resposta perdida criava um segundo pedido (mesa cobrada em dobro, comida feita duas vezes).
+// No mesmo registro, os dois nascem e são limpos juntos, e não há como um sobreviver sem o outro.
+type Envio = { conteudo: string; lote: string };
+type Rascunho = { comandaId: string; linhas: Record<string, Linha>; envio?: Envio };
 const SEM_RASCUNHO: Rascunho = { comandaId: "", linhas: SEM_LINHAS };
 
 function BotaoViagem({ ativo, aoMudar, rotulo }: { ativo: boolean; aoMudar: () => void; rotulo: string }) {
@@ -245,7 +250,10 @@ export function LancarItens({
           ([, l]) => l && produtosPorId.has(l.produtoId) && Number.isInteger(l.quantidade) && l.quantidade > 0 && Array.isArray(l.adicionais),
         ),
       );
-      return { comandaId: r.comandaId, linhas };
+      const e = r.envio;
+      const envio =
+        e && typeof e.conteudo === "string" && typeof e.lote === "string" && e.lote ? { conteudo: e.conteudo, lote: e.lote } : undefined;
+      return { comandaId: r.comandaId, linhas, envio };
     },
     [produtosPorId],
   );
@@ -253,7 +261,7 @@ export function LancarItens({
   const linhas = rascunho.comandaId === comandaId ? rascunho.linhas : SEM_LINHAS;
   const deOutraComanda = rascunho.comandaId !== comandaId ? Object.values(rascunho.linhas) : [];
   const setLinhas = (mudar: (atual: Record<string, Linha>) => Record<string, Linha>) =>
-    setRascunho((r) => ({ comandaId, linhas: mudar(r.comandaId === comandaId ? r.linhas : SEM_LINHAS) }));
+    setRascunho((r) => ({ ...r, comandaId, linhas: mudar(r.comandaId === comandaId ? r.linhas : SEM_LINHAS) }));
 
   const visiveis = useMemo(() => {
     const termo = normalizar(busca.trim());
@@ -288,9 +296,6 @@ export function LancarItens({
     });
   }
 
-  // Mesmo conteúdo = mesmo lote: reenviar depois de uma falha de rede não lança em dobro.
-  const envioAtual = useRef<{ conteudo: string; lote: string } | null>(null);
-
   function enviar() {
     const itens = selecionadas.map(([, l]) => ({
       produtoId: l.produtoId,
@@ -300,8 +305,15 @@ export function LancarItens({
       paraViagem: l.paraViagem,
     }));
     const conteudo = JSON.stringify([comandaId, itens]);
-    if (envioAtual.current?.conteudo !== conteudo) envioAtual.current = { conteudo, lote: novoId() };
-    const lote = envioAtual.current.lote;
+    // Mesmo conteúdo = mesmo lote, e o lote vai para o aparelho antes de a requisição sair:
+    // se a resposta se perder e a tela recarregar, o reenvio cai na idempotência do banco,
+    // que devolve o pedido já criado em vez de lançar outro.
+    let lote = "";
+    setRascunho((r) => {
+      const envio = r.envio?.conteudo === conteudo && r.envio.lote ? r.envio : { conteudo, lote: novoId() };
+      lote = envio.lote;
+      return { ...r, comandaId, envio };
+    });
     executar(
       async () => {
         const resultado = await lancarItens(comandaId, itens, { lote, totalEsperado: totalValor });
