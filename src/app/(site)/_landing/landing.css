@@ -204,6 +204,8 @@ html:has(.lp){scroll-behavior:smooth}
 .lp .total{display:flex; justify-content:space-between; align-items:baseline; gap:12px}
 .lp .total small{font-family:var(--font-mono); font-size:13px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted)}
 .lp .price{font-family:var(--font-display); font-weight:900; font-size:clamp(40px, 5vw, 52px); letter-spacing:-.04em; line-height:1; font-variant-numeric:tabular-nums}
+.lp .price-antes{display:block; font-family:var(--font-mono); font-size:16px; font-weight:700; letter-spacing:0; color:var(--muted); text-decoration-thickness:2px}
+.lp .selo-promo{display:inline-block; margin-top:4px; padding:6px 14px; border-radius:999px; background:var(--ink); color:var(--paper); font-family:var(--font-mono); font-size:13px; font-weight:700; letter-spacing:.04em; text-transform:uppercase}
 .lp .price sub{font-size:18px; letter-spacing:-.01em; vertical-align:baseline; color:var(--muted); font-weight:700}
 .lp .ticket .btn{width:100%; margin-top:4px}
 .lp .ticket .sticker2{position:absolute; top:-16px; right:20px; transform:rotate(6deg); background:var(--accent); color:var(--on-accent); font-weight:900; font-size:15px; padding:7px 13px; border-radius:10px; box-shadow:0 4px 0 var(--hard)}

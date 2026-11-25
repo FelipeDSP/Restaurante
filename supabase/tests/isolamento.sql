@@ -2956,6 +2956,64 @@ end;
 $$;
 
 -- ======================================================================
+-- Preço travado da assinatura (promoção)
+-- ======================================================================
+do $$
+declare
+  a constant uuid := md5('brasa-espetinhos')::uuid;
+  v_falhou boolean;
+  v_plano text;
+begin
+  -- O preço de quem paga mora na assinatura, e só o servidor grava (nem o dono mexe).
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  v_falhou := false;
+  begin
+    update public.assinaturas set preco_centavos = 1 where restaurante_id = a;
+  exception when insufficient_privilege then v_falhou := true; end;
+  perform pg_temp.admin();
+  perform pg_temp.ok(v_falhou or (select preco_centavos is distinct from 1 from public.assinaturas where restaurante_id = a),
+    'preço: o dono não muda a própria mensalidade');
+
+  -- Valor negativo é recusado pelo banco.
+  v_falhou := false;
+  begin
+    update public.assinaturas set preco_centavos = -1 where restaurante_id = a;
+  exception when check_violation then v_falhou := true; end;
+  perform pg_temp.ok(v_falhou, 'preço: mensalidade negativa é recusada');
+
+  -- Gravado pelo servidor, o dono lê (a tela mostra o que ele paga).
+  update public.assinaturas set preco_centavos = 6990, promocao = 'Black Friday',
+    preco_garantido_ate = now() + interval '1 year' where restaurante_id = a;
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  perform pg_temp.ok((select preco_centavos = 6990 and promocao = 'Black Friday' from public.assinaturas where restaurante_id = a),
+    'preço: o dono lê a própria mensalidade e a promoção');
+
+  -- Outro restaurante não enxerga o preço do vizinho.
+  perform pg_temp.entrar('dono.burger@exemplo.com');
+  perform pg_temp.ok((select count(*) from public.assinaturas where restaurante_id = a) = 0,
+    'preço: dono de B não lê a assinatura de A');
+
+  -- A receita do admin soma o que está gravado e usa o preço do plano só para quem não tem.
+  perform pg_temp.admin();
+  update public.assinaturas set status = 'ativa' where restaurante_id = a;
+  -- O plano tem de vir daqui: o super admin não lê `assinaturas` pela RLS (só pelas RPCs).
+  select plano into v_plano from public.assinaturas where restaurante_id = a;
+  perform pg_temp.entrar('admin.plataforma@exemplo.com');
+  perform pg_temp.ok(
+    (select (x ->> 'soma_preco')::integer = 6990 and (x ->> 'com_preco')::integer = 1
+     from jsonb_array_elements(public.admin_financeiro() -> 'por_plano') x
+     where x ->> 'plano' = v_plano and x ->> 'status' = 'ativa'),
+    'preço: o financeiro do admin soma o valor gravado');
+  perform pg_temp.ok(
+    (public.admin_restaurante_detalhes(a) -> 'cobranca' ->> 'preco_centavos')::integer = 6990,
+    'preço: a ficha do restaurante mostra quanto ele paga');
+  perform pg_temp.admin();
+  update public.assinaturas set status = 'teste', preco_centavos = null, promocao = null,
+    preco_garantido_ate = null, teste_termina_em = now() + interval '7 days' where restaurante_id = a;
+end;
+$$;
+
+-- ======================================================================
 -- Autorização sem correlação por linha: os conjuntos valem o mesmo que as funções
 -- ======================================================================
 do $$

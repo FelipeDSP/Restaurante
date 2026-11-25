@@ -13,7 +13,7 @@ import {
   faturaEmAberto,
 } from "@/lib/asaas";
 import { exigirDonoParaPagar } from "@/lib/auth/dal";
-import { type IdPlano, planoPorId } from "@/lib/planos";
+import { type IdPlano, PROMOCAO, planoPorId, precoDeHoje, precoGarantidoAte, promocaoAtiva } from "@/lib/planos";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export type ResultadoAssinar = { ok: true; url: string | null; mensagem: string } | { ok: false; mensagem: string; pedirDocumento?: boolean };
@@ -45,6 +45,12 @@ export async function assinarPlano(plano: string, documento?: string): Promise<R
   if (!a) return { ok: false, mensagem: "Assinatura não encontrada." };
   if (a.status === "cortesia") return { ok: false, mensagem: "Sua conta é cortesia: não há o que pagar." };
 
+  // O preço é o que vale no momento de contratar (ou de trocar de plano): dentro da promoção,
+  // o promocional; fora dela, o cheio. Depois de gravado não muda sozinho — nem quando a
+  // promoção acaba, nem quando a garantia vence.
+  const agora = new Date();
+  const naPromocao = promocaoAtiva(agora);
+  const preco = precoDeHoje(escolhido, agora);
   const descricao = `Plano ${escolhido.nome} · ${acesso.restaurante.nome}`;
   try {
     let clienteId = a.provedor === "asaas" ? a.provedor_cliente_id : null;
@@ -59,7 +65,7 @@ export async function assinarPlano(plano: string, documento?: string): Promise<R
 
     let assinaturaId = a.provedor === "asaas" ? a.provedor_assinatura_id : null;
     if (assinaturaId) {
-      await atualizarAssinatura(assinaturaId, { valorCentavos: escolhido.precoMensal, descricao });
+      await atualizarAssinatura(assinaturaId, { valorCentavos: preco, descricao });
     } else {
       // No teste, a primeira cobrança vence quando o teste acaba; depois dele, hoje.
       const fimTeste = a.status === "teste" && a.teste_termina_em ? new Date(a.teste_termina_em) : null;
@@ -67,7 +73,7 @@ export async function assinarPlano(plano: string, documento?: string): Promise<R
       assinaturaId = (
         await criarAssinatura({
           clienteId,
-          valorCentavos: escolhido.precoMensal,
+          valorCentavos: preco,
           primeiroVencimento: dataNoFuso(vencimento, acesso.restaurante.fusoHorario),
           descricao,
           restauranteId,
@@ -78,7 +84,16 @@ export async function assinarPlano(plano: string, documento?: string): Promise<R
     const url = await faturaEmAberto(assinaturaId).catch(() => null);
     const { error } = await admin
       .from("assinaturas")
-      .update({ provedor_assinatura_id: assinaturaId, plano: escolhido.id, fatura_url: url, atualizado_em: new Date().toISOString() })
+      .update({
+        provedor_assinatura_id: assinaturaId,
+        plano: escolhido.id,
+        fatura_url: url,
+        preco_centavos: preco,
+        // Dentro da promoção, o valor fica garantido por um ano; fora dela não há promessa.
+        preco_garantido_ate: naPromocao ? precoGarantidoAte(agora).toISOString() : null,
+        promocao: naPromocao ? PROMOCAO.nome : null,
+        atualizado_em: new Date().toISOString(),
+      })
       .eq("restaurante_id", restauranteId);
     if (error) throw new Error(error.message);
 

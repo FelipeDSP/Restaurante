@@ -82,12 +82,17 @@ export function Vazio({ children }: { children: React.ReactNode }) {
   return <p className="rounded-xl border border-dashed border-black/10 p-6 text-center text-sm text-uau-marrom-claro">{children}</p>;
 }
 
-// Receita mensal recorrente: assinaturas que pagam (em dia ou atrasadas) × preço do plano.
+// Receita mensal recorrente: assinaturas que pagam (em dia ou atrasadas), pelo valor que cada
+// uma tem gravado. Com a promoção, dois restaurantes no mesmo plano pagam valores diferentes;
+// multiplicar pelo preço de tabela faria a receita mentir. Quem assinou antes do preço travado
+// não tem valor próprio e entra pelo preço do plano.
 export function receitaMensal(porPlano: Financeiro["por_plano"]) {
   const linhas = PLANOS.map((p) => {
+    const doPlano = porPlano.filter((x) => x.plano === p.id && (x.status === "ativa" || x.status === "atrasada"));
     const ativas = porPlano.filter((x) => x.plano === p.id && x.status === "ativa").reduce((s, x) => s + x.quantidade, 0);
     const atrasadas = porPlano.filter((x) => x.plano === p.id && x.status === "atrasada").reduce((s, x) => s + x.quantidade, 0);
-    return { plano: p, ativas, atrasadas, valor: (ativas + atrasadas) * p.precoMensal };
+    const valor = doPlano.reduce((s, x) => s + x.soma_preco + (x.quantidade - x.com_preco) * p.precoMensal, 0);
+    return { plano: p, ativas, atrasadas, valor };
   });
   return { linhas, total: linhas.reduce((s, l) => s + l.valor, 0), assinantes: linhas.reduce((s, l) => s + l.ativas + l.atrasadas, 0) };
 }

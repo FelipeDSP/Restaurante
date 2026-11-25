@@ -63,13 +63,13 @@ isOneToOne: false
                   ]
                 },"assinaturas": {
                   Row: {
-                    "atualizado_em": string,"criado_em": string,"fatura_url": string | null,"id": string,"modulos_bloqueados": (string)[],"modulos_liberados": (string)[],"periodo_termina_em": string | null,"plano": string,"provedor": string | null,"provedor_assinatura_id": string | null,"provedor_cliente_id": string | null,"restaurante_id": string,"status": string,"teste_termina_em": string | null
+                    "atualizado_em": string,"criado_em": string,"fatura_url": string | null,"id": string,"modulos_bloqueados": (string)[],"modulos_liberados": (string)[],"periodo_termina_em": string | null,"plano": string,"preco_centavos": number | null,"preco_garantido_ate": string | null,"promocao": string | null,"provedor": string | null,"provedor_assinatura_id": string | null,"provedor_cliente_id": string | null,"restaurante_id": string,"status": string,"teste_termina_em": string | null
                   }
                   Insert: {
-                    "atualizado_em"?: string,"criado_em"?: string,"fatura_url"?: string | null,"id"?: string,"modulos_bloqueados"?: (string)[],"modulos_liberados"?: (string)[],"periodo_termina_em"?: string | null,"plano"?: string,"provedor"?: string | null,"provedor_assinatura_id"?: string | null,"provedor_cliente_id"?: string | null,"restaurante_id": string,"status"?: string,"teste_termina_em"?: string | null
+                    "atualizado_em"?: string,"criado_em"?: string,"fatura_url"?: string | null,"id"?: string,"modulos_bloqueados"?: (string)[],"modulos_liberados"?: (string)[],"periodo_termina_em"?: string | null,"plano"?: string,"preco_centavos"?: number | null,"preco_garantido_ate"?: string | null,"promocao"?: string | null,"provedor"?: string | null,"provedor_assinatura_id"?: string | null,"provedor_cliente_id"?: string | null,"restaurante_id": string,"status"?: string,"teste_termina_em"?: string | null
                   }
                   Update: {
-                    "atualizado_em"?: string,"criado_em"?: string,"fatura_url"?: string | null,"id"?: string,"modulos_bloqueados"?: (string)[],"modulos_liberados"?: (string)[],"periodo_termina_em"?: string | null,"plano"?: string,"provedor"?: string | null,"provedor_assinatura_id"?: string | null,"provedor_cliente_id"?: string | null,"restaurante_id"?: string,"status"?: string,"teste_termina_em"?: string | null
+                    "atualizado_em"?: string,"criado_em"?: string,"fatura_url"?: string | null,"id"?: string,"modulos_bloqueados"?: (string)[],"modulos_liberados"?: (string)[],"periodo_termina_em"?: string | null,"plano"?: string,"preco_centavos"?: number | null,"preco_garantido_ate"?: string | null,"promocao"?: string | null,"provedor"?: string | null,"provedor_assinatura_id"?: string | null,"provedor_cliente_id"?: string | null,"restaurante_id"?: string,"status"?: string,"teste_termina_em"?: string | null
                   }
                   Relationships: [
                     {

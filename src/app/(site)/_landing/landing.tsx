@@ -20,7 +20,7 @@ import Link from "next/link";
 import QRCode from "qrcode";
 
 import { formatarBRL } from "@/lib/dinheiro";
-import { DIAS_TESTE_GRATIS, PLANOS } from "@/lib/planos";
+import { DIAS_TESTE_GRATIS, PLANOS, PROMOCAO, promocaoAtiva } from "@/lib/planos";
 import { linkWhatsapp, TELEFONE_CONTATO } from "@/lib/contato";
 
 import { EfeitosLanding } from "./efeitos";
@@ -122,7 +122,14 @@ const DUVIDAS = [
 
 const CIDADES = ["Espetinho", "Hamburgueria", "Lanchonete", "Restaurante", "Salão", "Delivery", "Ariquemes e região"];
 
+// Até quando a promoção vale, para o cartaz ("até 30/11").
+function diaCurto(data: Date) {
+  return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "America/Porto_Velho" }).format(data);
+}
+
 export async function Landing() {
+  // A promoção some sozinha quando a data passa: nada aqui precisa ser desligado na mão.
+  const naPromocao = promocaoAtiva();
   const qr = await QRCode.toString(LINK_WHATSAPP, { type: "svg", margin: 1, errorCorrectionLevel: "M", color: { dark: "#2B1A12", light: "#FFFDF8" } });
 
   return (
@@ -484,6 +491,11 @@ export async function Landing() {
             <div className="head reveal" style={{ marginInline: "auto", textAlign: "center", alignItems: "center" }}>
               <Sobrancelha>Planos</Sobrancelha>
               <h2>Mensalidade fixa. A conta não cresce com as suas vendas.</h2>
+              {naPromocao ? (
+                <p className="selo-promo">
+                  {PROMOCAO.nome}: até {diaCurto(PROMOCAO.terminaEm)}, com o valor garantido por um ano
+                </p>
+              ) : null}
             </div>
             <div className="plans">
               {PLANOS.map((p, i) => (
@@ -507,7 +519,10 @@ export async function Landing() {
                   <div className="dash" />
                   <div className="total">
                     <small>Por mês</small>
-                    <span className="price">{formatarBRL(p.precoMensal)}</span>
+                    <span className="price">
+                      {naPromocao ? <s className="price-antes">{formatarBRL(p.precoMensal)}</s> : null}
+                      {formatarBRL(naPromocao ? p.precoPromocional : p.precoMensal)}
+                    </span>
                   </div>
                   <Link className="btn btn-primary" href="/cadastro">
                     Testar grátis

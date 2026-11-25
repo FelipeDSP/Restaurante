@@ -56,7 +56,10 @@ export default async function FinanceiroPage() {
                     <span className="font-black">{formatarBRL(l.valor)}</span>
                     <span className="text-uau-marrom-claro">
                       {" "}
-                      · {l.ativas + l.atrasadas} × {formatarBRL(l.plano.precoMensal)}
+                      {/* Média do que essas assinaturas pagam: com a promoção, nem todas estão
+                          no preço de tabela do plano. */}
+                      · {l.ativas + l.atrasadas} ×{" "}
+                      {formatarBRL(l.ativas + l.atrasadas > 0 ? Math.round(l.valor / (l.ativas + l.atrasadas)) : l.plano.precoMensal)}
                     </span>
                   </span>
                 </div>

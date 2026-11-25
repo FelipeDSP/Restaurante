@@ -112,7 +112,9 @@ export async function carregarFicha(restauranteId: string): Promise<FichaRestaur
 }
 
 export type Financeiro = {
-  por_plano: { plano: IdPlano; status: StatusAssinatura; quantidade: number }[];
+  // `soma_preco`/`com_preco`: o que está gravado em cada assinatura. Quem assinou antes do
+  // preço travado não tem valor próprio e segue o preço de tabela do plano.
+  por_plano: { plano: IdPlano; status: StatusAssinatura; quantidade: number; com_preco: number; soma_preco: number }[];
   inadimplentes: {
     id: string;
     nome: string;

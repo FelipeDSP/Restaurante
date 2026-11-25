@@ -9,7 +9,7 @@ import { asaasConfigurado } from "@/lib/asaas";
 import { carregarAssinatura, NOME_SITUACAO } from "@/lib/assinatura";
 import type { Acesso } from "@/lib/auth/dal";
 import { formatarBRL } from "@/lib/dinheiro";
-import { DIAS_TESTE_GRATIS, PLANOS, planoPorId } from "@/lib/planos";
+import { DIAS_TESTE_GRATIS, PLANOS, PROMOCAO, planoPorId, promocaoAtiva } from "@/lib/planos";
 import { cn } from "@/lib/utils";
 
 import { BotaoAssinar } from "./botao-assinar";
@@ -27,6 +27,8 @@ export async function ConteudoAssinatura({ acesso, aviso }: { acesso: Acesso; av
   // Já escolheu um plano no Asaas (ativa, atrasada ou com a primeira fatura em aberto).
   const escolhido = assinatura?.temCadastroPagamento && assinatura.situacao !== "cancelada" ? assinatura.plano : null;
   const diasUsados = assinatura?.diasRestantesTeste != null ? DIAS_TESTE_GRATIS - assinatura.diasRestantesTeste : 0;
+  // A promoção some sozinha quando a data passa; quem já assinou continua com o preço gravado.
+  const naPromocao = promocaoAtiva();
 
   return (
     <main className="flex flex-col gap-6 p-4 md:p-6">
@@ -87,6 +89,12 @@ export async function ConteudoAssinatura({ acesso, aviso }: { acesso: Acesso; av
         <h2 id="titulo-planos" className="text-lg font-semibold">
           Planos
         </h2>
+        {naPromocao ? (
+          <p className="rounded-xl border-2 border-primary bg-primary/5 p-3 text-sm font-semibold">
+            {PROMOCAO.nome}: preços com desconto até {dataLocal(PROMOCAO.terminaEm.toISOString(), fuso)}. Assinando agora, o valor fica
+            garantido por um ano.
+          </p>
+        ) : null}
         <div className="grid gap-4 md:grid-cols-2">
           {PLANOS.map((p) => {
             const atual =
@@ -103,8 +111,11 @@ export async function ConteudoAssinatura({ acesso, aviso }: { acesso: Acesso; av
                   <CardDescription>{p.paraQuem}</CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-4">
-                  <p>
-                    <span className="text-3xl font-bold tabular-nums">{formatarBRL(p.precoMensal)}</span>
+                  <p className="flex flex-wrap items-baseline gap-x-2">
+                    {naPromocao ? (
+                      <s className="text-sm text-muted-foreground tabular-nums">{formatarBRL(p.precoMensal)}</s>
+                    ) : null}
+                    <span className="text-3xl font-bold tabular-nums">{formatarBRL(naPromocao ? p.precoPromocional : p.precoMensal)}</span>
                     <span className="text-muted-foreground">/mês</span>
                   </p>
                   <ul className="flex flex-col gap-2 text-sm">
