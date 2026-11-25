@@ -2956,6 +2956,90 @@ end;
 $$;
 
 -- ======================================================================
+-- Autorização sem correlação por linha: os conjuntos valem o mesmo que as funções
+-- ======================================================================
+do $$
+declare
+  a constant uuid := md5('brasa-espetinhos')::uuid;
+  b constant uuid := md5('burger-do-ze')::uuid;
+  v_membro uuid;
+begin
+  -- Quem é membro ativo vê o próprio restaurante, e só ele.
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  perform pg_temp.ok(array(select rest_privado.meus_restaurantes()) = array[a],
+    'rls: meus_restaurantes traz só o restaurante do próprio membro');
+  perform pg_temp.ok(rest_privado.eh_membro(a) and not rest_privado.eh_membro(b),
+    'rls: eh_membro concorda com o conjunto');
+  perform pg_temp.ok(not (b = any (array(select rest_privado.meus_restaurantes()))),
+    'rls: meus_restaurantes não traz restaurante de outro');
+
+  -- Quem é de dois restaurantes vê os dois (a conta multi@ do seed). Contém, não é igual:
+  -- blocos anteriores criam outros restaurantes para essas contas.
+  perform pg_temp.entrar('multi@exemplo.com');
+  perform pg_temp.ok(array(select rest_privado.meus_restaurantes()) @> array[a, b],
+    'rls: quem é de dois restaurantes vê os dois');
+
+  -- Membro desativado some do conjunto, como já sumia de eh_membro.
+  perform pg_temp.admin();
+  select id into v_membro from public.membros where restaurante_id = a and user_id = md5('garcom1.brasa@exemplo.com')::uuid;
+  update public.membros set ativo = false where id = v_membro;
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  perform pg_temp.ok(array(select rest_privado.meus_restaurantes()) = '{}',
+    'rls: membro inativo não entra no conjunto');
+  perform pg_temp.ok(not rest_privado.eh_membro(a), 'rls: e eh_membro concorda (inativo)');
+  perform pg_temp.admin();
+  update public.membros set ativo = true where id = v_membro;
+
+  -- Restaurante excluído também sai dos dois lados.
+  perform pg_temp.admin();
+  update public.restaurantes set excluido_em = now() where id = a;
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  perform pg_temp.ok(array(select rest_privado.meus_restaurantes()) = '{}',
+    'rls: restaurante excluído não entra no conjunto');
+  perform pg_temp.ok(not rest_privado.eh_membro(a), 'rls: e eh_membro concorda (excluído)');
+  perform pg_temp.admin();
+  update public.restaurantes set excluido_em = null where id = a;
+
+  -- Papel: só o dono entra no conjunto de 'dono'.
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  perform pg_temp.ok(a = any (array(select rest_privado.restaurantes_com_papel(array['dono']))),
+    'rls: restaurantes_com_papel(dono) traz o restaurante do dono');
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  perform pg_temp.ok(array(select rest_privado.restaurantes_com_papel(array['dono'])) = '{}',
+    'rls: garçom não entra no conjunto de dono');
+
+  -- Permissão: o garçom não tem delivery; o caixa tem.
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  perform pg_temp.ok(array(select rest_privado.restaurantes_com_permissao(array['delivery'])) = '{}',
+    'rls: garçom não entra no conjunto de quem tem delivery');
+  perform pg_temp.entrar('caixa.brasa@exemplo.com');
+  perform pg_temp.ok(a = any (array(select rest_privado.restaurantes_com_permissao(array['delivery']))),
+    'rls: caixa entra no conjunto de quem tem delivery');
+
+  -- O anônimo não executa nenhuma das funções de autorização.
+  perform pg_temp.anonimo();
+  begin
+    perform rest_privado.meus_restaurantes();
+    perform pg_temp.ok(false, 'rls: anônimo não executa meus_restaurantes');
+  exception when insufficient_privilege then
+    perform pg_temp.ok(true, 'rls: anônimo não executa meus_restaurantes');
+  end;
+  begin
+    perform rest_privado.restaurantes_com_papel(array['dono']);
+    perform pg_temp.ok(false, 'rls: anônimo não executa restaurantes_com_papel');
+  exception when insufficient_privilege then
+    perform pg_temp.ok(true, 'rls: anônimo não executa restaurantes_com_papel');
+  end;
+
+  -- Nenhuma política de leitura pode voltar à forma correlacionada sem ninguém perceber.
+  perform pg_temp.admin();
+  perform pg_temp.ok((select count(*) from pg_policies where schemaname = 'public'
+                      and (qual like '%eh_membro(%' or qual like '%tem_permissao(%' or qual like '%tem_papel(%')) = 0,
+    'rls: nenhuma política de leitura chama a função com a coluna da linha');
+end;
+$$;
+
+-- ======================================================================
 -- Impressora offline: prazo longo, aviso e reimprimir sem duplicar
 -- ======================================================================
 do $$
