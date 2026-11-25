@@ -3334,6 +3334,9 @@ declare
   a constant uuid := md5('brasa-espetinhos')::uuid;
   b constant uuid := md5('burger-do-ze')::uuid;
   v_produto constant uuid := md5('brasa-espetinhos/Burgers/Burger artesanal')::uuid;
+  -- O bloco de cardápios deixou o Burger no cardápio Janta (18:00-23:30). A hora vai explícita,
+  -- como nos testes de cardápio: sem isso a suíte só ficaria verde dentro da janela do relógio.
+  v_janta_20h constant timestamptz := timestamptz '2026-11-25 20:00:00-04';
   v_pao uuid;
   v_blend uuid;
   v_pedido uuid;
@@ -3371,7 +3374,7 @@ begin
   -- Zerou: some do cardápio do cliente, mas a equipe continua lançando.
   perform public.ajustar_estoque(v_pao, 0, 'contagem');
   perform pg_temp.admin();
-  perform pg_temp.ok(not rest_privado.produto_no_cardapio(a, v_produto), 'estoque: zerado some do cardápio do cliente');
+  perform pg_temp.ok(not rest_privado.produto_no_cardapio(a, v_produto, v_janta_20h), 'estoque: zerado some do cardápio do cliente');
   perform pg_temp.entrar('dono.brasa@exemplo.com');
   insert into public.itens_pedido (restaurante_id, pedido_id, produto_id, nome_produto, preco_unitario, quantidade)
   values (a, v_pedido, v_produto, '', 0, 1) returning id into v_item;
@@ -3379,7 +3382,7 @@ begin
 
   perform public.movimentar_estoque(v_pao, 5, 'compra');
   perform pg_temp.admin();
-  perform pg_temp.ok(rest_privado.produto_no_cardapio(a, v_produto), 'estoque: repôs e o produto volta sozinho');
+  perform pg_temp.ok(rest_privado.produto_no_cardapio(a, v_produto, v_janta_20h), 'estoque: repôs e o produto volta sozinho');
 
   -- Extrato imutável.
   begin
