@@ -85,12 +85,19 @@ export type LinhaHistorico = {
 
 const LIMITE = 300;
 
+// Quantas contas por página. A tela trazia as 300 de cada tipo e desenhava todas: 17,8 alturas
+// de tela no celular e 540 KB de HTML. Quem procura uma conta olha as últimas; o resto vem com
+// "Ver mais".
+export const TAMANHO_PAGINA = 50;
+
 export async function carregarHistorico(
   restauranteId: string,
   fuso: string,
   periodo: Periodo,
-  filtros: { tipo: "todos" | "mesas" | "delivery"; busca: string },
-): Promise<{ linhas: LinhaHistorico[]; cortado: boolean }> {
+  filtros: { tipo: "todos" | "mesas" | "delivery"; busca: string; pagina?: number },
+): Promise<{ linhas: LinhaHistorico[]; cortado: boolean; temMais: boolean; mostrando: number }> {
+  const pagina = Math.max(1, Math.min(filtros.pagina ?? 1, Math.ceil(LIMITE / TAMANHO_PAGINA)));
+  const quantos = Math.min(LIMITE, pagina * TAMANHO_PAGINA);
   const supabase = await createClient();
   const de = inicioDoDia(periodo.de, fuso);
   const ate = inicioDoDia(somarDias(periodo.ate, 1), fuso);
@@ -106,7 +113,7 @@ export async function carregarHistorico(
           .gte("fechada_em", de)
           .lt("fechada_em", ate)
           .order("fechada_em", { ascending: false })
-          .limit(LIMITE),
+          .limit(quantos + 1),
     filtros.tipo === "mesas"
       ? Promise.resolve({ data: [], error: null })
       : supabase
@@ -118,7 +125,7 @@ export async function carregarHistorico(
           .gte("finalizado_em", de)
           .lt("finalizado_em", ate)
           .order("finalizado_em", { ascending: false })
-          .limit(LIMITE),
+          .limit(quantos + 1),
     nomesDaEquipe(restauranteId),
   ]);
   if (comandas.error) throw new Error(comandas.error.message);
@@ -149,7 +156,12 @@ export async function carregarHistorico(
   const filtradas = busca
     ? linhas.filter((l) => `${l.titulo} ${l.quem ?? ""} ${l.titulo.replace(/\D/g, "")}`.toLowerCase().includes(busca))
     : linhas;
-  return { linhas: filtradas.slice(0, LIMITE), cortado: comandas.data.length >= LIMITE || deliveries.data.length >= LIMITE };
+  return {
+    linhas: filtradas.slice(0, quantos),
+    cortado: quantos >= LIMITE && filtradas.length > quantos,
+    temMais: filtradas.length > quantos && quantos < LIMITE,
+    mostrando: Math.min(filtradas.length, quantos),
+  };
 }
 
 export async function nomesDaEquipe(restauranteId: string): Promise<Map<string, string>> {

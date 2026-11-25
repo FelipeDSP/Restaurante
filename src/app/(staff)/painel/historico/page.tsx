@@ -9,7 +9,7 @@ import { formatarBRL } from "@/lib/dinheiro";
 import { dataHoraLocal } from "@/lib/tempo";
 import { cn } from "@/lib/utils";
 
-import { carregarHistorico, PERIODOS, resolverPeriodo } from "./dados";
+import { carregarHistorico, PERIODOS, resolverPeriodo, TAMANHO_PAGINA } from "./dados";
 
 export const metadata: Metadata = { title: "Histórico" };
 
@@ -35,11 +35,13 @@ export default async function HistoricoPage(props: PageProps<"/painel/historico"
   const periodo = resolverPeriodo(fuso, { periodo: texto(params.periodo), de: texto(params.de), ate: texto(params.ate) });
   const tipo = TIPOS.some((t) => t.id === texto(params.tipo)) ? (texto(params.tipo) as "todos" | "mesas" | "delivery") : "todos";
   const busca = (texto(params.busca) ?? "").slice(0, 60);
-  const { linhas, cortado } = await carregarHistorico(acesso.restaurante.id, fuso, periodo, { tipo, busca });
+  const pagina = Math.max(1, Number(texto(params.pagina) ?? 1) || 1);
+  const { linhas, cortado, temMais } = await carregarHistorico(acesso.restaurante.id, fuso, periodo, { tipo, busca, pagina });
   const total = linhas.filter((l) => l.situacao === "fechada" || l.situacao === "entregue").reduce((s, l) => s + l.total, 0);
 
   const link = (extra: Record<string, string>) => {
     const atual: Record<string, string> = periodo.periodo ? { periodo: periodo.periodo } : { de: periodo.de, ate: periodo.ate };
+    // Trocar de período, tipo ou busca volta para a primeira página.
     const base: Record<string, string> = { ...atual, tipo, ...(busca ? { busca } : {}) };
     return `/painel/historico?${new URLSearchParams({ ...base, ...extra })}`;
   };
@@ -138,6 +140,14 @@ export default async function HistoricoPage(props: PageProps<"/painel/historico"
               </li>
             ))}
           </ul>
+          {temMais ? (
+            <Link
+              href={link({ pagina: String(pagina + 1) })}
+              className="flex min-h-12 items-center justify-center rounded-2xl border bg-background font-medium hover:bg-muted"
+            >
+              Ver mais {TAMANHO_PAGINA}
+            </Link>
+          ) : null}
         </section>
       )}
     </main>
