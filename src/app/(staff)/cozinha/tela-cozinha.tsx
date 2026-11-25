@@ -189,12 +189,45 @@ function CartaoTicket({
   );
 }
 
+// Bloqueio até o primeiro toque: é a única forma de o navegador liberar o som, e sem ele a
+// cozinha não bipa. Ocupa a tela toda de propósito (antes era um chip no topo, fácil de não ver),
+// mas já diz quantos pedidos esperam, para quem passar na frente da tela saber o que tem na fila
+// mesmo sem tocar. Não é lembrado no aparelho: recarregar a página pede o toque de novo, senão
+// a tela voltaria muda e calada.
+function PedeSom({ pendentes, aoLigar }: { pendentes: number; aoLigar: () => void }) {
+  return (
+    <div role="alertdialog" aria-labelledby="titulo-som" className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-background p-6 text-center">
+      <BellOff className="size-16 text-amber-600" aria-hidden />
+      <div className="flex flex-col gap-2">
+        <h2 id="titulo-som" className="text-3xl font-bold">
+          O som está desligado
+        </h2>
+        <p className="max-w-md text-lg text-muted-foreground">
+          O navegador só toca o aviso depois de um toque na tela. Sem isso, a cozinha não é avisada
+          quando um pedido novo chega.
+        </p>
+        <p className="text-xl font-semibold" aria-live="polite">
+          {pendentes === 0
+            ? "Nenhum pedido esperando agora."
+            : `${pendentes} ${pendentes === 1 ? "pedido esperando" : "pedidos esperando"} agora.`}
+        </p>
+      </div>
+      <Button type="button" autoFocus className="h-20 w-full max-w-md text-2xl" onClick={aoLigar}>
+        <Bell className="size-7" />
+        Ligar o som e ver os pedidos
+      </Button>
+    </div>
+  );
+}
+
 export function TelaCozinha({ restauranteId, restauranteNome, fuso, pracas, pracaAtiva, pendentes, prontos, geradoEm }: Props) {
   const { pendente, executar } = useAcao();
   const [agora, setAgora] = useState(geradoEm);
   const [manual, setManual] = useState<Ticket | null>(null);
   const audio = useRef<AudioContext | null>(null);
   const [somAtivo, setSomAtivo] = useState(false);
+  // O navegador não liberou o som (política do aparelho, aba sem áudio): não trava a tela.
+  const [somIndisponivel, setSomIndisponivel] = useState(false);
   const vistos = useRef<Set<string> | null>(null);
   const imprimindo = useRef<string | null>(null);
   const auto = useImpressaoAutomatica(restauranteId);
@@ -213,19 +246,33 @@ export function TelaCozinha({ restauranteId, restauranteNome, fuso, pracas, prac
     return () => clearInterval(intervalo);
   }, []);
 
-  // Navegadores só tocam som depois de um toque na página.
+  // Navegadores só tocam som depois de um toque na página. Enquanto esse toque não vem, a tela
+  // fica bloqueada (ver <PedeSom> abaixo): antes era um chip discreto no topo, e uma cozinha que
+  // recarregou a página passava a noite muda sem ninguém perceber.
   useEffect(() => {
-    const liberar = () => {
-      audio.current ??= novoContextoDeSom();
-      void audio.current.resume().then(() => setSomAtivo(audio.current?.state === "running"));
-    };
-    window.addEventListener("pointerdown", liberar, { once: true });
-    window.addEventListener("keydown", liberar, { once: true });
+    window.addEventListener("pointerdown", liberarSom, { once: true });
+    window.addEventListener("keydown", liberarSom, { once: true });
     return () => {
-      window.removeEventListener("pointerdown", liberar);
-      window.removeEventListener("keydown", liberar);
+      window.removeEventListener("pointerdown", liberarSom);
+      window.removeEventListener("keydown", liberarSom);
     };
   }, []);
+
+  function liberarSom() {
+    try {
+      audio.current ??= novoContextoDeSom();
+    } catch {
+      setSomIndisponivel(true);
+      return;
+    }
+    void audio.current
+      .resume()
+      .then(() => {
+        if (audio.current?.state === "running") setSomAtivo(true);
+        else setSomIndisponivel(true);
+      })
+      .catch(() => setSomIndisponivel(true));
+  }
 
   // Ticket novo na tela: bipe (a primeira carga não toca). Guarda todos os tickets já vistos, de
   // qualquer praça: trocar o filtro de praça ou "Voltar" um pronto não é ticket novo.
@@ -275,6 +322,12 @@ export function TelaCozinha({ restauranteId, restauranteNome, fuso, pracas, prac
 
   return (
     <>
+      {somAtivo || somIndisponivel ? null : (
+        <div className="print:hidden">
+          <PedeSom pendentes={pendentes.length} aoLigar={liberarSom} />
+        </div>
+      )}
+
       {/* Só o ticket aparece no papel; o resto da tela some na impressão. */}
       <style>{"@page { size: 80mm auto; margin: 3mm; }"}</style>
       <div className="hidden print:block">
@@ -311,7 +364,7 @@ export function TelaCozinha({ restauranteId, restauranteNome, fuso, pracas, prac
               )}
             >
               {somAtivo ? <Bell className="size-4" /> : <BellOff className="size-4" />}
-              {somAtivo ? "Som ligado" : "Toque na tela para ligar o som"}
+              {somAtivo ? "Som ligado" : "Sem som: o navegador deste aparelho não liberou"}
             </span>
             <Button
               type="button"
