@@ -40,8 +40,15 @@ export type PedidoDelivery = {
   // Praças da cozinha que ainda não marcaram pronto (só informa; o painel pode marcar pronto mesmo assim).
   pracasPendentes: number;
   motivoCancelamento: string | null;
-  // Conversa com o cliente (página do pedido); aberta até 24 h depois de terminar.
-  conversa: { aberta: boolean; mensagens: { id: string; autor: "cliente" | "equipe"; texto: string; hora: string; lida: boolean }[] };
+  // Conversa com o cliente; aberta até 24 h depois de terminar. O quadro do Delivery só precisa
+  // das contagens (o botão "Conversa"), então `mensagens` vem vazio lá: trazer o texto de todas as
+  // conversas de todos os pedidos custava 222 KB por atualização. A aba Conversas traz tudo.
+  conversa: {
+    aberta: boolean;
+    total: number;
+    naoLidas: number;
+    mensagens: { id: string; autor: "cliente" | "equipe"; texto: string; hora: string; lida: boolean }[];
+  };
   // Mudanças feitas depois do pedido (editar pedido), da mais antiga para a mais nova.
   alteracoes: { descricao: string; hora: string }[];
   itens: { id: string; nome: string; quantidade: number; observacao: string | null; adicionais: AdicionalEscolhido[]; total: number }[];
@@ -90,10 +97,10 @@ export function CartaoPedido({ pedido, entregadores, modoInicial = "normal", aoS
   const [motivo, setMotivo] = useState("");
   const [forma, setForma] = useState(pedido.formaPrevista ?? "dinheiro");
   const [editando, setEditando] = useState(false);
-  const naoLidas = pedido.conversa.mensagens.filter((m) => m.autor === "cliente" && !m.lida).length;
+  const naoLidas = pedido.conversa.naoLidas;
   // O cliente escreveu: o botão leva à conversa (aba Conversas), com o pedido ao lado.
   const botaoConversa =
-    semConversa || pedido.conversa.mensagens.length === 0 ? null : (
+    semConversa || pedido.conversa.total === 0 ? null : (
       <Button
         variant={naoLidas > 0 ? "default" : "ghost"}
         className="h-11"

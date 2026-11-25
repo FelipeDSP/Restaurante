@@ -4,7 +4,7 @@ import { AtualizarEmTempoReal } from "@/components/staff/atualizar-em-tempo-real
 import { exigirPermissao } from "@/lib/auth/dal";
 
 import { carregarSessaoAberta } from "../caixa/dados";
-import { carregarEntregadores, carregarPedidosDelivery } from "./dados";
+import { FINALIZADOS_NO_QUADRO, carregarEntregadores, carregarPedidosDelivery } from "./dados";
 import { QuadroDelivery } from "./quadro-delivery";
 
 export const metadata: Metadata = { title: "Delivery" };
@@ -14,14 +14,16 @@ export default async function DeliveryPage() {
   const sessao = await carregarSessaoAberta(acesso.restaurante.id);
   const fuso = acesso.restaurante.fusoHorario;
 
-  // Em andamento (de qualquer sessão) + finalizados da sessão atual.
-  const filtro = sessao
-    ? `status.not.in.(entregue,cancelado),caixa_sessao_id.eq.${sessao.id}`
-    : "status.not.in.(entregue,cancelado)";
-  const [pedidos, entregadores] = await Promise.all([
-    carregarPedidosDelivery(acesso.restaurante.id, fuso, { ou: filtro }),
+  // Em andamento (de qualquer sessão) + só os últimos finalizados da sessão: o quadro é
+  // operacional e trazia até 200 finalizados, renderizando todos. O resto está no Histórico.
+  const [emAndamento, finalizados, entregadores] = await Promise.all([
+    carregarPedidosDelivery(acesso.restaurante.id, fuso, { emAndamento: true }),
+    sessao
+      ? carregarPedidosDelivery(acesso.restaurante.id, fuso, { finalizadosDaSessao: sessao.id, quantos: FINALIZADOS_NO_QUADRO })
+      : Promise.resolve([]),
     carregarEntregadores(acesso.restaurante.id),
   ]);
+  const pedidos = [...emAndamento, ...finalizados];
 
   return (
     <main className="flex min-h-0 flex-1 flex-col gap-3 p-4 md:p-6">
@@ -33,7 +35,7 @@ export default async function DeliveryPage() {
           <p className="text-sm font-medium text-destructive">Caixa fechado: o site não recebe pedidos até o caixa ser aberto.</p>
         ) : null}
       </div>
-      <QuadroDelivery pedidos={pedidos} entregadores={entregadores} />
+      <QuadroDelivery pedidos={pedidos} entregadores={entregadores} finalizadosNoQuadro={FINALIZADOS_NO_QUADRO} />
     </main>
   );
 }

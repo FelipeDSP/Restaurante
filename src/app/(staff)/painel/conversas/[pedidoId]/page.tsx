@@ -25,7 +25,7 @@ export default async function ConversaPage({ params }: PageProps<"/painel/conver
 
   const [conversas, [pedido], entregadores] = await Promise.all([
     carregarConversas(restauranteId, fuso),
-    carregarPedidosDelivery(restauranteId, fuso, { ids: [pedidoId] }),
+    carregarPedidosDelivery(restauranteId, fuso, { ids: [pedidoId] }, { comMensagens: true }),
     carregarEntregadores(restauranteId),
   ]);
   if (!pedido) notFound();

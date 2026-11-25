@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import Link from "next/link";
 import { useOptimistic, useState, useTransition } from "react";
 import { toast } from "sonner";
 
@@ -18,7 +19,7 @@ const COLUNAS: { id: ColunaId; titulo: string; status: Status[]; vazio: string; 
   { id: "preparo", titulo: "Em preparo", status: ["em_preparo"], vazio: "Nada em preparo." },
   { id: "prontos", titulo: "Prontos", status: ["pronto"], vazio: "Nada esperando o entregador.", destaque: "bg-green-700" },
   { id: "entrega", titulo: "Em entrega", status: ["saiu_entrega"], vazio: "Nada em entrega." },
-  { id: "finalizados", titulo: "Finalizados", status: ["entregue", "cancelado"], vazio: "Nenhum pedido finalizado nesta sessão." },
+  { id: "finalizados", titulo: "Finalizados", status: ["entregue", "cancelado"], vazio: "Nada finalizado ainda nesta sessão." },
 ];
 
 // Para onde cada pedido pode ser arrastado (só para frente; o banco confere de novo).
@@ -33,7 +34,16 @@ function destino(pedido: PedidoDelivery, coluna: ColunaId): Status | "entregar" 
   return null;
 }
 
-export function QuadroDelivery({ pedidos, entregadores }: { pedidos: PedidoDelivery[]; entregadores: { id: string; nome: string }[] | null }) {
+export function QuadroDelivery({
+  pedidos,
+  entregadores,
+  finalizadosNoQuadro,
+}: {
+  pedidos: PedidoDelivery[];
+  entregadores: { id: string; nome: string }[] | null;
+  // Quantos finalizados o quadro carrega (o resto está no Histórico).
+  finalizadosNoQuadro: number;
+}) {
   // O cartão muda de coluna na hora; se o banco recusar, volta quando a tela recarrega.
   const [visiveis, mover] = useOptimistic(pedidos, (atual, { id, status }: { id: string; status: Status }) =>
     atual.map((p) => (p.id === id ? { ...p, status } : p)),
@@ -75,12 +85,13 @@ export function QuadroDelivery({ pedidos, entregadores }: { pedidos: PedidoDeliv
     document.getElementById(`coluna-${coluna}`)?.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" });
   }
 
-  const listas = COLUNAS.map((coluna) => {
-    const lista = visiveis.filter((p) => coluna.status.includes(p.status));
-    // Finalizados: mais recentes primeiro. As outras: mais antigos primeiro (quem espera há mais tempo).
-    if (coluna.id === "finalizados") lista.reverse();
-    return { ...coluna, lista };
-  });
+  const listas = COLUNAS.map((coluna) => ({
+    ...coluna,
+    // Os finalizados já vêm do banco com os mais recentes primeiro, e o pedido que acabou de ser
+    // finalizado aqui aparece no topo (ele ainda está na parte "em andamento" da lista).
+    // As outras colunas: mais antigos primeiro (quem espera há mais tempo).
+    lista: visiveis.filter((p) => coluna.status.includes(p.status)),
+  }));
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
@@ -175,6 +186,14 @@ export function QuadroDelivery({ pedidos, entregadores }: { pedidos: PedidoDeliv
                 </span>
               </h2>
               <div className={cn("flex min-h-24 flex-col gap-2 overflow-y-auto px-2 pb-2", recolhida && "lg:hidden")}>
+                {coluna.id === "finalizados" ? (
+                  <p className="px-1 text-xs text-muted-foreground">
+                    {coluna.lista.length >= finalizadosNoQuadro ? `Últimos ${finalizadosNoQuadro}. ` : ""}
+                    <Link href="/painel/historico?tipo=delivery" className="font-medium underline underline-offset-4">
+                      Ver todos no Histórico
+                    </Link>
+                  </p>
+                ) : null}
                 {coluna.lista.length === 0 ? (
                   <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">{coluna.vazio}</p>
                 ) : (

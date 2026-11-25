@@ -6,21 +6,37 @@ import { horaLocal, tempoDesde } from "@/lib/tempo";
 
 import type { PedidoDelivery } from "./cartao-pedido";
 
+// Só a aba Conversas pede o texto; o quadro pede (autor, lida_em) e conta.
+type MensagemCompleta = { id: string; autor: string; texto: string; criado_em: string; lida_em: string | null };
+
 const CONVERSA_MS = 24 * 60 * 60 * 1000;
 // Limite da conversa com o cliente: até 24 h depois de o pedido terminar.
 export function inicioDaConversa() {
   return new Date(Date.now() - CONVERSA_MS).toISOString();
 }
 
+// Quais pedidos carregar. O quadro do Delivery é operacional: os em andamento são todos,
+// e os finalizados viram só os últimos (o resto está no Histórico). Antes o quadro trazia os
+// até 200 finalizados da sessão e renderizava todos.
+export type FiltroDelivery =
+  | { ids: string[] }
+  | { emAndamento: true }
+  | { finalizadosDaSessao: string; quantos: number };
+
+// Quantos finalizados o quadro mostra: o bastante para conferir o que acabou de ser finalizado.
+export const FINALIZADOS_NO_QUADRO = 12;
+
 // Pedidos de delivery no formato do cartão (quadro do Delivery e Conversas).
-// filtro: condição do PostgREST (.or) ou ids dos pedidos.
+// `comMensagens` só para a aba Conversas, que mostra o texto; o quadro usa as contagens.
 export async function carregarPedidosDelivery(
   restauranteId: string,
   fuso: string,
-  filtro: { ou: string } | { ids: string[] },
+  filtro: FiltroDelivery,
+  { comMensagens = false }: { comMensagens?: boolean } = {},
 ): Promise<PedidoDelivery[]> {
   const supabase = await createClient();
   const conversaDesde = inicioDaConversa();
+  const recentesPrimeiro = "finalizadosDaSessao" in filtro;
   const consulta = supabase
     .from("pedidos")
     .select(
@@ -31,14 +47,20 @@ export async function carregarPedidosDelivery(
        pagamentos(valor, estornado_em),
        tarefas_producao(status),
        pedidos_alteracoes(descricao, criado_em),
-       pedidos_mensagens(id, autor, texto, criado_em, lida_em),
+       ${comMensagens ? "pedidos_mensagens(id, autor, texto, criado_em, lida_em)" : "pedidos_mensagens(autor, lida_em)"},
        entregador_id, valor_entregador, finalizado_em`,
     )
     .eq("restaurante_id", restauranteId)
     .eq("origem", "delivery");
-  const { data, error } = await ("ou" in filtro ? consulta.or(filtro.ou) : consulta.in("id", filtro.ids))
-    .order("criado_em", { ascending: true })
-    .limit(200);
+  const comFiltro =
+    "ids" in filtro
+      ? consulta.in("id", filtro.ids)
+      : "emAndamento" in filtro
+        ? consulta.not("status", "in", "(entregue,cancelado)")
+        : consulta.eq("caixa_sessao_id", filtro.finalizadosDaSessao).in("status", ["entregue", "cancelado"]);
+  const { data, error } = await comFiltro
+    .order("criado_em", { ascending: !recentesPrimeiro })
+    .limit("finalizadosDaSessao" in filtro ? filtro.quantos : 200);
   if (error) throw new Error(error.message);
 
   return data.map((p) => ({
@@ -74,9 +96,13 @@ export async function carregarPedidosDelivery(
     valorEntregador: p.valor_entregador,
     conversa: {
       aberta: !p.finalizado_em || new Date(p.finalizado_em) > new Date(conversaDesde),
-      mensagens: p.pedidos_mensagens
-        .toSorted((a, b) => a.criado_em.localeCompare(b.criado_em))
-        .map((m) => ({ id: m.id, autor: m.autor as "cliente" | "equipe", texto: m.texto, hora: horaLocal(m.criado_em, fuso), lida: m.lida_em !== null })),
+      total: p.pedidos_mensagens.length,
+      naoLidas: p.pedidos_mensagens.filter((m) => m.autor === "cliente" && m.lida_em === null).length,
+      mensagens: comMensagens
+        ? (p.pedidos_mensagens as MensagemCompleta[])
+            .toSorted((a, b) => a.criado_em.localeCompare(b.criado_em))
+            .map((m) => ({ id: m.id, autor: m.autor as "cliente" | "equipe", texto: m.texto, hora: horaLocal(m.criado_em, fuso), lida: m.lida_em !== null }))
+        : [],
     },
     alteracoes: p.pedidos_alteracoes
       .toSorted((a, b) => a.criado_em.localeCompare(b.criado_em))
