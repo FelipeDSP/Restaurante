@@ -3012,6 +3012,47 @@ begin
   exception when insufficient_privilege then v_falhou := true; end;
   perform pg_temp.ok(v_falhou, 'conversa: ninguém grava direto na tabela');
 
+  -- Quem lê a conversa: a política calcula a permissão uma vez por consulta (migração
+  -- conversa_rls_por_consulta) e tem de continuar exatamente tão restritiva quanto a de antes.
+  -- Cada caso aqui é um jeito de perder o acesso.
+  perform pg_temp.entrar('caixa.brasa@exemplo.com');
+  select count(*) into n from public.pedidos_mensagens where pedido_id = v_pedido;
+  perform pg_temp.ok(n > 0, 'conversa: quem tem a permissão delivery lê');
+
+  -- Sem a permissão delivery (função Garçom): não lê, mesmo sendo do restaurante.
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  select count(*) into n from public.pedidos_mensagens where pedido_id = v_pedido;
+  perform pg_temp.ok(n = 0, 'conversa: membro sem a permissão delivery não lê');
+
+  -- Membro desativado: não lê, mesmo com a função que tem delivery.
+  perform pg_temp.admin();
+  update public.membros set ativo = false where restaurante_id = a and user_id = md5('caixa.brasa@exemplo.com')::uuid;
+  perform pg_temp.entrar('caixa.brasa@exemplo.com');
+  select count(*) into n from public.pedidos_mensagens where pedido_id = v_pedido;
+  perform pg_temp.ok(n = 0, 'conversa: membro inativo não lê');
+  perform pg_temp.admin();
+  update public.membros set ativo = true where restaurante_id = a and user_id = md5('caixa.brasa@exemplo.com')::uuid;
+
+  -- Restaurante suspenso por falta de pagamento: o plano não libera nada, nem para o dono.
+  perform pg_temp.admin();
+  update public.assinaturas set status = 'cancelada', teste_termina_em = now() - interval '60 days',
+    periodo_termina_em = now() - interval '30 days' where restaurante_id = a;
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  select count(*) into n from public.pedidos_mensagens where pedido_id = v_pedido;
+  perform pg_temp.ok(n = 0, 'conversa: restaurante suspenso não lê (nem o dono)');
+  perform pg_temp.admin();
+  update public.assinaturas set status = 'teste', teste_termina_em = now() + interval '7 days',
+    periodo_termina_em = null where restaurante_id = a;
+
+  -- Conta de cliente (logada, fora de membros) e anônimo não leem a tabela.
+  perform pg_temp.entrar('ninguem.de.fora@exemplo.com');
+  select count(*) into n from public.pedidos_mensagens where pedido_id = v_pedido;
+  perform pg_temp.ok(n = 0, 'conversa: conta que não é da equipe não lê');
+  perform pg_temp.anonimo();
+  v_falhou := false;
+  begin perform count(*) from public.pedidos_mensagens; exception when insufficient_privilege then v_falhou := true; end;
+  perform pg_temp.ok(v_falhou, 'conversa: anônimo continua sem ler a tabela');
+
   perform pg_temp.admin();
   perform pg_temp.ok(not rest_privado.conversa_aberta('entregue', now() - interval '25 hours')
     and rest_privado.conversa_aberta('entregue', now() - interval '2 hours'), 'conversa: fecha 24 h depois de terminar');
