@@ -42,18 +42,20 @@ async function StatusCaixa({ restauranteId, fuso, permissoes }: { restauranteId:
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        <dl className="grid grid-cols-3 gap-3">
-          <div>
+        {/* Três colunas não cabem em 390 px: os valores encostavam um no outro e "Comandas
+            abertas" quebrava em duas linhas com o número solto embaixo. */}
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
+          <div className="min-w-0">
             <dt className="text-sm text-muted-foreground">Recebido</dt>
-            <dd className="text-xl font-bold tabular-nums">{formatarBRL(resumo.total_recebido)}</dd>
+            <dd className="truncate text-lg font-bold tabular-nums sm:text-xl">{formatarBRL(resumo.total_recebido)}</dd>
           </div>
-          <div>
+          <div className="min-w-0">
             <dt className="text-sm text-muted-foreground">Vendido</dt>
-            <dd className="text-xl font-bold tabular-nums">{formatarBRL(resumo.total_vendido)}</dd>
+            <dd className="truncate text-lg font-bold tabular-nums sm:text-xl">{formatarBRL(resumo.total_vendido)}</dd>
           </div>
-          <div>
+          <div className="min-w-0">
             <dt className="text-sm text-muted-foreground">Comandas abertas</dt>
-            <dd className="text-xl font-bold tabular-nums">{resumo.comandas.abertas}</dd>
+            <dd className="text-lg font-bold tabular-nums sm:text-xl">{resumo.comandas.abertas}</dd>
           </div>
         </dl>
         <div className="flex flex-wrap gap-2">

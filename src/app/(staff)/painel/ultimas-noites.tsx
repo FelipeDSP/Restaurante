@@ -42,8 +42,13 @@ export async function UltimasNoites({ restauranteId, fuso }: { restauranteId: st
             <tr className="text-left text-muted-foreground">
               <th className="pb-2 font-medium">Noite</th>
               <th className="pb-2 font-medium">Vendido</th>
-              <th className="pb-2 text-right font-medium">Contas</th>
-              <th className="pb-2 text-right font-medium">Ticket médio</th>
+              {/* 4 colunas de números não cabem em 390 px: "Contas" só a partir do tablet e o
+                  título do ticket encurta no celular. */}
+              <th className="hidden pb-2 text-right font-medium sm:table-cell">Contas</th>
+              <th className="pb-2 text-right font-medium">
+                <span className="sm:hidden">Ticket</span>
+                <span className="hidden sm:inline">Ticket médio</span>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -56,11 +61,11 @@ export async function UltimasNoites({ restauranteId, fuso }: { restauranteId: st
                 </td>
                 <td className="py-2">
                   <span className="flex items-center gap-2">
-                    <span className="w-20 shrink-0 tabular-nums">{formatarBRL(n.vendido)}</span>
+                    <span className="shrink-0 tabular-nums sm:w-20">{formatarBRL(n.vendido)}</span>
                     <span className="hidden h-2 rounded-full bg-[var(--cor-primaria)] sm:block" style={{ width: `${(n.vendido / maior) * 100}%`, maxWidth: "8rem" }} aria-hidden />
                   </span>
                 </td>
-                <td className="py-2 text-right tabular-nums">{n.contas}</td>
+                <td className="hidden py-2 text-right tabular-nums sm:table-cell">{n.contas}</td>
                 <td className="py-2 text-right tabular-nums">{formatarBRL(n.ticket)}</td>
               </tr>
             ))}

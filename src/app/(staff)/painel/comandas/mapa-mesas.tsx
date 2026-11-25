@@ -23,10 +23,14 @@ function SeloPronto({ desde, agora }: { desde: string; agora: number }) {
   const urgente = minutos >= 8;
   const atencao = minutos >= 3 && !urgente;
   return (
+    // Faixa própria no topo, largura inteira. Com deslocamento negativo o selo passava por cima
+    // do cartão vizinho; ao lado do número, disputava espaço e cortava nomes como "Varanda 1".
     <span
+      // Fundo claro com o texto colorido: o cartão ocupado já é da cor da marca (vermelho no
+      // cliente zero), e uma faixa vermelha sobre ele sumia.
       className={cn(
-        "absolute -top-2 -right-2 rounded-full px-2 py-0.5 text-xs font-bold text-white shadow ring-2 ring-background",
-        urgente ? "bg-red-600" : atencao ? "bg-amber-600" : "bg-green-600",
+        "block truncate rounded-md bg-background px-1 py-0.5 text-center text-[0.625rem] leading-tight font-bold sm:px-1.5 sm:text-[0.6875rem]",
+        urgente ? "text-red-700" : atencao ? "text-amber-700" : "text-green-700",
       )}
     >
       Pronto{minutos > 0 ? ` ${minutos} min` : ""}
@@ -46,37 +50,48 @@ function CartaoMesa({ mesa, agora }: { mesa: MesaNoMapa; agora: number }) {
       // por toque, com 40 mesas). A tela da mesa abre rápido mesmo sem o prefetch.
       prefetch={false}
       aria-label={`Mesa ${mesa.numero}: ${NOME_STATUS_MESA[mesa.status]}${mesa.pedidosProntos > 0 ? ", prato pronto para servir" : ""}`}
+      // Altura fixa e faixas empilhadas: com altura automática, mesa com "falta" ficava mais
+      // alta que a vizinha e a grade saía desalinhada.
       className={cn(
-        "relative flex min-h-28 flex-col justify-between gap-2 rounded-xl border-2 p-3 transition-transform active:scale-95 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none sm:min-h-32",
+        "flex h-32 flex-col gap-1 overflow-hidden rounded-xl border-2 p-2.5 transition-transform active:scale-95 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none sm:h-36 sm:p-3",
         mesa.status === "livre" && "border-dashed border-border bg-background text-muted-foreground hover:border-solid hover:bg-muted/40",
         mesa.status === "aberta" && "border-[var(--cor-primaria)] bg-[var(--cor-primaria)] text-[var(--cor-primaria-contraste)]",
         mesa.status === "conta_pedida" && "border-amber-500 bg-amber-300 text-amber-950",
       )}
     >
       {mesa.prontoDesde ? <SeloPronto desde={mesa.prontoDesde} agora={agora} /> : null}
+
       {/* Nomes longos ("Varanda 1") em fonte menor para não quebrar no meio da palavra. */}
       <span
         className={cn(
-          "leading-tight font-bold break-words",
+          "min-w-0 truncate leading-none font-bold",
           mesa.status === "livre" && "text-foreground",
-          mesa.numero.length > 3 ? "text-base sm:text-lg" : "text-2xl leading-none",
+          mesa.numero.length > 3 ? "text-base sm:text-lg" : "text-2xl",
         )}
       >
         {mesa.numero}
       </span>
-      <span className="flex flex-col gap-0.5 text-xs leading-tight sm:text-sm">
-        <span className="font-semibold">{NOME_STATUS_MESA[mesa.status]}</span>
-        {mesa.status !== "livre" ? (
+
+      <span className="flex min-w-0 flex-1 flex-col justify-center overflow-hidden text-xs leading-tight sm:text-sm">
+        {mesa.status === "livre" ? (
+          <span className="font-semibold">{NOME_STATUS_MESA.livre}</span>
+        ) : (
           <>
-            <span className="font-semibold tabular-nums">{formatarBRL(mesa.total)}</span>
-            {mesa.pago > 0 ? <span className="tabular-nums opacity-80">falta {formatarBRL(falta)}</span> : null}
-            <span className="truncate opacity-80">{mesa.abertaEm ? tempoDesde(mesa.abertaEm) : ""}</span>
-            {/* O nome do garçom também no celular: era `sm:` para cima, e no celular — onde o
-                garçom trabalha — não dava para saber de quem era a mesa. */}
-            {mesa.garcom ? <span className="truncate opacity-80">{mesa.garcom}</span> : <span className="font-semibold">Sem garçom</span>}
+            <span className="truncate font-bold tabular-nums">{formatarBRL(mesa.total)}</span>
+            {mesa.pago > 0 ? <span className="truncate tabular-nums opacity-80">falta {formatarBRL(falta)}</span> : null}
+            {mesa.status === "conta_pedida" ? <span className="truncate font-semibold">{NOME_STATUS_MESA.conta_pedida}</span> : null}
           </>
-        ) : null}
+        )}
       </span>
+
+      {/* Rodapé numa linha só. No celular cabem ~87 px: fica o garçom, que é o que o relatório
+          pedia (era `sm:` para cima, e é no celular que ele trabalha). O tempo volta no tablet. */}
+      {mesa.status === "livre" ? null : (
+        <span className="min-w-0 truncate text-[0.6875rem] leading-tight opacity-80 sm:text-xs">
+          <span className="hidden sm:inline">{mesa.abertaEm ? `${tempoDesde(mesa.abertaEm)} · ` : ""}</span>
+          {mesa.garcom ?? "Sem garçom"}
+        </span>
+      )}
     </Link>
   );
 }
@@ -121,7 +136,7 @@ export function MapaMesas({ mesas, euId, geradoEm }: { mesas: MesaNoMapa[]; euId
           />
         </div>
         {chips.length > 1 ? (
-          <div role="group" aria-label="Filtrar mesas" className="flex gap-2">
+          <div role="group" aria-label="Filtrar mesas" className="-mx-4 flex gap-2 overflow-x-auto px-4 sem-barra-rolagem sm:mx-0 sm:px-0">
             {chips.map((c) => (
               <button
                 key={c.id}
@@ -129,7 +144,7 @@ export function MapaMesas({ mesas, euId, geradoEm }: { mesas: MesaNoMapa[]; euId
                 aria-pressed={filtro === c.id}
                 onClick={() => setFiltro(c.id)}
                 className={cn(
-                  "flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm font-medium",
+                  "flex min-h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-medium whitespace-nowrap",
                   filtro === c.id ? "border-transparent bg-foreground text-background" : "bg-background hover:bg-muted",
                 )}
               >
