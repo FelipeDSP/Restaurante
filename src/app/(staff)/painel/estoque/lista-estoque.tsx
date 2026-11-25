@@ -50,6 +50,8 @@ export type ItemEstoque = {
   unidade: string;
   saldo: number;
   minimo: number;
+  // 0 = não avisa.
+  maximo: number;
   ativo: boolean;
   // Em quais produtos ele sai, e quanto sai de cada vez.
   produtos: { id: string; nome: string; quantidade: number }[];
@@ -69,21 +71,83 @@ export function numero(valor: number): string {
   return new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 3 }).format(valor);
 }
 
-function Saldo({ item }: { item: ItemEstoque }) {
+// Em que situação o item está (a mesma conta serve para o selo e para os contadores do topo).
+type Situacao = "novo" | "acabou" | "baixo" | "alto" | "ok";
+
+function situacaoDoItem(item: ItemEstoque): Situacao {
   // Item recém-criado, sem nenhum movimento, não é "acabou": ninguém contou ainda.
-  const semHistorico = item.movimentos.length === 0 && item.saldo === 0;
-  const acabou = !semHistorico && item.saldo <= 0;
-  const baixo = !acabou && !semHistorico && item.minimo > 0 && item.saldo < item.minimo;
+  if (item.movimentos.length === 0 && item.saldo === 0) return "novo";
+  if (item.saldo <= 0) return "acabou";
+  if (item.minimo > 0 && item.saldo < item.minimo) return "baixo";
+  if (item.maximo > 0 && item.saldo > item.maximo) return "alto";
+  return "ok";
+}
+
+function Saldo({ item }: { item: ItemEstoque }) {
+  const situacao = situacaoDoItem(item);
   return (
     <span className="flex flex-wrap items-center gap-2">
-      <span className={cn("text-lg font-bold tabular-nums", acabou && "text-destructive", semHistorico && "text-muted-foreground")}>
+      <span
+        className={cn(
+          "text-lg font-bold tabular-nums",
+          situacao === "acabou" && "text-destructive",
+          situacao === "novo" && "text-muted-foreground",
+        )}
+      >
         {numero(item.saldo)} {item.unidade}
       </span>
-      {semHistorico ? <Badge variant="outline">Sem contagem ainda</Badge> : null}
-      {acabou ? <Badge variant="destructive">{item.saldo < 0 ? "Negativo" : "Acabou"}</Badge> : null}
-      {baixo ? <Badge variant="secondary">Baixo</Badge> : null}
+      {situacao === "novo" ? <Badge variant="outline">Sem contagem ainda</Badge> : null}
+      {situacao === "acabou" ? <Badge variant="destructive">{item.saldo < 0 ? "Negativo" : "Acabou"}</Badge> : null}
+      {situacao === "baixo" ? <Badge variant="secondary">Baixo</Badge> : null}
+      {situacao === "alto" ? <Badge variant="secondary">Acima do máximo</Badge> : null}
       {!item.ativo ? <Badge variant="outline">Desligado</Badge> : null}
     </span>
+  );
+}
+
+// Contadores no topo: o dono bate o olho e vê o que precisa comprar, sem abrir item por item.
+function Contadores({
+  itens,
+  filtro,
+  aoFiltrar,
+}: {
+  itens: ItemEstoque[];
+  filtro: Situacao | null;
+  aoFiltrar: (s: Situacao | null) => void;
+}) {
+  const conta = (s: Situacao) => itens.filter((i) => situacaoDoItem(i) === s).length;
+  const cartoes: { situacao: Situacao; titulo: string; valor: number; alerta?: boolean }[] = [
+    { situacao: "acabou", titulo: "Acabou ou negativo", valor: conta("acabou"), alerta: true },
+    { situacao: "baixo", titulo: "Abaixo do mínimo", valor: conta("baixo") },
+    { situacao: "alto", titulo: "Acima do máximo", valor: conta("alto") },
+  ];
+
+  return (
+    <ul className="grid gap-3 sm:grid-cols-3">
+      {cartoes.map((c) => {
+        const ativo = filtro === c.situacao;
+        return (
+          <li key={c.situacao}>
+            <button
+              type="button"
+              aria-pressed={ativo}
+              disabled={c.valor === 0 && !ativo}
+              onClick={() => aoFiltrar(ativo ? null : c.situacao)}
+              className={cn(
+                "flex w-full flex-col items-start rounded-xl border p-3 text-left transition-colors",
+                ativo && "border-[var(--cor-primaria)] bg-[var(--cor-primaria)]/5",
+                c.valor === 0 ? "text-muted-foreground" : "hover:border-[var(--cor-primaria)]",
+              )}
+            >
+              <span className={cn("text-2xl font-bold tabular-nums", c.alerta && c.valor > 0 && "text-destructive")}>
+                {c.valor}
+              </span>
+              <span className="text-sm text-muted-foreground">{c.titulo}</span>
+            </button>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
@@ -425,8 +489,11 @@ function CartaoItem({
                 ))}
               </Selecao>
             </Campo>
-            <Campo rotulo="Avisar abaixo de" htmlFor={`m-${item.id}`} className="w-32">
+            <Campo rotulo="Avisar abaixo de" htmlFor={`m-${item.id}`} className="w-32" dica="0 = não avisa">
               <Input id={`m-${item.id}`} name="minimo" inputMode="decimal" defaultValue={valorCampo(estado, "minimo", numero(item.minimo))} className="h-11" />
+            </Campo>
+            <Campo rotulo="Avisar acima de" htmlFor={`x-${item.id}`} className="w-32" dica="0 = não avisa">
+              <Input id={`x-${item.id}`} name="maximo" inputMode="decimal" defaultValue={valorCampo(estado, "maximo", numero(item.maximo))} className="h-11" />
             </Campo>
             <BotaoEnviar className="h-11">Salvar</BotaoEnviar>
             <div className="ml-auto flex items-center gap-2">
@@ -459,10 +526,13 @@ export function Estoque({
   // Nada fecha sozinho: cada cartão fica como a pessoa deixou, e o item recém-criado já nasce aberto.
   const [abertos, setAbertos] = useState<string[]>([]);
   const alternar = (id: string) => setAbertos((atual) => (atual.includes(id) ? atual.filter((x) => x !== id) : [...atual, id]));
+  const [filtro, setFiltro] = useState<Situacao | null>(null);
+  const visiveis = filtro ? itens.filter((i) => situacaoDoItem(i) === filtro) : itens;
 
   return (
     <>
       <NovoItem aoCriar={(id) => setAbertos((atual) => [...atual, id])} />
+      {itens.length > 0 ? <Contadores itens={itens} filtro={filtro} aoFiltrar={setFiltro} /> : null}
       {itens.length === 0 ? (
         <p className="text-muted-foreground">
           Nenhum item no estoque. Crie um item (uma bebida, um pão, a carne) e ligue nos produtos que gastam ele: quando
@@ -470,7 +540,7 @@ export function Estoque({
         </p>
       ) : (
         <ul className="flex flex-col gap-3">
-          {itens.map((item) => (
+          {visiveis.map((item) => (
             <CartaoItem
               key={item.id}
               item={item}

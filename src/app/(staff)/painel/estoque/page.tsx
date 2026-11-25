@@ -17,7 +17,7 @@ export default async function EstoquePage() {
   const [itens, fichas, movimentos, categorias, equipe] = await Promise.all([
     supabase
       .from("estoque_itens")
-      .select("id, nome, unidade, saldo, minimo, ativo")
+      .select("id, nome, unidade, saldo, minimo, maximo, ativo")
       .eq("restaurante_id", restauranteId)
       .order("nome"),
     supabase
@@ -52,6 +52,7 @@ export default async function EstoquePage() {
     unidade: i.unidade,
     saldo: Number(i.saldo),
     minimo: Number(i.minimo),
+    maximo: Number(i.maximo),
     ativo: i.ativo,
     produtos: fichas.data
       .filter((f) => f.item_id === i.id && f.produto)

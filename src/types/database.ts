@@ -466,13 +466,13 @@ isOneToOne: false
                   ]
                 },"estoque_itens": {
                   Row: {
-                    "ativo": boolean,"criado_em": string,"id": string,"minimo": number,"nome": string,"restaurante_id": string,"saldo": number,"unidade": string
+                    "ativo": boolean,"criado_em": string,"id": string,"maximo": number,"minimo": number,"nome": string,"restaurante_id": string,"saldo": number,"unidade": string
                   }
                   Insert: {
-                    "ativo"?: boolean,"criado_em"?: string,"id"?: string,"minimo"?: number,"nome": string,"restaurante_id": string,"saldo"?: number,"unidade"?: string
+                    "ativo"?: boolean,"criado_em"?: string,"id"?: string,"maximo"?: number,"minimo"?: number,"nome": string,"restaurante_id": string,"saldo"?: number,"unidade"?: string
                   }
                   Update: {
-                    "ativo"?: boolean,"criado_em"?: string,"id"?: string,"minimo"?: number,"nome"?: string,"restaurante_id"?: string,"saldo"?: number,"unidade"?: string
+                    "ativo"?: boolean,"criado_em"?: string,"id"?: string,"maximo"?: number,"minimo"?: number,"nome"?: string,"restaurante_id"?: string,"saldo"?: number,"unidade"?: string
                   }
                   Relationships: [
                     {

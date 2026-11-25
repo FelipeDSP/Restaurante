@@ -24,6 +24,8 @@ const itemSchema = z.object({
   nome: textoObrigatorio("o nome", 80),
   unidade: z.enum(UNIDADES, { error: "Escolha a unidade." }),
   minimo: quantidade("Estoque mínimo").pipe(z.number().min(0, "O mínimo não pode ser negativo.")),
+  // 0 = não avisa.
+  maximo: quantidade("Estoque máximo").pipe(z.number().min(0, "O máximo não pode ser negativo.")),
 });
 
 // Criar já diz quanto tem: antes o item nascia zerado ("Acabou" em vermelho) e a pessoa tinha que
@@ -34,6 +36,7 @@ export async function criarItem(_estado: ResultadoAcao, formData: FormData): Pro
     nome: formData.get("nome"),
     unidade: formData.get("unidade"),
     minimo: "0",
+    maximo: "0",
   });
   if (!dados.success) return falhaValidacao(dados.error, formData);
   const texto = String(formData.get("quantidade") ?? "").trim();
@@ -74,6 +77,7 @@ export async function salvarItem(itemId: string, _estado: ResultadoAcao, formDat
     nome: formData.get("nome"),
     unidade: formData.get("unidade"),
     minimo: formData.get("minimo") || "0",
+    maximo: formData.get("maximo") || "0",
   });
   if (!dados.success) return falhaValidacao(dados.error, formData);
 

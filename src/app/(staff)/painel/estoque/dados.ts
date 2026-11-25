@@ -47,7 +47,7 @@ export async function estoqueSimplesDoProduto(
   supabase: Awaited<ReturnType<typeof createClient>>,
   restauranteId: string,
   produtoId: string,
-): Promise<{ saldo: string; unidade: string } | null> {
+): Promise<{ saldo: string; unidade: string; controla: boolean } | null> {
   const { data, error } = await supabase
     .from("produto_insumos")
     .select("quantidade, item:estoque_itens!produto_insumos_restaurante_id_item_id_fkey(nome, unidade, saldo)")
@@ -56,6 +56,6 @@ export async function estoqueSimplesDoProduto(
   if (error) throw new Error(error.message);
   if (data.length > 1) return null;
   const linha = data[0];
-  if (!linha?.item) return { saldo: "", unidade: "un" };
-  return { saldo: String(Number(linha.item.saldo)).replace(".", ","), unidade: linha.item.unidade };
+  if (!linha?.item) return { saldo: "", unidade: "un", controla: false };
+  return { saldo: String(Number(linha.item.saldo)).replace(".", ","), unidade: linha.item.unidade, controla: true };
 }

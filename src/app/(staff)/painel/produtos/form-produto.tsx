@@ -50,7 +50,7 @@ type Props = {
   cardapios: CardapioParaProduto[];
   cardapiosDoProduto?: string[];
   // Estoque simples deste produto (null quando a pessoa não cuida de estoque ou o produto é por ingrediente).
-  estoque?: { saldo: string; unidade: string } | null;
+  estoque?: { saldo: string; unidade: string; controla: boolean } | null;
 };
 
 export function FormProduto({
@@ -75,6 +75,7 @@ export function FormProduto({
   const [cardapiosEscolhidos, setCardapiosEscolhidos] = useState<string[]>(cardapiosDoProduto);
   // null = todos os dias (o normal); lista = prato do dia que só aparece em certos dias.
   const [dias, setDias] = useState<number[] | null>(produto?.dias ?? null);
+  const [controlaEstoque, setControlaEstoque] = useState(estoque?.controla ?? false);
   // Categorias criadas aqui mesmo entram na lista e já ficam escolhidas.
   const [criadas, setCriadas] = useState<{ id: string; nome: string }[]>([]);
   const [categoriaNova, setCategoriaNova] = useState<string | undefined>(undefined);
@@ -195,25 +196,39 @@ export function FormProduto({
           {/* Estoque do jeito simples: digita quanto tem e pronto. Some para quem controla este
               produto por ingrediente (aí é na tela de Estoque). */}
           {estoque ? (
-            <Campo rotulo="Estoque" htmlFor="estoque" dica="em branco = não controla">
-              <div className="flex items-center gap-2">
-                <Input
-                  id="estoque"
-                  name="estoque"
-                  inputMode="decimal"
-                  placeholder="0"
-                  defaultValue={valorCampo(estado, "estoque", estoque.saldo)}
-                  className="h-11 w-32"
+            <div className="flex flex-col gap-2 sm:col-span-2">
+              <label className="flex items-center gap-3 text-sm font-medium">
+                <input
+                  type="checkbox"
+                  name="controla_estoque"
+                  checked={controlaEstoque}
+                  onChange={(e) => setControlaEstoque(e.target.checked)}
+                  className="size-5 accent-[var(--cor-primaria-texto)]"
                 />
-                <span className="text-sm text-muted-foreground">{estoque.unidade}</span>
-              </div>
-              <ErroCampo estado={estado} campo="estoque" />
-              {produto ? (
-                <Link href="/painel/estoque" className="text-sm text-muted-foreground underline underline-offset-4">
-                  Controlar por ingredientes
-                </Link>
+                Controlar estoque deste produto
+              </label>
+              {controlaEstoque ? (
+                <Campo rotulo="Quanto tem agora" htmlFor="estoque" dica="em branco = não mexe no que já está lá">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="estoque"
+                      name="estoque"
+                      inputMode="decimal"
+                      placeholder="0"
+                      defaultValue={valorCampo(estado, "estoque", estoque.saldo)}
+                      className="h-11 w-32"
+                    />
+                    <span className="text-sm text-muted-foreground">{estoque.unidade}</span>
+                  </div>
+                  <ErroCampo estado={estado} campo="estoque" />
+                  {produto ? (
+                    <Link href="/painel/estoque" className="text-sm text-muted-foreground underline underline-offset-4">
+                      Controlar por ingredientes
+                    </Link>
+                  ) : null}
+                </Campo>
               ) : null}
-            </Campo>
+            </div>
           ) : null}
           {/* Dia da semana (prato do dia): fica escondido para quem não usa. */}
           <div className="flex flex-col gap-2 sm:col-span-2">

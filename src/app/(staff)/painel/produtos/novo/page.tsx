@@ -34,7 +34,7 @@ export default async function NovoProdutoPage(props: PageProps<"/painel/produtos
         grupos={grupos}
         pracas={pracas}
         cardapios={cardapios}
-        estoque={temPermissao(acesso, "estoque") ? { saldo: "", unidade: "un" } : null}
+        estoque={temPermissao(acesso, "estoque") ? { saldo: "", unidade: "un", controla: false } : null}
       />
     </main>
   );

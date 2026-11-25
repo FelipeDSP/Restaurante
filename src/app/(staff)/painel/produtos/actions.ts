@@ -157,7 +157,8 @@ async function definirEstoqueDoProduto(
   restauranteId: string,
   produtoId: string,
   nomeProduto: string,
-  saldo: number,
+  controla: boolean,
+  saldo: number | null,
 ): Promise<string | null> {
   const { data: ficha, error } = await supabase
     .from("produto_insumos")
@@ -167,6 +168,17 @@ async function definirEstoqueDoProduto(
   if (error) return error.message;
   // Ficha com mais de um insumo é controle por ingrediente: não mexe por aqui.
   if (ficha.length > 1) return null;
+
+  // Desligou: o produto para de depender do estoque. O item e o extrato dele ficam de pé.
+  if (!controla) {
+    if (ficha.length === 0) return null;
+    const { error: erro } = await supabase
+      .from("produto_insumos")
+      .delete()
+      .eq("restaurante_id", restauranteId)
+      .eq("produto_id", produtoId);
+    return erro?.message ?? null;
+  }
 
   let itemId: string | undefined = ficha[0]?.item_id;
   if (!itemId) {
@@ -191,6 +203,9 @@ async function definirEstoqueDoProduto(
       .insert({ restaurante_id: restauranteId, produto_id: produtoId, item_id: itemId, quantidade: 1 });
     if (erroFicha && erroFicha.code !== "23505") return erroFicha.message;
   }
+
+  // Em branco: só liga o controle, sem mexer no que já está lá.
+  if (saldo === null) return null;
 
   const { error: erroSaldo } = await supabase.rpc("ajustar_estoque", {
     p_item_id: itemId,
@@ -238,7 +253,8 @@ export async function salvarProduto(
   const lista = [...new Set(dias.data)].sort((a, b) => a - b);
   const diasDoProduto = lista.length === 0 || lista.length === 7 ? null : lista;
 
-  // Quantidade em estoque digitada no próprio produto (em branco = não mexe).
+  // Caixa "Controlar estoque deste produto" + a quantidade (em branco = não mexe no saldo).
+  const controlaEstoque = formData.get("controla_estoque") === "on";
   const textoEstoque = String(formData.get("estoque") ?? "").trim();
   const estoque = textoEstoque ? Number(textoEstoque.replace(/\./g, "").replace(",", ".")) : null;
   if (estoque !== null && !Number.isFinite(estoque)) {
@@ -277,7 +293,7 @@ export async function salvarProduto(
     if (await sincronizarCardapios(supabase, restauranteId, produtoId, cardapios.data)) {
       return falha("Produto salvo, mas não foi possível atualizar os cardápios.", undefined, formData);
     }
-    if (estoque !== null && (await definirEstoqueDoProduto(supabase, restauranteId, produtoId, dados.data.nome, estoque))) {
+    if (await definirEstoqueDoProduto(supabase, restauranteId, produtoId, dados.data.nome, controlaEstoque, estoque)) {
       return falha("Produto salvo, mas não foi possível atualizar o estoque.", undefined, formData);
     }
   } else {
@@ -297,7 +313,7 @@ export async function salvarProduto(
     if (await sincronizarCardapios(supabase, restauranteId, criado.id, cardapios.data)) {
       return falha("Produto criado, mas não foi possível ligar os cardápios. Edite o produto para tentar de novo.");
     }
-    if (estoque !== null && (await definirEstoqueDoProduto(supabase, restauranteId, criado.id, dados.data.nome, estoque))) {
+    if (controlaEstoque && (await definirEstoqueDoProduto(supabase, restauranteId, criado.id, dados.data.nome, true, estoque))) {
       return falha("Produto criado, mas não foi possível gravar o estoque. Edite o produto para tentar de novo.");
     }
   }
