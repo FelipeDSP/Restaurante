@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { AtualizarEmTempoReal } from "@/components/staff/atualizar-em-tempo-real";
+import { AvisoImpressao } from "@/components/staff/aviso-impressao";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { exigirPermissao } from "@/lib/auth/dal";
 import { formatarBRL } from "@/lib/dinheiro";
+import { contarImpressoesComErro } from "@/lib/impressao/avisos";
 import { dataHoraLocal } from "@/lib/tempo";
 
 import { carregarPendencias, carregarResumo, carregarSessaoAberta, dinheiroEsperado, listarSessoesFechadas } from "./dados";
@@ -16,9 +18,10 @@ export const metadata: Metadata = { title: "Caixa" };
 export default async function CaixaPage() {
   const acesso = await exigirPermissao("painel", "caixa_operar");
   const fuso = acesso.restaurante.fusoHorario;
-  const [aberta, anteriores] = await Promise.all([
+  const [aberta, anteriores, impressoesComErro] = await Promise.all([
     carregarSessaoAberta(acesso.restaurante.id),
     listarSessoesFechadas(acesso.restaurante.id),
+    contarImpressoesComErro(acesso.restaurante.id),
   ]);
   const [resumo, pendencias] = aberta
     ? await Promise.all([carregarResumo(acesso.restaurante.id, aberta.id), carregarPendencias(acesso.restaurante.id, aberta.id)])
@@ -27,6 +30,7 @@ export default async function CaixaPage() {
   return (
     <main className="flex flex-col gap-6 p-4 md:p-6">
       <AtualizarEmTempoReal restauranteId={acesso.restaurante.id} tabelas={["comandas", "pagamentos", "pedidos"]} />
+      <AvisoImpressao quantos={impressoesComErro} podeReimprimir />
       <div>
         <h1 className="text-2xl font-semibold">Caixa</h1>
         {aberta ? (

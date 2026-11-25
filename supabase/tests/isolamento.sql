@@ -2956,6 +2956,102 @@ end;
 $$;
 
 -- ======================================================================
+-- Impressora offline: prazo longo, aviso e reimprimir sem duplicar
+-- ======================================================================
+do $$
+declare
+  a constant uuid := md5('brasa-espetinhos')::uuid;
+  v_imp uuid;
+  v_agente uuid;
+  v_fila uuid;
+  v_outra uuid;
+  n integer;
+begin
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  insert into public.impressoras (restaurante_id, nome, conexao, endereco)
+  values (a, 'Bobina do teste', 'rede', '192.168.0.77') returning id into v_imp;
+  insert into public.agentes_impressao (restaurante_id, nome) values (a, 'PC do teste') returning id into v_agente;
+  perform pg_temp.admin();
+  update public.agentes_impressao set token_hash = 'hash', pareado_em = now() where id = v_agente;
+  insert into public.fila_impressao (restaurante_id, impressora_id, tipo) values (a, v_imp, 'teste') returning id into v_fila;
+
+  -- Falha dentro do prazo: continua na fila (antes eram 5 tentativas, ~2,5 min, e morria).
+  update public.fila_impressao set tentativas = 9, agente_id = v_agente, status = 'imprimindo' where id = v_fila;
+  perform public.agente_concluir(v_agente, v_fila, false, 'sem papel');
+  perform pg_temp.ok((select status = 'pendente' and erro = 'sem papel' from public.fila_impressao where id = v_fila),
+    'impressora: falha na 10ª tentativa continua na fila (o prazo é que manda)');
+  perform pg_temp.ok((select tentar_depois_em <= now() + interval '61 seconds' from public.fila_impressao where id = v_fila),
+    'impressora: a espera entre tentativas não passa de 60 s');
+
+  -- Vencido o prazo, desiste e vira erro.
+  update public.fila_impressao set expira_em = now() - interval '1 minute', agente_id = v_agente, status = 'imprimindo' where id = v_fila;
+  perform public.agente_concluir(v_agente, v_fila, false, 'impressora fora da rede');
+  perform pg_temp.ok((select status = 'erro' from public.fila_impressao where id = v_fila),
+    'impressora: passado o prazo, o trabalho vira erro');
+
+  -- A cozinha (sem permissão para ler a fila) enxerga a contagem pela RPC.
+  perform pg_temp.entrar('cozinha.brasa@exemplo.com');
+  perform pg_temp.ok((select count(*) from public.fila_impressao where restaurante_id = a) = 0,
+    'impressora: a cozinha continua sem ler a fila');
+  perform pg_temp.ok(public.impressoes_com_erro(a) >= 1, 'impressora: a cozinha vê quantas impressões falharam');
+  perform pg_temp.entrar('dono.burger@exemplo.com');
+  perform pg_temp.ok(public.impressoes_com_erro(a) = 0, 'impressora: outro restaurante não vê os erros de A');
+
+  -- Reimprimir um trabalho que ainda está na fila NÃO cria via nova (senão sairiam duas quando
+  -- a impressora voltasse); só limpa a espera para tentar agora.
+  perform pg_temp.admin();
+  insert into public.fila_impressao (restaurante_id, impressora_id, tipo) values (a, v_imp, 'teste') returning id into v_outra;
+  update public.fila_impressao set tentar_depois_em = now() + interval '1 hour' where id = v_outra;
+  select count(*) into n from public.fila_impressao where restaurante_id = a;
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  perform public.reimprimir(v_outra);
+  perform pg_temp.admin();
+  perform pg_temp.ok((select count(*) from public.fila_impressao where restaurante_id = a) = n,
+    'impressora: reimprimir trabalho que ainda está na fila não cria uma via nova');
+  perform pg_temp.ok((select tentar_depois_em is null and status = 'pendente' from public.fila_impressao where id = v_outra),
+    'impressora: reimprimir manda tentar agora');
+
+  -- Trabalho já impresso: aí sim sai uma via nova.
+  perform pg_temp.admin();
+  update public.fila_impressao set status = 'impresso', impresso_em = now() where id = v_outra;
+  select count(*) into n from public.fila_impressao where restaurante_id = a;
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  perform public.reimprimir(v_outra);
+  perform pg_temp.admin();
+  perform pg_temp.ok((select count(*) from public.fila_impressao where restaurante_id = a) = n + 1,
+    'impressora: reimprimir trabalho já impresso tira uma via nova');
+
+  -- "Imprimir tudo de novo": volta na mesma linha, e tocar duas vezes não duplica.
+  select count(*) into n from public.fila_impressao where restaurante_id = a;
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  perform pg_temp.ok(public.reimprimir_falhas(a) >= 1, 'impressora: reimprimir tudo devolve os que falharam');
+  perform pg_temp.ok(public.reimprimir_falhas(a) = 0, 'impressora: tocar de novo em reimprimir tudo não faz nada');
+  perform pg_temp.admin();
+  perform pg_temp.ok((select count(*) from public.fila_impressao where restaurante_id = a) = n,
+    'impressora: reimprimir tudo não cria linhas novas (nada sai em dobro)');
+  perform pg_temp.ok((select count(*) from public.fila_impressao where restaurante_id = a and status = 'erro') = 0,
+    'impressora: depois de reimprimir tudo não sobra nada em erro');
+
+  -- Quem não cuida de impressão nem de caixa não manda reimprimir.
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  begin
+    perform public.reimprimir_falhas(a);
+    perform pg_temp.ok(false, 'impressora: garçom não manda reimprimir tudo');
+  exception when others then
+    perform pg_temp.ok(sqlerrm like 'Sem permissão%', 'impressora: garçom não manda reimprimir tudo');
+  end;
+  perform pg_temp.entrar('dono.burger@exemplo.com');
+  begin
+    perform public.reimprimir_falhas(a);
+    perform pg_temp.ok(false, 'impressora: outro restaurante não manda reimprimir');
+  exception when others then
+    perform pg_temp.ok(sqlerrm like 'Sem permissão%', 'impressora: outro restaurante não manda reimprimir');
+  end;
+  perform pg_temp.admin();
+end;
+$$;
+
+-- ======================================================================
 -- Conversa do cliente do delivery com o restaurante
 -- ======================================================================
 do $$

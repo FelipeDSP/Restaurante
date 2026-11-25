@@ -200,6 +200,19 @@ export async function reimprimir(filaId: string): Promise<ResultadoAcao> {
   return sucesso("Enviado de novo para a fila.");
 }
 
+// Devolve para a fila tudo o que desistiu de imprimir (impressora que ficou offline tempo demais).
+// A RPC mexe nas mesmas linhas, então tocar duas vezes não solta duas vias do mesmo ticket.
+export async function reimprimirFalhas(): Promise<ResultadoAcao> {
+  const acesso = await exigirPermissao("painel", "caixa_operar", "impressao");
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("reimprimir_falhas", { p_restaurante_id: acesso.restaurante.id });
+  if (error) return falha(mensagemErroBanco(error));
+  refresh();
+  const quantos = data ?? 0;
+  if (quantos === 0) return sucesso("Não havia nada parado por erro.");
+  return sucesso(`${quantos} ${quantos === 1 ? "impressão voltou" : "impressões voltaram"} para a fila.`);
+}
+
 // Assistente para quem não entende de impressora: escolhe uma impressora que o app encontrou no
 // computador e diz só se é de cupom (bobina) ou comum (folha A4). O resto vem pronto e o teste já sai.
 const assistenteSchema = z.object({

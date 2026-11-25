@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { horaLocal } from "@/lib/tempo";
 import { cn } from "@/lib/utils";
 
-import { reimprimir } from "./actions";
+import { reimprimir, reimprimirFalhas } from "./actions";
 import type { Impressao } from "./dados";
 
 const TIPO: Record<Impressao["tipo"], string> = {
@@ -28,10 +28,17 @@ const STATUS: Record<Impressao["status"], { rotulo: string; classe: string }> = 
 
 export function Fila({ fila, fuso }: { fila: Impressao[]; fuso: string }) {
   const { pendente, executar } = useAcao();
+  const comErro = fila.filter((f) => f.status === "erro").length;
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-wrap items-center justify-between gap-2">
         <CardTitle>Últimas impressões</CardTitle>
+        {comErro > 0 ? (
+          <Button type="button" className="h-11" disabled={pendente} onClick={() => executar(() => reimprimirFalhas())}>
+            <RotateCcw />
+            Imprimir tudo de novo ({comErro})
+          </Button>
+        ) : null}
       </CardHeader>
       <CardContent>
         {fila.length === 0 ? (
