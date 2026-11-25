@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { exigirPermissao } from "@/lib/auth/dal";
+import { exigirPermissao, temPermissao } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 
 import { FormProduto } from "../form-produto";
@@ -34,6 +34,7 @@ export default async function NovoProdutoPage(props: PageProps<"/painel/produtos
         grupos={grupos}
         pracas={pracas}
         cardapios={cardapios}
+        estoque={temPermissao(acesso, "estoque") ? { saldo: "", unidade: "un" } : null}
       />
     </main>
   );

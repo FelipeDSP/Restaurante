@@ -26,23 +26,45 @@ const itemSchema = z.object({
   minimo: quantidade("Estoque mínimo").pipe(z.number().min(0, "O mínimo não pode ser negativo.")),
 });
 
+// Criar já diz quanto tem: antes o item nascia zerado ("Acabou" em vermelho) e a pessoa tinha que
+// procurar o item na lista e dar entrada depois.
 export async function criarItem(_estado: ResultadoAcao, formData: FormData): Promise<ResultadoAcao> {
   const acesso = await exigirPermissao("painel", "estoque");
   const dados = itemSchema.safeParse({
     nome: formData.get("nome"),
     unidade: formData.get("unidade"),
-    minimo: formData.get("minimo") || "0",
+    minimo: "0",
   });
   if (!dados.success) return falhaValidacao(dados.error, formData);
+  const texto = String(formData.get("quantidade") ?? "").trim();
+  const inicial = texto ? quantidade("Quantidade").safeParse(texto) : null;
+  if (inicial && !inicial.success) return falha("Quantidade: informe um número.", { quantidade: "Informe um número." }, formData);
 
   const supabase = await createClient();
-  const { error } = await supabase.from("estoque_itens").insert({ restaurante_id: acesso.restaurante.id, ...dados.data });
+  const { data: criado, error } = await supabase
+    .from("estoque_itens")
+    .insert({ restaurante_id: acesso.restaurante.id, ...dados.data })
+    .select("id")
+    .single();
   if (error) {
     return falha(error.code === "23505" ? "Já existe um item com esse nome." : mensagemErroBanco(error), undefined, formData);
   }
 
+  // A primeira contagem entra como ajuste ("você disse que tem 24"), com autor e hora no extrato.
+  if (inicial?.success && inicial.data !== 0) {
+    const { error: erro } = await supabase.rpc("ajustar_estoque", {
+      p_item_id: criado.id,
+      p_saldo: inicial.data,
+      p_observacao: "Contagem ao cadastrar",
+    });
+    if (erro) {
+      refresh();
+      return { ok: true, id: criado.id, mensagem: "Item criado, mas a quantidade não entrou. Use Entrada.", chave: Date.now() };
+    }
+  }
+
   refresh();
-  return sucesso("Item criado.");
+  return { ok: true, id: criado.id, mensagem: "Item criado.", chave: Date.now() };
 }
 
 export async function salvarItem(itemId: string, _estado: ResultadoAcao, formData: FormData): Promise<ResultadoAcao> {

@@ -40,3 +40,22 @@ export async function carregarEstoqueDoProduto(
     disponiveis: itens.data,
   };
 }
+
+// Estoque "simples" do produto para o campo do formulário: existe quando o produto não tem
+// ficha com vários ingredientes (aí o controle é na tela de Estoque).
+export async function estoqueSimplesDoProduto(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  restauranteId: string,
+  produtoId: string,
+): Promise<{ saldo: string; unidade: string } | null> {
+  const { data, error } = await supabase
+    .from("produto_insumos")
+    .select("quantidade, item:estoque_itens!produto_insumos_restaurante_id_item_id_fkey(nome, unidade, saldo)")
+    .eq("restaurante_id", restauranteId)
+    .eq("produto_id", produtoId);
+  if (error) throw new Error(error.message);
+  if (data.length > 1) return null;
+  const linha = data[0];
+  if (!linha?.item) return { saldo: "", unidade: "un" };
+  return { saldo: String(Number(linha.item.saldo)).replace(".", ","), unidade: linha.item.unidade };
+}

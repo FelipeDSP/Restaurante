@@ -5,7 +5,7 @@ import { exigirPermissao, temPermissao } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { id as idSchema } from "@/lib/validacao";
 
-import { carregarEstoqueDoProduto } from "../../estoque/dados";
+import { carregarEstoqueDoProduto, estoqueSimplesDoProduto } from "../../estoque/dados";
 import { EstoqueDoProduto } from "../../estoque/estoque-do-produto";
 
 import { FormProduto } from "../form-produto";
@@ -49,7 +49,11 @@ export default async function EditarProdutoPage(props: PageProps<"/painel/produt
   if (cardapiosDoProduto.error) throw new Error(cardapiosDoProduto.error.message);
 
   // Só para quem cuida do estoque (e cujo plano tem o módulo).
-  const estoque = temPermissao(acesso, "estoque") ? await carregarEstoqueDoProduto(supabase, acesso.restaurante.id, id) : null;
+  const cuidaDoEstoque = temPermissao(acesso, "estoque");
+  const [estoque, estoqueSimples] = await Promise.all([
+    cuidaDoEstoque ? carregarEstoqueDoProduto(supabase, acesso.restaurante.id, id) : null,
+    cuidaDoEstoque ? estoqueSimplesDoProduto(supabase, acesso.restaurante.id, id) : null,
+  ]);
   if (etapas.error) throw new Error(etapas.error.message);
   if (ligacoes.error) throw new Error(ligacoes.error.message);
   if (produto.error) throw new Error(produto.error.message);
@@ -69,9 +73,11 @@ export default async function EditarProdutoPage(props: PageProps<"/painel/produt
         etapasDoProduto={etapas.data}
         cardapios={cardapios}
         cardapiosDoProduto={cardapiosDoProduto.data.map((l) => l.cardapio_id)}
+        estoque={estoqueSimples}
       />
-      {/* Estoque fica fora do formulário: cada mudança vale na hora (o resto salva junto). */}
-      {estoque ? (
+      {/* Controle por ingrediente: só aparece para quem já usa — o caminho simples é o campo
+          "Estoque" ali em cima. Fica fora do <form> porque cada mudança vale na hora. */}
+      {estoque && estoqueSimples === null ? (
         <EstoqueDoProduto produtoId={id} insumos={estoque.insumos} disponiveis={estoque.disponiveis} />
       ) : null}
     </main>

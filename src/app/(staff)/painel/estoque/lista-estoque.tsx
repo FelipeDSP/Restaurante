@@ -70,13 +70,16 @@ export function numero(valor: number): string {
 }
 
 function Saldo({ item }: { item: ItemEstoque }) {
-  const acabou = item.saldo <= 0;
-  const baixo = !acabou && item.minimo > 0 && item.saldo < item.minimo;
+  // Item recém-criado, sem nenhum movimento, não é "acabou": ninguém contou ainda.
+  const semHistorico = item.movimentos.length === 0 && item.saldo === 0;
+  const acabou = !semHistorico && item.saldo <= 0;
+  const baixo = !acabou && !semHistorico && item.minimo > 0 && item.saldo < item.minimo;
   return (
     <span className="flex flex-wrap items-center gap-2">
-      <span className={cn("text-lg font-bold tabular-nums", acabou && "text-destructive")}>
+      <span className={cn("text-lg font-bold tabular-nums", acabou && "text-destructive", semHistorico && "text-muted-foreground")}>
         {numero(item.saldo)} {item.unidade}
       </span>
+      {semHistorico ? <Badge variant="outline">Sem contagem ainda</Badge> : null}
       {acabou ? <Badge variant="destructive">{item.saldo < 0 ? "Negativo" : "Acabou"}</Badge> : null}
       {baixo ? <Badge variant="secondary">Baixo</Badge> : null}
       {!item.ativo ? <Badge variant="outline">Desligado</Badge> : null}
@@ -84,10 +87,22 @@ function Saldo({ item }: { item: ItemEstoque }) {
   );
 }
 
-export function NovoItem() {
+// Criar já pergunta quanto tem: era o passo que faltava e obrigava a procurar o item na lista
+// depois para dar entrada. "Avisar abaixo de" saiu daqui (é ajuste fino, fica dentro do item).
+function NovoItem({ aoCriar }: { aoCriar: (id: string) => void }) {
   const [aberto, setAberto] = useState(false);
   const [estado, acao] = useActionState(criarItem, undefined);
+  const [visto, setVisto] = useState(estado?.chave);
   useAvisoResultado(estado);
+
+  if (estado?.chave !== visto) {
+    setVisto(estado?.chave);
+    if (estado?.ok && estado.id) {
+      // Fecha o formulário e abre o item novo: é lá que está o próximo passo.
+      setAberto(false);
+      aoCriar(estado.id);
+    }
+  }
 
   if (!aberto) {
     return (
@@ -116,9 +131,9 @@ export function NovoItem() {
                 ))}
               </Selecao>
             </Campo>
-            <Campo rotulo="Avisar abaixo de" htmlFor="minimo" dica="0 = não avisa">
-              <Input id="minimo" name="minimo" inputMode="decimal" defaultValue={valorCampo(estado, "minimo", "0")} className="h-11" />
-              <ErroCampo estado={estado} campo="minimo" />
+            <Campo rotulo="Quanto você tem agora" htmlFor="quantidade" dica="dá para deixar em branco e contar depois">
+              <Input id="quantidade" name="quantidade" inputMode="decimal" placeholder="0" defaultValue={valorCampo(estado, "quantidade", "")} className="h-11" />
+              <ErroCampo estado={estado} campo="quantidade" />
             </Campo>
           </div>
           <div className="flex gap-2">
@@ -358,11 +373,23 @@ function Extrato({ item, fuso }: { item: ItemEstoque; fuso: string }) {
   );
 }
 
-function CartaoItem({ item, categorias, fuso }: { item: ItemEstoque; categorias: CategoriaComProdutos[]; fuso: string }) {
+function CartaoItem({
+  item,
+  categorias,
+  fuso,
+  abrir,
+  aoAlternar,
+}: {
+  item: ItemEstoque;
+  categorias: CategoriaComProdutos[];
+  fuso: string;
+  // Aberto/fechado mora na lista: o item recém-criado já nasce aberto.
+  abrir: boolean;
+  aoAlternar: () => void;
+}) {
   const [estado, acao] = useActionState(salvarItem.bind(null, item.id), undefined);
   useAvisoResultado(estado);
   const { pendente, executar } = useAcao();
-  const [abrir, setAbrir] = useState(false);
 
   return (
     <li className="flex flex-col gap-3 rounded-xl border p-3">
@@ -372,7 +399,7 @@ function CartaoItem({ item, categorias, fuso }: { item: ItemEstoque; categorias:
           <Saldo item={item} />
         </span>
         <div className="flex items-center gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={() => setAbrir((a) => !a)}>
+          <Button type="button" variant="outline" size="sm" onClick={aoAlternar}>
             {abrir ? "Fechar" : "Abrir"}
           </Button>
         </div>
@@ -419,7 +446,8 @@ function CartaoItem({ item, categorias, fuso }: { item: ItemEstoque; categorias:
   );
 }
 
-export function ListaEstoque({
+// A tela inteira num componente só, porque o "novo item" precisa abrir o cartão que ele criou.
+export function Estoque({
   itens,
   categorias,
   fuso,
@@ -428,19 +456,32 @@ export function ListaEstoque({
   categorias: CategoriaComProdutos[];
   fuso: string;
 }) {
-  if (itens.length === 0) {
-    return (
-      <p className="text-muted-foreground">
-        Nenhum item no estoque. Crie um item (uma bebida, um pão, a carne) e ligue nos produtos que gastam ele: quando
-        acabar, esses produtos somem sozinhos do cardápio do cliente.
-      </p>
-    );
-  }
+  // Nada fecha sozinho: cada cartão fica como a pessoa deixou, e o item recém-criado já nasce aberto.
+  const [abertos, setAbertos] = useState<string[]>([]);
+  const alternar = (id: string) => setAbertos((atual) => (atual.includes(id) ? atual.filter((x) => x !== id) : [...atual, id]));
+
   return (
-    <ul className="flex flex-col gap-3">
-      {itens.map((item) => (
-        <CartaoItem key={item.id} item={item} categorias={categorias} fuso={fuso} />
-      ))}
-    </ul>
+    <>
+      <NovoItem aoCriar={(id) => setAbertos((atual) => [...atual, id])} />
+      {itens.length === 0 ? (
+        <p className="text-muted-foreground">
+          Nenhum item no estoque. Crie um item (uma bebida, um pão, a carne) e ligue nos produtos que gastam ele: quando
+          acabar, esses produtos somem sozinhos do cardápio do cliente.
+        </p>
+      ) : (
+        <ul className="flex flex-col gap-3">
+          {itens.map((item) => (
+            <CartaoItem
+              key={item.id}
+              item={item}
+              categorias={categorias}
+              fuso={fuso}
+              abrir={abertos.includes(item.id)}
+              aoAlternar={() => alternar(item.id)}
+            />
+          ))}
+        </ul>
+      )}
+    </>
   );
 }

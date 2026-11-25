@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { exigirPermissao } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 
-import { type ItemEstoque, ListaEstoque, NovoItem } from "./lista-estoque";
+import { Estoque, type ItemEstoque } from "./lista-estoque";
 
 export const metadata: Metadata = { title: "Estoque" };
 
@@ -75,8 +75,7 @@ export default async function EstoquePage() {
   return (
     <main className="flex flex-col gap-6 p-4 md:p-6">
       <h1 className="sr-only">Estoque</h1>
-      <NovoItem />
-      <ListaEstoque
+      <Estoque
         itens={lista}
         fuso={acesso.restaurante.fusoHorario}
         categorias={categorias.data

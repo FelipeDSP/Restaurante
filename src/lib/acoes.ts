@@ -12,6 +12,8 @@ export type ResultadoAcao = {
   // Muda a cada resultado: usada como key do formulário para remontar os campos
   // (com `valores` após falha, ou com os dados salvos após sucesso).
   chave?: number;
+  // O que foi criado, quando a tela precisa levar a pessoa até lá (ex.: abrir o item novo).
+  id?: string;
 } | undefined;
 
 export function sucesso(mensagem?: string): ResultadoAcao {

@@ -148,6 +148,58 @@ async function sincronizarGrupos(
   return null;
 }
 
+// Estoque do jeito simples (decisão do cliente em 25/11, olhando o concorrente): um campo de
+// quantidade no próprio produto. Por baixo é a mesma mecânica do estoque — um item com o nome do
+// produto, que sai 1 por venda —, mas quem só quer contar unidade não precisa saber disso.
+// Quem controla por ingrediente usa a tela de Estoque; aí este campo não aparece.
+async function definirEstoqueDoProduto(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  restauranteId: string,
+  produtoId: string,
+  nomeProduto: string,
+  saldo: number,
+): Promise<string | null> {
+  const { data: ficha, error } = await supabase
+    .from("produto_insumos")
+    .select("item_id")
+    .eq("restaurante_id", restauranteId)
+    .eq("produto_id", produtoId);
+  if (error) return error.message;
+  // Ficha com mais de um insumo é controle por ingrediente: não mexe por aqui.
+  if (ficha.length > 1) return null;
+
+  let itemId: string | undefined = ficha[0]?.item_id;
+  if (!itemId) {
+    const { data: existente } = await supabase
+      .from("estoque_itens")
+      .select("id")
+      .eq("restaurante_id", restauranteId)
+      .ilike("nome", nomeProduto)
+      .maybeSingle();
+    itemId = existente?.id;
+    if (!itemId) {
+      const { data: criado, error: erro } = await supabase
+        .from("estoque_itens")
+        .insert({ restaurante_id: restauranteId, nome: nomeProduto, unidade: "un" })
+        .select("id")
+        .single();
+      if (erro) return erro.message;
+      itemId = criado.id;
+    }
+    const { error: erroFicha } = await supabase
+      .from("produto_insumos")
+      .insert({ restaurante_id: restauranteId, produto_id: produtoId, item_id: itemId, quantidade: 1 });
+    if (erroFicha && erroFicha.code !== "23505") return erroFicha.message;
+  }
+
+  const { error: erroSaldo } = await supabase.rpc("ajustar_estoque", {
+    p_item_id: itemId,
+    p_saldo: saldo,
+    p_observacao: "Contagem pelo cadastro do produto",
+  });
+  return erroSaldo?.message ?? null;
+}
+
 function produtoSchema(restauranteId: string) {
   return z.object({
     nome: textoObrigatorio("o nome", 120),
@@ -186,6 +238,13 @@ export async function salvarProduto(
   const lista = [...new Set(dias.data)].sort((a, b) => a - b);
   const diasDoProduto = lista.length === 0 || lista.length === 7 ? null : lista;
 
+  // Quantidade em estoque digitada no próprio produto (em branco = não mexe).
+  const textoEstoque = String(formData.get("estoque") ?? "").trim();
+  const estoque = textoEstoque ? Number(textoEstoque.replace(/\./g, "").replace(",", ".")) : null;
+  if (estoque !== null && !Number.isFinite(estoque)) {
+    return falha("Estoque: informe um número.", { estoque: "Informe um número." }, formData);
+  }
+
   const supabase = await createClient();
 
   if (produtoId) {
@@ -218,6 +277,9 @@ export async function salvarProduto(
     if (await sincronizarCardapios(supabase, restauranteId, produtoId, cardapios.data)) {
       return falha("Produto salvo, mas não foi possível atualizar os cardápios.", undefined, formData);
     }
+    if (estoque !== null && (await definirEstoqueDoProduto(supabase, restauranteId, produtoId, dados.data.nome, estoque))) {
+      return falha("Produto salvo, mas não foi possível atualizar o estoque.", undefined, formData);
+    }
   } else {
     const ordem = await proximaOrdem(supabase, "produtos", restauranteId, { coluna: "categoria_id", valor: dados.data.categoria_id });
     const { data: criado, error } = await supabase
@@ -234,6 +296,9 @@ export async function salvarProduto(
     }
     if (await sincronizarCardapios(supabase, restauranteId, criado.id, cardapios.data)) {
       return falha("Produto criado, mas não foi possível ligar os cardápios. Edite o produto para tentar de novo.");
+    }
+    if (estoque !== null && (await definirEstoqueDoProduto(supabase, restauranteId, criado.id, dados.data.nome, estoque))) {
+      return falha("Produto criado, mas não foi possível gravar o estoque. Edite o produto para tentar de novo.");
     }
   }
 

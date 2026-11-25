@@ -49,6 +49,8 @@ type Props = {
   etapasDoProduto?: { estacao_id: string; ordem: number }[];
   cardapios: CardapioParaProduto[];
   cardapiosDoProduto?: string[];
+  // Estoque simples deste produto (null quando a pessoa não cuida de estoque ou o produto é por ingrediente).
+  estoque?: { saldo: string; unidade: string } | null;
 };
 
 export function FormProduto({
@@ -62,6 +64,7 @@ export function FormProduto({
   etapasDoProduto = [],
   cardapios,
   cardapiosDoProduto = [],
+  estoque = null,
 }: Props) {
   const [estado, acao] = useActionState(salvarProduto.bind(null, produto?.id ?? null), undefined);
   useAvisoResultado(estado);
@@ -189,6 +192,29 @@ export function FormProduto({
             />
             Aparece no delivery
           </label>
+          {/* Estoque do jeito simples: digita quanto tem e pronto. Some para quem controla este
+              produto por ingrediente (aí é na tela de Estoque). */}
+          {estoque ? (
+            <Campo rotulo="Estoque" htmlFor="estoque" dica="em branco = não controla">
+              <div className="flex items-center gap-2">
+                <Input
+                  id="estoque"
+                  name="estoque"
+                  inputMode="decimal"
+                  placeholder="0"
+                  defaultValue={valorCampo(estado, "estoque", estoque.saldo)}
+                  className="h-11 w-32"
+                />
+                <span className="text-sm text-muted-foreground">{estoque.unidade}</span>
+              </div>
+              <ErroCampo estado={estado} campo="estoque" />
+              {produto ? (
+                <Link href="/painel/estoque" className="text-sm text-muted-foreground underline underline-offset-4">
+                  Controlar por ingredientes
+                </Link>
+              ) : null}
+            </Campo>
+          ) : null}
           {/* Dia da semana (prato do dia): fica escondido para quem não usa. */}
           <div className="flex flex-col gap-2 sm:col-span-2">
             <input type="hidden" name="dias" value={dias ? JSON.stringify(dias) : ""} />
