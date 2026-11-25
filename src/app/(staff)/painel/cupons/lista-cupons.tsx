@@ -131,8 +131,8 @@ export function NovoCupom() {
             <Input id="limite_usos" name="limite_usos" type="number" min={1} placeholder="Sem limite" defaultValue={valorCampo(estado, "limite_usos", "")} className="h-11 max-w-40" />
             <ErroCampo estado={estado} campo="limite_usos" />
           </Campo>
-          <label className="flex items-center gap-3 self-end text-sm font-medium">
-            <input type="checkbox" name="um_por_cliente" defaultChecked={estado?.valores?.um_por_cliente === "on"} className="size-5 accent-[var(--cor-primaria-texto)]" />
+          <label className="flex pointer-coarse:min-h-11 items-center gap-3 self-end text-sm font-medium">
+            <input type="checkbox" name="um_por_cliente" defaultChecked={estado?.valores?.um_por_cliente === "on"} className="size-5 pointer-coarse:size-6 accent-[var(--cor-primaria-texto)]" />
             Um uso por cliente (telefone)
           </label>
           <div className="flex gap-2 sm:col-span-2">

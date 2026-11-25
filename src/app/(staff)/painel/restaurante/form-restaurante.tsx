@@ -170,12 +170,12 @@ export function FormRestaurante({ restaurante }: { restaurante: DadosRestaurante
           <CardTitle>Delivery</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
-          <label className="flex items-center gap-3 text-sm font-medium sm:col-span-2">
+          <label className="flex pointer-coarse:min-h-11 items-center gap-3 text-sm font-medium sm:col-span-2">
             <input
               type="checkbox"
               name="aceita_delivery"
               defaultChecked={marcadoCampo(estado, "aceita_delivery", restaurante.aceita_delivery)}
-              className="size-5 accent-[var(--cor-primaria-texto)]"
+              className="size-5 pointer-coarse:size-6 accent-[var(--cor-primaria-texto)]"
             />
             Aceitar pedidos de delivery pelo site
           </label>

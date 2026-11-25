@@ -168,7 +168,7 @@ function FormImpressora({
               </label>
             );
           })}
-          <label className="flex h-10 cursor-pointer items-center gap-2 rounded-full border bg-background px-3 text-sm">
+          <label className="flex pointer-coarse:min-h-11 h-10 cursor-pointer items-center gap-2 rounded-full border bg-background px-3 text-sm">
             <input
               type="checkbox"
               name="imprime_conta"
@@ -177,7 +177,7 @@ function FormImpressora({
             />
             Conta das mesas
           </label>
-          <label className="flex h-10 cursor-pointer items-center gap-2 rounded-full border bg-background px-3 text-sm">
+          <label className="flex pointer-coarse:min-h-11 h-10 cursor-pointer items-center gap-2 rounded-full border bg-background px-3 text-sm">
             <input
               type="checkbox"
               name="imprime_via_delivery"
@@ -186,7 +186,7 @@ function FormImpressora({
             />
             Via do delivery (motoboy)
           </label>
-          <label className="flex h-10 cursor-pointer items-center gap-2 rounded-full border bg-background px-3 text-sm">
+          <label className="flex pointer-coarse:min-h-11 h-10 cursor-pointer items-center gap-2 rounded-full border bg-background px-3 text-sm">
             <input
               type="checkbox"
               name="imprime_ao_fechar"
@@ -198,12 +198,12 @@ function FormImpressora({
         </div>
         {pracas.length === 0 ? <p className="text-sm text-muted-foreground">Nenhum setor da cozinha cadastrado.</p> : null}
       </fieldset>
-      <label className="flex items-center gap-2 text-sm font-medium">
+      <label className="flex pointer-coarse:min-h-11 items-center gap-2 text-sm font-medium">
         <input
           type="checkbox"
           name="ativa"
           defaultChecked={marcadoCampo(estado, "ativa", impressora?.ativa ?? true)}
-          className="size-5 accent-[var(--cor-primaria-texto)]"
+          className="size-5 pointer-coarse:size-6 accent-[var(--cor-primaria-texto)]"
         />
         Ativa
       </label>

@@ -43,10 +43,10 @@ export function EditorHorarios({ inicial }: { inicial: Horarios }) {
         const aberto = intervalos.length > 0;
         return (
           <div key={dia} className="flex flex-col gap-2 border-b py-2 last:border-b-0 sm:flex-row sm:items-start">
-            <label className="flex w-32 shrink-0 items-center gap-2 pt-2 text-sm font-medium">
+            <label className="flex pointer-coarse:min-h-11 w-32 shrink-0 items-center gap-2 pt-2 text-sm font-medium">
               <input
                 type="checkbox"
-                className="size-5 accent-[var(--cor-primaria-texto)]"
+                className="size-5 pointer-coarse:size-6 accent-[var(--cor-primaria-texto)]"
                 checked={aberto}
                 onChange={(e) => alterar(dia, e.target.checked ? [{ abre: "18:00", fecha: "23:00" }] : [])}
               />

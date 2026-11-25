@@ -218,7 +218,7 @@ export function TopoConfiguracao({ itens }: { itens: ItemNavegacao[] }) {
   if (!item) return null;
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-4 pt-3 text-sm md:px-6 print:hidden">
-      <Link href={CONFIGURACOES_HREF} className="flex min-h-9 items-center gap-1 text-muted-foreground hover:text-foreground">
+      <Link href={CONFIGURACOES_HREF} className="flex min-h-9 pointer-coarse:min-h-11 items-center gap-1 text-muted-foreground hover:text-foreground">
         <ChevronLeft className="size-4" aria-hidden />
         Configurações
       </Link>

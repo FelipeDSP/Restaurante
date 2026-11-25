@@ -887,7 +887,7 @@ export function TelaComanda({ mesaId, comanda, podeEstornar, fusoHorario, origem
                     type="button"
                     aria-pressed={visao === v}
                     onClick={() => setVisao(v)}
-                    className={cn("min-h-9 rounded-md px-3", visao === v ? "bg-muted font-semibold" : "text-muted-foreground")}
+                    className={cn("min-h-9 pointer-coarse:min-h-11 rounded-md px-3", visao === v ? "bg-muted font-semibold" : "text-muted-foreground")}
                   >
                     {v === "pedidos" ? "Por pedido" : "Tudo junto"}
                   </button>

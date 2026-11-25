@@ -88,7 +88,7 @@ export default async function ConfiguracoesPage() {
                   <Link
                     key={secao.href}
                     href={secao.href}
-                    className="flex min-h-9 items-center rounded-md px-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+                    className="flex min-h-9 pointer-coarse:min-h-11 items-center rounded-md px-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
                   >
                     {secao.rotulo}
                   </Link>

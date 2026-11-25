@@ -89,7 +89,7 @@ export default async function PainelLayout({ children }: LayoutProps<"/painel">)
       <PreferenciaSom preferencia={acesso.usuario.som} />
       <header className="sticky top-0 z-10 bg-[var(--cor-primaria)] text-[var(--cor-primaria-contraste)] shadow-sm print:hidden">
         <div className="flex h-16 w-full items-center justify-between gap-3 px-4">
-          <Link href="/painel" className="min-w-0 flex-1">
+          <Link href="/painel" className="flex min-h-11 min-w-0 flex-1 items-center">
             <MarcaRestaurante restaurante={acesso.restaurante} />
           </Link>
           <div className="flex shrink-0 items-center gap-1">

@@ -100,7 +100,7 @@ export default async function RestaurantesPage(props: PageProps<"/admin/restaura
                 href={link({ filtro: f.id })}
                 aria-current={filtro === f.id ? "page" : undefined}
                 className={cn(
-                  "flex min-h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-bold",
+                  "flex min-h-9 pointer-coarse:min-h-11 items-center gap-1.5 rounded-lg px-3 text-sm font-bold",
                   filtro === f.id ? "bg-uau-marrom text-uau-creme" : "text-uau-marrom-claro hover:bg-uau-marrom/5",
                 )}
               >

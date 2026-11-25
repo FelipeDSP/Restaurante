@@ -224,7 +224,7 @@ export function CartaoPedido({ pedido, entregadores, modoInicial = "normal", aoS
       {detalhes ? (
         <div className="flex flex-col gap-1 text-sm">
           <span className="flex flex-wrap items-center gap-3">
-            <a href={`tel:${telefone}`} className="flex min-h-9 items-center gap-1 underline-offset-4 hover:underline">
+            <a href={`tel:${telefone}`} className="flex min-h-9 pointer-coarse:min-h-11 items-center gap-1 underline-offset-4 hover:underline">
               <Phone className="size-3.5" aria-hidden />
               {telefoneFormatado(pedido.clienteTelefone)}
             </a>
@@ -232,7 +232,7 @@ export function CartaoPedido({ pedido, entregadores, modoInicial = "normal", aoS
               href={`https://wa.me/${whatsapp}?text=${encodeURIComponent(`Olá, ${pedido.clienteNome}! Sobre seu pedido nº ${pedido.numero}:`)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex min-h-9 items-center gap-1 text-green-700 underline-offset-4 hover:underline"
+              className="flex min-h-9 pointer-coarse:min-h-11 items-center gap-1 text-green-700 underline-offset-4 hover:underline"
             >
               <MessageCircle className="size-3.5" aria-hidden />
               WhatsApp

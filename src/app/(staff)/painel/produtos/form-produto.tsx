@@ -175,21 +175,21 @@ export function FormProduto({
               rotulo="Foto"
             />
           </div>
-          <label className="flex items-center gap-3 text-sm font-medium">
+          <label className="flex pointer-coarse:min-h-11 items-center gap-3 text-sm font-medium">
             <input
               type="checkbox"
               name="disponivel"
               defaultChecked={marcadoCampo(estado, "disponivel", produto?.disponivel ?? true)}
-              className="size-5 accent-[var(--cor-primaria-texto)]"
+              className="size-5 pointer-coarse:size-6 accent-[var(--cor-primaria-texto)]"
             />
             Disponível
           </label>
-          <label className="flex items-center gap-3 text-sm font-medium">
+          <label className="flex pointer-coarse:min-h-11 items-center gap-3 text-sm font-medium">
             <input
               type="checkbox"
               name="disponivel_delivery"
               defaultChecked={marcadoCampo(estado, "disponivel_delivery", produto?.disponivel_delivery ?? true)}
-              className="size-5 accent-[var(--cor-primaria-texto)]"
+              className="size-5 pointer-coarse:size-6 accent-[var(--cor-primaria-texto)]"
             />
             Aparece no delivery
           </label>
@@ -197,13 +197,13 @@ export function FormProduto({
               produto por ingrediente (aí é na tela de Estoque). */}
           {estoque ? (
             <div className="flex flex-col gap-2 sm:col-span-2">
-              <label className="flex items-center gap-3 text-sm font-medium">
+              <label className="flex pointer-coarse:min-h-11 items-center gap-3 text-sm font-medium">
                 <input
                   type="checkbox"
                   name="controla_estoque"
                   checked={controlaEstoque}
                   onChange={(e) => setControlaEstoque(e.target.checked)}
-                  className="size-5 accent-[var(--cor-primaria-texto)]"
+                  className="size-5 pointer-coarse:size-6 accent-[var(--cor-primaria-texto)]"
                 />
                 Controlar estoque deste produto
               </label>
@@ -279,7 +279,7 @@ export function FormProduto({
                             e.target.checked ? [...atual, c.id] : atual.filter((id) => id !== c.id),
                           )
                         }
-                        className="mt-0.5 size-5 accent-[var(--cor-primaria-texto)]"
+                        className="mt-0.5 size-5 pointer-coarse:size-6 accent-[var(--cor-primaria-texto)]"
                       />
                       <span className="flex min-w-0 flex-col gap-0.5">
                         <span className="font-medium">
@@ -306,19 +306,19 @@ export function FormProduto({
         <CardContent className="flex flex-col gap-3">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="font-semibold">Onde é preparado</h2>
-            <Link href="/painel/pracas" className="text-sm underline underline-offset-4">
+            <Link href="/painel/pracas" className="inline-flex min-h-11 items-center text-sm underline underline-offset-4">
               Editar setores
             </Link>
           </div>
           <input type="hidden" name="etapas" value={JSON.stringify(etapasParaBanco(etapas))} />
           <EditorRota pracas={pracas} etapas={etapas} aoMudar={setEtapas} />
           <ErroCampo estado={estado} campo="etapas" />
-          <label className="mt-2 flex items-center gap-3 text-sm font-medium">
+          <label className="mt-2 flex pointer-coarse:min-h-11 items-center gap-3 text-sm font-medium">
             <input
               type="checkbox"
               name="para_viagem"
               defaultChecked={marcadoCampo(estado, "para_viagem", produto?.para_viagem ?? false)}
-              className="size-5 accent-[var(--cor-primaria-texto)]"
+              className="size-5 pointer-coarse:size-6 accent-[var(--cor-primaria-texto)]"
             />
             Sempre sai pra viagem
           </label>
@@ -329,7 +329,7 @@ export function FormProduto({
         <CardContent className="flex flex-col gap-3">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="font-semibold">Adicionais e opções</h2>
-            <Link href="/painel/adicionais" className="text-sm underline underline-offset-4">
+            <Link href="/painel/adicionais" className="inline-flex min-h-11 items-center text-sm underline underline-offset-4">
               Editar adicionais
             </Link>
           </div>
@@ -354,7 +354,7 @@ export function FormProduto({
                         onChange={(e) =>
                           setGruposEscolhidos((atual) => (e.target.checked ? [...atual, g.id] : atual.filter((id) => id !== g.id)))
                         }
-                        className="mt-0.5 size-5 accent-[var(--cor-primaria-texto)]"
+                        className="mt-0.5 size-5 pointer-coarse:size-6 accent-[var(--cor-primaria-texto)]"
                       />
                       <span className="flex min-w-0 flex-col gap-0.5">
                         <span className="font-medium">

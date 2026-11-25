@@ -142,7 +142,7 @@ function Formulario({ garcons, aoChamar }: { garcons: GarcomParaChamar[]; aoCham
               type="button"
               aria-pressed={recado === r}
               onClick={() => setRecado(recado === r ? "" : r)}
-              className={cn("min-h-9 rounded-full border px-3 text-sm", recado === r ? "border-foreground bg-muted font-medium" : "text-muted-foreground hover:bg-muted")}
+              className={cn("min-h-9 pointer-coarse:min-h-11 rounded-full border px-3 text-sm", recado === r ? "border-foreground bg-muted font-medium" : "text-muted-foreground hover:bg-muted")}
             >
               {r}
             </button>

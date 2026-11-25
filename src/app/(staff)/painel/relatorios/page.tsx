@@ -172,7 +172,9 @@ export default async function RelatoriosPage(props: PageProps<"/painel/relatorio
             <Painel titulo="Destaques">
               <ul className="grid gap-2">
                 {destaques.map((d) => (
-                  <li key={d.rotulo} className="flex items-center gap-3 rounded-xl bg-muted/60 p-3">
+                  // `flex-wrap`: numa coluna estreita (tablet) o detalhe desce em vez de empurrar
+                  // a coluna e fazer a página inteira rolar de lado.
+                  <li key={d.rotulo} className="flex flex-wrap items-center gap-3 rounded-xl bg-muted/60 p-3">
                     <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[var(--cor-primaria)] text-[var(--cor-primaria-contraste)]" aria-hidden>
                       <d.icone className="size-5" />
                     </span>
@@ -282,7 +284,7 @@ export default async function RelatoriosPage(props: PageProps<"/painel/relatorio
                       // Trocar a ordem não volta para o topo da página.
                       scroll={false}
                       aria-current={ordem === o ? "true" : undefined}
-                      className={cn("flex min-h-9 items-center rounded-md px-3 text-sm", ordem === o ? "bg-muted font-medium" : "text-muted-foreground")}
+                      className={cn("flex min-h-9 pointer-coarse:min-h-11 items-center rounded-md px-3 text-sm", ordem === o ? "bg-muted font-medium" : "text-muted-foreground")}
                     >
                       {o === "quantidade" ? "Mais vendidos" : "Maior valor"}
                     </Link>

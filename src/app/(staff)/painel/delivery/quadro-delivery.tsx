@@ -189,7 +189,10 @@ export function QuadroDelivery({
                 {coluna.id === "finalizados" ? (
                   <p className="px-1 text-xs text-muted-foreground">
                     {coluna.lista.length >= finalizadosNoQuadro ? `Últimos ${finalizadosNoQuadro}. ` : ""}
-                    <Link href="/painel/historico?tipo=delivery" className="font-medium underline underline-offset-4">
+                    <Link
+                      href="/painel/historico?tipo=delivery"
+                      className="inline-flex min-h-11 items-center font-medium underline underline-offset-4"
+                    >
                       Ver todos no Histórico
                     </Link>
                   </p>

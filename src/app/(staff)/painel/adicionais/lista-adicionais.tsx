@@ -108,7 +108,7 @@ function CamposRegra({
         </label>
       ) : null}
       <details className="text-sm" open={modelo === null || repetirInicial}>
-        <summary className="w-fit cursor-pointer text-muted-foreground">Personalizar</summary>
+        <summary className="flex min-h-11 w-fit cursor-pointer items-center text-muted-foreground">Personalizar</summary>
         <div className="mt-3 flex flex-col gap-3">
           <div className="flex flex-wrap items-end gap-3">
             <label className="flex flex-col gap-1 font-medium">
@@ -138,8 +138,8 @@ function CamposRegra({
               />
             </label>
           </div>
-          <label className="flex items-center gap-2">
-            <input type="checkbox" name="repetir" defaultChecked={repetirInicial} className="size-5 accent-[var(--cor-primaria-texto)]" />
+          <label className="flex pointer-coarse:min-h-11 items-center gap-2">
+            <input type="checkbox" name="repetir" defaultChecked={repetirInicial} className="size-5 pointer-coarse:size-6 accent-[var(--cor-primaria-texto)]" />
             <span className="font-medium">Pode repetir a mesma opção (ex.: 2x bacon)</span>
           </label>
         </div>
@@ -250,13 +250,13 @@ function LinhaOpcao({ opcao, grupoId, primeiro, ultimo }: { opcao: Opcao; grupoI
         <ErroCampo estado={estado} campo="preco" />
       </form>
       <div className="flex items-center gap-2">
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex pointer-coarse:min-h-11 items-center gap-2 text-sm">
           <input
             type="checkbox"
             checked={opcao.disponivel}
             disabled={pendente}
             onChange={(e) => executar(() => alternarOpcao(opcao.id, e.target.checked))}
-            className="size-5 accent-[var(--cor-primaria-texto)]"
+            className="size-5 pointer-coarse:size-6 accent-[var(--cor-primaria-texto)]"
           />
           Disponível
         </label>
@@ -439,7 +439,7 @@ function CartaoGrupo({
         <ProdutosDoGrupo grupo={grupo} categorias={categorias} />
 
         <details className="rounded-lg border p-3">
-          <summary className="cursor-pointer text-sm font-medium">Nome, regra e posição</summary>
+          <summary className="flex min-h-11 cursor-pointer items-center text-sm font-medium">Nome, regra e posição</summary>
           <form key={estado?.chave} action={acao} className="mt-3 flex flex-col gap-3">
             <div className="flex flex-col gap-1">
               <label htmlFor={`grupo-${grupo.id}-nome`} className="text-sm font-medium">

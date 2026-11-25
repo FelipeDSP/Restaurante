@@ -304,7 +304,7 @@ export function AssistenteImpressora({
           )}
         </div>
         {tipo === "cupom80" || tipo === "cupom58" ? (
-          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          <label className="flex pointer-coarse:min-h-11 items-center gap-2 text-sm text-muted-foreground">
             <input
               type="checkbox"
               checked={tipo === "cupom58"}

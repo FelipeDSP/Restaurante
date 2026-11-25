@@ -157,7 +157,7 @@ function AplicarEmPessoas({ funcao, pessoas }: { funcao: FuncaoComUso; pessoas: 
                       onChange={(e) =>
                         setEscolhidas((atual) => (e.target.checked ? [...atual, pessoa.id] : atual.filter((x) => x !== pessoa.id)))
                       }
-                      className="size-5 accent-[var(--cor-primaria-texto)]"
+                      className="size-5 pointer-coarse:size-6 accent-[var(--cor-primaria-texto)]"
                     />
                     <span className="flex min-w-0 flex-1 flex-col">
                       <span className="truncate text-sm font-medium">{pessoa.nome}</span>

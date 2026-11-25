@@ -53,7 +53,7 @@ export function AvisoAssinatura({ assinatura }: { assinatura: Assinatura | null 
       )}
     >
       {texto}{" "}
-      <Link href="/painel/assinatura" className="font-semibold underline underline-offset-4">
+      <Link href="/painel/assinatura" className="inline-flex min-h-11 items-center font-semibold underline underline-offset-4">
         {acao}
       </Link>
     </div>
