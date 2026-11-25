@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { AtualizarEmTempoReal } from "@/components/staff/atualizar-em-tempo-real";
+import { mudancaDoDelivery } from "@/lib/realtime-filtros";
 import { exigirPermissao } from "@/lib/auth/dal";
 
 import { carregarConversas } from "./dados";
@@ -14,7 +15,7 @@ export default async function ConversasPage() {
 
   return (
     <main className="flex flex-1 flex-col gap-3 p-4 md:p-6">
-      <AtualizarEmTempoReal restauranteId={acesso.restaurante.id} tabelas={["pedidos", "pedidos_mensagens"]} />
+      <AtualizarEmTempoReal restauranteId={acesso.restaurante.id} tabelas={["pedidos", "pedidos_mensagens"]} interessa={mudancaDoDelivery} />
       <h1 className="text-2xl font-semibold">Conversas</h1>
       <div className="grid gap-4 lg:grid-cols-[22rem_1fr]">
         <ListaConversas conversas={conversas} />

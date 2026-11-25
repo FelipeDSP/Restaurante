@@ -105,7 +105,7 @@ export function CartaoPedido({ pedido, entregadores, modoInicial = "normal", aoS
         variant={naoLidas > 0 ? "default" : "ghost"}
         className="h-11"
         nativeButton={false}
-        render={<Link href={`/painel/conversas/${pedido.id}`} />}
+        render={<Link href={`/painel/conversas/${pedido.id}`} prefetch={false} />}
       >
         <MessagesSquare />
         Conversa

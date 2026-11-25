@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { AtualizarEmTempoReal } from "@/components/staff/atualizar-em-tempo-real";
+import { mudancaDoSalao } from "@/lib/realtime-filtros";
 import { exigirPermissao } from "@/lib/auth/dal";
 import { id as idSchema } from "@/lib/validacao";
 
@@ -30,7 +31,7 @@ export default async function LancarPainelPage(props: PageProps<"/painel/comanda
   return (
     <main className="flex w-full flex-1 flex-col gap-3 p-4 md:p-6">
       {/* Comanda fechada ou cancelada por outra pessoa: a página recarrega e volta para a mesa. */}
-      <AtualizarEmTempoReal restauranteId={acesso.restaurante.id} tabelas={["comandas"]} />
+      <AtualizarEmTempoReal restauranteId={acesso.restaurante.id} tabelas={["comandas"]} interessa={mudancaDoSalao} />
       <Link href={destino} className="-ml-2 flex h-10 w-fit items-center gap-1 rounded-md px-2 text-sm font-medium hover:bg-muted">
         <ChevronLeft className="size-5" />
         Mesa {mesa.numero}

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { AtualizarEmTempoReal } from "@/components/staff/atualizar-em-tempo-real";
+import { mudancaDoSalao } from "@/lib/realtime-filtros";
 import { exigirPermissao } from "@/lib/auth/dal";
 import { id as idSchema } from "@/lib/validacao";
 
@@ -37,6 +38,7 @@ export default async function MesaPainelPage(props: PageProps<"/painel/comandas/
       <AtualizarEmTempoReal
         restauranteId={acesso.restaurante.id}
         tabelas={["comandas", "itens_pedido", "pagamentos", "tarefas_producao", "caixa_sessoes"]}
+        interessa={mudancaDoSalao}
       />
       <Link
         href="/painel/comandas"

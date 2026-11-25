@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { AtualizarEmTempoReal } from "@/components/staff/atualizar-em-tempo-real";
 import { exigirPermissao } from "@/lib/auth/dal";
+import { mudancaDoDelivery } from "@/lib/realtime-filtros";
 
 import { carregarSessaoAberta } from "../caixa/dados";
 import { FINALIZADOS_NO_QUADRO, carregarEntregadores, carregarPedidosDelivery } from "./dados";
@@ -27,7 +28,11 @@ export default async function DeliveryPage() {
 
   return (
     <main className="flex min-h-0 flex-1 flex-col gap-3 p-4 md:p-6">
-      <AtualizarEmTempoReal restauranteId={acesso.restaurante.id} tabelas={["pedidos", "pagamentos", "tarefas_producao", "pedidos_mensagens"]} />
+      <AtualizarEmTempoReal
+        restauranteId={acesso.restaurante.id}
+        tabelas={["pedidos", "pagamentos", "tarefas_producao", "pedidos_mensagens"]}
+        interessa={mudancaDoDelivery}
+      />
       <div>
         <h1 className="text-2xl font-semibold">Delivery</h1>
         {/* Só o que importa agora: com o caixa fechado, o site não recebe pedidos. */}

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { AtualizarEmTempoReal } from "@/components/staff/atualizar-em-tempo-real";
 import { exigirPermissao } from "@/lib/auth/dal";
 import { formatarBRL } from "@/lib/dinheiro";
+import { mudancaDoSalao } from "@/lib/realtime-filtros";
 import { NOME_STATUS_MESA } from "@/lib/rotulos";
 import { tempoDesde } from "@/lib/tempo";
 import { cn } from "@/lib/utils";
@@ -19,6 +20,10 @@ function CartaoMesa({ mesa }: { mesa: MesaNoMapa }) {
   return (
     <Link
       href={`/painel/comandas/${mesa.id}`}
+      // Sem prefetch: o mapa tem um link por mesa e `router.refresh()` invalida o cache do
+      // roteador, então cada evento do tempo real re-prefetchava TODAS as mesas (37 requisições
+      // por toque, com 40 mesas). A tela da mesa abre rápido mesmo sem o prefetch.
+      prefetch={false}
       aria-label={`Mesa ${mesa.numero}: ${NOME_STATUS_MESA[mesa.status]}${mesa.pedidosProntos > 0 ? ", prato pronto para servir" : ""}`}
       className={cn(
         "relative flex min-h-28 flex-col justify-between gap-2 rounded-xl border-2 p-3 transition-transform active:scale-95 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none sm:min-h-32",
@@ -64,7 +69,11 @@ export default async function MesasPainelPage() {
 
   return (
     <main className="flex flex-col gap-5 p-4 md:p-6">
-      <AtualizarEmTempoReal restauranteId={acesso.restaurante.id} tabelas={["comandas", "pagamentos", "tarefas_producao", "caixa_sessoes"]} />
+      <AtualizarEmTempoReal
+        restauranteId={acesso.restaurante.id}
+        tabelas={["comandas", "pagamentos", "tarefas_producao", "caixa_sessoes"]}
+        interessa={mudancaDoSalao}
+      />
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
           {/* Com a aba Praças, o título já está nas abas (Mesas | Praças). */}

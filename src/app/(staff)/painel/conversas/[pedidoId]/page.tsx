@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { AtualizarEmTempoReal } from "@/components/staff/atualizar-em-tempo-real";
 import { exigirPermissao } from "@/lib/auth/dal";
+import { mudancaDoDelivery } from "@/lib/realtime-filtros";
 
 import { CartaoPedido } from "../../delivery/cartao-pedido";
 import { carregarEntregadores, carregarPedidosDelivery } from "../../delivery/dados";
@@ -32,7 +33,11 @@ export default async function ConversaPage({ params }: PageProps<"/painel/conver
 
   return (
     <main className="flex flex-1 flex-col gap-3 p-4 md:p-6">
-      <AtualizarEmTempoReal restauranteId={restauranteId} tabelas={["pedidos", "pagamentos", "tarefas_producao", "pedidos_mensagens"]} />
+      <AtualizarEmTempoReal
+        restauranteId={restauranteId}
+        tabelas={["pedidos", "pagamentos", "tarefas_producao", "pedidos_mensagens"]}
+        interessa={mudancaDoDelivery}
+      />
       <div className="flex items-center gap-2">
         <Link
           href="/painel/conversas"

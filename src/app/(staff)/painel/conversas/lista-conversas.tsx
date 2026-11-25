@@ -16,6 +16,9 @@ export function ListaConversas({ conversas, selecionada }: { conversas: ItemConv
       {conversas.map(({ pedido, ultima, naoLidas }) => (
         <li key={pedido.id}>
           <Link
+            // Sem prefetch: a lista tem um link por conversa e cada refresh do tempo real
+            // re-prefetchava todos (ver o mesmo motivo no mapa de mesas).
+            prefetch={false}
             href={`/painel/conversas/${pedido.id}`}
             aria-current={pedido.id === selecionada ? "page" : undefined}
             className={cn(
