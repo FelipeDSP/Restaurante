@@ -12,6 +12,7 @@ import { horaLocal } from "@/lib/tempo";
 import { cn } from "@/lib/utils";
 
 import { marcarTicket } from "./actions";
+import { MaisAbaixo } from "./mais-abaixo";
 import type { Ticket } from "./dados";
 import { useImpressaoAutomatica } from "./preferencias";
 
@@ -25,6 +26,18 @@ type Props = {
   prontos: Ticket[];
   geradoEm: number;
 };
+
+// Outras praças com ticket do MESMO pedido na tela. Dois cartões "Mesa 2" lado a lado pareciam
+// o mesmo pedido duas vezes; o cozinheiro precisa ver que são partes diferentes do pedido.
+function outrasPracasDoPedido(ticket: Ticket, naTela: Ticket[]): string[] {
+  return [
+    ...new Set(
+      naTela
+        .filter((t) => t.id !== ticket.id && t.pedido.numero === ticket.pedido.numero && t.praca.id !== ticket.praca.id)
+        .map((t) => t.praca.nome),
+    ),
+  ];
+}
 
 function titulo(t: Ticket) {
   if (t.pedido.origem === "mesa" && t.pedido.mesa) return `Mesa ${t.pedido.mesa}`;
@@ -94,12 +107,16 @@ function CartaoTicket({
   agora,
   fuso,
   mostrarPraca,
+  outrasPracas,
   aoImprimir,
 }: {
   ticket: Ticket;
   agora: number;
   fuso: string;
   mostrarPraca: boolean;
+  // Outras praças do MESMO pedido que também têm ticket na tela. Na visão "Todas", dois cartões
+  // "Mesa 2" lado a lado pareciam o mesmo pedido duplicado; agora cada um diz qual é a sua parte.
+  outrasPracas: string[];
   aoImprimir: () => void;
 }) {
   const { pendente, executar } = useAcao();
@@ -124,11 +141,23 @@ function CartaoTicket({
         )}
       >
         <div className="min-w-0">
-          <h2 className="text-2xl leading-tight font-bold break-words">{titulo(ticket)}</h2>
+          <h2 className="flex flex-wrap items-baseline gap-x-2 text-2xl leading-tight font-bold break-words">
+            {titulo(ticket)}
+            {mostrarPraca ? (
+              <span className="rounded-md bg-foreground px-2 py-0.5 text-sm font-bold tracking-wide text-background uppercase">
+                {ticket.praca.nome}
+              </span>
+            ) : null}
+          </h2>
           <p className="truncate text-sm text-muted-foreground">
             {ticket.pedido.origem === "delivery" ? "" : `Nº ${ticket.pedido.numero}`}
             {ticket.pedido.autor ? `${ticket.pedido.origem === "delivery" ? "" : " · "}${ticket.pedido.autor}` : ""}
           </p>
+          {outrasPracas.length > 0 ? (
+            <p className="truncate text-sm font-semibold text-sky-900">
+              Este pedido também está {outrasPracas.length === 1 ? "na" : "nas"} {outrasPracas.join(" e ")}
+            </p>
+          ) : null}
         </div>
         <div className="shrink-0 text-right">
           <p className={cn("text-xl font-bold tabular-nums", atrasado ? "text-red-700" : atencao ? "text-amber-700" : "")}>
@@ -137,10 +166,9 @@ function CartaoTicket({
           <p className="text-xs text-muted-foreground">{horaLocal(ticket.criadoEm, fuso)}</p>
         </div>
       </header>
-      {mostrarPraca || viagemTodo ? (
-        <div className="flex items-center justify-between gap-2 border-b px-4 py-1">
-          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{mostrarPraca ? ticket.praca.nome : ""}</p>
-          {viagemTodo ? <SeloViagem /> : null}
+      {viagemTodo ? (
+        <div className="flex items-center justify-end gap-2 border-b px-4 py-1">
+          <SeloViagem />
         </div>
       ) : null}
       <ul className="flex flex-1 flex-col gap-2 px-4 py-3">
@@ -334,7 +362,9 @@ export function TelaCozinha({ restauranteId, restauranteNome, fuso, pracas, prac
         {paraImprimir ? <TicketImpressao ticket={paraImprimir} restauranteNome={restauranteNome} fuso={fuso} /> : null}
       </div>
 
-      <div className="flex flex-1 flex-col gap-4 p-4 print:hidden">
+      <MaisAbaixo seletor="[data-fila-cozinha] > article" />
+
+      <div className="flex flex-1 flex-col gap-4 p-4 pb-20 print:hidden">
         <div className="flex flex-wrap items-center gap-2">
           <nav aria-label="Praças" className="flex flex-wrap gap-2">
             {[{ id: null as string | null, nome: "Todas" }, ...pracas].map((p) => {
@@ -393,7 +423,7 @@ export function TelaCozinha({ restauranteId, restauranteNome, fuso, pracas, prac
             <p className="text-muted-foreground">Os pedidos aparecem aqui assim que o garçom envia.</p>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+          <div data-fila-cozinha className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
             {visiveis.map((t) => (
               <CartaoTicket
                 key={t.id}
@@ -401,6 +431,7 @@ export function TelaCozinha({ restauranteId, restauranteNome, fuso, pracas, prac
                 agora={agora}
                 fuso={fuso}
                 mostrarPraca={!pracaAtiva}
+                outrasPracas={outrasPracasDoPedido(t, visiveis)}
                 aoImprimir={() => setManual(t)}
               />
             ))}
