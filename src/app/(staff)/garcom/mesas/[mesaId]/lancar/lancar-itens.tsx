@@ -325,6 +325,13 @@ export function LancarItens({
         limparLinhas();
         router.push(destino);
       },
+      // Aqui não se pode prometer que nada foi perdido: o servidor pode ter gravado e a
+      // resposta ter se perdido. A frase antiga ("Nada foi perdido: tente de novo") induzia
+      // exatamente a ação que cobra a mesa duas vezes.
+      () =>
+        typeof navigator !== "undefined" && !navigator.onLine
+          ? "Sem internet. O pedido pode ter entrado — confira a mesa antes de enviar de novo."
+          : "Não deu para falar com o sistema. O pedido pode ter entrado — confira a mesa antes de enviar de novo.",
     );
   }
 

@@ -350,6 +350,27 @@ begin
   perform pg_temp.ok((select total from public.comandas where id = v_comanda_a) = 2 * 3200,
                      'RPC do garçom lança itens com preço do cadastro');
 
+  -- Mesmo lote de novo (resposta perdida, o aparelho reenvia): devolve o pedido que já entrou,
+  -- (a chave do lote é única por restaurante, então cada teste usa uma própria)
+  -- marcado como repetido, e não lança em dobro. A tela usa a marca para dizer "já tinha entrado"
+  -- em vez de "enviado", que faria o garçom achar que acabou de lançar.
+  declare
+    v_rep jsonb;
+    v_antes integer;
+  begin
+    select count(*) into v_antes from public.pedidos where comanda_id = v_comanda_a;
+    v_rep := public.lancar_itens_comanda(v_comanda_a,
+      jsonb_build_array(jsonb_build_object('produto_id', v_produto_a, 'quantidade', 1)),
+      '33333333-3333-3333-3333-333333333333');
+    perform pg_temp.ok(coalesce(v_rep ->> 'repetido', 'nao') = 'nao', 'lançamento: o primeiro envio não vem marcado como repetido');
+    v_rep := public.lancar_itens_comanda(v_comanda_a,
+      jsonb_build_array(jsonb_build_object('produto_id', v_produto_a, 'quantidade', 1)),
+      '33333333-3333-3333-3333-333333333333');
+    perform pg_temp.ok((v_rep ->> 'repetido')::boolean, 'lançamento: reenvio do mesmo lote vem marcado como repetido');
+    perform pg_temp.ok((select count(*) from public.pedidos where comanda_id = v_comanda_a) = v_antes + 1,
+                       'lançamento: reenvio do mesmo lote não cria um segundo pedido');
+  end;
+
   -- ======================================================================
   -- Cozinha: praças e tarefas
   -- ======================================================================

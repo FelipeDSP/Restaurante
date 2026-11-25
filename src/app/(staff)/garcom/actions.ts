@@ -76,8 +76,14 @@ export async function lancarItens(
   if (error) return falha(mensagemErroBanco(error));
 
   const quantidade = dados.data.reduce((soma, i) => soma + i.quantidade, 0);
-  const numero = (data as { numero?: number } | null)?.numero;
+  const resposta = data as { numero?: number; repetido?: boolean } | null;
+  const numero = resposta?.numero;
   refresh();
+  // Mesmo lote de novo: o banco devolveu o pedido que já tinha entrado e nada foi lançado.
+  // Dizer "enviado" aqui faria o garçom achar que lançou agora e ir conferir a mesa por nada.
+  if (resposta?.repetido) {
+    return sucesso(`Este pedido já tinha entrado${numero ? `: nº ${numero}` : ""}. Nada foi lançado de novo.`);
+  }
   return sucesso(`Pedido${numero ? ` nº ${numero}` : ""} enviado: ${quantidade} ${quantidade === 1 ? "item" : "itens"}.`);
 }
 

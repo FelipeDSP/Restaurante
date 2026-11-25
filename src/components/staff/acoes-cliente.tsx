@@ -16,11 +16,13 @@ export function mensagemFalhaRede(): string {
 
 // Executa uma Server Action fora de formulário e mostra o resultado em aviso.
 // Falha de rede vira aviso (a tela e o que foi digitado continuam); toque repetido é ignorado.
+// `mensagemDeFalha` é para quem não pode prometer que nada foi gravado (lançar um pedido:
+// o servidor pode ter gravado e a resposta se perdido).
 export function useAcao() {
   const [pendente, iniciar] = useTransition();
   const emAndamento = useRef(false);
 
-  function executar(acao: () => Promise<ResultadoAcao>, aoSucesso?: () => void) {
+  function executar(acao: () => Promise<ResultadoAcao>, aoSucesso?: () => void, mensagemDeFalha?: () => string) {
     if (emAndamento.current) return;
     emAndamento.current = true;
     iniciar(async () => {
@@ -32,7 +34,7 @@ export function useAcao() {
         }
         if (resultado?.ok) aoSucesso?.();
       } catch {
-        toast.error(mensagemFalhaRede());
+        toast.error((mensagemDeFalha ?? mensagemFalhaRede)());
       } finally {
         emAndamento.current = false;
       }

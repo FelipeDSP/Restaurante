@@ -183,10 +183,12 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
       try {
         resultado = await enviarPedido(restaurante.slug, { ...dados, chave });
       } catch {
+        // Não prometa que o pedido não entrou: o servidor pode ter gravado e a resposta ter
+        // se perdido. Com a chave guardada no aparelho, reenviar o mesmo pedido é seguro.
         toast.error(
           navigator.onLine
-            ? "Não conseguimos enviar. Seus dados continuam aqui: toque em Enviar de novo."
-            : "Sem internet. Seus dados continuam aqui: envie quando a conexão voltar.",
+            ? "Não deu para enviar. O pedido pode ter entrado: toque em Enviar de novo para conferir — não vai duplicar."
+            : "Sem internet. O pedido pode ter entrado: quando a conexão voltar, toque em Enviar de novo para conferir — não vai duplicar.",
         );
         return;
       }

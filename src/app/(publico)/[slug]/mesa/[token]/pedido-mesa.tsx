@@ -70,7 +70,9 @@ export function BarraPedidoMesa({
         toast.error(r.mensagem);
       }
     } catch {
-      toast.error("Sem internet. Confira a conexão e toque em Enviar de novo.");
+      // O servidor pode ter gravado e a resposta ter se perdido; a chave guardada no aparelho
+      // faz o reenvio cair na idempotência, então conferir reenviando é seguro.
+      toast.error("Não deu para enviar. O pedido pode ter entrado: toque em Enviar de novo para conferir — não vai duplicar.");
     } finally {
       setEnviando(false);
     }
