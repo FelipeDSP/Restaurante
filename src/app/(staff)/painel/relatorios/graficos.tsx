@@ -83,7 +83,9 @@ export function Kpi({
 
 export function Painel({ titulo, acao, children, className }: { titulo: string; acao?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <section className={cn("flex flex-col gap-4 rounded-2xl border bg-background p-4 shadow-sm md:p-5", className)}>
+    // `min-w-0`: como item de grid, sem isso o conteúdo largo (números que não quebram) empurra a
+    // coluna e a página inteira passa a rolar de lado no tablet.
+    <section className={cn("flex min-w-0 flex-col gap-4 rounded-2xl border bg-background p-4 shadow-sm md:p-5", className)}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-semibold">{titulo}</h2>
         {acao}
@@ -185,7 +187,7 @@ export function Rosca({ fatias, centro, rotuloCentro }: { fatias: Fatia[]; centr
     return `${cor(f, i)} ${inicio}% ${Math.max(inicio, fim - fresta)}%, var(--background) ${Math.max(inicio, fim - fresta)}% ${fim}%`;
   });
   return (
-    <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center">
+    <div className="flex min-w-0 flex-col items-center gap-5 sm:flex-row sm:items-center">
       <div
         className="relative grid size-40 shrink-0 place-items-center rounded-full"
         style={{ background: total ? `conic-gradient(${partes.join(", ")})` : "var(--muted)" }}
@@ -198,7 +200,9 @@ export function Rosca({ fatias, centro, rotuloCentro }: { fatias: Fatia[]; centr
           </div>
         </div>
       </div>
-      <ul className="flex w-full flex-col gap-2 text-sm">
+      {/* `min-w-0`: a legenda tem números que não quebram; sem isso ela empurra a coluna do grid
+          e a página inteira rola de lado no tablet. */}
+      <ul className="flex w-full min-w-0 flex-col gap-2 text-sm">
         {fatias.map((f, i) => (
           <li key={f.chave} className="flex items-center gap-2">
             <span className="size-3 shrink-0 rounded-full" style={{ backgroundColor: cor(f, i) }} aria-hidden />

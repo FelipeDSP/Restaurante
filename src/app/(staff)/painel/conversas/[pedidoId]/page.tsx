@@ -48,17 +48,19 @@ export default async function ConversaPage({ params }: PageProps<"/painel/conver
           </span>
         </h1>
       </div>
+      {/* `min-w-0` em cada coluna: sem isso o cartão do pedido não encolhe e a página rola de lado
+          no tablet (1.171 px num espaço de 1.024 px). */}
       <div className="grid gap-4 lg:grid-cols-[18rem_1fr_20rem] xl:grid-cols-[20rem_1fr_22rem]">
-        <div className="hidden lg:block">
+        <div className="hidden min-w-0 lg:block">
           <ListaConversas conversas={conversas} selecionada={pedido.id} />
         </div>
-        <section aria-label={`Conversa do pedido ${pedido.numero}`} className="flex flex-col gap-2">
+        <section aria-label={`Conversa do pedido ${pedido.numero}`} className="flex min-w-0 flex-col gap-2">
           <h2 className="hidden font-semibold lg:block">
             Nº {pedido.numero} · {pedido.clienteNome}
           </h2>
           <ConversaPedido pedidoId={pedido.id} conversa={pedido.conversa} />
         </section>
-        <section aria-label="Pedido" className="flex flex-col gap-2">
+        <section aria-label="Pedido" className="flex min-w-0 flex-col gap-2">
           <h2 className="font-semibold">Pedido</h2>
           <CartaoPedido pedido={pedido} entregadores={entregadores} semConversa />
         </section>
