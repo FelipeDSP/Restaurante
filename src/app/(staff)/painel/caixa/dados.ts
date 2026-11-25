@@ -117,8 +117,11 @@ export function dinheiroEsperado(resumo: ResumoCaixa): number {
 }
 
 export type PendenciasFechamento = {
-  comandas: { mesaId: string; mesa: string }[];
-  deliveries: { numero: number; status: string }[];
+  comandas: { mesaId: string; mesa: string; falta: number }[];
+  deliveries: { numero: number; status: string; falta: number }[];
+  // Quanto ainda não foi pago e passa para o próximo caixa (o dono precisa do número,
+  // não de 81 links um por um).
+  faltaReceber: number;
 };
 
 // O que impede fechar o caixa (o banco também recusa): mostrado antes do clique, com link.
@@ -127,20 +130,34 @@ export async function carregarPendencias(restauranteId: string, sessaoId: string
   const [comandas, deliveries] = await Promise.all([
     supabase
       .from("comandas")
-      .select("mesa_id, mesas(numero)")
+      .select("mesa_id, total, mesas(numero), pagamentos(valor, estornado_em)")
       .eq("restaurante_id", restauranteId)
       .in("status", ["aberta", "conta_pedida"]),
     supabase
       .from("pedidos")
-      .select("numero, status")
+      .select("numero, status, total, pagamentos(valor, estornado_em)")
       .eq("restaurante_id", restauranteId)
       .eq("caixa_sessao_id", sessaoId)
       .eq("origem", "delivery")
       .not("status", "in", "(entregue,cancelado)")
       .order("numero"),
   ]);
+  // O que falta receber em cada um: o total menos os pagamentos que não foram estornados.
+  const falta = (total: number, pagamentos: { valor: number; estornado_em: string | null }[]) =>
+    Math.max(0, total - pagamentos.filter((p) => !p.estornado_em).reduce((soma, p) => soma + p.valor, 0));
+  const listaComandas = (comandas.data ?? []).map((c) => ({
+    mesaId: c.mesa_id,
+    mesa: c.mesas?.numero ?? "?",
+    falta: falta(c.total, c.pagamentos),
+  }));
+  const listaDeliveries = (deliveries.data ?? []).map((p) => ({
+    numero: p.numero,
+    status: p.status,
+    falta: falta(p.total, p.pagamentos),
+  }));
   return {
-    comandas: (comandas.data ?? []).map((c) => ({ mesaId: c.mesa_id, mesa: c.mesas?.numero ?? "?" })),
-    deliveries: (deliveries.data ?? []).map((p) => ({ numero: p.numero, status: p.status })),
+    comandas: listaComandas,
+    deliveries: listaDeliveries,
+    faltaReceber: [...listaComandas, ...listaDeliveries].reduce((soma, x) => soma + x.falta, 0),
   };
 }

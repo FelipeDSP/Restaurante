@@ -109,6 +109,17 @@ export function MovimentoCaixa() {
 }
 
 
+// "R$ 2.626 em 38 mesas e 43 deliveries", em vez de 81 linhas.
+function resumoPendencias(p: PendenciasFechamento) {
+  const partes = [
+    p.comandas.length > 0 ? `${p.comandas.length} ${p.comandas.length === 1 ? "mesa aberta" : "mesas abertas"}` : "",
+    p.deliveries.length > 0
+      ? `${p.deliveries.length} ${p.deliveries.length === 1 ? "delivery em andamento" : "deliveries em andamento"}`
+      : "",
+  ].filter(Boolean);
+  return partes.join(" e ");
+}
+
 export function FecharCaixa({
   sessaoId,
   esperado,
@@ -125,6 +136,7 @@ export function FecharCaixa({
   useAvisoResultado(estado);
   const [contadoTexto, setContadoTexto] = useState(valorCampo(estado, "valor_contado", ""));
   const [confirmando, setConfirmando] = useState(false);
+  const [verPendencias, setVerPendencias] = useState(false);
   const contado = contadoTexto ? centavosDeTexto(contadoTexto) : null;
   const diferenca = contado === null ? null : contado - esperado;
   const pendente = pendencias.comandas.length > 0 || pendencias.deliveries.length > 0;
@@ -144,27 +156,45 @@ export function FecharCaixa({
       <CardContent>
         {pendente ? (
           <div role="status" className="mb-4 flex flex-col gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+            {/* Antes a lista vinha um por um: com 38 mesas e 43 deliveries eram 81 links e nenhum
+                número. O que o dono precisa saber é quanto fica em aberto; os links ficam a um toque. */}
             <p className="font-semibold">
-              {dono ? "Ainda em aberto (se fechar agora, passam para o próximo caixa):" : "Antes de fechar o caixa, finalize:"}
+              {resumoPendencias(pendencias)} {dono ? "passam para o próximo caixa." : "precisam ser finalizados antes de fechar."}
             </p>
-            <ul className="flex flex-col gap-1">
-              {pendencias.comandas.map((c) => (
-                <li key={c.mesaId}>
-                  <Link href={`/painel/comandas/${c.mesaId}`} className="font-medium underline underline-offset-4">
-                    Mesa {c.mesa}
-                  </Link>{" "}
-                  · comanda aberta
-                </li>
-              ))}
-              {pendencias.deliveries.map((d) => (
-                <li key={d.numero}>
-                  <Link href="/painel/delivery" className="font-medium underline underline-offset-4">
-                    Delivery nº {d.numero}
-                  </Link>{" "}
-                  · {d.status === "recebido" ? "novo, sem aceite" : nomeStatusPedido(d.status).toLowerCase()}
-                </li>
-              ))}
-            </ul>
+            {pendencias.faltaReceber > 0 ? (
+              <p>
+                Falta receber <strong className="tabular-nums">{formatarBRL(pendencias.faltaReceber)}</strong> neste total.
+              </p>
+            ) : null}
+            <button
+              type="button"
+              aria-expanded={verPendencias}
+              onClick={() => setVerPendencias((v) => !v)}
+              className="flex min-h-11 items-center gap-1 self-start font-medium underline underline-offset-4"
+            >
+              {verPendencias ? "Esconder a lista" : "Ver a lista"}
+            </button>
+            {verPendencias ? (
+              <ul className="flex flex-col gap-1">
+                {pendencias.comandas.map((c) => (
+                  <li key={c.mesaId}>
+                    <Link href={`/painel/comandas/${c.mesaId}`} className="inline-flex min-h-11 items-center font-medium underline underline-offset-4">
+                      Mesa {c.mesa}
+                    </Link>{" "}
+                    · comanda aberta{c.falta > 0 ? ` · falta ${formatarBRL(c.falta)}` : " · já paga"}
+                  </li>
+                ))}
+                {pendencias.deliveries.map((d) => (
+                  <li key={d.numero}>
+                    <Link href="/painel/delivery" className="inline-flex min-h-11 items-center font-medium underline underline-offset-4">
+                      Delivery nº {d.numero}
+                    </Link>{" "}
+                    · {d.status === "recebido" ? "novo, sem aceite" : nomeStatusPedido(d.status).toLowerCase()}
+                    {d.falta > 0 ? ` · falta ${formatarBRL(d.falta)}` : " · já pago"}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </div>
         ) : null}
         <form key={estado?.chave} action={acao} className="flex flex-col gap-4">

@@ -4,7 +4,7 @@ import { nomeForma, nomeOrigem } from "@/lib/rotulos";
 import { horaLocal } from "@/lib/tempo";
 import { cn } from "@/lib/utils";
 
-import { dinheiroEsperado, type ResumoCaixa } from "./dados";
+import { dinheiroEsperado, type PendenciasFechamento, type ResumoCaixa } from "./dados";
 
 function Indicador({ rotulo, valor, destaque, detalhe }: { rotulo: string; valor: string; destaque?: boolean; detalhe?: string }) {
   return (
@@ -55,10 +55,34 @@ function vezes(n: number) {
   return `${n} ${n === 1 ? "pagamento" : "pagamentos"}`;
 }
 
-export function ResumoSessao({ resumo, fusoHorario }: { resumo: ResumoCaixa; fusoHorario: string }) {
+export function ResumoSessao({
+  resumo,
+  fusoHorario,
+  pendencias,
+}: {
+  resumo: ResumoCaixa;
+  fusoHorario: string;
+  // O que ainda está em aberto, para explicar a diferença entre vendido e recebido.
+  pendencias?: PendenciasFechamento;
+}) {
   const esperado = dinheiroEsperado(resumo);
   const contado = resumo.sessao.valor_contado;
   const diferenca = contado === null ? null : contado - esperado;
+  // "Vendido" conta o consumo das mesas que ainda estão abertas; "recebido" só o que foi pago.
+  // Para um dono leigo os dois lado a lado parecem dinheiro sumido, então a diferença é dita.
+  const aReceber = resumo.total_vendido + resumo.servico + resumo.couvert - resumo.total_recebido;
+  const ondeEsta = pendencias
+    ? [
+        pendencias.comandas.length > 0
+          ? `${pendencias.comandas.length} ${pendencias.comandas.length === 1 ? "mesa aberta" : "mesas abertas"}`
+          : "",
+        pendencias.deliveries.length > 0
+          ? `${pendencias.deliveries.length} ${pendencias.deliveries.length === 1 ? "delivery em andamento" : "deliveries em andamento"}`
+          : "",
+      ]
+        .filter(Boolean)
+        .join(" e ")
+    : "";
 
   return (
     <div className="flex flex-col gap-4">
@@ -83,6 +107,14 @@ export function ResumoSessao({ resumo, fusoHorario }: { resumo: ResumoCaixa; fus
         <Indicador rotulo="Itens vendidos" valor={String(resumo.quantidade_itens)} />
         <Indicador rotulo="Comandas fechadas" valor={String(resumo.comandas.fechadas)} />
       </div>
+
+      {aReceber > 0 ? (
+        <p role="status" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+          <strong className="tabular-nums">Falta receber {formatarBRL(aReceber)}</strong>
+          {ondeEsta ? `: está em ${ondeEsta}.` : ": está no que ainda não foi pago."} Não sumiu — é a diferença entre o que
+          saiu da cozinha e o que já entrou em pagamento.
+        </p>
+      ) : null}
 
       <Card>
         <CardHeader>
