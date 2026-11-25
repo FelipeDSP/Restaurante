@@ -2614,6 +2614,11 @@ begin
   perform pg_temp.admin();
   perform pg_temp.ok((select nome = 'Garçom renomeado' and not ativo and funcao_id = v_funcao from public.membros where id = v_garcom),
     'super admin: edita nome, função e desativa');
+  -- Desfaz: sem isto o garçom segue inativo e com a função Caixa para todos os testes seguintes,
+  -- que então passariam pelo motivo errado (quem está inativo não faz nada mesmo).
+  update public.membros set nome = 'Garçom 1 (brasa)', papel = 'garcom', ativo = true,
+    funcao_id = (select id from public.funcoes where restaurante_id = a and padrao = 'garcom')
+  where id = v_garcom;
   perform pg_temp.entrar('admin.plataforma@exemplo.com');
   v_falhou := false;
   begin perform public.admin_salvar_membro(v_dono, 'Dono', v_funcao::text, true); exception when others then v_falhou := sqlerrm like '%pelo menos um dono%'; end;
