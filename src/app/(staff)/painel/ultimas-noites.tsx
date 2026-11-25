@@ -50,7 +50,7 @@ export async function UltimasNoites({ restauranteId, fuso }: { restauranteId: st
             {noites.map((n) => (
               <tr key={n.id} className="border-t">
                 <td className="py-2">
-                  <Link href={`/painel/caixa/${n.id}`} className="font-medium underline-offset-4 hover:underline">
+                  <Link href={`/painel/caixa/${n.id}`} prefetch={false} className="font-medium underline-offset-4 hover:underline">
                     {n.dia}
                   </Link>
                 </td>

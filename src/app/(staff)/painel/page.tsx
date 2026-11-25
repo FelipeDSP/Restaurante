@@ -8,7 +8,7 @@ import { type Permissao, PERMISSOES_INICIO } from "@/lib/auth/papeis";
 import { formatarBRL } from "@/lib/dinheiro";
 import { dataHoraLocal } from "@/lib/tempo";
 
-import { carregarResumo, carregarSessaoAberta } from "./caixa/dados";
+import { ESPERA_TELA_DE_DINHEIRO, carregarResumo, carregarSessaoAberta } from "./caixa/dados";
 import { PrimeirosPassos } from "./primeiros-passos";
 import { UltimasNoites } from "./ultimas-noites";
 
@@ -79,7 +79,9 @@ export default async function PainelPage() {
 
   return (
     <main className="flex flex-col gap-6 p-4 md:p-6">
-      <AtualizarEmTempoReal restauranteId={acesso.restaurante.id} tabelas={["comandas", "pagamentos"]} />
+      {/* O resumo da sessão é caro de refazer (uma varredura da noite inteira) e um total não
+          precisa mudar no mesmo segundo: os eventos são juntados numa janela maior. */}
+      <AtualizarEmTempoReal restauranteId={acesso.restaurante.id} tabelas={["comandas", "pagamentos"]} espera={ESPERA_TELA_DE_DINHEIRO} />
       <h1 className="text-2xl font-semibold">Olá, {acesso.nome}</h1>
       {acesso.papel === "dono" ? <PrimeirosPassos acesso={acesso} /> : null}
       <StatusCaixa restauranteId={acesso.restaurante.id} fuso={acesso.restaurante.fusoHorario} permissoes={acesso.permissoes} />

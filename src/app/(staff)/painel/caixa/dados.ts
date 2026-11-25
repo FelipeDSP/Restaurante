@@ -161,3 +161,9 @@ export async function carregarPendencias(restauranteId: string, sessaoId: string
     faltaReceber: [...listaComandas, ...listaDeliveries].reduce((soma, x) => soma + x.falta, 0),
   };
 }
+
+// Telas de dinheiro (Início e Caixa) refazem `resumo_caixa_sessao` a cada render, que varre a
+// sessão inteira (45 ms com 1.689 itens). Num pico de 5 ações por segundo isso era 5 varreduras
+// por segundo em cada tela aberta. Um total que demora alguns segundos para mudar não atrapalha
+// ninguém, então os eventos são juntados numa janela bem maior que os 300 ms das telas de operação.
+export const ESPERA_TELA_DE_DINHEIRO = 3000;

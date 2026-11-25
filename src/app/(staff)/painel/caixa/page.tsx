@@ -9,7 +9,14 @@ import { formatarBRL } from "@/lib/dinheiro";
 import { contarImpressoesComErro } from "@/lib/impressao/avisos";
 import { dataHoraLocal } from "@/lib/tempo";
 
-import { carregarPendencias, carregarResumo, carregarSessaoAberta, dinheiroEsperado, listarSessoesFechadas } from "./dados";
+import {
+  ESPERA_TELA_DE_DINHEIRO,
+  carregarPendencias,
+  carregarResumo,
+  carregarSessaoAberta,
+  dinheiroEsperado,
+  listarSessoesFechadas,
+} from "./dados";
 import { AbrirCaixa, FecharCaixa, MovimentoCaixa } from "./formularios";
 import { ResumoSessao } from "./resumo-sessao";
 
@@ -29,7 +36,12 @@ export default async function CaixaPage() {
 
   return (
     <main className="flex flex-col gap-6 p-4 md:p-6">
-      <AtualizarEmTempoReal restauranteId={acesso.restaurante.id} tabelas={["comandas", "pagamentos", "pedidos"]} />
+      {/* Idem Início: o resumo varre a sessão inteira a cada render. */}
+      <AtualizarEmTempoReal
+        restauranteId={acesso.restaurante.id}
+        tabelas={["comandas", "pagamentos", "pedidos"]}
+        espera={ESPERA_TELA_DE_DINHEIRO}
+      />
       <AvisoImpressao quantos={impressoesComErro} podeReimprimir />
       <div>
         <h1 className="text-2xl font-semibold">Caixa</h1>
@@ -67,6 +79,7 @@ export default async function CaixaPage() {
                 <li key={s.id}>
                   <Link
                     href={`/painel/caixa/${s.id}`}
+                    prefetch={false}
                     className="flex items-center justify-between gap-3 rounded-md py-3 hover:bg-muted/50"
                   >
                     <span className="flex flex-col">
