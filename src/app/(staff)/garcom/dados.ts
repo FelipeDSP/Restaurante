@@ -14,14 +14,17 @@ const DESTAQUE_PRONTO_MS = 20 * 60_000;
 export type { Preparo };
 
 
-// Algum item do pedido pronto esperando o garçom, há pouco tempo (selo verde no mapa).
-function prontoParaServir(
+// Desde quando o prato mais antigo do pedido está pronto esperando o garçom (selo no mapa),
+// ou null se não há nada esperando. Antes o mapa só dizia "tem pronto": com 13 das 34 mesas
+// marcadas, o destaque deixava de destacar — o tempo é que diz qual pegar primeiro.
+function prontoEsperandoDesde(
   pedido: { tarefas_producao: TicketPreparo[]; itens_pedido: { etapas: unknown; cancelado_em: string | null; entregue_em: string | null }[] },
   agora: number,
-): boolean {
-  return itensProntosParaLevar(pedido.itens_pedido, pedido.tarefas_producao).some(
-    (i) => agora - prontoEmDoItem(i.etapas, pedido.tarefas_producao) < DESTAQUE_PRONTO_MS,
-  );
+): number | null {
+  const prontos = itensProntosParaLevar(pedido.itens_pedido, pedido.tarefas_producao)
+    .map((i) => prontoEmDoItem(i.etapas, pedido.tarefas_producao))
+    .filter((em) => agora - em < DESTAQUE_PRONTO_MS);
+  return prontos.length > 0 ? Math.min(...prontos) : null;
 }
 
 export type MesaNoMapa = {
@@ -34,8 +37,12 @@ export type MesaNoMapa = {
   pago: number;
   abertaEm: string | null;
   garcom: string | null;
+  // Membro responsável pela comanda, para o filtro "minhas mesas".
+  garcomId: string | null;
   // Pedidos da mesa que a cozinha acabou de terminar (esperando o garçom levar).
   pedidosProntos: number;
+  // Quando o prato mais antigo ficou pronto (ISO), para o selo dizer há quanto tempo espera.
+  prontoDesde: string | null;
 };
 
 export async function caixaEstaAberto(restauranteId: string): Promise<boolean> {
@@ -49,7 +56,8 @@ export async function caixaEstaAberto(restauranteId: string): Promise<boolean> {
 }
 
 // Status da mesa é derivado da comanda aberta (não fica guardado em `mesas`).
-export async function carregarMapa(restauranteId: string): Promise<MesaNoMapa[]> {
+// `geradoEm` sai daqui (e não de um Date.now() no componente): a hora é dado, não render.
+export async function carregarMapa(restauranteId: string): Promise<{ mesas: MesaNoMapa[]; geradoEm: number }> {
   const supabase = await createClient();
   const [mesas, comandas] = await Promise.all([
     supabase
@@ -62,7 +70,7 @@ export async function carregarMapa(restauranteId: string): Promise<MesaNoMapa[]>
     supabase
       .from("comandas")
       .select(
-        "id, mesa_id, status, total, aberta_em, garcom:membros!comandas_restaurante_id_garcom_id_fkey(nome), pedidos(status, tarefas_producao(estacao_id, ordem, status, pronto_em, retirada), itens_pedido(etapas, cancelado_em, entregue_em)), pagamentos(valor, estornado_em)",
+        "id, mesa_id, status, total, aberta_em, garcom_id, garcom:membros!comandas_restaurante_id_garcom_id_fkey(nome), pedidos(status, tarefas_producao(estacao_id, ordem, status, pronto_em, retirada), itens_pedido(etapas, cancelado_em, entregue_em)), pagamentos(valor, estornado_em)",
       )
       .eq("restaurante_id", restauranteId)
       .in("status", ["aberta", "conta_pedida"]),
@@ -72,8 +80,12 @@ export async function carregarMapa(restauranteId: string): Promise<MesaNoMapa[]>
 
   const porMesa = new Map(comandas.data.map((c) => [c.mesa_id, c]));
   const agora = Date.now();
-  return mesas.data.map((mesa) => {
+  const lista = mesas.data.map((mesa) => {
     const comanda = porMesa.get(mesa.id);
+    const prontos = (comanda?.pedidos ?? [])
+      .filter((p) => p.status !== "cancelado")
+      .map((p) => prontoEsperandoDesde(p, agora))
+      .filter((em): em is number => em !== null);
     return {
       id: mesa.id,
       numero: mesa.numero,
@@ -83,11 +95,12 @@ export async function carregarMapa(restauranteId: string): Promise<MesaNoMapa[]>
       pago: (comanda?.pagamentos ?? []).filter((p) => !p.estornado_em).reduce((soma, p) => soma + p.valor, 0),
       abertaEm: comanda?.aberta_em ?? null,
       garcom: comanda?.garcom?.nome ?? null,
-      pedidosProntos: (comanda?.pedidos ?? []).filter(
-        (p) => p.status !== "cancelado" && prontoParaServir(p, agora),
-      ).length,
+      garcomId: comanda?.garcom_id ?? null,
+      pedidosProntos: prontos.length,
+      prontoDesde: prontos.length > 0 ? new Date(Math.min(...prontos)).toISOString() : null,
     };
   });
+  return { mesas: lista, geradoEm: agora };
 }
 
 export type ItemComanda = {
