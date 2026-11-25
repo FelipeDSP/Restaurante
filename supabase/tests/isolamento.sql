@@ -3704,6 +3704,56 @@ begin
     perform pg_temp.ok(sqlerrm like 'Sem permissão%', 'estoque: garçom não dá entrada');
   end;
   perform pg_temp.admin();
+
+  -- ----------------------------------------------------------------------------------------
+  -- Site do restaurante: capa, descrição e redes.
+  -- O que o site do cliente lê é a view pública; o que o painel escreve passa pela permissão
+  -- `restaurante`, igual aos outros dados da casa. A capa é imagem no Storage, bucket próprio.
+  -- ----------------------------------------------------------------------------------------
+  update public.restaurantes
+  set capa_url = 'https://exemplo/capa.webp', descricao = 'Espetinho na brasa', instagram = 'brasa.espetinhos'
+  where id = a;
+
+  perform pg_temp.anonimo();
+  perform pg_temp.ok(
+    (select descricao from public.restaurantes_publicos where id = a) = 'Espetinho na brasa',
+    'site: o cliente lê a descrição pela view pública');
+  perform pg_temp.ok(
+    (select instagram from public.restaurantes_publicos where id = a) = 'brasa.espetinhos',
+    'site: o cliente lê o @ do Instagram');
+
+  -- Restaurante desativado não aparece no site, capa ou não (a view já filtrava; aqui é a garantia
+  -- de que as colunas novas não abriram uma porta por fora dela).
+  perform pg_temp.admin();
+  update public.restaurantes set ativo = false where id = a;
+  perform pg_temp.anonimo();
+  perform pg_temp.ok((select count(*) from public.restaurantes_publicos where id = a) = 0,
+    'site: restaurante desativado não mostra capa nem descrição');
+  perform pg_temp.admin();
+  update public.restaurantes set ativo = true where id = a;
+
+  -- Escrita: só quem tem a permissão `restaurante`.
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  update public.restaurantes set descricao = 'mudei' where id = a;
+  perform pg_temp.admin();
+  perform pg_temp.ok((select descricao from public.restaurantes where id = a) = 'Espetinho na brasa',
+    'site: garçom não muda a descrição');
+
+  perform pg_temp.entrar('dono.burger@exemplo.com');
+  update public.restaurantes set capa_url = 'https://exemplo/outra.webp' where id = a;
+  perform pg_temp.admin();
+  perform pg_temp.ok((select capa_url from public.restaurantes where id = a) = 'https://exemplo/capa.webp',
+    'site: dono de B não troca a capa de A');
+
+  -- O @ é só o nome do perfil: o banco recusa URL (senão dava para apontar para outro lugar).
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  begin
+    update public.restaurantes set instagram = 'https://instagram.com/outro' where id = a;
+    perform pg_temp.ok(false, 'site: o @ do Instagram não aceita URL');
+  exception when others then
+    perform pg_temp.ok(true, 'site: o @ do Instagram não aceita URL');
+  end;
+  perform pg_temp.admin();
 end;
 $$;
 

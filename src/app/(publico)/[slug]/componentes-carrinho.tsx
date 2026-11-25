@@ -101,7 +101,7 @@ export function BarraCarrinho({ restauranteId, slug }: { restauranteId: string; 
     <div className="fixed inset-x-0 bottom-0 z-20 p-3">
       <Link
         href={`/${slug}/carrinho`}
-        className="mx-auto flex h-14 max-w-2xl items-center justify-between rounded-xl bg-[var(--cor-primaria)] px-5 font-semibold text-[var(--cor-primaria-contraste)] shadow-lg focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+        className="mx-auto flex h-14 max-w-2xl items-center justify-between rounded-xl bg-primary px-5 font-semibold text-primary-foreground shadow-lg focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
       >
         <span className="flex items-center gap-2">
           <ShoppingBag className="size-5" />

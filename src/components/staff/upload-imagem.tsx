@@ -10,7 +10,7 @@ import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 type Props = {
-  bucket: "rest-logos" | "rest-produtos" | "rest-avatares";
+  bucket: "rest-logos" | "rest-produtos" | "rest-avatares" | "rest-capas";
   // Pasta no bucket: id do restaurante (logo, produtos) ou do usuário (foto da pessoa).
   pasta: string;
   // Nome do campo do formulário que recebe a URL pública.
@@ -62,12 +62,15 @@ export function UploadImagem({ bucket, pasta, name, valorInicial, rotulo, ladoMa
       <div className="flex items-center gap-3">
         <div
           className={cn(
-            "flex size-24 shrink-0 items-center justify-center overflow-hidden border bg-muted",
+            "flex shrink-0 items-center justify-center overflow-hidden border bg-muted",
+            // A capa é larga: a prévia tem a mesma proporção 3:1 do site, senão a pessoa escolhe
+            // uma foto achando que cabe inteira e no site ela sai cortada em cima e embaixo.
+            bucket === "rest-capas" ? "h-20 w-60 rounded-lg" : "size-24",
             bucket === "rest-avatares" ? "rounded-full" : "rounded-lg",
           )}
         >
           {url ? (
-            // Logo (muitas vezes horizontal) aparece inteiro; foto de produto preenche o quadro.
+            // Logo (muitas vezes horizontal) aparece inteiro; foto de produto e capa preenchem o quadro.
             // eslint-disable-next-line @next/next/no-img-element -- imagem do Storage
             <img src={url} alt="" className={cn("size-full", bucket === "rest-logos" ? "object-contain p-1" : "object-cover")} />
           ) : (

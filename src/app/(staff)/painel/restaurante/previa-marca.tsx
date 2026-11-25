@@ -4,24 +4,28 @@ import { TriangleAlert } from "lucide-react";
 
 import { corDeContraste, corParaTexto, razaoContraste } from "@/lib/cores";
 
-// Prévia ao vivo de como a marca aparece no site de delivery, com aviso quando o texto
-// sobre a cor escolhida fica pouco legível (o sistema já escolhe preto ou branco, mas
-// tons médios demais não ficam bons com nenhum dos dois).
+// Prévia ao vivo de como o site do cliente fica, com aviso quando o texto sobre a cor escolhida
+// fica pouco legível (o sistema já escolhe preto ou branco, mas tons médios demais não ficam bons
+// com nenhum dos dois). A cor principal pinta o cabeçalho; a cor dos botões pinta o que se toca.
 export function PreviaMarca({
   nome,
   logoUrl,
+  capaUrl,
+  descricao,
   corPrimaria,
   corSecundaria,
 }: {
   nome: string;
   logoUrl: string | null;
+  capaUrl: string | null;
+  descricao: string | null;
   corPrimaria: string;
   corSecundaria: string;
 }) {
   const textoPrimaria = corDeContraste(corPrimaria);
   const textoSecundaria = corDeContraste(corSecundaria);
   const contraste = razaoContraste(corPrimaria, textoPrimaria);
-  const contrasteDestaque = razaoContraste(corSecundaria, textoSecundaria);
+  const contrasteBotao = razaoContraste(corSecundaria, textoSecundaria);
 
   return (
     <div className="flex flex-col gap-3 sm:col-span-2">
@@ -41,13 +45,23 @@ export function PreviaMarca({
           )}
           <span className="truncate font-bold">{nome}</span>
         </div>
+        {capaUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- capa do Storage do restaurante
+          <img src={capaUrl} alt="" className="aspect-[3/1] w-full bg-white object-cover" />
+        ) : null}
+        {descricao ? (
+          <p className="bg-white px-3 py-2 text-xs text-neutral-500">{descricao}</p>
+        ) : null}
         <div className="flex flex-col gap-2 p-3">
           <div className="flex items-center justify-between gap-2 rounded-lg bg-white p-3 shadow-sm">
             <span className="flex flex-col text-sm">
               <span className="font-medium text-neutral-900">Seu produto</span>
               <span className="text-neutral-500">R$ 25,00</span>
             </span>
-            <span className="rounded-full px-3 py-1.5 text-xs font-bold" style={{ backgroundColor: corPrimaria, color: textoPrimaria }}>
+            <span
+              className="rounded-full px-3 py-1.5 text-xs font-bold"
+              style={{ backgroundColor: corSecundaria, color: textoSecundaria }}
+            >
               + Adicionar
             </span>
           </div>
@@ -56,12 +70,12 @@ export function PreviaMarca({
           </span>
         </div>
       </div>
-      {contraste < 4.5 || contrasteDestaque < 3 ? (
+      {contraste < 4.5 || contrasteBotao < 4.5 ? (
         <p role="status" className="flex max-w-sm items-start gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
           <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
           {contraste < 4.5
-            ? "Com essa cor principal, o texto dos botões fica pouco legível. Escolha um tom mais claro ou mais escuro."
-            : "A cor de destaque está pouco legível com texto por cima. Escolha um tom mais claro ou mais escuro."}
+            ? "Com essa cor principal, o nome do restaurante fica pouco legível no topo. Escolha um tom mais claro ou mais escuro."
+            : "Com essa cor de botão, o texto dos botões fica pouco legível. Escolha um tom mais claro ou mais escuro."}
         </p>
       ) : null}
     </div>

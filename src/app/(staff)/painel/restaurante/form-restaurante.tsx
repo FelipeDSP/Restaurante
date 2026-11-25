@@ -25,6 +25,10 @@ export type DadosRestaurante = {
   cor_primaria: string;
   cor_secundaria: string;
   logo_url: string | null;
+  capa_url: string | null;
+  descricao: string | null;
+  instagram: string | null;
+  facebook: string | null;
   fuso_horario: string;
   horarios: Horarios;
   aceita_delivery: boolean;
@@ -117,6 +121,53 @@ export function FormRestaurante({ restaurante }: { restaurante: DadosRestaurante
               ladoMaximo={512}
             />
           </div>
+          <div className="sm:col-span-2">
+            <UploadImagem
+              bucket="rest-capas"
+              pasta={restaurante.id}
+              name="capa_url"
+              valorInicial={estado?.valores?.capa_url ?? restaurante.capa_url}
+              rotulo="Capa do site"
+              ladoMaximo={1600}
+            />
+          </div>
+          <Campo rotulo="Uma linha sobre a casa" htmlFor="descricao" className="sm:col-span-2">
+            <Input
+              id="descricao"
+              name="descricao"
+              maxLength={160}
+              placeholder="Espetinho na brasa e hambúrguer artesanal"
+              defaultValue={valorCampo(estado, "descricao", restaurante.descricao)}
+              className="h-10"
+            />
+            <ErroCampo estado={estado} campo="descricao" />
+          </Campo>
+          <Campo rotulo="Instagram" htmlFor="instagram">
+            <div className="flex items-center gap-1">
+              <span className="text-muted-foreground">@</span>
+              <Input
+                id="instagram"
+                name="instagram"
+                placeholder="seurestaurante"
+                defaultValue={valorCampo(estado, "instagram", restaurante.instagram)}
+                className="h-10"
+              />
+            </div>
+            <ErroCampo estado={estado} campo="instagram" />
+          </Campo>
+          <Campo rotulo="Facebook" htmlFor="facebook">
+            <div className="flex items-center gap-1">
+              <span className="text-muted-foreground">/</span>
+              <Input
+                id="facebook"
+                name="facebook"
+                placeholder="seurestaurante"
+                defaultValue={valorCampo(estado, "facebook", restaurante.facebook)}
+                className="h-10"
+              />
+            </div>
+            <ErroCampo estado={estado} campo="facebook" />
+          </Campo>
           <Campo rotulo="Cor principal" htmlFor="cor_primaria">
             <div className="flex items-center gap-2">
               <input
@@ -130,7 +181,7 @@ export function FormRestaurante({ restaurante }: { restaurante: DadosRestaurante
               <span className="font-mono text-sm">{corPrimaria}</span>
             </div>
           </Campo>
-          <Campo rotulo="Cor de destaque" htmlFor="cor_secundaria">
+          <Campo rotulo="Cor dos botões" htmlFor="cor_secundaria">
             <div className="flex items-center gap-2">
               <input
                 id="cor_secundaria"
@@ -143,7 +194,14 @@ export function FormRestaurante({ restaurante }: { restaurante: DadosRestaurante
               <span className="font-mono text-sm">{corSecundaria}</span>
             </div>
           </Campo>
-          <PreviaMarca nome={restaurante.nome} logoUrl={restaurante.logo_url} corPrimaria={corPrimaria} corSecundaria={corSecundaria} />
+          <PreviaMarca
+            nome={restaurante.nome}
+            logoUrl={restaurante.logo_url}
+            capaUrl={restaurante.capa_url}
+            descricao={restaurante.descricao}
+            corPrimaria={corPrimaria}
+            corSecundaria={corSecundaria}
+          />
         </CardContent>
       </Card>
 

@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 
 import { BannerUltimoPedido } from "./banner-ultimo-pedido";
 import { HorariosDialog } from "./horarios-dialog";
+import { PerfilRestaurante } from "./perfil-restaurante";
 import { AdicionarProduto, BarraCarrinho } from "./componentes-carrinho";
 import {
   buscarRestaurantePorSlug,
@@ -34,16 +35,9 @@ export default async function CardapioPage(props: PageProps<"/[slug]">) {
 
   return (
     <main className="flex flex-col gap-4 pb-28">
+      <PerfilRestaurante restaurante={restaurante} aberto={disponibilidade.aberto} />
       <section aria-label="Informações" className="flex flex-col gap-3 bg-background p-4 shadow-sm">
         <div className="flex flex-wrap items-center gap-2">
-          <span
-            className={cn(
-              "rounded-full px-3 py-1 text-sm font-semibold",
-              disponibilidade.aberto ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800",
-            )}
-          >
-            {disponibilidade.aberto ? "Aberto para pedidos" : "Fechado"}
-          </span>
           {restaurante.tempoEstimadoMin ? (
             <span className="flex items-center gap-1 text-sm text-muted-foreground">
               <Clock className="size-4" aria-hidden />
@@ -117,7 +111,7 @@ export default async function CardapioPage(props: PageProps<"/[slug]">) {
             <h2 id={`titulo-${categoria.id}`} className="pt-2 text-xl font-bold">
               {categoria.nome}
             </h2>
-            <ul className="flex flex-col gap-2">
+            <ul className="grid gap-2 sm:grid-cols-2">
               {categoria.produtos.map((produto) => (
                 <li key={produto.id} className="flex gap-3 rounded-xl bg-background p-3 shadow-sm">
                   <div className="flex min-w-0 flex-1 flex-col gap-1">

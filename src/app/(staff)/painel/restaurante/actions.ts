@@ -19,6 +19,22 @@ import {
 
 const cor = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Cor inválida.");
 
+// @ de rede social: aceita o que a pessoa colar (com @, com a URL inteira) e guarda só o nome.
+function arroba(formato: RegExp, rotulo: string) {
+  return z.preprocess(
+    (valor) => {
+      if (typeof valor !== "string") return null;
+      const limpo = valor
+        .trim()
+        .replace(/^https?:\/\/(www\.)?(instagram|facebook|fb)\.com\//i, "")
+        .replace(/^@/, "")
+        .replace(/\/+$/, "");
+      return limpo || null;
+    },
+    z.string().regex(formato, `${rotulo}: use só o nome do perfil.`).nullable(),
+  );
+}
+
 function telefone(rotulo: string) {
   return z.preprocess(
     (valor) => (typeof valor === "string" ? valor.replace(/\D/g, "") || null : null),
@@ -49,6 +65,11 @@ export async function salvarRestaurante(_estado: ResultadoAcao, formData: FormDa
     cor_primaria: cor,
     cor_secundaria: cor,
     logo_url: urlImagemDoRestaurante("rest-logos", acesso.restaurante.id),
+    capa_url: urlImagemDoRestaurante("rest-capas", acesso.restaurante.id),
+    descricao: textoOpcional(160),
+    // Só o @, sem URL (o site monta o endereço). O banco tem o mesmo formato num check.
+    instagram: arroba(/^[A-Za-z0-9._]{1,30}$/, "Instagram"),
+    facebook: arroba(/^[A-Za-z0-9._-]{1,50}$/, "Facebook"),
     fuso_horario: fusoSchema,
     aceita_delivery: checkbox,
     pedido_minimo: dinheiro("Pedido mínimo"),

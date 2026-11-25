@@ -39,7 +39,7 @@ export default async function SiteLayout(props: LayoutProps<"/[slug]">) {
   const mostrarConta = Boolean(conta) || loginClienteDisponivel();
 
   return (
-    <div className="flex min-h-full flex-1 flex-col bg-muted/30" style={estiloMarca(restaurante)}>
+    <div className="flex min-h-full flex-1 flex-col bg-muted/30" style={estiloMarca(restaurante, { botoes: "destaque" })}>
       <header className="sticky top-0 z-20 bg-[var(--cor-primaria)] text-[var(--cor-primaria-contraste)] shadow-sm">
         <div className="mx-auto flex h-16 w-full max-w-2xl items-center justify-between gap-3 px-4">
           <Link href={`/${restaurante.slug}`} className="flex min-w-0 items-center gap-3">

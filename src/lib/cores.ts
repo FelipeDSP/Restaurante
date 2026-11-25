@@ -36,18 +36,28 @@ function paraHex(r: number, g: number, b: number): string {
   return `#${[r, g, b].map((c) => c.toString(16).padStart(2, "0")).join("")}`;
 }
 
-// Variáveis CSS da marca do restaurante. A cor primária também vira a `--primary` do shadcn,
-// então botões e destaques seguem a marca automaticamente.
-export function estiloMarca(cores: { corPrimaria: string; corSecundaria: string }): CSSProperties {
+// Variáveis CSS da marca do restaurante. Uma das duas cores vira a `--primary` do shadcn, então
+// botões e destaques seguem a marca automaticamente.
+//
+// `botoes` diz qual delas manda nos botões:
+//   "primaria" (padrão)  painel e cozinha: a marca aparece de leve, a tela é ferramenta de trabalho.
+//   "destaque"           site do cliente: a cor principal pinta o cabeçalho e a de destaque pinta o
+//                        que se toca (Adicionar, carrinho, fazer pedido). Era o que faltava para a
+//                        segunda cor existir: antes ela só pintava o contador do carrinho.
+export function estiloMarca(
+  cores: { corPrimaria: string; corSecundaria: string },
+  { botoes = "primaria" }: { botoes?: "primaria" | "destaque" } = {},
+): CSSProperties {
   const contrastePrimaria = corDeContraste(cores.corPrimaria);
+  const acao = botoes === "destaque" ? cores.corSecundaria : cores.corPrimaria;
   return {
     "--cor-primaria": cores.corPrimaria,
     "--cor-secundaria": cores.corSecundaria,
     "--cor-primaria-contraste": contrastePrimaria,
     "--cor-secundaria-contraste": corDeContraste(cores.corSecundaria),
     "--cor-primaria-texto": corParaTexto(cores.corPrimaria),
-    "--primary": cores.corPrimaria,
-    "--primary-foreground": contrastePrimaria,
-    "--ring": corParaTexto(cores.corPrimaria),
+    "--primary": acao,
+    "--primary-foreground": corDeContraste(acao),
+    "--ring": corParaTexto(acao),
   } as CSSProperties;
 }

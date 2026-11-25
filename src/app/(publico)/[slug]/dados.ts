@@ -12,6 +12,11 @@ export type RestaurantePublico = {
   slug: string;
   nome: string;
   logoUrl: string | null;
+  // Capa, uma linha sobre a casa e as redes: a cara do site, tudo opcional.
+  capaUrl: string | null;
+  descricao: string | null;
+  instagram: string | null;
+  facebook: string | null;
   corPrimaria: string;
   corSecundaria: string;
   telefone: string | null;
@@ -35,7 +40,7 @@ export const buscarRestaurantePorSlug = cache(async (slug: string): Promise<Rest
   const { data } = await supabase
     .from("restaurantes_publicos")
     .select(
-      "id, slug, nome, logo_url, cor_primaria, cor_secundaria, telefone, whatsapp, endereco, fuso_horario, horarios, aceita_delivery, pedido_minimo, tempo_estimado_entrega_min, taxa_entrega_modo, taxa_entrega_fixa",
+      "id, slug, nome, logo_url, capa_url, descricao, instagram, facebook, cor_primaria, cor_secundaria, telefone, whatsapp, endereco, fuso_horario, horarios, aceita_delivery, pedido_minimo, tempo_estimado_entrega_min, taxa_entrega_modo, taxa_entrega_fixa",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -46,6 +51,10 @@ export const buscarRestaurantePorSlug = cache(async (slug: string): Promise<Rest
     slug: data.slug,
     nome: data.nome,
     logoUrl: data.logo_url,
+    capaUrl: data.capa_url,
+    descricao: data.descricao,
+    instagram: data.instagram,
+    facebook: data.facebook,
     corPrimaria: data.cor_primaria ?? "#111827",
     corSecundaria: data.cor_secundaria ?? "#f59e0b",
     telefone: data.telefone,
