@@ -1,11 +1,11 @@
 "use client";
 
 import { Check, LoaderCircle, X } from "lucide-react";
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useRef, useState, useSyncExternalStore } from "react";
 
 import { valorCampo } from "@/components/staff/formulario";
 import { corDeContraste } from "@/lib/cores";
-import { FUSOS } from "@/lib/horarios";
+import { FUSOS, fusoDoAparelho } from "@/lib/horarios";
 import { gerarSlug } from "@/lib/slug";
 import { cn } from "@/lib/utils";
 
@@ -25,6 +25,13 @@ export function FormComecar({
   nomeDonoInicial: string;
 }) {
   const [estado, acao] = useActionState(criarRestaurante, undefined);
+  // O fuso do aparelho só existe no navegador: o servidor desenha São Paulo e a hidratação troca
+  // pelo de quem está cadastrando. `useSyncExternalStore` porque é leitura, não efeito.
+  const fusoSugerido = useSyncExternalStore(
+    () => () => {},
+    () => fusoDoAparelho(),
+    () => "America/Sao_Paulo",
+  );
   const [nome, setNome] = useState(nomeInicial);
   const [slug, setSlug] = useState(gerarSlug(nomeInicial));
   const [slugEditado, setSlugEditado] = useState(false);
@@ -200,7 +207,10 @@ export function FormComecar({
           <select
             id="fuso"
             name="fuso"
-            defaultValue={valorCampo(estado, "fuso", "America/Sao_Paulo")}
+            // `key`: o <select> é não controlado, então só pega o valor novo ao remontar — e o
+            // fuso do aparelho só existe depois da hidratação.
+            key={fusoSugerido}
+            defaultValue={valorCampo(estado, "fuso", fusoSugerido)}
             className={cn(classeEntrada, "appearance-auto")}
             {...propsErro(estado, "fuso")}
           >

@@ -8,9 +8,19 @@ import { type Permissao, PERMISSOES_INICIO } from "@/lib/auth/papeis";
 import { formatarBRL } from "@/lib/dinheiro";
 import { dataHoraLocal } from "@/lib/tempo";
 
+import { type Disponibilidade, consultarDisponibilidade } from "../../(publico)/[slug]/dados";
+
 import { ESPERA_TELA_DE_DINHEIRO, carregarResumo, carregarSessaoAberta } from "./caixa/dados";
 import { PrimeirosPassos } from "./primeiros-passos";
 import { UltimasNoites } from "./ultimas-noites";
+
+// O mesmo motivo que o cliente vê, dito para quem pode resolver.
+const MOTIVO_NO_PAINEL: Record<NonNullable<Disponibilidade["motivo"]>, string> = {
+  restaurante_indisponivel: "O restaurante está desativado ou a assinatura está suspensa.",
+  sem_delivery: "O delivery pelo site está desligado.",
+  fora_do_horario: "Está fora do horário de funcionamento que você cadastrou.",
+  caixa_fechado: "O caixa está fechado.",
+};
 
 async function StatusCaixa({ restauranteId, fuso, permissoes }: { restauranteId: string; fuso: string; permissoes: Permissao[] }) {
   const sessao = await carregarSessaoAberta(restauranteId);
@@ -33,8 +43,25 @@ async function StatusCaixa({ restauranteId, fuso, permissoes }: { restauranteId:
     );
   }
 
+  // Caixa aberto não quer dizer site aberto: o horário de funcionamento também fecha a porta, e
+  // esse é o caso em que o dono não desconfia de nada — o painel está todo verde e o cliente
+  // recebe "estamos fechados". Caixa fechado já aparece no cartão de cima, então aqui só o resto.
+  const disponibilidade = await consultarDisponibilidade(restauranteId);
+
   return (
     <Card>
+      {!disponibilidade.aberto && disponibilidade.motivo && disponibilidade.motivo !== "caixa_fechado" ? (
+        <p role="status" className="mx-6 -mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
+          <span>
+            <strong>O site não está recebendo pedidos.</strong> {MOTIVO_NO_PAINEL[disponibilidade.motivo]}
+          </span>
+          {permissoes.includes("restaurante") ? (
+            <Link href="/painel/restaurante" className="font-medium underline underline-offset-4">
+              Ajustar
+            </Link>
+          ) : null}
+        </p>
+      ) : null}
       <CardHeader>
         <CardTitle>Caixa aberto</CardTitle>
         <CardDescription>

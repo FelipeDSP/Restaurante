@@ -38,18 +38,20 @@ export default async function CardapioPage(props: PageProps<"/[slug]">) {
       <PerfilRestaurante restaurante={restaurante} aberto={disponibilidade.aberto} />
       <section aria-label="Informações" className="flex flex-col gap-3 bg-background p-4 shadow-sm">
         <div className="flex flex-wrap items-center gap-2">
-          {restaurante.tempoEstimadoMin ? (
+          {/* Taxa, tempo e mínimo só com o delivery ligado: antes, um restaurante recém-criado
+              mostrava "Entrega grátis" logo acima de "não está fazendo delivery pelo site". */}
+          {restaurante.aceitaDelivery && restaurante.tempoEstimadoMin ? (
             <span className="flex items-center gap-1 text-sm text-muted-foreground">
               <Clock className="size-4" aria-hidden />
               Entrega em ~{restaurante.tempoEstimadoMin} min
             </span>
           ) : null}
-          {restaurante.taxaEntregaModo === "fixa" ? (
+          {restaurante.aceitaDelivery && restaurante.taxaEntregaModo === "fixa" ? (
             <span className="text-sm text-muted-foreground">
               {restaurante.taxaEntregaFixa > 0 ? `Entrega ${formatarBRL(restaurante.taxaEntregaFixa)}` : "Entrega grátis"}
             </span>
           ) : null}
-          {restaurante.pedidoMinimo > 0 ? (
+          {restaurante.aceitaDelivery && restaurante.pedidoMinimo > 0 ? (
             <span className="text-sm text-muted-foreground">Pedido mínimo {formatarBRL(restaurante.pedidoMinimo)}</span>
           ) : null}
           <span className="ml-auto">

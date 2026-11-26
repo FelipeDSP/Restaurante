@@ -50,6 +50,18 @@ export const FUSOS = [
   { valor: "America/Rio_Branco", rotulo: "Rio Branco (UTC−5)" },
 ] as const;
 
+// Fuso do aparelho de quem está cadastrando, quando é um dos nossos. O padrão fixo em São Paulo
+// deixava o dono de Rondônia (o mercado de hoje) com os horários e o resumo do caixa uma hora
+// errados, sem aviso nenhum — e errado em silêncio é o pior tipo de errado num fechamento.
+export function fusoDoAparelho(padrao = "America/Sao_Paulo"): string {
+  try {
+    const doAparelho = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return FUSOS.some((f) => f.valor === doAparelho) ? doAparelho : padrao;
+  } catch {
+    return padrao;
+  }
+}
+
 export const fusoSchema = z.enum(FUSOS.map((f) => f.valor) as [string, ...string[]], {
   error: "Fuso horário inválido.",
 });
