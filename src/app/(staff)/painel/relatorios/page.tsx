@@ -1,7 +1,26 @@
-import { Ban, Clock, Crown, Receipt, ShoppingBag, Star, TrendingUp, Utensils, Wallet } from "lucide-react";
+import { Ban, Clock, Crown, Receipt, Star, TrendingUp, Utensils, Wallet } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import {
+  BarraCelula,
+  Barras,
+  COR_OUTROS,
+  corFixa,
+  CORES,
+  Etiqueta,
+  type Fatia,
+  FORMAS,
+  Kpi,
+  Linha,
+  MARCA,
+  ORIGENS,
+  Painel,
+  posicaoFixa,
+  Rosca,
+  variacao,
+  Vazio,
+} from "@/components/staff/graficos";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { exigirPermissao } from "@/lib/auth/dal";
@@ -12,17 +31,10 @@ import { cn } from "@/lib/utils";
 
 import { BaixarCsv } from "./baixar-csv";
 import { carregarRelatorio, dataCurta, PERIODOS, periodoAnterior, resolverPeriodo } from "./dados";
-import { BarraCelula, Barras, COR_OUTROS, CORES, type Fatia, Kpi, Linha, MARCA, Painel, Rosca, variacao, Vazio } from "./graficos";
 
 export const metadata: Metadata = { title: "Relatórios" };
 
 const DIAS_SEMANA = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
-
-// Ordem fixa das fatias: a mesma coisa tem sempre a mesma cor (CORES na mesma posição).
-const ORIGENS = ["mesa", "delivery", "balcao"];
-const FORMAS = ["pix", "dinheiro", "credito", "debito", "outro"];
-const posicao = (lista: string[], valor: string) => (lista.includes(valor) ? lista.indexOf(valor) : lista.length);
-const corFixa = (lista: string[], valor: string) => CORES[posicao(lista, valor) % CORES.length];
 
 const porcento =(parte: number, todo: number) => (todo ? `${Math.round((parte / todo) * 100)}%` : "0%");
 const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
@@ -198,7 +210,7 @@ export default async function RelatoriosPage(props: PageProps<"/painel/relatorio
                   centro={formatarBRL(r.vendido)}
                   rotuloCentro="vendido"
                   fatias={[...r.por_origem]
-                    .sort((a, b) => posicao(ORIGENS, a.origem) - posicao(ORIGENS, b.origem))
+                    .sort((a, b) => posicaoFixa(ORIGENS, a.origem) - posicaoFixa(ORIGENS, b.origem))
                     .map((o) => ({
                       chave: o.origem,
                       rotulo: `${nomeOrigem(o.origem)} · ${o.pedidos}`,
@@ -217,7 +229,7 @@ export default async function RelatoriosPage(props: PageProps<"/painel/relatorio
                   centro={formatarBRL(r.recebido)}
                   rotuloCentro="recebido"
                   fatias={[...r.por_forma]
-                    .sort((a, b) => posicao(FORMAS, a.forma) - posicao(FORMAS, b.forma))
+                    .sort((a, b) => posicaoFixa(FORMAS, a.forma) - posicaoFixa(FORMAS, b.forma))
                     .map((f) => ({ chave: f.forma, rotulo: nomeForma(f.forma), valor: f.valor, texto: formatarBRL(f.valor), cor: corFixa(FORMAS, f.forma) }))}
                 />
               )}
@@ -457,16 +469,6 @@ function fatiasHorario(horas: { hora: number; pedidos: number }[]): Fatia[] {
     fatias.push({ chave: "outros", rotulo: "Outros horários", valor: pedidos, texto: plural(pedidos, "pedido", "pedidos"), cor: COR_OUTROS });
   }
   return fatias;
-}
-
-function Etiqueta({ rotulo, valor }: { rotulo: string; valor: string }) {
-  return (
-    <li className="flex items-center gap-1.5 rounded-full border bg-background px-3 py-1">
-      <ShoppingBag className="size-3.5 text-muted-foreground" aria-hidden />
-      <span className="text-muted-foreground">{rotulo}</span>
-      <span className="font-medium tabular-nums">{valor}</span>
-    </li>
-  );
 }
 
 function Iniciais({ nome }: { nome: string }) {

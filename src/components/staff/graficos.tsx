@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { ArrowDownRight, ArrowUpRight } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -15,6 +15,13 @@ export const MARCA = "var(--cor-primaria)";
 export const CORES = ["#2f6fd0", "#e8743b", "#17a88b", "#e0a21b", "#d9669b", "#4c9a2a", "#6a57c8", "#d64545"];
 export const COR_OUTROS = "#9ca3af";
 
+// Ordem fixa das fatias: a mesma coisa tem sempre a mesma cor, no mesmo período e entre telas
+// (o Pix é azul no Início e nos Relatórios).
+export const ORIGENS = ["mesa", "delivery", "balcao"];
+export const FORMAS = ["pix", "dinheiro", "credito", "debito", "outro"];
+export const posicaoFixa = (lista: string[], valor: string) => (lista.includes(valor) ? lista.indexOf(valor) : lista.length);
+export const corFixa = (lista: string[], valor: string) => CORES[posicaoFixa(lista, valor) % CORES.length];
+
 // Variação em relação ao período anterior; null quando não há base para comparar.
 export function variacao(atual: number, anterior: number | null): number | null {
   if (anterior === null || anterior <= 0) return null;
@@ -28,6 +35,7 @@ export function Kpi({
   icone: Icone,
   destaque = false,
   delta,
+  deltaDica = "Em relação ao período anterior do mesmo tamanho",
   quedaEhBoa = false,
 }: {
   rotulo: string;
@@ -37,6 +45,9 @@ export function Kpi({
   // Cartão principal: preenchido com a cor do restaurante.
   destaque?: boolean;
   delta: number | null;
+  // Com o que o delta se compara: os relatórios usam o período anterior, o Início usa as últimas
+  // noites. Vira o `title` da pílula e o texto para leitor de tela.
+  deltaDica?: string;
   quedaEhBoa?: boolean;
 }) {
   return (
@@ -67,11 +78,11 @@ export function Kpi({
               destaque ? "bg-white/20" : "bg-muted text-foreground",
               delta !== 0 && (delta > 0) === quedaEhBoa && "opacity-70",
             )}
-            title="Em relação ao período anterior do mesmo tamanho"
+            title={deltaDica}
           >
             {delta > 0 ? <ArrowUpRight className="size-3.5" aria-hidden /> : delta < 0 ? <ArrowDownRight className="size-3.5" aria-hidden /> : null}
             {delta > 0 ? "+" : ""}
-            {delta}%<span className="sr-only"> em relação ao período anterior</span>
+            {delta}%<span className="sr-only"> {deltaDica}</span>
           </span>
         ) : null}
         {detalhe ? <span>{detalhe}</span> : null}
@@ -92,6 +103,17 @@ export function Painel({ titulo, acao, children, className }: { titulo: string; 
       </div>
       {children}
     </section>
+  );
+}
+
+// Número secundário do período (serviço, couvert, cupons...), numa pílula ao lado dos KPIs.
+export function Etiqueta({ rotulo, valor }: { rotulo: string; valor: string }) {
+  return (
+    <li className="flex items-center gap-1.5 rounded-full border bg-background px-3 py-1">
+      <ShoppingBag className="size-3.5 text-muted-foreground" aria-hidden />
+      <span className="text-muted-foreground">{rotulo}</span>
+      <span className="font-medium tabular-nums">{valor}</span>
+    </li>
   );
 }
 
@@ -145,13 +167,32 @@ export function Linha({
           const bolinha = (
             <span className="block size-3 rounded-full border-2 border-[var(--cor-primaria)] bg-background transition-transform group-hover:scale-150" />
           );
+          // A dica do navegador (`title`) demora um segundo para abrir e não existe no celular.
+          // Esta sai na hora, no toque (o ponto recebe foco) e no teclado.
+          //
+          // Nas pontas ela encosta na borda do painel: o primeiro ponto alinha a dica pela
+          // esquerda e o último pela direita, em vez de centralizar e vazar para fora.
+          const lado = i === 0 ? "left-0" : i === n - 1 ? "right-0" : "left-1/2 -translate-x-1/2";
+          const balao = (
+            <span
+              className={cn(
+                "pointer-events-none absolute bottom-full z-10 mb-2 rounded-lg bg-foreground px-2 py-1 text-xs font-medium whitespace-nowrap text-background opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100",
+                lado,
+              )}
+              aria-hidden
+            >
+              {dica}
+            </span>
+          );
           return p.href ? (
-            <Link key={p.chave} href={p.href} className={classe} style={estilo} title={dica} aria-label={dica}>
+            <Link key={p.chave} href={p.href} className={classe} style={estilo} aria-label={dica}>
+              {balao}
               {bolinha}
             </Link>
           ) : (
-            <span key={p.chave} className={classe} style={estilo} title={dica}>
+            <span key={p.chave} className={classe} style={estilo} tabIndex={0}>
               <span className="sr-only">{dica}</span>
+              {balao}
               {bolinha}
             </span>
           );

@@ -1,21 +1,31 @@
-import { Bike, Boxes, ChevronRight, Clock, type LucideIcon, MessageCircle, Printer, ReceiptText } from "lucide-react";
+import { Bike, ChevronRight, Clock, DoorClosed, type LucideIcon, MessageCircle, Printer, ReceiptText } from "lucide-react";
 import Link from "next/link";
 
 import type { Disponibilidade } from "@/app/(publico)/[slug]/dados";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Permissao } from "@/lib/auth/papeis";
+import { cn } from "@/lib/utils";
 
 import type { Pendencias } from "./pendencias";
 
-type Linha = { chave: string; href: string | null; icone: LucideIcon; texto: string; urgente?: boolean };
+type Linha = {
+  chave: string;
+  href: string | null;
+  icone: LucideIcon;
+  // O número em destaque, lido antes do texto. Nulo quando a pendência não se conta (o site fora
+  // do horário é uma coisa só).
+  quantidade: number | null;
+  titulo: string;
+  detalhe: string;
+  urgente?: boolean;
+};
 
-const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
+const plural = (n: number, um: string, varios: string) => (n === 1 ? um : varios);
 
 // Por que o site não recebe pedido, dito para quem pode resolver.
 const MOTIVO_DO_SITE: Record<NonNullable<Disponibilidade["motivo"]>, string> = {
   restaurante_indisponivel: "O restaurante está desativado ou a assinatura está suspensa.",
   sem_delivery: "O delivery pelo site está desligado.",
-  fora_do_horario: "Está fora do horário de funcionamento que você cadastrou.",
+  fora_do_horario: "Está fora do horário que você cadastrou.",
   caixa_fechado: "O caixa está fechado.",
 };
 
@@ -37,7 +47,9 @@ export function PrecisaDeVoce({
       chave: "delivery",
       href: "/painel/delivery",
       icone: Bike,
-      texto: `${plural(pendencias.deliveryNovos, "pedido", "pedidos")} de delivery esperando aceite`,
+      quantidade: pendencias.deliveryNovos,
+      titulo: `${plural(pendencias.deliveryNovos, "pedido", "pedidos")} de delivery sem aceite`,
+      detalhe: "O cliente está esperando a confirmação",
       urgente: true,
     });
   }
@@ -46,7 +58,9 @@ export function PrecisaDeVoce({
       chave: "conta",
       href: "/painel/comandas",
       icone: ReceiptText,
-      texto: `${plural(pendencias.contaPedida, "mesa pediu", "mesas pediram")} a conta`,
+      quantidade: pendencias.contaPedida,
+      titulo: `${plural(pendencias.contaPedida, "mesa pediu", "mesas pediram")} a conta`,
+      detalhe: "Alguém está com a mão levantada no salão",
       urgente: true,
     });
   }
@@ -55,7 +69,9 @@ export function PrecisaDeVoce({
       chave: "mensagens",
       href: "/painel/conversas",
       icone: MessageCircle,
-      texto: `${plural(pendencias.mensagens, "mensagem", "mensagens")} de cliente sem resposta`,
+      quantidade: pendencias.mensagens,
+      titulo: `${plural(pendencias.mensagens, "mensagem", "mensagens")} de cliente sem resposta`,
+      detalhe: "Na conversa do pedido de delivery",
     });
   }
   if (pendencias.impressao > 0) {
@@ -63,10 +79,24 @@ export function PrecisaDeVoce({
       chave: "impressao",
       href: "/painel/impressoras",
       icone: Printer,
-      texto: `${plural(pendencias.impressao, "impressão não saiu", "impressões não saíram")}`,
+      quantidade: pendencias.impressao,
+      titulo: `${plural(pendencias.impressao, "impressão não saiu", "impressões não saíram")}`,
+      detalhe: "Confira o computador e a impressora",
     });
   }
-  // Site fechado: o caixa fechado já tem cartão próprio logo abaixo, não se repete aqui.
+  // Caixa fechado não é urgente (de dia é o estado normal), mas é o que explica por que o site
+  // não recebe pedido e por que não dá para abrir mesa.
+  if (!caixaAberto) {
+    linhas.push({
+      chave: "caixa",
+      href: permissoes.includes("caixa_operar") ? "/painel/caixa" : null,
+      icone: DoorClosed,
+      quantidade: null,
+      titulo: "Caixa fechado",
+      detalhe: "Os pedidos do site e as mesas só abrem com o caixa aberto",
+    });
+  }
+  // Site fechado: com o caixa fechado o motivo já está dito na linha acima, não se repete.
   const site = pendencias.site;
   if (!site.aberto && site.motivo && site.motivo !== "caixa_fechado" && caixaAberto) {
     linhas.push({
@@ -75,47 +105,65 @@ export function PrecisaDeVoce({
       // para uma tela que ele não abre é pior do que só informar.
       href: permissoes.includes("restaurante") ? "/painel/restaurante" : null,
       icone: Clock,
-      texto: `O site não está recebendo pedidos. ${MOTIVO_DO_SITE[site.motivo]}`,
+      quantidade: null,
+      titulo: "O site não está recebendo pedidos",
+      detalhe: MOTIVO_DO_SITE[site.motivo],
       urgente: true,
     });
   }
-  if (pendencias.estoque > 0) {
-    linhas.push({
-      chave: "estoque",
-      href: "/painel/estoque",
-      icone: Boxes,
-      texto: `${plural(pendencias.estoque, "item acabando", "itens acabando")} no estoque`,
-    });
-  }
-
   if (linhas.length === 0) return null;
 
+  const urgentes = linhas.filter((l) => l.urgente).length;
+
   return (
-    <Card className="border-amber-300 bg-amber-50">
-      <CardHeader>
-        <CardTitle>Precisa de você</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-1">
+    <section
+      aria-label="Precisa de você"
+      className="flex min-w-0 flex-col gap-4 rounded-2xl border border-amber-300 bg-amber-50 p-4 shadow-sm md:p-5"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-semibold text-amber-950">Precisa de você</h2>
+        {urgentes > 0 ? (
+          <span className="rounded-full bg-red-600 px-2.5 py-0.5 text-xs font-semibold text-white">
+            {urgentes} {plural(urgentes, "urgente", "urgentes")}
+          </span>
+        ) : null}
+      </div>
+      {/* Duas colunas no computador: cinco pendências numa coluna só viravam uma lista comprida
+          que empurrava os números da noite para fora da tela. */}
+      <ul className="grid gap-2 lg:grid-cols-2">
         {linhas.map((linha) => {
           const miolo = (
             <>
-              <linha.icone className={`size-4 shrink-0 ${linha.urgente ? "text-red-700" : "text-amber-700"}`} aria-hidden />
-              <span className={`min-w-0 flex-1 ${linha.urgente ? "font-semibold text-red-900" : "text-amber-900"}`}>{linha.texto}</span>
-              {linha.href ? <ChevronRight className="size-4 shrink-0 text-amber-700" aria-hidden /> : null}
+              <span
+                className={cn("grid size-10 shrink-0 place-items-center rounded-xl text-white", linha.urgente ? "bg-red-600" : "bg-amber-500")}
+                aria-hidden
+              >
+                <linha.icone className="size-5" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className={cn("block truncate font-semibold", linha.urgente ? "text-red-900" : "text-amber-950")}>
+                  {linha.quantidade !== null ? <span className="tabular-nums">{linha.quantidade} </span> : null}
+                  {linha.titulo}
+                </span>
+                <span className="block truncate text-xs text-amber-900/70">{linha.detalhe}</span>
+              </span>
+              {linha.href ? <ChevronRight className="size-5 shrink-0 text-amber-700" aria-hidden /> : null}
             </>
           );
-          const classe = "-mx-2 flex min-h-11 items-center gap-3 rounded-lg px-2 text-sm";
-          return linha.href ? (
-            <Link key={linha.chave} href={linha.href} className={`${classe} hover:bg-amber-100/70`}>
-              {miolo}
-            </Link>
-          ) : (
-            <div key={linha.chave} className={classe}>
-              {miolo}
-            </div>
+          const classe = "flex min-h-11 items-center gap-3 rounded-xl bg-white/70 p-2.5 text-sm";
+          return (
+            <li key={linha.chave} className="min-w-0">
+              {linha.href ? (
+                <Link href={linha.href} className={cn(classe, "hover:bg-white")}>
+                  {miolo}
+                </Link>
+              ) : (
+                <div className={classe}>{miolo}</div>
+              )}
+            </li>
           );
         })}
-      </CardContent>
-    </Card>
+      </ul>
+    </section>
   );
 }

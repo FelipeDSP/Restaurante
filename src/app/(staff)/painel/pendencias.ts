@@ -10,11 +10,14 @@ import { createClient } from "@/lib/supabase/server";
 //
 // Cada contagem usa `head: true` — só o total, sem trazer linha — e só roda para quem tem a
 // permissão de resolver aquilo: quem não pode agir não precisa carregar a cobrança na tela.
+export type ItemBaixo = { id: string; nome: string; unidade: string; saldo: number; minimo: number };
+
 export type Pendencias = {
   deliveryNovos: number;
   mensagens: number;
   contaPedida: number;
-  estoque: number;
+  // Lista, não contagem: o Início também desenha quais itens são, logo abaixo.
+  estoque: ItemBaixo[];
   impressao: number;
   site: Disponibilidade;
 };
@@ -52,20 +55,22 @@ async function mesasPedindoAConta(restauranteId: string): Promise<number> {
   return count ?? 0;
 }
 
-// Itens que acabaram, ficaram negativos ou passaram do mínimo. Traz só saldo e mínimo: a lista
-// pode ter centenas de itens e aqui só o número importa.
-async function estoqueAcabando(restauranteId: string): Promise<number> {
+// Itens que acabaram, ficaram negativos ou passaram do mínimo. A conta é feita aqui e não no
+// banco porque "abaixo do mínimo" compara duas colunas da mesma linha, o que o filtro do
+// PostgREST não faz; a lista de itens de um restaurante é curta.
+async function estoqueAcabando(restauranteId: string): Promise<ItemBaixo[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("estoque_itens")
-    .select("saldo, minimo")
+    .select("id, nome, unidade, saldo, minimo")
     .eq("restaurante_id", restauranteId)
-    .eq("ativo", true);
-  return (data ?? []).filter((i) => {
-    const saldo = Number(i.saldo);
-    const minimo = Number(i.minimo);
-    return saldo <= 0 || (minimo > 0 && saldo <= minimo);
-  }).length;
+    .eq("ativo", true)
+    .order("nome");
+  return (data ?? [])
+    .map((i) => ({ id: i.id, nome: i.nome, unidade: i.unidade, saldo: Number(i.saldo), minimo: Number(i.minimo) }))
+    .filter((i) => i.saldo <= 0 || (i.minimo > 0 && i.saldo <= i.minimo))
+    // O que acabou vem antes do que só está baixo.
+    .sort((a, b) => a.saldo - b.saldo);
 }
 
 export async function carregarPendencias(restauranteId: string, permissoes: readonly Permissao[]): Promise<Pendencias> {
@@ -77,7 +82,7 @@ export async function carregarPendencias(restauranteId: string, permissoes: read
     delivery ? deliveryEsperandoAceite(restauranteId) : 0,
     delivery ? mensagensSemResposta(restauranteId) : 0,
     mesas ? mesasPedindoAConta(restauranteId) : 0,
-    pode("estoque") ? estoqueAcabando(restauranteId) : 0,
+    pode("estoque") ? estoqueAcabando(restauranteId) : [],
     contarImpressoesComErro(restauranteId),
     consultarDisponibilidade(restauranteId),
   ]);
