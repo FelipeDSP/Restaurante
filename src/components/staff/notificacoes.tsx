@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, BellOff, Check, Smartphone, Volume2 } from "lucide-react";
+import { Bell, BellOff, Smartphone, Volume2 } from "lucide-react";
 import { useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 
@@ -14,8 +14,7 @@ import {
   definirPreferenciaDeSom,
   novoContextoDeSom,
   type PreferenciaDeSom,
-  SONS,
-  type Som,
+  prepararSom,
   tocarAlerta,
   type Volume,
   VOLUMES,
@@ -70,12 +69,7 @@ export function Notificacoes({ som, avisos, chavePublica }: { som: PreferenciaDe
   const [escolha, setEscolha] = useState<PreferenciaDeSom & Avisos>({ ...som, ...avisos });
   const { pendente, executar } = useAcao();
   const [ocupado, setOcupado] = useState(false);
-  const mudou =
-    escolha.som !== avisos.som ||
-    escolha.vibrar !== avisos.vibrar ||
-    escolha.toque !== som.toque ||
-    escolha.volume !== som.volume ||
-    escolha.vezes !== som.vezes;
+  const mudou = escolha.som !== avisos.som || escolha.vibrar !== avisos.vibrar || escolha.volume !== som.volume;
 
   const doAparelho = useSyncExternalStore(
     () => () => {},
@@ -87,6 +81,7 @@ export function Notificacoes({ som, avisos, chavePublica }: { som: PreferenciaDe
 
   const ouvir = (p: PreferenciaDeSom) => {
     const contexto = novoContextoDeSom();
+    prepararSom(contexto);
     void contexto.resume().then(() => tocarAlerta(contexto, p));
   };
   const mudar = (parte: Partial<PreferenciaDeSom & Avisos>) => {
@@ -225,60 +220,23 @@ export function Notificacoes({ som, avisos, chavePublica }: { som: PreferenciaDe
           </p>
         </div>
 
-        {/* Qual toque: some junto com o som, para não oferecer escolha que não vale. */}
+        {/* Volume: o único ajuste que sobra, e o que mais importa numa cozinha barulhenta. */}
         {escolha.som ? (
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
-              <span className="text-sm font-medium">Toque</span>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Toque">
-                {(Object.keys(SONS) as Som[]).map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    role="radio"
-                    aria-checked={escolha.toque === s}
-                    className={opcao(escolha.toque === s)}
-                    onClick={() => mudar({ toque: s })}
-                  >
-                    {escolha.toque === s ? <Check className="size-4" aria-hidden /> : null}
-                    {SONS[s]}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="flex flex-col gap-2">
-              <span className="text-sm font-medium">Volume</span>
-              <div className="grid grid-cols-3 gap-2 sm:max-w-sm" role="radiogroup" aria-label="Volume">
-                {(Object.keys(VOLUMES) as Volume[]).map((v) => (
-                  <button
-                    key={v}
-                    type="button"
-                    role="radio"
-                    aria-checked={escolha.volume === v}
-                    className={opcao(escolha.volume === v)}
-                    onClick={() => mudar({ volume: v })}
-                  >
-                    {NOMES_VOLUME[v]}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="flex flex-col gap-2">
-              <span className="text-sm font-medium">Tocar</span>
-              <div className="grid grid-cols-3 gap-2 sm:max-w-sm" role="radiogroup" aria-label="Quantas vezes">
-                {([1, 2, 3] as const).map((n) => (
-                  <button
-                    key={n}
-                    type="button"
-                    role="radio"
-                    aria-checked={escolha.vezes === n}
-                    className={opcao(escolha.vezes === n)}
-                    onClick={() => mudar({ vezes: n })}
-                  >
-                    {n === 1 ? "1 vez" : `${n} vezes`}
-                  </button>
-                ))}
-              </div>
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium">Volume</span>
+            <div className="grid grid-cols-3 gap-2 sm:max-w-sm" role="radiogroup" aria-label="Volume">
+              {(Object.keys(VOLUMES) as Volume[]).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  role="radio"
+                  aria-checked={escolha.volume === v}
+                  className={opcao(escolha.volume === v)}
+                  onClick={() => mudar({ volume: v })}
+                >
+                  {NOMES_VOLUME[v]}
+                </button>
+              ))}
             </div>
           </div>
         ) : null}
@@ -298,7 +256,7 @@ export function Notificacoes({ som, avisos, chavePublica }: { som: PreferenciaDe
               executar(
                 () => salvarNotificacoes(escolha),
                 () => {
-                  definirPreferenciaDeSom({ toque: escolha.toque, volume: escolha.volume, vezes: escolha.vezes });
+                  definirPreferenciaDeSom({ volume: escolha.volume });
                   definirAvisos({ som: escolha.som, vibrar: escolha.vibrar });
                 },
               )

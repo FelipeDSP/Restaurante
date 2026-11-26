@@ -9,7 +9,7 @@ import { falha, falhaValidacao, mensagemErroBanco, type ResultadoAcao, sucesso }
 import { chavesDoLogin, esperaDoLogin, registrarLogin, textoEspera } from "@/lib/auth/bloqueio";
 import { obterContexto } from "@/lib/auth/dal";
 import { consumirLimite } from "@/lib/limite-taxa";
-import { SONS, VOLUMES } from "@/lib/som";
+import { VOLUMES } from "@/lib/som";
 import { createClient } from "@/lib/supabase/server";
 import { origemDoSite } from "@/lib/url";
 
@@ -113,18 +113,16 @@ export async function salvarNotificacoes(escolha: unknown): Promise<ResultadoAca
   if (!(await exigirMembro())) return falha("Entre de novo para mudar as notificações.");
   const dados = z
     .object({
-      toque: z.enum(Object.keys(SONS) as [keyof typeof SONS]),
-      volume: z.enum(Object.keys(VOLUMES) as [keyof typeof VOLUMES]),
-      vezes: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+      volume: z.enum(Object.keys(VOLUMES) as [string, ...string[]]),
       som: z.boolean(),
       vibrar: z.boolean(),
     })
     .safeParse(escolha);
   if (!dados.success) return falha("Escolha as notificações de novo.");
 
-  const { som, vibrar, ...toque } = dados.data;
+  const { som, vibrar, volume } = dados.data;
   const supabase = await createClient();
-  const { error } = await supabase.auth.updateUser({ data: { som: toque, avisos: { som, vibrar } } });
+  const { error } = await supabase.auth.updateUser({ data: { som: { volume }, avisos: { som, vibrar } } });
   if (error) return falha("Não foi possível salvar. Tente de novo.");
   // A sessão nova já leva a escolha (o painel lê dela).
   await supabase.auth.refreshSession();

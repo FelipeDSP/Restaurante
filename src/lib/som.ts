@@ -1,40 +1,27 @@
-// Sons dos avisos (pedido novo, cozinha, garçom), gerados no navegador: sem arquivo de áudio.
-// Em "Meu perfil" > Notificações cada pessoa escolhe o toque, o volume, quantas vezes toca e se
-// quer som e vibração (guardado na conta, vale em qualquer aparelho em que ela entrar).
-// <PreferenciaSom> no layout aplica as escolhas aqui.
+// Som do aviso: um toque só, igual ao que o cliente já conhece dos apps de delivery. O arquivo é
+// servido pelo próprio app (`/sons/aviso.mp3`), nunca por CDN de terceiro — o aviso da cozinha não
+// pode depender de um domínio de fora.
+//
+// Se o arquivo não carregar (internet caiu no meio do serviço, cache vazio), cai num bipe gerado
+// aqui mesmo. É a única razão de o sintetizador continuar existindo: sem ele, o aparelho ficaria
+// mudo justamente quando a rede falha.
+//
+// Toca UMA vez por aviso. Insistir é trabalho de quem chama: o chamado do garçom repete até o
+// "Vou", e o delivery sem aceite volta a avisar na conferência seguinte.
 
 import { AVISOS_PADRAO, type Avisos } from "@/lib/avisos";
 
-export const SONS = {
-  bipe: "Bipe",
-  campainha: "Campainha",
-  sino: "Sino de balcão",
-  telefone: "Telefone",
-  alarme: "Alarme",
-  alegre: "Alegre",
-} as const;
-export type Som = keyof typeof SONS;
+const ARQUIVO = "/sons/aviso.mp3";
 
 export const VOLUMES = { baixo: 0.3, medio: 0.6, alto: 1 } as const;
 export type Volume = keyof typeof VOLUMES;
 
-// `toque` é qual som; se toca ou não é escolha à parte, em `Avisos`.
-export type PreferenciaDeSom = { toque: Som; volume: Volume; vezes: 1 | 2 | 3 };
-export const SOM_PADRAO: PreferenciaDeSom = { toque: "bipe", volume: "alto", vezes: 2 };
-
-function escolherToque(valor: unknown): Som {
-  return typeof valor === "string" && valor in SONS ? (valor as Som) : SOM_PADRAO.toque;
-}
+export type PreferenciaDeSom = { volume: Volume };
+export const SOM_PADRAO: PreferenciaDeSom = { volume: "alto" };
 
 export function lerPreferenciaDeSom(valor: unknown): PreferenciaDeSom {
   const v = (valor && typeof valor === "object" ? valor : {}) as Record<string, unknown>;
-  return {
-    // `v.som` é como o toque se chamava antes de "som" virar o liga/desliga: quem já tinha
-    // escolhido um toque não volta para o Bipe.
-    toque: escolherToque(v.toque ?? v.som),
-    volume: typeof v.volume === "string" && v.volume in VOLUMES ? (v.volume as Volume) : SOM_PADRAO.volume,
-    vezes: v.vezes === 1 || v.vezes === 2 || v.vezes === 3 ? v.vezes : SOM_PADRAO.vezes,
-  };
+  return { volume: typeof v.volume === "string" && v.volume in VOLUMES ? (v.volume as Volume) : SOM_PADRAO.volume };
 }
 
 let preferencia: PreferenciaDeSom = SOM_PADRAO;
@@ -55,83 +42,71 @@ export function avisar(contexto: AudioContext | null, vibracao?: number[]) {
   if (avisos.som && contexto?.state === "running") tocarAlerta(contexto);
 }
 
-type Nota = { freq: number; inicio: number; duracao: number; tipo?: OscillatorType; pico?: number };
-
-// Cada som é uma lista de notas (segundos a partir do começo) e sua duração total.
-const MELODIAS: Record<Som, { notas: Nota[]; duracao: number }> = {
-  bipe: {
-    notas: [
-      { freq: 880, inicio: 0, duracao: 0.2 },
-      { freq: 880, inicio: 0.25, duracao: 0.2 },
-      { freq: 1175, inicio: 0.5, duracao: 0.2 },
-    ],
-    duracao: 0.75,
-  },
-  campainha: {
-    notas: [
-      { freq: 659, inicio: 0, duracao: 0.7, tipo: "triangle" },
-      { freq: 523, inicio: 0.45, duracao: 0.9, tipo: "triangle" },
-    ],
-    duracao: 1.4,
-  },
-  sino: {
-    notas: [
-      { freq: 1568, inicio: 0, duracao: 1.2 },
-      { freq: 3136, inicio: 0, duracao: 0.6, pico: 0.25 },
-      { freq: 1568, inicio: 0.35, duracao: 1.2 },
-      { freq: 3136, inicio: 0.35, duracao: 0.6, pico: 0.25 },
-    ],
-    duracao: 1.6,
-  },
-  telefone: {
-    notas: [0, 0.1, 0.2, 0.3, 0.6, 0.7, 0.8, 0.9].flatMap((t) => [
-      { freq: 440, inicio: t, duracao: 0.08, tipo: "square" as const, pico: 0.35 },
-      { freq: 480, inicio: t, duracao: 0.08, tipo: "square" as const, pico: 0.35 },
-    ]),
-    duracao: 1.1,
-  },
-  alarme: {
-    notas: [0, 0.15, 0.3, 0.45, 0.6, 0.75].map((t, i) => ({
-      freq: i % 2 ? 660 : 990,
-      inicio: t,
-      duracao: 0.14,
-      tipo: "sawtooth" as const,
-      pico: 0.45,
-    })),
-    duracao: 0.95,
-  },
-  alegre: {
-    notas: [523, 659, 784, 1047].map((freq, i) => ({ freq, inicio: i * 0.11, duracao: i === 3 ? 0.45 : 0.18, tipo: "triangle" as const })),
-    duracao: 0.85,
-  },
-};
-
-function tocarNotas(contexto: AudioContext, som: Som, volume: number, inicio: number) {
-  // Compressor: volume alto sem estourar quando as notas se somam.
+// Reserva, quando o arquivo não vem: três notas curtas geradas no navegador. Não precisa ser
+// bonito, precisa existir.
+function bipeDeReserva(contexto: AudioContext, volume: number) {
   const saida = contexto.createDynamicsCompressor();
   saida.connect(contexto.destination);
-  for (const n of MELODIAS[som].notas) {
+  const notas = [
+    { freq: 880, inicio: 0 },
+    { freq: 880, inicio: 0.25 },
+    { freq: 1175, inicio: 0.5 },
+  ];
+  for (const n of notas) {
     const oscilador = contexto.createOscillator();
     const ganho = contexto.createGain();
-    oscilador.type = n.tipo ?? "sine";
     oscilador.frequency.value = n.freq;
-    const t0 = inicio + n.inicio;
+    const t0 = contexto.currentTime + n.inicio;
     ganho.gain.setValueAtTime(0.0001, t0);
-    ganho.gain.exponentialRampToValueAtTime(Math.max(0.0002, (n.pico ?? 0.7) * volume), t0 + 0.015);
-    ganho.gain.exponentialRampToValueAtTime(0.0001, t0 + n.duracao);
+    ganho.gain.exponentialRampToValueAtTime(Math.max(0.0002, 0.7 * volume), t0 + 0.015);
+    ganho.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.2);
     oscilador.connect(ganho).connect(saida);
     oscilador.start(t0);
-    oscilador.stop(t0 + n.duracao + 0.02);
+    oscilador.stop(t0 + 0.22);
   }
 }
 
-// Toca o som escolhido pela pessoa (ou o informado, para o "Ouvir" do perfil).
+// O arquivo é baixado e decodificado uma vez só; a partir daí tocar é instantâneo. `null` marca
+// que já tentamos e não deu, para não repetir a busca a cada aviso.
+let amostra: AudioBuffer | null | undefined;
+let baixando: Promise<void> | null = null;
+
+async function carregarAmostra(contexto: AudioContext) {
+  if (amostra !== undefined || baixando) return baixando ?? undefined;
+  baixando = (async () => {
+    try {
+      const resposta = await fetch(ARQUIVO, { cache: "force-cache" });
+      if (!resposta.ok) throw new Error(String(resposta.status));
+      amostra = await contexto.decodeAudioData(await resposta.arrayBuffer());
+    } catch {
+      amostra = null;
+    } finally {
+      baixando = null;
+    }
+  })();
+  return baixando;
+}
+
+// Deixa o som pronto antes de precisar dele: o primeiro aviso não pode esperar um download.
+export function prepararSom(contexto: AudioContext) {
+  void carregarAmostra(contexto);
+}
+
+// Toca o aviso uma vez, no volume escolhido pela pessoa (ou no informado, para o "Ouvir").
 export function tocarAlerta(contexto: AudioContext, escolha: PreferenciaDeSom = preferencia) {
-  const melodia = MELODIAS[escolha.toque];
   const volume = VOLUMES[escolha.volume];
-  for (let i = 0; i < escolha.vezes; i++) {
-    tocarNotas(contexto, escolha.toque, volume, contexto.currentTime + i * (melodia.duracao + 0.35));
+  if (amostra) {
+    const fonte = contexto.createBufferSource();
+    const ganho = contexto.createGain();
+    fonte.buffer = amostra;
+    ganho.gain.value = volume;
+    fonte.connect(ganho).connect(contexto.destination);
+    fonte.start();
+    return;
   }
+  bipeDeReserva(contexto, volume);
+  // Ainda não tentou baixar (ou o contexto acabou de ser liberado): tenta para o próximo aviso.
+  if (amostra === undefined) void carregarAmostra(contexto);
 }
 
 // O iPhone (e alguns Android) suspende o áudio quando a tela bloqueia ou o app vai para segundo plano,
@@ -150,6 +125,8 @@ function retomarSom() {
 export function novoContextoDeSom(): AudioContext {
   const contexto = new AudioContext();
   contextos.add(contexto);
+  // Baixa e decodifica já: o primeiro aviso da noite não pode esperar um download.
+  prepararSom(contexto);
   if (!ouvindo) {
     ouvindo = true;
     document.addEventListener("visibilitychange", retomarSom);
