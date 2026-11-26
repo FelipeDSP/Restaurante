@@ -1,6 +1,6 @@
 "use client";
 
-import { Printer } from "lucide-react";
+import { ArrowDownToLine, DoorClosed, Printer, X } from "lucide-react";
 import Link from "next/link";
 import { useActionState, useState } from "react";
 
@@ -49,78 +49,120 @@ export function AbrirCaixa() {
   );
 }
 
+// As duas ações do caixa aberto, atrás de um botão cada. Elas eram dois cartões fixos no meio da
+// página: uma se usa duas vezes por noite, a outra uma vez, e juntas empurravam os números para
+// fora da tela e enterravam o resumo.
+export function AcoesDoCaixa({
+  sessaoId,
+  esperado,
+  pendencias,
+  dono,
+}: {
+  sessaoId: string;
+  esperado: number;
+  pendencias: PendenciasFechamento;
+  dono: boolean;
+}) {
+  const [aberto, setAberto] = useState<"movimento" | "fechar" | null>(null);
+
+  // O botão aberto fica preenchido e troca só o ícone: escrever "Fechar" ao lado de "Fechar
+  // caixa" faria a pessoa achar que está fechando a noite.
+  const botao = (qual: "movimento" | "fechar", rotulo: string, Icone: typeof ArrowDownToLine) => (
+    <Button
+      type="button"
+      variant={aberto === qual ? "default" : "outline"}
+      className="h-11"
+      aria-expanded={aberto === qual}
+      onClick={() => setAberto((a) => (a === qual ? null : qual))}
+    >
+      {aberto === qual ? <X /> : <Icone />}
+      {rotulo}
+    </Button>
+  );
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap gap-2">
+        {botao("movimento", "Tirar ou colocar dinheiro", ArrowDownToLine)}
+        {botao("fechar", "Fechar caixa", DoorClosed)}
+      </div>
+      {aberto === "movimento" ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Tirar ou colocar dinheiro na gaveta</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <MovimentoCaixa />
+          </CardContent>
+        </Card>
+      ) : null}
+      {aberto === "fechar" ? <FecharCaixa sessaoId={sessaoId} esperado={esperado} pendencias={pendencias} dono={dono} /> : null}
+    </div>
+  );
+}
+
 // Sangria (tirar dinheiro da gaveta, ex.: levar ao banco) e suprimento (colocar troco).
-export function MovimentoCaixa() {
+function MovimentoCaixa() {
   const [estado, acao] = useActionState(registrarMovimento, undefined);
   useAvisoResultado(estado);
   const [tipo, setTipo] = useState(valorCampo(estado, "tipo", "sangria"));
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Sangria ou suprimento</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form key={estado?.chave} action={acao} className="grid gap-4 sm:grid-cols-[auto_10rem_1fr_auto] sm:items-end">
-          <input type="hidden" name="tipo" value={tipo} />
-          <fieldset className="flex flex-col gap-2">
-            <legend className="mb-2 text-sm font-medium">Tipo</legend>
-            <div className="flex gap-2">
-              {[
-                { valor: "sangria", rotulo: "Tirar (sangria)" },
-                { valor: "suprimento", rotulo: "Colocar (suprimento)" },
-              ].map((t) => (
-                <Button
-                  key={t.valor}
-                  type="button"
-                  variant={tipo === t.valor ? "default" : "outline"}
-                  aria-pressed={tipo === t.valor}
-                  className="h-11"
-                  onClick={() => setTipo(t.valor)}
-                >
-                  {t.rotulo}
-                </Button>
-              ))}
-            </div>
-          </fieldset>
-          <Campo rotulo="Valor (R$)" htmlFor="movimento-valor">
-            <Input id="movimento-valor" name="valor" inputMode="decimal" defaultValue={valorCampo(estado, "valor", "")} required className="h-11" />
-            <ErroCampo estado={estado} campo="valor" />
-          </Campo>
-          <Campo rotulo="Motivo" htmlFor="movimento-motivo">
-            <Input
-              id="movimento-motivo"
-              name="motivo"
-              maxLength={200}
-              defaultValue={valorCampo(estado, "motivo", "")}
-              placeholder={tipo === "sangria" ? "Ex.: depósito no banco" : "Ex.: troco extra"}
-              required
+    <form key={estado?.chave} action={acao} className="grid gap-4 sm:grid-cols-[auto_10rem_1fr_auto] sm:items-end">
+      <input type="hidden" name="tipo" value={tipo} />
+      <fieldset className="flex flex-col gap-2">
+        <legend className="mb-2 text-sm font-medium">Tipo</legend>
+        <div className="flex gap-2">
+          {[
+            { valor: "sangria", rotulo: "Tirar (sangria)" },
+            { valor: "suprimento", rotulo: "Colocar (suprimento)" },
+          ].map((t) => (
+            <Button
+              key={t.valor}
+              type="button"
+              variant={tipo === t.valor ? "default" : "outline"}
+              aria-pressed={tipo === t.valor}
               className="h-11"
-            />
-            <ErroCampo estado={estado} campo="motivo" />
-          </Campo>
-          <BotaoEnviar className="h-11" pendente="Registrando...">
-            Registrar
-          </BotaoEnviar>
-        </form>
-      </CardContent>
-    </Card>
+              onClick={() => setTipo(t.valor)}
+            >
+              {t.rotulo}
+            </Button>
+          ))}
+        </div>
+      </fieldset>
+      <Campo rotulo="Valor (R$)" htmlFor="movimento-valor">
+        <Input id="movimento-valor" name="valor" inputMode="decimal" defaultValue={valorCampo(estado, "valor", "")} required className="h-11" />
+        <ErroCampo estado={estado} campo="valor" />
+      </Campo>
+      <Campo rotulo="Motivo" htmlFor="movimento-motivo">
+        <Input
+          id="movimento-motivo"
+          name="motivo"
+          maxLength={200}
+          defaultValue={valorCampo(estado, "motivo", "")}
+          placeholder={tipo === "sangria" ? "Ex.: depósito no banco" : "Ex.: troco extra"}
+          required
+          className="h-11"
+        />
+        <ErroCampo estado={estado} campo="motivo" />
+      </Campo>
+      <BotaoEnviar className="h-11" pendente="Registrando...">
+        Registrar
+      </BotaoEnviar>
+    </form>
   );
 }
-
 
 // "R$ 2.626 em 38 mesas e 43 deliveries", em vez de 81 linhas.
 function resumoPendencias(p: PendenciasFechamento) {
   const partes = [
     p.comandas.length > 0 ? `${p.comandas.length} ${p.comandas.length === 1 ? "mesa aberta" : "mesas abertas"}` : "",
-    p.deliveries.length > 0
-      ? `${p.deliveries.length} ${p.deliveries.length === 1 ? "delivery em andamento" : "deliveries em andamento"}`
-      : "",
+    p.deliveries.length > 0 ? `${p.deliveries.length} ${p.deliveries.length === 1 ? "delivery em andamento" : "deliveries em andamento"}` : "",
   ].filter(Boolean);
   return partes.join(" e ");
 }
 
-export function FecharCaixa({
+function FecharCaixa({
   sessaoId,
   esperado,
   pendencias,

@@ -54,15 +54,18 @@ export function Kpi({
     <div
       className={cn(
         "relative flex flex-col gap-1 overflow-hidden rounded-2xl p-4 shadow-sm",
-        destaque ? "bg-[var(--cor-primaria)] text-[var(--cor-primaria-contraste)]" : "border bg-background",
+        // O navegador não imprime fundo: no papel o cartão preenchido vira borda, senão o texto
+        // claro sai branco no branco (o resumo da noite é feito para imprimir).
+        destaque ? "bg-[var(--cor-primaria)] text-[var(--cor-primaria-contraste)] print:border print:bg-transparent print:text-foreground" : "border bg-background",
       )}
     >
       <div className="flex items-start justify-between gap-2">
-        <p className={cn("text-sm font-medium", destaque ? "opacity-90" : "text-muted-foreground")}>{rotulo}</p>
+        <p className={cn("text-sm font-medium", destaque ? "opacity-90 print:opacity-100" : "text-muted-foreground")}>{rotulo}</p>
         <span
           className={cn(
             "grid size-9 shrink-0 place-items-center rounded-xl",
             destaque ? "bg-white/20" : "bg-[var(--cor-primaria)] text-[var(--cor-primaria-contraste)]",
+            "print:hidden",
           )}
           aria-hidden
         >
@@ -87,7 +90,7 @@ export function Kpi({
         ) : null}
         {detalhe ? <span>{detalhe}</span> : null}
       </div>
-      {destaque ? <span className="pointer-events-none absolute -right-6 -bottom-8 size-24 rounded-full bg-white/10" aria-hidden /> : null}
+      {destaque ? <span className="pointer-events-none absolute -right-6 -bottom-8 size-24 rounded-full bg-white/10 print:hidden" aria-hidden /> : null}
     </div>
   );
 }
