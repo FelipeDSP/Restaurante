@@ -18,11 +18,14 @@ type Props = {
   valorInicial: string | null;
   rotulo: string;
   ladoMaximo?: number;
+  // Erro que veio do servidor para este campo (a URL fica num input escondido, então sem isto a
+  // recusa ficava invisível: o aviso dizia "confira os campos destacados" e não havia nenhum).
+  erroServidor?: string;
 };
 
 // Envia direto para o Storage com a sessão do usuário (a policy só permite o dono, na pasta do
 // restaurante, ou a própria pessoa, na pasta dela) e guarda a URL num campo escondido do formulário.
-export function UploadImagem({ bucket, pasta, name, valorInicial, rotulo, ladoMaximo = 1200 }: Props) {
+export function UploadImagem({ bucket, pasta, name, valorInicial, rotulo, ladoMaximo = 1200, erroServidor }: Props) {
   const id = useId();
   const [url, setUrl] = useState(valorInicial ?? "");
   const [enviando, setEnviando] = useState(false);
@@ -63,6 +66,7 @@ export function UploadImagem({ bucket, pasta, name, valorInicial, rotulo, ladoMa
         <div
           className={cn(
             "flex shrink-0 items-center justify-center overflow-hidden border bg-muted",
+            erroServidor && "border-destructive ring-3 ring-destructive/20",
             // A capa é larga: a prévia tem a mesma proporção 3:1 do site, senão a pessoa escolhe
             // uma foto achando que cabe inteira e no site ela sai cortada em cima e embaixo.
             bucket === "rest-capas" ? "h-20 w-60 rounded-lg" : "size-24",
@@ -102,7 +106,11 @@ export function UploadImagem({ bucket, pasta, name, valorInicial, rotulo, ladoMa
           ) : null}
         </div>
       </div>
-      {erro ? <p className="text-sm text-destructive">{erro}</p> : null}
+      {erro || erroServidor ? (
+        <p id={`erro-${name}`} className="text-sm text-destructive">
+          {erro ?? erroServidor}
+        </p>
+      ) : null}
     </div>
   );
 }

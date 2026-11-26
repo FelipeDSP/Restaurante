@@ -47,6 +47,7 @@ export function MeuPerfil({ usuarioId, nome, telefone, foto, email, funcao, som 
               valorInicial={estadoPerfil?.valores?.foto_url ?? foto}
               rotulo="Foto"
               ladoMaximo={400}
+              erroServidor={estadoPerfil?.erros?.foto_url}
             />
             <Campo rotulo="Nome" htmlFor="perfil-nome">
               <Input id="perfil-nome" name="nome" defaultValue={valorCampo(estadoPerfil, "nome", nome)} maxLength={80} required className="h-11" />

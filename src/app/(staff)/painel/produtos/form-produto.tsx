@@ -173,6 +173,7 @@ export function FormProduto({
               name="foto_url"
               valorInicial={estado?.valores?.foto_url ?? produto?.foto_url ?? null}
               rotulo="Foto"
+              erroServidor={estado?.erros?.foto_url}
             />
           </div>
           <label className="flex pointer-coarse:min-h-11 items-center gap-3 text-sm font-medium">

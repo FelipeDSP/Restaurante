@@ -119,6 +119,7 @@ export function FormRestaurante({ restaurante }: { restaurante: DadosRestaurante
               valorInicial={estado?.valores?.logo_url ?? restaurante.logo_url}
               rotulo="Logo"
               ladoMaximo={512}
+              erroServidor={estado?.erros?.logo_url}
             />
           </div>
           <div className="sm:col-span-2">
@@ -129,6 +130,7 @@ export function FormRestaurante({ restaurante }: { restaurante: DadosRestaurante
               valorInicial={estado?.valores?.capa_url ?? restaurante.capa_url}
               rotulo="Capa do site"
               ladoMaximo={1600}
+              erroServidor={estado?.erros?.capa_url}
             />
           </div>
           <Campo rotulo="Uma linha sobre a casa" htmlFor="descricao" className="sm:col-span-2">
