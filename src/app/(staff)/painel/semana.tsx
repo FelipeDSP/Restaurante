@@ -1,7 +1,7 @@
 import { Receipt, TrendingUp, Wallet } from "lucide-react";
 import Link from "next/link";
 
-import { CORES, Kpi, Linha, Painel, Rosca } from "@/components/staff/graficos";
+import { CORES, Kpi, Linha, Painel, Rosca, Vazio } from "@/components/staff/graficos";
 import { formatarBRL } from "@/lib/dinheiro";
 
 import type { Noites } from "./noites";
@@ -14,7 +14,15 @@ const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um :
 // "Noite" é a sessão de caixa, não o dia do calendário — o restaurante pode fechar depois da
 // meia-noite. Por isso nada aqui fala em "semana" com data: fala em noites.
 export function Semana({ noites }: { noites: Noites }) {
-  if (noites.lista.length === 0) return null;
+  // Restaurante novo, ou que ainda não fechou o primeiro caixa: sem isto o Início fica com o
+  // "Olá" e mais nada, e parece quebrado.
+  if (noites.lista.length === 0) {
+    return (
+      <Painel titulo="Últimas noites">
+        <Vazio>O resumo de cada noite aparece aqui depois que você fecha o caixa.</Vazio>
+      </Painel>
+    );
+  }
   // O centro da rosca conta só os itens do top 5 que ela desenha: somar o cardápio inteiro ali
   // daria um número que as fatias não explicam.
   const itens = noites.maisVendidos.reduce((soma, i) => soma + i.quantidade, 0);

@@ -1,8 +1,9 @@
-import { Bike, ChevronRight, Clock, DoorClosed, type LucideIcon, MessageCircle, Printer, ReceiptText } from "lucide-react";
+import { Bike, ChevronRight, Clock, DoorClosed, DoorOpen, type LucideIcon, MessageCircle, Printer, ReceiptText } from "lucide-react";
 import Link from "next/link";
 
 import type { Disponibilidade } from "@/app/(publico)/[slug]/dados";
 import type { Permissao } from "@/lib/auth/papeis";
+import { dataHoraLocal } from "@/lib/tempo";
 import { cn } from "@/lib/utils";
 
 import type { Pendencias } from "./pendencias";
@@ -31,16 +32,9 @@ const MOTIVO_DO_SITE: Record<NonNullable<Disponibilidade["motivo"]>, string> = {
 
 // Primeira coisa do Início: o que está esperando alguém. Some inteiro quando não há nada — tela
 // vazia aqui é boa notícia, e um cartão dizendo "nada pendente" só ocuparia espaço todo dia.
-export function PrecisaDeVoce({
-  pendencias,
-  permissoes,
-  caixaAberto,
-}: {
-  pendencias: Pendencias;
-  permissoes: Permissao[];
-  caixaAberto: boolean;
-}) {
+export function PrecisaDeVoce({ pendencias, permissoes, fuso }: { pendencias: Pendencias; permissoes: Permissao[]; fuso: string }) {
   const linhas: Linha[] = [];
+  const { sessao } = pendencias;
 
   if (pendencias.deliveryNovos > 0) {
     linhas.push({
@@ -86,7 +80,8 @@ export function PrecisaDeVoce({
   }
   // Caixa fechado não é urgente (de dia é o estado normal), mas é o que explica por que o site
   // não recebe pedido e por que não dá para abrir mesa.
-  if (!caixaAberto) {
+  const caixaAberto = Boolean(sessao);
+  if (!sessao) {
     linhas.push({
       chave: "caixa",
       href: permissoes.includes("caixa_operar") ? "/painel/caixa" : null,
@@ -94,6 +89,17 @@ export function PrecisaDeVoce({
       quantidade: null,
       titulo: "Caixa fechado",
       detalhe: "Os pedidos do site e as mesas só abrem com o caixa aberto",
+    });
+  } else if (pendencias.caixaEsquecido) {
+    // Caixa aberto há mais de um dia é quase sempre esquecimento, e enquanto ele não fecha o
+    // resumo da noite e os relatórios misturam dias diferentes.
+    linhas.push({
+      chave: "caixa-velho",
+      href: permissoes.includes("caixa_operar") ? "/painel/caixa" : null,
+      icone: DoorOpen,
+      quantidade: null,
+      titulo: `Caixa aberto desde ${dataHoraLocal(sessao.abertaEm, fuso)}`,
+      detalhe: "Parece que ninguém fechou a noite. O resumo só fecha quando o caixa fecha",
     });
   }
   // Site fechado: com o caixa fechado o motivo já está dito na linha acima, não se repete.

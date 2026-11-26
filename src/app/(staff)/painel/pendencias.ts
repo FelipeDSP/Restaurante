@@ -5,6 +5,8 @@ import type { Permissao } from "@/lib/auth/papeis";
 import { contarImpressoesComErro } from "@/lib/impressao/avisos";
 import { createClient } from "@/lib/supabase/server";
 
+import { carregarSessaoAberta, type SessaoCaixa } from "./caixa/dados";
+
 // O que está esperando alguém, no Início. Tudo aqui tem dono: ou uma pessoa age, ou um cliente
 // fica esperando. Número que não pede nada (vendido, ticket médio) fica no bloco de baixo.
 //
@@ -12,7 +14,15 @@ import { createClient } from "@/lib/supabase/server";
 // permissão de resolver aquilo: quem não pode agir não precisa carregar a cobrança na tela.
 export type ItemBaixo = { id: string; nome: string; unidade: string; saldo: number; minimo: number };
 
+// Depois de quanto tempo um caixa aberto deixa de ser "a noite de hoje" e vira esquecimento.
+// Dezoito horas cobrem a virada da madrugada sem cobrar nada de quem abriu de manhã.
+const HORAS_DE_CAIXA = 18;
+
 export type Pendencias = {
+  sessao: SessaoCaixa | null;
+  // Caixa que ninguém fechou: enquanto ele não fecha, o resumo da noite e os relatórios
+  // misturam dias diferentes.
+  caixaEsquecido: boolean;
   deliveryNovos: number;
   mensagens: number;
   contaPedida: number;
@@ -78,7 +88,8 @@ export async function carregarPendencias(restauranteId: string, permissoes: read
   const delivery = pode("delivery");
   const mesas = pode("comandas_painel") || pode("garcom_app");
 
-  const [deliveryNovos, mensagens, contaPedida, estoque, impressao, site] = await Promise.all([
+  const [sessao, deliveryNovos, mensagens, contaPedida, estoque, impressao, site] = await Promise.all([
+    carregarSessaoAberta(restauranteId),
     delivery ? deliveryEsperandoAceite(restauranteId) : 0,
     delivery ? mensagensSemResposta(restauranteId) : 0,
     mesas ? mesasPedindoAConta(restauranteId) : 0,
@@ -87,5 +98,14 @@ export async function carregarPendencias(restauranteId: string, permissoes: read
     consultarDisponibilidade(restauranteId),
   ]);
 
-  return { deliveryNovos, mensagens, contaPedida, estoque, impressao, site };
+  return {
+    sessao,
+    caixaEsquecido: Boolean(sessao) && Date.now() - new Date(sessao!.abertaEm).getTime() > HORAS_DE_CAIXA * 3600_000,
+    deliveryNovos,
+    mensagens,
+    contaPedida,
+    estoque,
+    impressao,
+    site,
+  };
 }

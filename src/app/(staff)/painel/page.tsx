@@ -2,7 +2,7 @@ import { AtualizarEmTempoReal } from "@/components/staff/atualizar-em-tempo-real
 import { exigirPermissao } from "@/lib/auth/dal";
 import { PERMISSOES_INICIO } from "@/lib/auth/papeis";
 
-import { ESPERA_TELA_DE_DINHEIRO, carregarSessaoAberta } from "./caixa/dados";
+import { ESPERA_TELA_DE_DINHEIRO } from "./caixa/dados";
 import { EstoqueResumo } from "./estoque-resumo";
 import { carregarNoites, NOITES_VAZIO } from "./noites";
 import { carregarPendencias } from "./pendencias";
@@ -15,9 +15,8 @@ export default async function PainelPage() {
   const acesso = await exigirPermissao("painel", ...PERMISSOES_INICIO);
   const podeRelatorios = acesso.permissoes.includes("relatorios");
 
-  const [pendencias, sessao, noites] = await Promise.all([
+  const [pendencias, noites] = await Promise.all([
     carregarPendencias(acesso.restaurante.id, acesso.permissoes),
-    carregarSessaoAberta(acesso.restaurante.id),
     // Um resumo por noite é caro: só carrega para quem pode ver faturamento.
     podeRelatorios ? carregarNoites(acesso.restaurante.id, acesso.restaurante.fusoHorario) : Promise.resolve(NOITES_VAZIO),
   ]);
@@ -33,7 +32,7 @@ export default async function PainelPage() {
 
       {/* Primeiro o que espera alguém, depois o panorama: a tela é aberta dezenas de vezes por
           noite, e na maioria delas a pergunta é "falta alguma coisa?". */}
-      <PrecisaDeVoce pendencias={pendencias} permissoes={acesso.permissoes} caixaAberto={Boolean(sessao)} />
+      <PrecisaDeVoce pendencias={pendencias} permissoes={acesso.permissoes} fuso={acesso.restaurante.fusoHorario} />
       <EstoqueResumo itens={pendencias.estoque} />
       {podeRelatorios ? <Semana noites={noites} /> : null}
     </main>
