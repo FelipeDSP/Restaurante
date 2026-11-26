@@ -44,7 +44,10 @@ export const NAVEGACAO: ItemNavegacao[] = [
   { href: "/painel/relatorios", rotulo: "Relatórios", grupo: "Operação", acesso: ["relatorios"] },
   // Contas encerradas e deliveries terminados, só leitura (o banco não deixa mudar).
   { href: "/painel/historico", rotulo: "Histórico", grupo: "Operação", acesso: ["caixa_operar", "relatorios"] },
-  { href: "/cozinha", rotulo: "Tela da cozinha", grupo: "Operação", acesso: ["cozinha_tela"] },
+  // Dentro do painel: quem está no painel só quer dar uma olhada na fila, não virar a tela do
+  // tablet da praça. A tela cheia continua em /cozinha, com o link "Abrir em tela cheia" lá
+  // dentro, e é para lá que `rotaInicial` manda quem só tem a cozinha.
+  { href: "/painel/cozinha", rotulo: "Tela da cozinha", grupo: "Operação", acesso: ["cozinha_tela"] },
 ];
 
 // Cada cartão da tela de Configurações. Os endereços são os mesmos de sempre (nada quebra);

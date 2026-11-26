@@ -25,6 +25,12 @@ type Props = {
   pendentes: Ticket[];
   prontos: Ticket[];
   geradoEm: number;
+  // Endereço desta tela: os chips de praça trocam a URL, e ela é diferente dentro do painel.
+  base?: string;
+  // Dentro do painel (o dono só está olhando). Na tela cheia do tablet da cozinha o aviso de som
+  // ocupa tudo, porque ali ninguém pode ficar sem ouvir; aqui ele é só uma faixa, para não tapar
+  // o painel de quem passou para dar uma olhada.
+  embutida?: boolean;
 };
 
 // Outras praças com ticket do MESMO pedido na tela. Dois cartões "Mesa 2" lado a lado pareciam
@@ -248,7 +254,18 @@ function PedeSom({ pendentes, aoLigar }: { pendentes: number; aoLigar: () => voi
   );
 }
 
-export function TelaCozinha({ restauranteId, restauranteNome, fuso, pracas, pracaAtiva, pendentes, prontos, geradoEm }: Props) {
+export function TelaCozinha({
+  restauranteId,
+  restauranteNome,
+  fuso,
+  pracas,
+  pracaAtiva,
+  pendentes,
+  prontos,
+  geradoEm,
+  base = "/cozinha",
+  embutida = false,
+}: Props) {
   const { pendente, executar } = useAcao();
   const [agora, setAgora] = useState(geradoEm);
   const [manual, setManual] = useState<Ticket | null>(null);
@@ -359,11 +376,11 @@ export function TelaCozinha({ restauranteId, restauranteNome, fuso, pracas, prac
     auto.definirLigada(!auto.ligada);
   }
 
-  const linkPraca = (id: string | null) => (id ? `/cozinha?praca=${id}` : "/cozinha");
+  const linkPraca = (id: string | null) => (id ? `${base}?praca=${id}` : base);
 
   return (
     <>
-      {somAtivo || somIndisponivel ? null : (
+      {somAtivo || somIndisponivel || embutida ? null : (
         <div className="print:hidden">
           <PedeSom pendentes={pendentes.length} aoLigar={() => liberarSom(true)} />
         </div>
@@ -377,7 +394,7 @@ export function TelaCozinha({ restauranteId, restauranteNome, fuso, pracas, prac
 
       <MaisAbaixo seletor="[data-fila-cozinha] > article" />
 
-      <div className="flex flex-1 flex-col gap-4 p-4 pb-20 print:hidden">
+      <div className={cn("flex flex-1 flex-col gap-4 print:hidden", embutida ? "p-4 md:p-6" : "p-4 pb-20")}>
         <div className="flex flex-wrap items-center gap-2">
           <nav aria-label="Praças" className="flex flex-wrap gap-2">
             {[{ id: null as string | null, nome: "Todas" }, ...pracas].map((p) => {
@@ -400,15 +417,23 @@ export function TelaCozinha({ restauranteId, restauranteNome, fuso, pracas, prac
             })}
           </nav>
           <div className="ml-auto flex flex-wrap items-center gap-2">
-            <span
-              className={cn(
-                "flex h-11 items-center gap-2 rounded-full border px-4 text-sm",
-                somAtivo ? "bg-background" : "border-amber-300 bg-amber-50 text-amber-900",
-              )}
-            >
-              {somAtivo ? <Bell className="size-4" /> : <BellOff className="size-4" />}
-              {somAtivo ? "Som ligado" : "Sem som: o navegador deste aparelho não liberou"}
-            </span>
+            {somAtivo || !embutida ? (
+              <span
+                className={cn(
+                  "flex h-11 items-center gap-2 rounded-full border px-4 text-sm",
+                  somAtivo ? "bg-background" : "border-amber-300 bg-amber-50 text-amber-900",
+                )}
+              >
+                {somAtivo ? <Bell className="size-4" /> : <BellOff className="size-4" />}
+                {somAtivo ? "Som ligado" : "Sem som: o navegador deste aparelho não liberou"}
+              </span>
+            ) : (
+              // Sem o bloqueio de tela cheia, o jeito de ligar o som precisa estar aqui.
+              <Button type="button" variant="outline" className="h-11 rounded-full" onClick={() => liberarSom(true)}>
+                <BellOff />
+                Ligar o som
+              </Button>
+            )}
             <Button
               type="button"
               variant={auto.ligada ? "default" : "outline"}
