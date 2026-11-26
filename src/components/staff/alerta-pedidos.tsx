@@ -6,8 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { useMudancasRealtime } from "@/lib/realtime";
-import type { Evento } from "@/lib/avisos";
-import { avisar as tocarAviso, avisoLigado, novoContextoDeSom, tocarAlerta } from "@/lib/som";
+import { avisar as tocarAviso, novoContextoDeSom, tocarAlerta } from "@/lib/som";
 import { createClient } from "@/lib/supabase/client";
 
 // Conferência de reserva: pega o pedido que chegou enquanto o tempo real estava caído
@@ -96,20 +95,17 @@ export function AlertaPedidos({ restauranteId }: { restauranteId: string }) {
     };
   }, [novos]);
 
-  // Devolve se o aviso vale. Desligado em Meu perfil > Notificações = nada: nem som, nem toast,
-  // nem contador na aba. O pedido continua no quadro do Delivery, que é o lugar dele.
-  // O sino do topo é outra coisa: silencia só este aparelho, na hora, sem mexer na conta.
-  const avisarDelivery = (evento: Evento) => {
-    if (!avisoLigado(evento)) return false;
-    if (!mudoAtual.current) tocarAviso(audio.current, evento, [400, 150, 400]);
-    return true;
+  // O sino do topo silencia só este aparelho, na hora. Som e vibração seguem a escolha da pessoa
+  // em Meu perfil, que vale em qualquer aparelho em que ela entrar.
+  const avisarDelivery = () => {
+    if (!mudoAtual.current) tocarAviso(audio.current, [400, 150, 400]);
   };
 
   const avisar = useCallback(
     (pedido: PedidoNovo) => {
       if (avisados.current.has(pedido.id)) return;
       avisados.current.add(pedido.id);
-      if (!avisarDelivery("delivery_novo")) return;
+      avisarDelivery();
       if (document.visibilityState !== "visible") setNovos((n) => n + 1);
       toast.info(`Novo pedido de delivery nº ${pedido.numero ?? ""}`, {
         description: pedido.cliente_nome ?? undefined,
@@ -124,7 +120,7 @@ export function AlertaPedidos({ restauranteId }: { restauranteId: string }) {
     (pedido: { id: string; numero: number | null }) => {
       if (prontosAvisados.current.has(pedido.id)) return;
       prontosAvisados.current.add(pedido.id);
-      if (!avisarDelivery("delivery_pronto")) return;
+      avisarDelivery();
       toast.success(`Delivery nº ${pedido.numero ?? ""} pronto para sair`, {
         duration: 15000,
         action: { label: "Ver", onClick: () => router.push("/painel/delivery") },
@@ -137,7 +133,7 @@ export function AlertaPedidos({ restauranteId }: { restauranteId: string }) {
     (pedido: { id: string; numero: number | null }) => {
       if (canceladosAvisados.current.has(pedido.id)) return;
       canceladosAvisados.current.add(pedido.id);
-      if (!avisarDelivery("delivery_cancelado")) return;
+      avisarDelivery();
       toast.warning(`O cliente cancelou o delivery nº ${pedido.numero ?? ""}`, {
         duration: 15000,
         action: { label: "Ver", onClick: () => router.push("/painel/delivery") },
@@ -150,7 +146,7 @@ export function AlertaPedidos({ restauranteId }: { restauranteId: string }) {
     (mensagem: { id: string; texto: string | null; pedido_id: string | null }) => {
       if (mensagensAvisadas.current.has(mensagem.id)) return;
       mensagensAvisadas.current.add(mensagem.id);
-      if (!avisarDelivery("mensagem_cliente")) return;
+      avisarDelivery();
       if (document.visibilityState !== "visible") setNovos((n) => n + 1);
       toast.info("Mensagem de cliente do delivery", {
         description: mensagem.texto && mensagem.texto.length > 80 ? `${mensagem.texto.slice(0, 80)}…` : (mensagem.texto ?? undefined),
@@ -209,7 +205,7 @@ export function AlertaPedidos({ restauranteId }: { restauranteId: string }) {
       router.refresh();
     } else if (recebidos.some((p) => Date.now() - new Date(p.criado_em).getTime() < LEMBRETE_ATE_MS)) {
       // Lembrete: ainda tem pedido recente esperando o aceite.
-      avisarDelivery("delivery_novo");
+      avisarDelivery();
     }
   }, [restauranteId, avisar, avisarPronto, avisarCancelado, avisarMensagem, router]);
 

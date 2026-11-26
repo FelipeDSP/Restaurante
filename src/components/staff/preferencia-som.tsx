@@ -8,10 +8,10 @@ import { definirAvisos, definirPreferenciaDeSom, type PreferenciaDeSom } from "@
 // Aplica as escolhas da pessoa (Meu perfil > Notificações) a todos os avisos desta tela: o toque
 // e, por aviso, se ela quer receber e se deve vibrar.
 export function PreferenciaSom({ preferencia, avisos }: { preferencia: PreferenciaDeSom; avisos: Avisos }) {
-  const { som, volume, vezes } = preferencia;
+  const { toque, volume, vezes } = preferencia;
   useEffect(() => {
-    definirPreferenciaDeSom({ som, volume, vezes });
-  }, [som, volume, vezes]);
+    definirPreferenciaDeSom({ toque, volume, vezes });
+  }, [toque, volume, vezes]);
   // Objeto novo a cada render do servidor: compara pelo conteúdo, não pela identidade.
   const assinatura = JSON.stringify(avisos);
   useEffect(() => {

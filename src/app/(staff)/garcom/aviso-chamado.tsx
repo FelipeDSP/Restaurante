@@ -50,7 +50,7 @@ export function AvisoChamado({ restauranteId, membroId }: { restauranteId: strin
   // Aviso obrigatório: `avisar` nunca devolve falso aqui, mas ele é quem respeita a escolha de
   // vibrar ou não. `bipar` continua controlando o ritmo (vibra a cada 3 s, bipa a cada 6 s).
   const alertar = useCallback((bipar: boolean) => {
-    avisar(bipar ? audio.current : null, "chamado", [700, 300, 700]);
+    avisar(bipar ? audio.current : null, [700, 300, 700]);
   }, []);
 
   const encerrar = useCallback((chamadoId: string) => {

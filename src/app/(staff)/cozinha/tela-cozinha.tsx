@@ -350,7 +350,7 @@ export function TelaCozinha({
     }
     if (!anteriores) return;
     const chegou = atuais.some((id) => !anteriores.has(id) && naTela.has(id));
-    if (chegou) avisar(audio.current, "cozinha_ticket");
+    if (chegou) avisar(audio.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `auto` muda a cada render; só reage aos tickets
   }, [idsPendentes, idsVisiveis]);
 

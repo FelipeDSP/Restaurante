@@ -2,7 +2,7 @@ import "server-only";
 
 import webpush, { WebPushError } from "web-push";
 
-import { EVENTOS, type Evento, lerAvisos } from "@/lib/avisos";
+import { type Evento, PERMISSAO_DO_EVENTO } from "@/lib/avisos";
 import { ehPapel, permissoesEfetivas } from "@/lib/auth/papeis";
 import { chavePublicaAvisos, enderecoDeAvisoValido } from "@/lib/avisos-push";
 import { urlIcone } from "@/lib/icone";
@@ -26,15 +26,6 @@ export { chavePublicaAvisos, enderecoDeAvisoValido };
 
 type Aviso = { titulo: string; corpo: string; url: string; tag: string };
 
-// A pessoa quer este aviso? A escolha fica nos dados da conta dela, os mesmos que o app lê.
-// Na dúvida (conta sem nada gravado), `lerAvisos` devolve o padrão, que é avisar.
-async function querReceber(userId: string, evento: Evento): Promise<boolean> {
-  const admin = createAdminClient();
-  if (!admin) return false;
-  const { data } = await admin.auth.admin.getUserById(userId);
-  return lerAvisos(data.user?.user_metadata?.avisos)[evento].ligado;
-}
-
 // Manda o aviso para todos os aparelhos em que o membro ligou as notificações.
 export async function avisarMembro(membroId: string, evento: Evento, aviso: Aviso): Promise<void> {
   const c = chaves();
@@ -43,11 +34,10 @@ export async function avisarMembro(membroId: string, evento: Evento, aviso: Avis
   try {
     const { data: membro } = await admin
       .from("membros")
-      .select("id, user_id, ativo, restaurante:restaurantes!inner(id, nome, logo_url, cor_primaria)")
+      .select("id, ativo, restaurante:restaurantes!inner(id, nome, logo_url, cor_primaria)")
       .eq("id", membroId)
       .maybeSingle();
     if (!membro?.ativo) return;
-    if (!(await querReceber(membro.user_id, evento))) return;
 
     const { data: inscricoes } = await admin.from("membros_avisos").select("id, endpoint, p256dh, auth").eq("membro_id", membroId);
     if (!inscricoes?.length) return;
@@ -129,7 +119,7 @@ export async function avisarEquipe(restauranteId: string, evento: Evento, aviso:
       .select("id, papel, permissoes_extras, permissoes_removidas, funcao:funcoes(permissoes)")
       .eq("restaurante_id", restauranteId)
       .eq("ativo", true);
-    const precisa = EVENTOS[evento].permissao;
+    const precisa = PERMISSAO_DO_EVENTO[evento];
     const alvos = (membros ?? []).filter(
       (m) => ehPapel(m.papel) && permissoesEfetivas(m.papel, m.funcao?.permissoes, m.permissoes_extras, m.permissoes_removidas).includes(precisa),
     );

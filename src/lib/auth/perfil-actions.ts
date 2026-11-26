@@ -3,7 +3,6 @@
 import { refresh } from "next/cache";
 import { z } from "zod";
 
-import { type Avisos, EVENTOS_NA_ORDEM, paraGravar } from "@/lib/avisos";
 
 import { falhouAntiRobo, MENSAGEM_ANTI_ROBO, passeAntiRobo } from "@/lib/anti-robo";
 import { falha, falhaValidacao, mensagemErroBanco, type ResultadoAcao, sucesso } from "@/lib/acoes";
@@ -107,40 +106,28 @@ export async function trocarSenha(_estado: ResultadoAcao, formData: FormData): P
   return sucesso("Senha trocada.");
 }
 
-// Quais avisos a pessoa recebe e quais vibram. Mesmo lugar do som: os dados da conta.
-// O obrigatório não vem do formulário — `paraGravar` força ligado, então nem um envio forjado
-// desliga o chamado do garçom.
-export async function salvarAvisos(escolha: unknown): Promise<ResultadoAcao> {
-  if (!(await exigirMembro())) return falha("Entre de novo para mudar os avisos.");
-  const linha = z.object({ ligado: z.boolean(), vibrar: z.boolean() });
-  const dados = z.object(Object.fromEntries(EVENTOS_NA_ORDEM.map((e) => [e, linha]))).safeParse(escolha);
-  if (!dados.success) return falha("Escolha os avisos de novo.");
-
-  const supabase = await createClient();
-  const { error } = await supabase.auth.updateUser({ data: { avisos: paraGravar(dados.data as Avisos) } });
-  if (error) return falha("Não foi possível salvar. Tente de novo.");
-  await supabase.auth.refreshSession();
-  refresh();
-  return sucesso("Avisos salvos.");
-}
-
-// Som dos avisos: fica nos dados da conta (vale em qualquer aparelho em que a pessoa entrar).
-export async function salvarSom(escolha: { som: string; volume: string; vezes: number }): Promise<ResultadoAcao> {
-  if (!(await exigirMembro())) return falha("Entre de novo para mudar o som.");
+// Notificações da pessoa, num lugar só: qual toque, se toca, se vibra. Fica nos dados da conta,
+// então vale em qualquer aparelho em que ela entrar. Ligar o aviso no celular (Web Push) é outra
+// coisa e vale por aparelho — fica em `/api/avisos/equipe`.
+export async function salvarNotificacoes(escolha: unknown): Promise<ResultadoAcao> {
+  if (!(await exigirMembro())) return falha("Entre de novo para mudar as notificações.");
   const dados = z
     .object({
-      som: z.enum(Object.keys(SONS) as [keyof typeof SONS]),
+      toque: z.enum(Object.keys(SONS) as [keyof typeof SONS]),
       volume: z.enum(Object.keys(VOLUMES) as [keyof typeof VOLUMES]),
       vezes: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+      som: z.boolean(),
+      vibrar: z.boolean(),
     })
     .safeParse(escolha);
-  if (!dados.success) return falha("Escolha o som de novo.");
+  if (!dados.success) return falha("Escolha as notificações de novo.");
 
+  const { som, vibrar, ...toque } = dados.data;
   const supabase = await createClient();
-  const { error } = await supabase.auth.updateUser({ data: { som: dados.data } });
+  const { error } = await supabase.auth.updateUser({ data: { som: toque, avisos: { som, vibrar } } });
   if (error) return falha("Não foi possível salvar. Tente de novo.");
   // A sessão nova já leva a escolha (o painel lê dela).
   await supabase.auth.refreshSession();
   refresh();
-  return sucesso("Som salvo.");
+  return sucesso("Notificações salvas.");
 }

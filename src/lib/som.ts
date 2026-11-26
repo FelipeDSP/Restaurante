@@ -1,9 +1,9 @@
 // Sons dos avisos (pedido novo, cozinha, garçom), gerados no navegador: sem arquivo de áudio.
-// Cada pessoa escolhe o som, o volume e quantas vezes toca em "Meu perfil" (guardado na conta,
-// vale em qualquer aparelho), e lá também diz quais avisos quer receber e quais devem vibrar.
-// <PreferenciaSom> no layout aplica as duas escolhas aqui.
+// Em "Meu perfil" > Notificações cada pessoa escolhe o toque, o volume, quantas vezes toca e se
+// quer som e vibração (guardado na conta, vale em qualquer aparelho em que ela entrar).
+// <PreferenciaSom> no layout aplica as escolhas aqui.
 
-import { AVISOS_PADRAO, type Avisos, type Evento } from "@/lib/avisos";
+import { AVISOS_PADRAO, type Avisos } from "@/lib/avisos";
 
 export const SONS = {
   bipe: "Bipe",
@@ -18,13 +18,20 @@ export type Som = keyof typeof SONS;
 export const VOLUMES = { baixo: 0.3, medio: 0.6, alto: 1 } as const;
 export type Volume = keyof typeof VOLUMES;
 
-export type PreferenciaDeSom = { som: Som; volume: Volume; vezes: 1 | 2 | 3 };
-export const SOM_PADRAO: PreferenciaDeSom = { som: "bipe", volume: "alto", vezes: 2 };
+// `toque` é qual som; se toca ou não é escolha à parte, em `Avisos`.
+export type PreferenciaDeSom = { toque: Som; volume: Volume; vezes: 1 | 2 | 3 };
+export const SOM_PADRAO: PreferenciaDeSom = { toque: "bipe", volume: "alto", vezes: 2 };
+
+function escolherToque(valor: unknown): Som {
+  return typeof valor === "string" && valor in SONS ? (valor as Som) : SOM_PADRAO.toque;
+}
 
 export function lerPreferenciaDeSom(valor: unknown): PreferenciaDeSom {
   const v = (valor && typeof valor === "object" ? valor : {}) as Record<string, unknown>;
   return {
-    som: typeof v.som === "string" && v.som in SONS ? (v.som as Som) : SOM_PADRAO.som,
+    // `v.som` é como o toque se chamava antes de "som" virar o liga/desliga: quem já tinha
+    // escolhido um toque não volta para o Bipe.
+    toque: escolherToque(v.toque ?? v.som),
     volume: typeof v.volume === "string" && v.volume in VOLUMES ? (v.volume as Volume) : SOM_PADRAO.volume,
     vezes: v.vezes === 1 || v.vezes === 2 || v.vezes === 3 ? v.vezes : SOM_PADRAO.vezes,
   };
@@ -40,21 +47,12 @@ export function definirAvisos(a: Avisos) {
   avisos = a;
 }
 
-export function avisoLigado(evento: Evento): boolean {
-  return avisos[evento].ligado;
-}
-
-// Avisa de um evento respeitando a escolha da pessoa. Devolve se o aviso vale, para a tela
-// decidir se mostra o cartão ou o toast junto — desligado é desligado, não é "sem som".
-//
-// `vibracao` é o padrão de vibração daquele aviso (ms ligado/desligado). Só vibra se a pessoa
-// pediu; o iPhone não vibra de jeito nenhum, porque o Safari não tem a API.
-export function avisar(contexto: AudioContext | null, evento: Evento, vibracao?: number[]): boolean {
-  const escolha = avisos[evento];
-  if (!escolha.ligado) return false;
-  if (escolha.vibrar && vibracao) navigator.vibrate?.(vibracao);
-  if (contexto?.state === "running") tocarAlerta(contexto);
-  return true;
+// Avisa respeitando as duas escolhas da pessoa: tocar som e vibrar. `vibracao` é o padrão daquele
+// aviso (ms ligado/desligado). O iPhone não vibra de jeito nenhum, porque o Safari não tem a API —
+// o som toca normalmente.
+export function avisar(contexto: AudioContext | null, vibracao?: number[]) {
+  if (avisos.vibrar && vibracao) navigator.vibrate?.(vibracao);
+  if (avisos.som && contexto?.state === "running") tocarAlerta(contexto);
 }
 
 type Nota = { freq: number; inicio: number; duracao: number; tipo?: OscillatorType; pico?: number };
@@ -129,10 +127,10 @@ function tocarNotas(contexto: AudioContext, som: Som, volume: number, inicio: nu
 
 // Toca o som escolhido pela pessoa (ou o informado, para o "Ouvir" do perfil).
 export function tocarAlerta(contexto: AudioContext, escolha: PreferenciaDeSom = preferencia) {
-  const melodia = MELODIAS[escolha.som];
+  const melodia = MELODIAS[escolha.toque];
   const volume = VOLUMES[escolha.volume];
   for (let i = 0; i < escolha.vezes; i++) {
-    tocarNotas(contexto, escolha.som, volume, contexto.currentTime + i * (melodia.duracao + 0.35));
+    tocarNotas(contexto, escolha.toque, volume, contexto.currentTime + i * (melodia.duracao + 0.35));
   }
 }
 

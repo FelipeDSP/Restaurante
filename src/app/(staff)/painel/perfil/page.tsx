@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
-import { AbasPerfil } from "@/components/staff/abas-perfil";
 import { MeuPerfil } from "@/components/staff/meu-perfil";
+import { chavePublicaAvisos } from "@/lib/avisos-equipe";
 import { exigirAcesso } from "@/lib/auth/dal";
 
 export const metadata: Metadata = { title: "Meu perfil" };
@@ -10,7 +10,6 @@ export default async function PerfilPage() {
   const acesso = await exigirAcesso("painel");
   return (
     <main className="flex flex-col gap-6 p-4 md:p-6">
-      <AbasPerfil base="/painel/perfil" />
       <MeuPerfil
         usuarioId={acesso.usuario.id}
         nome={acesso.nome}
@@ -18,6 +17,9 @@ export default async function PerfilPage() {
         foto={acesso.foto}
         email={acesso.usuario.email}
         funcao={acesso.funcao}
+        som={acesso.usuario.som}
+        avisos={acesso.usuario.avisos}
+        chaveAvisos={chavePublicaAvisos()}
       />
     </main>
   );

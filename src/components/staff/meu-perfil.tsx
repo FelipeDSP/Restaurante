@@ -4,6 +4,9 @@ import { useActionState } from "react";
 
 import { BotaoEnviar, Campo, ErroCampo, useAvisoResultado, valorCampo } from "@/components/staff/formulario";
 import { UploadImagem } from "@/components/staff/upload-imagem";
+import type { Avisos } from "@/lib/avisos";
+import type { PreferenciaDeSom } from "@/lib/som";
+import { Notificacoes } from "@/components/staff/notificacoes";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { salvarPerfil, trocarEmail, trocarSenha } from "@/lib/auth/perfil-actions";
@@ -16,11 +19,14 @@ type Props = {
   telefone: string | null;
   foto: string | null;
   email: string | null;
+  som: PreferenciaDeSom;
+  avisos: Avisos;
+  chaveAvisos: string | null;
   funcao: string;
 };
 
 // Cada pessoa da equipe cuida dos próprios dados; função e permissões continuam com o dono.
-export function MeuPerfil({ usuarioId, nome, telefone, foto, email, funcao }: Props) {
+export function MeuPerfil({ usuarioId, nome, telefone, foto, email, funcao, som, avisos, chaveAvisos }: Props) {
   const [estadoPerfil, acaoPerfil] = useActionState(salvarPerfil, undefined);
   const [estadoEmail, acaoEmail] = useActionState(trocarEmail, undefined);
   const [estadoSenha, acaoSenha] = useActionState(trocarSenha, undefined);
@@ -66,6 +72,8 @@ export function MeuPerfil({ usuarioId, nome, telefone, foto, email, funcao }: Pr
           </form>
         </CardContent>
       </Card>
+
+      <Notificacoes som={som} avisos={avisos} chavePublica={chaveAvisos} />
 
       <Card>
         <CardHeader>

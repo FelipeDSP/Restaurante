@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import { useAcao } from "@/components/staff/acoes-cliente";
 import { useMudancasRealtime } from "@/lib/realtime";
-import { avisar, avisoLigado, novoContextoDeSom } from "@/lib/som";
+import { avisar, novoContextoDeSom } from "@/lib/som";
 import { createClient } from "@/lib/supabase/client";
 
 import { marcarPedidoVisto } from "./actions";
@@ -64,11 +64,8 @@ export function AvisoPedidoCliente({ restauranteId, membroId }: { restauranteId:
           return `${i.quantidade}× ${i.nome_produto}${opcoes.length ? ` (${opcoes.join(", ")})` : ""}${i.observacao ? ` — ${i.observacao}` : ""}${quando}`;
         });
 
-      // Desligado em Meu perfil > Notificações: nada aparece. O pedido continua na tela da mesa e
-      // na cozinha — some só o aviso.
-      if (!avisoLigado("pedido_qr")) return;
       // Mesa sem garçom aparece para todos, calada (muitas mesas cansariam).
-      if (alertar && daMinhaMesa) avisar(audio.current, "pedido_qr", [400, 150, 400]);
+      if (alertar && daMinhaMesa) avisar(audio.current, [400, 150, 400]);
 
       const idAviso = `pedido-cliente-${pedido.id}`;
       toast.info(`Mesa ${comanda.mesa?.numero ?? ""} pediu pelo celular`, {

@@ -55,7 +55,7 @@ export function AvisoPronto({ restauranteId, membroId }: { restauranteId: string
 
       const mesaId = pedido.comanda.mesa_id;
       // Mesa de outro garçom (ou sem garçom) aparece na tela, mas sem som nem vibração.
-      if (pedido.comanda.garcom_id === membroId) avisar(audio.current, "prato_pronto", [300, 150, 300]);
+      if (pedido.comanda.garcom_id === membroId) avisar(audio.current, [300, 150, 300]);
       toast.success(`Mesa ${pedido.comanda.mesa?.numero ?? ""}: ${faltam ? "parte do " : ""}pedido nº ${pedido.numero} pronto`, {
         description: `${novos.map((i) => `${i.quantidade}× ${i.nome_produto}`).join(", ")}. Pode levar para a mesa.`,
         duration: Infinity,
