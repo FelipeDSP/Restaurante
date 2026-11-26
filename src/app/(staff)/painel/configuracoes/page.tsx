@@ -69,10 +69,12 @@ export default async function ConfiguracoesPage() {
       <h1 className="text-2xl font-semibold">Configurações</h1>
       <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {cartoes.map((item) => (
-          <li key={item.rotulo} className="flex flex-col rounded-xl border transition-colors hover:border-[var(--cor-primaria)]">
-            {/* items-start: o cartão sem abas tem a mesma altura dos vizinhos, mas o título
-                precisa começar na mesma linha que o deles. */}
-            <Link href={item.href} className="flex flex-1 items-start gap-3 p-4">
+          // Só o cartão: a faixa de atalhos para as abas (Produtos, Categorias, Adicionais...) saía
+          // em alguns e não em outros, e a grade ficava com cartões de alturas diferentes. Os
+          // atalhos não se perdem — são as mesmas abas que aparecem no topo da tela de destino,
+          // a um toque daqui.
+          <li key={item.rotulo} className="rounded-xl border transition-colors hover:border-[var(--cor-primaria)]">
+            <Link href={item.href} className="flex items-center gap-3 p-4">
               <Icone rotulo={item.rotulo} />
               <span className="flex min-w-0 flex-1 flex-col">
                 <span className="font-semibold">{item.rotulo}</span>
@@ -80,33 +82,20 @@ export default async function ConfiguracoesPage() {
                   <span className="truncate text-sm text-muted-foreground">{item.descricao}</span>
                 ) : null}
               </span>
-              <ChevronRight className="mt-2.5 size-5 shrink-0 text-muted-foreground" aria-hidden />
+              <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
             </Link>
-            {item.secoes && item.secoes.length > 1 ? (
-              <div className="flex flex-wrap gap-1 border-t p-2">
-                {item.secoes.map((secao) => (
-                  <Link
-                    key={secao.href}
-                    href={secao.href}
-                    className="flex min-h-9 pointer-coarse:min-h-11 items-center rounded-md px-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
-                  >
-                    {secao.rotulo}
-                  </Link>
-                ))}
-              </div>
-            ) : null}
           </li>
         ))}
         {/* O que o plano não tem: fica à vista, com cadeado, levando aos planos. */}
         {bloqueados.map((item) => (
           <li key={item.rotulo} className="rounded-xl border border-dashed">
-            <Link href="/painel/assinatura" className="flex items-start gap-3 p-4 text-muted-foreground">
+            <Link href="/painel/assinatura" className="flex items-center gap-3 p-4 text-muted-foreground">
               <Icone rotulo={item.rotulo} apagado />
               <span className="flex min-w-0 flex-1 flex-col">
                 <span className="font-semibold">{item.rotulo}</span>
                 <span className="truncate text-sm">Fora do seu plano</span>
               </span>
-              <Lock className="mt-3 size-4 shrink-0" aria-label="Não faz parte do seu plano" />
+              <Lock className="size-4 shrink-0" aria-label="Não faz parte do seu plano" />
             </Link>
           </li>
         ))}
