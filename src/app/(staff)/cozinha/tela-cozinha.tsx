@@ -277,29 +277,42 @@ export function TelaCozinha({ restauranteId, restauranteNome, fuso, pracas, prac
   // Navegadores só tocam som depois de um toque na página. Enquanto esse toque não vem, a tela
   // fica bloqueada (ver <PedeSom> abaixo): antes era um chip discreto no topo, e uma cozinha que
   // recarregou a página passava a noite muda sem ninguém perceber.
+  //
+  // Mas tenta ANTES de bloquear. Quem chega pelo menu do painel não recarrega nada: é navegação
+  // no mesmo documento, e o clique no "Tela da cozinha" já foi o toque que o navegador pedia —
+  // o áudio nasce liberado e o bloqueio era só estorvo, toda vez. O navegador também libera
+  // sozinho um site que a pessoa usa todo dia. Só sobra o bloqueio quando ele de fato não deixa:
+  // aí é recarregar a página (F5) ou abrir o endereço direto, e aí ele é necessário mesmo.
   useEffect(() => {
-    window.addEventListener("pointerdown", liberarSom, { once: true });
-    window.addEventListener("keydown", liberarSom, { once: true });
+    const porGesto = () => liberarSom(true);
+    liberarSom(false);
+    window.addEventListener("pointerdown", porGesto, { once: true });
+    window.addEventListener("keydown", porGesto, { once: true });
     return () => {
-      window.removeEventListener("pointerdown", liberarSom);
-      window.removeEventListener("keydown", liberarSom);
+      window.removeEventListener("pointerdown", porGesto);
+      window.removeEventListener("keydown", porGesto);
     };
   }, []);
 
-  function liberarSom() {
+  // `comGesto` diz se a tentativa veio de um toque de verdade. Sem toque, não dá para concluir
+  // nada de uma recusa (o navegador só estava seguindo a regra dele), então a tela continua
+  // pedindo o toque em vez de anunciar "este aparelho não tem som".
+  function liberarSom(comGesto: boolean) {
     try {
       audio.current ??= novoContextoDeSom();
     } catch {
-      setSomIndisponivel(true);
+      if (comGesto) setSomIndisponivel(true);
       return;
     }
     void audio.current
       .resume()
       .then(() => {
         if (audio.current?.state === "running") setSomAtivo(true);
-        else setSomIndisponivel(true);
+        else if (comGesto) setSomIndisponivel(true);
       })
-      .catch(() => setSomIndisponivel(true));
+      .catch(() => {
+        if (comGesto) setSomIndisponivel(true);
+      });
   }
 
   // Ticket novo na tela: bipe (a primeira carga não toca). Guarda todos os tickets já vistos, de
@@ -352,7 +365,7 @@ export function TelaCozinha({ restauranteId, restauranteNome, fuso, pracas, prac
     <>
       {somAtivo || somIndisponivel ? null : (
         <div className="print:hidden">
-          <PedeSom pendentes={pendentes.length} aoLigar={liberarSom} />
+          <PedeSom pendentes={pendentes.length} aoLigar={() => liberarSom(true)} />
         </div>
       )}
 

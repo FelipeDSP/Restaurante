@@ -67,6 +67,10 @@ export function AlertaPedidos({ restauranteId }: { restauranteId: string }) {
       audio.current ??= novoContextoDeSom();
       void audio.current.resume().then(() => setSomAtivo(audio.current?.state === "running"));
     };
+    // Tenta de cara: quem navegou pelo menu já tocou na página, então o áudio costuma nascer
+    // liberado e o botão não precisa aparecer como se estivesse desligado. Recusa aqui não
+    // conclui nada — o botão continua à disposição e o primeiro toque resolve.
+    liberar();
     window.addEventListener("pointerdown", liberar, { once: true });
     window.addEventListener("keydown", liberar, { once: true });
     return () => {
