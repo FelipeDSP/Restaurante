@@ -78,19 +78,27 @@ export function PrecisaDeVoce({ pendencias, permissoes, fuso }: { pendencias: Pe
       detalhe: "Confira o computador e a impressora",
     });
   }
-  // Caixa fechado não é urgente (de dia é o estado normal), mas é o que explica por que o site
-  // não recebe pedido e por que não dá para abrir mesa.
+  // Caixa fechado, por si só, não é pendência: de manhã, e em todo dia de folga, é o estado
+  // normal. O que é pendência é o caixa fechado **dentro do horário de funcionamento** — aí o
+  // cliente abre o site e não consegue pedir.
+  //
+  // Quem decide isso é o banco: `consultar_disponibilidade_delivery` só responde `caixa_fechado`
+  // depois de passar pelo horário cadastrado. (Restaurante com o delivery desligado para antes,
+  // em `sem_delivery`, e não recebe este aviso.)
   const caixaAberto = Boolean(sessao);
-  if (!sessao) {
+  const site = pendencias.site;
+  if (!sessao && site.motivo === "caixa_fechado") {
     linhas.push({
       chave: "caixa",
       href: permissoes.includes("caixa_operar") ? "/painel/caixa" : null,
       icone: DoorClosed,
       quantidade: null,
-      titulo: "Caixa fechado",
-      detalhe: "Os pedidos do site e as mesas só abrem com o caixa aberto",
+      titulo: "Abra o caixa",
+      detalhe: "Já está no horário de funcionamento, e sem caixa aberto o site recusa pedido",
+      urgente: true,
     });
-  } else if (pendencias.caixaEsquecido) {
+  }
+  if (sessao && pendencias.caixaEsquecido) {
     // Caixa aberto há mais de um dia é quase sempre esquecimento, e enquanto ele não fecha o
     // resumo da noite e os relatórios misturam dias diferentes.
     linhas.push({
@@ -102,8 +110,8 @@ export function PrecisaDeVoce({ pendencias, permissoes, fuso }: { pendencias: Pe
       detalhe: "Parece que ninguém fechou a noite. O resumo só fecha quando o caixa fecha",
     });
   }
-  // Site fechado: com o caixa fechado o motivo já está dito na linha acima, não se repete.
-  const site = pendencias.site;
+  // Site fora do ar por outro motivo. Só com o caixa aberto: se ninguém abriu o caixa, o
+  // restaurante não está operando e não há nada a cobrar.
   if (!site.aberto && site.motivo && site.motivo !== "caixa_fechado" && caixaAberto) {
     linhas.push({
       chave: "site",
