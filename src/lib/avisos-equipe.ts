@@ -2,7 +2,8 @@ import "server-only";
 
 import webpush, { WebPushError } from "web-push";
 
-import { type Evento, lerAvisos } from "@/lib/avisos";
+import { EVENTOS, type Evento, lerAvisos } from "@/lib/avisos";
+import { ehPapel, permissoesEfetivas } from "@/lib/auth/papeis";
 import { chavePublicaAvisos, enderecoDeAvisoValido } from "@/lib/avisos-push";
 import { urlIcone } from "@/lib/icone";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -113,5 +114,131 @@ export async function avisarInscricaoNovaEquipe(membroId: string, inscricao: { e
   } catch (erro) {
     console.error("[avisos-equipe] teste falhou", erro instanceof WebPushError ? `${erro.statusCode} ${erro.body}` : erro);
     return false;
+  }
+}
+
+// Avisa todo mundo do restaurante que tem a permissão daquele evento (delivery novo, mensagem de
+// cliente, ticket na cozinha): não é de uma pessoa só, é de quem está de plantão naquele posto.
+// Quem desligou o aviso em Meu perfil não recebe — `avisarMembro` confere um por um.
+export async function avisarEquipe(restauranteId: string, evento: Evento, aviso: Aviso): Promise<void> {
+  const admin = createAdminClient();
+  if (!admin || !chaves()) return;
+  try {
+    const { data: membros } = await admin
+      .from("membros")
+      .select("id, papel, permissoes_extras, permissoes_removidas, funcao:funcoes(permissoes)")
+      .eq("restaurante_id", restauranteId)
+      .eq("ativo", true);
+    const precisa = EVENTOS[evento].permissao;
+    const alvos = (membros ?? []).filter(
+      (m) => ehPapel(m.papel) && permissoesEfetivas(m.papel, m.funcao?.permissoes, m.permissoes_extras, m.permissoes_removidas).includes(precisa),
+    );
+    await Promise.all(alvos.map((m) => avisarMembro(m.id, evento, aviso)));
+  } catch (erro) {
+    console.error("[avisos-equipe]", erro);
+  }
+}
+
+// Pedido que o cliente mandou pelo QR da mesa. O dono do aviso é o garçom daquela mesa; mesa sem
+// garçom (o próprio cliente abriu) avisa quem atende mesas, que é quem pode assumir.
+export async function avisarPedidoDaMesa(token: string, numero: number): Promise<void> {
+  const admin = createAdminClient();
+  if (!admin || !chaves()) return;
+  try {
+    const { data: mesa } = await admin
+      .from("mesas")
+      .select("id, numero, restaurante_id, restaurante:restaurantes!inner(nome)")
+      .eq("qr_token", token)
+      .maybeSingle();
+    if (!mesa) return;
+    const { data: comanda } = await admin
+      .from("comandas")
+      .select("id, garcom_id")
+      .eq("mesa_id", mesa.id)
+      .in("status", ["aberta", "conta_pedida"])
+      .maybeSingle();
+    const aviso: Aviso = {
+      titulo: mesa.restaurante.nome,
+      corpo: `Mesa ${mesa.numero} pediu pelo celular (nº ${numero}).`,
+      url: comanda ? `/painel/comandas/${mesa.id}` : "/painel/comandas",
+      tag: `mesa-${mesa.id}`,
+    };
+    if (comanda?.garcom_id) await avisarMembro(comanda.garcom_id, "pedido_qr", aviso);
+    else await avisarEquipe(mesa.restaurante_id, "pedido_qr", aviso);
+  } catch (erro) {
+    console.error("[avisos-equipe]", erro);
+  }
+}
+
+// A cozinha terminou um pedido. Mesa: avisa o garçom dela, que é quem leva o prato. Delivery:
+// avisa quem cuida da entrega, que é quem despacha.
+export async function avisarPratoPronto(pedidoId: string): Promise<void> {
+  const admin = createAdminClient();
+  if (!admin || !chaves()) return;
+  try {
+    const { data: pedido } = await admin
+      .from("pedidos")
+      .select("id, numero, origem, restaurante_id, comanda:comandas(id, garcom_id, mesa:mesas(id, numero)), restaurante:restaurantes!inner(nome)")
+      .eq("id", pedidoId)
+      .maybeSingle();
+    const comanda = pedido?.comanda;
+    if (!pedido) return;
+    if (pedido.origem === "mesa" && !comanda?.garcom_id) return;
+    if (pedido.origem !== "mesa" && pedido.origem !== "delivery") return;
+    // Só quando o pedido inteiro fica pronto. Um aviso por praça viraria três vibrações para o
+    // mesmo pedido; o aviso na tela, esse sim, já mostra item por item para quem está com o app
+    // aberto — o push é para quem está longe da tela.
+    const { count: faltando } = await admin
+      .from("tarefas_producao")
+      .select("id", { count: "exact", head: true })
+      .eq("pedido_id", pedido.id)
+      .eq("status", "pendente");
+    if ((faltando ?? 0) > 0) return;
+
+    if (pedido.origem === "delivery") {
+      await avisarEquipe(pedido.restaurante_id, "delivery_pronto", {
+        titulo: pedido.restaurante.nome,
+        corpo: `Pedido nº ${pedido.numero} pronto para sair.`,
+        url: "/painel/delivery",
+        tag: `delivery-pronto-${pedido.id}`,
+      });
+      return;
+    }
+    await avisarMembro(comanda!.garcom_id!, "prato_pronto", {
+      titulo: pedido.restaurante.nome,
+      corpo: `Mesa ${comanda!.mesa?.numero ?? ""}: pedido nº ${pedido.numero} pronto para levar.`,
+      url: `/painel/comandas/${comanda!.mesa?.id ?? ""}`,
+      tag: `pronto-${pedido.id}`,
+    });
+  } catch (erro) {
+    console.error("[avisos-equipe]", erro);
+  }
+}
+
+// Eventos de um pedido de delivery que a equipe precisa saber mesmo longe da tela: o cliente
+// cancelou antes do aceite e o cliente mandou mensagem. O texto do cliente não vai no aviso —
+// a notificação aparece na tela de bloqueio, e mensagem de cliente é conversa dele com a casa.
+export async function avisarDelivery(pedidoId: string, evento: "delivery_cancelado" | "mensagem_cliente"): Promise<void> {
+  const admin = createAdminClient();
+  if (!admin || !chaves()) return;
+  try {
+    const { data: pedido } = await admin
+      .from("pedidos")
+      .select("id, numero, restaurante_id, restaurante:restaurantes!inner(nome)")
+      .eq("id", pedidoId)
+      .maybeSingle();
+    if (!pedido) return;
+    const corpo =
+      evento === "delivery_cancelado"
+        ? `O cliente cancelou o pedido nº ${pedido.numero}.`
+        : `Mensagem do cliente no pedido nº ${pedido.numero}.`;
+    await avisarEquipe(pedido.restaurante_id, evento, {
+      titulo: pedido.restaurante.nome,
+      corpo,
+      url: evento === "mensagem_cliente" ? `/painel/conversas/${pedido.id}` : "/painel/delivery",
+      tag: `${evento}-${pedido.id}`,
+    });
+  } catch (erro) {
+    console.error("[avisos-equipe]", erro);
   }
 }

@@ -67,7 +67,10 @@ export const EVENTOS = {
   },
   cozinha_ticket: {
     rotulo: "Pedido novo na cozinha",
-    detalhe: "Vale na tela da cozinha, no aparelho que estiver com ela aberta.",
+    // Sem aviso no celular de propósito: a tela da cozinha fica aberta o tempo todo no aparelho
+    // da praça, e uma notificação por ticket numa noite cheia seria dezenas delas, no aparelho
+    // que já está mostrando o pedido.
+    detalhe: "Só na tela da cozinha, no aparelho que estiver com ela aberta (não vai para o celular).",
     permissao: "cozinha_tela",
     vibraPorPadrao: false,
   },

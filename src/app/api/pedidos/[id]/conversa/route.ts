@@ -1,6 +1,8 @@
+import { after } from "next/server";
 import { z } from "zod";
 
 import { consumirLimite, ipDoCliente } from "@/lib/limite-taxa";
+import { avisarDelivery } from "@/lib/avisos-equipe";
 import { createPublicClient } from "@/lib/supabase/publico";
 import { id } from "@/lib/validacao";
 
@@ -35,5 +37,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const { error } = await createPublicClient().rpc("cliente_enviar_mensagem", { p_pedido_id: pedidoId, p_texto: corpo.data.texto });
   if (error) return Response.json({ erro: error.code === "P0001" ? error.message : "Não foi possível enviar. Tente de novo." }, { status: 400, headers: semCache });
+  after(() => avisarDelivery(pedidoId, "mensagem_cliente"));
   return Response.json({ ok: true }, { headers: semCache });
 }

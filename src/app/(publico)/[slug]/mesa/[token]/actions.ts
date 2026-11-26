@@ -1,9 +1,11 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { after } from "next/server";
 import { z } from "zod";
 
 import { consumirLimite, ipDoCliente } from "@/lib/limite-taxa";
+import { avisarPedidoDaMesa } from "@/lib/avisos-equipe";
 import { createPublicClient } from "@/lib/supabase/publico";
 import { id } from "@/lib/validacao";
 
@@ -61,6 +63,10 @@ export async function pedirPelaMesa(slug: string, entrada: PedidoMesa): Promise<
     const mensagem = error.code === "P0001" ? error.message.replace(/\s*\((precos_mudaram|indisponivel)\)$/, "") : "Não foi possível enviar. Tente de novo.";
     return { ok: false, mensagem, atualizar };
   }
+  const resultado = data as { numero: number; pedido_id?: string };
+  // Aviso no celular: o cartão na tela só aparece para quem está com o app aberto. Vai para o
+  // garçom da mesa; mesa sem garçom avisa quem atende mesas, que é quem pode assumir.
+  after(() => avisarPedidoDaMesa(d.token, resultado.numero));
   refresh();
-  return { ok: true, numero: (data as { numero: number }).numero };
+  return { ok: true, numero: resultado.numero };
 }

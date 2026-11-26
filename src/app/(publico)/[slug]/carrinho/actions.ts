@@ -1,6 +1,9 @@
 "use server";
 
+import { after } from "next/server";
 import { z } from "zod";
+
+import { avisarEquipe } from "@/lib/avisos-equipe";
 
 import { centavosDeTexto } from "@/lib/dinheiro";
 import { ipDoCliente, limiteAtingido, registrarUso } from "@/lib/limite-taxa";
@@ -159,6 +162,16 @@ export async function enviarPedido(slug: string, entrada: DadosPedido): Promise<
   if (!pedidoId) return { ok: false, mensagem: "Não foi possível enviar o pedido. Tente novamente." };
   registrarUso(chaveTelefone);
   if (chaveIp) registrarUso(chaveIp);
+  // Aviso no celular de quem cuida do delivery: o quadro só bipa com a tela aberta, e pedido
+  // parado sem aceite é cliente esperando. `after`: o pedido já está gravado, o cliente não espera.
+  after(() =>
+    avisarEquipe(restaurante.id, "delivery_novo", {
+      titulo: restaurante.nome,
+      corpo: `Pedido novo de ${d.nome}. Aceite para a cozinha começar.`,
+      url: "/painel/delivery",
+      tag: `delivery-${pedidoId}`,
+    }),
+  );
   return { ok: true, pedidoId };
 }
 
