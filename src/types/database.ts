@@ -748,6 +748,37 @@ isOneToOne: false
       referencedColumns: ["restaurante_id","id"]
     }
                   ]
+                },"membros_avisos": {
+                  Row: {
+                    "auth": string,"criado_em": string,"endpoint": string,"id": string,"membro_id": string,"p256dh": string,"restaurante_id": string
+                  }
+                  Insert: {
+                    "auth": string,"criado_em"?: string,"endpoint": string,"id"?: string,"membro_id": string,"p256dh": string,"restaurante_id": string
+                  }
+                  Update: {
+                    "auth"?: string,"criado_em"?: string,"endpoint"?: string,"id"?: string,"membro_id"?: string,"p256dh"?: string,"restaurante_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "membros_avisos_restaurante_id_fkey"
+      columns: ["restaurante_id"]
+isOneToOne: false
+      referencedRelation: "restaurantes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "membros_avisos_restaurante_id_fkey"
+      columns: ["restaurante_id"]
+isOneToOne: false
+      referencedRelation: "restaurantes_publicos"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "membros_avisos_restaurante_id_membro_id_fkey"
+      columns: ["restaurante_id","membro_id"]
+isOneToOne: false
+      referencedRelation: "membros"
+      referencedColumns: ["restaurante_id","id"]
+    }
+                  ]
                 },"mesas": {
                   Row: {
                     "ativa": boolean,"id": string,"numero": string,"ordem": number,"qr_token": string,"restaurante_id": string

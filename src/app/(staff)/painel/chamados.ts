@@ -1,6 +1,9 @@
 "use server";
 
+import { after } from "next/server";
 import { z } from "zod";
+
+import { avisarMembro } from "@/lib/avisos-equipe";
 
 import { falha, mensagemErroBanco, type ResultadoAcao, sucesso } from "@/lib/acoes";
 import { exigirPermissao } from "@/lib/auth/dal";
@@ -47,5 +50,15 @@ export async function chamarGarcom(garcomId: string, recado: string): Promise<Re
     .from("chamados_garcom")
     .insert({ restaurante_id: acesso.restaurante.id, garcom_id: dados.data.garcomId, recado: dados.data.recado || null });
   if (error) return falha(mensagemErroBanco(error));
+  // Aviso no celular dele, que chega mesmo com o app fechado — o app aberto já bipa sozinho pelo
+  // tempo real. `after`: se o push falhar, o chamado já está gravado e a tela não espera por ele.
+  after(() =>
+    avisarMembro(dados.data.garcomId, "chamado", {
+      titulo: acesso.restaurante.nome,
+      corpo: dados.data.recado ? `${acesso.nome} chamou: ${dados.data.recado}` : `${acesso.nome} está chamando você.`,
+      url: "/painel/comandas",
+      tag: `chamado-${dados.data.garcomId}`,
+    }),
+  );
   return sucesso("Chamado enviado.");
 }
