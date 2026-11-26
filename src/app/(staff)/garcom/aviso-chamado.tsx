@@ -5,7 +5,7 @@ import { toast } from "sonner";
 
 import { useAcao } from "@/components/staff/acoes-cliente";
 import { useMudancasRealtime } from "@/lib/realtime";
-import { novoContextoDeSom, tocarAlerta } from "@/lib/som";
+import { avisar, novoContextoDeSom } from "@/lib/som";
 import { createClient } from "@/lib/supabase/client";
 
 import { atenderChamado } from "./actions";
@@ -47,9 +47,10 @@ export function AvisoChamado({ restauranteId, membroId }: { restauranteId: strin
     return () => repeticoes.forEach((intervalo) => clearInterval(intervalo));
   }, []);
 
+  // Aviso obrigatório: `avisar` nunca devolve falso aqui, mas ele é quem respeita a escolha de
+  // vibrar ou não. `bipar` continua controlando o ritmo (vibra a cada 3 s, bipa a cada 6 s).
   const alertar = useCallback((bipar: boolean) => {
-    navigator.vibrate?.([700, 300, 700]);
-    if (bipar && audio.current?.state === "running") tocarAlerta(audio.current);
+    avisar(bipar ? audio.current : null, "chamado", [700, 300, 700]);
   }, []);
 
   const encerrar = useCallback((chamadoId: string) => {

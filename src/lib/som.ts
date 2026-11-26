@@ -1,6 +1,9 @@
 // Sons dos avisos (pedido novo, cozinha, garçom), gerados no navegador: sem arquivo de áudio.
 // Cada pessoa escolhe o som, o volume e quantas vezes toca em "Meu perfil" (guardado na conta,
-// vale em qualquer aparelho). <PreferenciaSom> no layout aplica a escolha aqui.
+// vale em qualquer aparelho), e lá também diz quais avisos quer receber e quais devem vibrar.
+// <PreferenciaSom> no layout aplica as duas escolhas aqui.
+
+import { AVISOS_PADRAO, type Avisos, type Evento } from "@/lib/avisos";
 
 export const SONS = {
   bipe: "Bipe",
@@ -30,6 +33,28 @@ export function lerPreferenciaDeSom(valor: unknown): PreferenciaDeSom {
 let preferencia: PreferenciaDeSom = SOM_PADRAO;
 export function definirPreferenciaDeSom(p: PreferenciaDeSom) {
   preferencia = p;
+}
+
+let avisos: Avisos = AVISOS_PADRAO;
+export function definirAvisos(a: Avisos) {
+  avisos = a;
+}
+
+export function avisoLigado(evento: Evento): boolean {
+  return avisos[evento].ligado;
+}
+
+// Avisa de um evento respeitando a escolha da pessoa. Devolve se o aviso vale, para a tela
+// decidir se mostra o cartão ou o toast junto — desligado é desligado, não é "sem som".
+//
+// `vibracao` é o padrão de vibração daquele aviso (ms ligado/desligado). Só vibra se a pessoa
+// pediu; o iPhone não vibra de jeito nenhum, porque o Safari não tem a API.
+export function avisar(contexto: AudioContext | null, evento: Evento, vibracao?: number[]): boolean {
+  const escolha = avisos[evento];
+  if (!escolha.ligado) return false;
+  if (escolha.vibrar && vibracao) navigator.vibrate?.(vibracao);
+  if (contexto?.state === "running") tocarAlerta(contexto);
+  return true;
 }
 
 type Nota = { freq: number; inicio: number; duracao: number; tipo?: OscillatorType; pico?: number };

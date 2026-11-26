@@ -16,6 +16,7 @@ import {
   podeAcessar,
   rotaInicial,
 } from "@/lib/auth/papeis";
+import { type Avisos, lerAvisos } from "@/lib/avisos";
 import { lerPreferenciaDeSom, type PreferenciaDeSom } from "@/lib/som";
 import { createClient } from "@/lib/supabase/server";
 
@@ -49,8 +50,9 @@ export type Vinculo = {
   restaurante: RestauranteResumo;
 };
 
-// som: escolha da pessoa em "Meu perfil" (guardada nos dados da conta, vale em qualquer aparelho).
-export type Usuario = { id: string; email: string | null; som: PreferenciaDeSom };
+// som e avisos: escolhas da pessoa em "Meu perfil" > Notificações (guardadas nos dados da conta,
+// valem em qualquer aparelho em que ela entrar).
+export type Usuario = { id: string; email: string | null; som: PreferenciaDeSom; avisos: Avisos };
 
 export const obterUsuario = cache(async (): Promise<Usuario | null> => {
   const supabase = await createClient();
@@ -58,7 +60,12 @@ export const obterUsuario = cache(async (): Promise<Usuario | null> => {
   const claims = data?.claims;
   if (!claims?.sub) return null;
   const metadados = (claims.user_metadata ?? {}) as Record<string, unknown>;
-  return { id: claims.sub, email: typeof claims.email === "string" ? claims.email : null, som: lerPreferenciaDeSom(metadados.som) };
+  return {
+    id: claims.sub,
+    email: typeof claims.email === "string" ? claims.email : null,
+    som: lerPreferenciaDeSom(metadados.som),
+    avisos: lerAvisos(metadados.avisos),
+  };
 });
 
 export const obterVinculos = cache(async (): Promise<Vinculo[]> => {

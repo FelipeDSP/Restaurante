@@ -86,7 +86,7 @@ export default async function PainelLayout({ children }: LayoutProps<"/painel">)
   const contadores = { "/painel/delivery": novos, "/painel/conversas": naoLidas };
   return (
     <div className="flex min-h-full flex-1 flex-col" style={estiloMarca(acesso.restaurante)}>
-      <PreferenciaSom preferencia={acesso.usuario.som} />
+      <PreferenciaSom preferencia={acesso.usuario.som} avisos={acesso.usuario.avisos} />
       <header className="sticky top-0 z-10 bg-[var(--cor-primaria)] text-[var(--cor-primaria-contraste)] shadow-sm print:hidden">
         <div className="flex h-16 w-full items-center justify-between gap-3 px-4">
           <Link href="/painel" className="flex min-h-11 min-w-0 flex-1 items-center">

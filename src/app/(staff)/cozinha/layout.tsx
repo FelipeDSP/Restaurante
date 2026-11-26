@@ -27,7 +27,7 @@ export default async function CozinhaLayout({ children }: LayoutProps<"/cozinha"
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-muted/40" style={estiloMarca(acesso.restaurante)}>
-      <PreferenciaSom preferencia={acesso.usuario.som} />
+      <PreferenciaSom preferencia={acesso.usuario.som} avisos={acesso.usuario.avisos} />
       <header className="sticky top-0 z-10 bg-[var(--cor-primaria)] text-[var(--cor-primaria-contraste)] shadow-sm print:hidden">
         <div className="flex h-14 w-full items-center justify-between gap-3 px-4">
           <div className="flex min-w-0 items-center gap-2">

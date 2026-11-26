@@ -3,6 +3,8 @@
 import { refresh } from "next/cache";
 import { z } from "zod";
 
+import { type Avisos, EVENTOS_NA_ORDEM, paraGravar } from "@/lib/avisos";
+
 import { falhouAntiRobo, MENSAGEM_ANTI_ROBO, passeAntiRobo } from "@/lib/anti-robo";
 import { falha, falhaValidacao, mensagemErroBanco, type ResultadoAcao, sucesso } from "@/lib/acoes";
 import { chavesDoLogin, esperaDoLogin, registrarLogin, textoEspera } from "@/lib/auth/bloqueio";
@@ -103,6 +105,23 @@ export async function trocarSenha(_estado: ResultadoAcao, formData: FormData): P
   const { error } = await supabase.auth.updateUser({ password: dados.data.senha });
   if (error) return falha(error.code === "same_password" ? "Use uma senha diferente da atual." : "Não foi possível trocar a senha. Tente de novo.");
   return sucesso("Senha trocada.");
+}
+
+// Quais avisos a pessoa recebe e quais vibram. Mesmo lugar do som: os dados da conta.
+// O obrigatório não vem do formulário — `paraGravar` força ligado, então nem um envio forjado
+// desliga o chamado do garçom.
+export async function salvarAvisos(escolha: unknown): Promise<ResultadoAcao> {
+  if (!(await exigirMembro())) return falha("Entre de novo para mudar os avisos.");
+  const linha = z.object({ ligado: z.boolean(), vibrar: z.boolean() });
+  const dados = z.object(Object.fromEntries(EVENTOS_NA_ORDEM.map((e) => [e, linha]))).safeParse(escolha);
+  if (!dados.success) return falha("Escolha os avisos de novo.");
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({ data: { avisos: paraGravar(dados.data as Avisos) } });
+  if (error) return falha("Não foi possível salvar. Tente de novo.");
+  await supabase.auth.refreshSession();
+  refresh();
+  return sucesso("Avisos salvos.");
 }
 
 // Som dos avisos: fica nos dados da conta (vale em qualquer aparelho em que a pessoa entrar).

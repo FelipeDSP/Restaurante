@@ -9,8 +9,6 @@ import { Input } from "@/components/ui/input";
 import { salvarPerfil, trocarEmail, trocarSenha } from "@/lib/auth/perfil-actions";
 import { formatarTelefone } from "@/lib/telefone";
 import { AntiRobo } from "@/components/anti-robo";
-import { EscolherSom } from "@/components/staff/escolher-som";
-import type { PreferenciaDeSom } from "@/lib/som";
 
 type Props = {
   usuarioId: string;
@@ -19,11 +17,10 @@ type Props = {
   foto: string | null;
   email: string | null;
   funcao: string;
-  som: PreferenciaDeSom;
 };
 
 // Cada pessoa da equipe cuida dos próprios dados; função e permissões continuam com o dono.
-export function MeuPerfil({ usuarioId, nome, telefone, foto, email, funcao, som }: Props) {
+export function MeuPerfil({ usuarioId, nome, telefone, foto, email, funcao }: Props) {
   const [estadoPerfil, acaoPerfil] = useActionState(salvarPerfil, undefined);
   const [estadoEmail, acaoEmail] = useActionState(trocarEmail, undefined);
   const [estadoSenha, acaoSenha] = useActionState(trocarSenha, undefined);
@@ -69,8 +66,6 @@ export function MeuPerfil({ usuarioId, nome, telefone, foto, email, funcao, som 
           </form>
         </CardContent>
       </Card>
-
-      <EscolherSom atual={som} />
 
       <Card>
         <CardHeader>

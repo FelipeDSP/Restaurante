@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
 
 import { useMudancasRealtime } from "@/lib/realtime";
-import { novoContextoDeSom, tocarAlerta } from "@/lib/som";
+import { avisar, novoContextoDeSom } from "@/lib/som";
 import { itensProntosParaLevar } from "@/lib/preparo";
 import { createClient } from "@/lib/supabase/client";
 
@@ -54,10 +54,8 @@ export function AvisoPronto({ restauranteId, membroId }: { restauranteId: string
       const faltam = pedido.tarefas_producao.some((t) => t.status === "pendente");
 
       const mesaId = pedido.comanda.mesa_id;
-      if (pedido.comanda.garcom_id === membroId) {
-        navigator.vibrate?.([300, 150, 300]);
-        if (audio.current?.state === "running") tocarAlerta(audio.current);
-      }
+      // Mesa de outro garçom (ou sem garçom) aparece na tela, mas sem som nem vibração.
+      if (pedido.comanda.garcom_id === membroId) avisar(audio.current, "prato_pronto", [300, 150, 300]);
       toast.success(`Mesa ${pedido.comanda.mesa?.numero ?? ""}: ${faltam ? "parte do " : ""}pedido nº ${pedido.numero} pronto`, {
         description: `${novos.map((i) => `${i.quantidade}× ${i.nome_produto}`).join(", ")}. Pode levar para a mesa.`,
         duration: Infinity,

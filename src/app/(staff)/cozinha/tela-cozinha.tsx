@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAcao } from "@/components/staff/acoes-cliente";
 import { Button } from "@/components/ui/button";
 import { resumoAdicionais } from "@/lib/adicionais";
-import { novoContextoDeSom, tocarAlerta } from "@/lib/som";
+import { avisar, novoContextoDeSom } from "@/lib/som";
 import { horaLocal } from "@/lib/tempo";
 import { cn } from "@/lib/utils";
 
@@ -350,7 +350,7 @@ export function TelaCozinha({
     }
     if (!anteriores) return;
     const chegou = atuais.some((id) => !anteriores.has(id) && naTela.has(id));
-    if (chegou && audio.current?.state === "running") tocarAlerta(audio.current);
+    if (chegou) avisar(audio.current, "cozinha_ticket");
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `auto` muda a cada render; só reage aos tickets
   }, [idsPendentes, idsVisiveis]);
 
