@@ -1,7 +1,7 @@
 "use client";
 
 import { Dialog } from "@base-ui/react/dialog";
-import { Bike, ChartColumn, ChefHat, ChevronLeft, CookingPot, House, LayoutGrid, Lock, type LucideIcon, Menu, Wallet, X } from "lucide-react";
+import { Bike, ChartColumn, ChefHat, ChevronLeft, CookingPot, History, House, LayoutGrid, Lock, type LucideIcon, Menu, MessageCircle, Settings, Wallet, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -47,7 +47,10 @@ function ListaMenu({ itens, contadores, bloqueados = [], ativo, aoNavegar }: Pro
               atual ? "bg-[var(--cor-primaria)] text-[var(--cor-primaria-contraste)]" : "hover:bg-muted",
             )}
           >
-            {item.rotulo}
+            <span className="flex min-w-0 items-center gap-2.5">
+              <IconeDoItem href={item.href} />
+              <span className="truncate">{item.rotulo}</span>
+            </span>
             {contadores[item.href] ? <Contador valor={contadores[item.href]} /> : null}
           </Link>
         );
@@ -60,7 +63,10 @@ function ListaMenu({ itens, contadores, bloqueados = [], ativo, aoNavegar }: Pro
           title="Não faz parte do seu plano"
           className="flex min-h-10 items-center justify-between gap-2 rounded-md px-3 text-sm font-medium text-muted-foreground hover:bg-muted"
         >
-          {item.rotulo}
+          <span className="flex min-w-0 items-center gap-2.5">
+            <IconeDoItem href={item.href} />
+            <span className="truncate">{item.rotulo}</span>
+          </span>
           <Lock className="size-3.5" aria-label="Não faz parte do seu plano" />
         </Link>
       ))}
@@ -78,16 +84,27 @@ export function MenuLateral({ itens, contadores, bloqueados }: Props) {
   );
 }
 
-// Ícone de cada aba do rodapé (o resto do menu fica no "Mais").
+// Ícone de cada item do menu: nas abas do rodapé (celular) e ao lado do texto na barra lateral.
+// No computador o desenho não substitui a palavra — acompanha. Quem usa todo dia acha pela forma
+// antes de ler, e quem é novo continua lendo.
 const ICONES: Record<string, LucideIcon> = {
   "/painel": House,
   "/painel/delivery": Bike,
+  "/painel/conversas": MessageCircle,
   "/painel/comandas": LayoutGrid,
   "/painel/comandas/pracas": ChefHat,
   "/painel/caixa": Wallet,
   "/painel/relatorios": ChartColumn,
-  "/cozinha": CookingPot,
+  "/painel/historico": History,
+  "/painel/cozinha": CookingPot,
+  [CONFIGURACOES_HREF]: Settings,
 };
+
+// Desenho do item (a lista cobre todos; o quadrado vazio mantém o texto alinhado se faltar algum).
+function IconeDoItem({ href }: { href: string }) {
+  const Desenho = ICONES[href];
+  return Desenho ? <Desenho className="size-4 shrink-0" aria-hidden /> : <span className="size-4 shrink-0" aria-hidden />;
+}
 
 // Telas com botões próprios no rodapé (a mesa e o lançamento): a barra de abas sai da frente.
 const TELA_COM_BARRA_PROPRIA = /^\/painel\/comandas\/(?!pracas(\/|$))[^/]+/;
