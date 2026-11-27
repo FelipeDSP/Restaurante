@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 
-import { BotaoEnviar, Campo, ErroCampo, marcadoCampo, Selecao, useAvisoResultado, valorCampo } from "@/components/staff/formulario";
+import { BotaoEnviar, Campo, ErroCampo, Selecao, useAvisoResultado, valorCampo } from "@/components/staff/formulario";
 import { UploadImagem } from "@/components/staff/upload-imagem";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -31,7 +31,6 @@ export type DadosRestaurante = {
   facebook: string | null;
   fuso_horario: string;
   horarios: Horarios;
-  aceita_delivery: boolean;
   pedido_minimo: number;
   tempo_estimado_entrega_min: number | null;
   // fixa: um valor só (o cliente informa CEP e endereço); bairro: lista em Bairros de entrega.
@@ -207,7 +206,7 @@ export function FormRestaurante({ restaurante }: { restaurante: DadosRestaurante
         </CardContent>
       </Card>
 
-      <Card>
+      <Card id="horarios" className="scroll-mt-20">
         <CardHeader>
           <CardTitle>Horários</CardTitle>
         </CardHeader>
@@ -230,15 +229,8 @@ export function FormRestaurante({ restaurante }: { restaurante: DadosRestaurante
           <CardTitle>Delivery</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
-          <label className="flex pointer-coarse:min-h-11 items-center gap-3 text-sm font-medium sm:col-span-2">
-            <input
-              type="checkbox"
-              name="aceita_delivery"
-              defaultChecked={marcadoCampo(estado, "aceita_delivery", restaurante.aceita_delivery)}
-              className="size-5 pointer-coarse:size-6 accent-[var(--cor-primaria-texto)]"
-            />
-            Aceitar pedidos de delivery pelo site
-          </label>
+          {/* Pausar e voltar a receber pedidos fica no quadro do Delivery e no Início: é decisão
+              de meio de serviço, e salvar este formulário desfazia a pausa. */}
           {/* Por enquanto só taxa fixa (a taxa por bairro volta quando for repensada; o banco ainda aceita). */}
           <input type="hidden" name="taxa_entrega_modo" value="fixa" />
           <Campo rotulo="Taxa de entrega (R$)" htmlFor="taxa_entrega_fixa" dica="0,00 = entrega grátis">

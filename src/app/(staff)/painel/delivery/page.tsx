@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 
 import { AtualizarEmTempoReal } from "@/components/staff/atualizar-em-tempo-real";
-import { exigirPermissao } from "@/lib/auth/dal";
+import { exigirPermissao, temPermissao } from "@/lib/auth/dal";
 import { mudancaDoDelivery } from "@/lib/realtime-filtros";
 
 import { carregarSessaoAberta } from "../caixa/dados";
-import { FINALIZADOS_NO_QUADRO, carregarEntregadores, carregarPedidosDelivery } from "./dados";
+import { ChaveDelivery } from "./chave-delivery";
+import { FINALIZADOS_NO_QUADRO, aceitaDelivery, carregarEntregadores, carregarPedidosDelivery } from "./dados";
 import { QuadroDelivery } from "./quadro-delivery";
 
 export const metadata: Metadata = { title: "Delivery" };
@@ -17,12 +18,13 @@ export default async function DeliveryPage() {
 
   // Em andamento (de qualquer sessão) + só os últimos finalizados da sessão: o quadro é
   // operacional e trazia até 200 finalizados, renderizando todos. O resto está no Histórico.
-  const [emAndamento, finalizados, entregadores] = await Promise.all([
+  const [emAndamento, finalizados, entregadores, aceita] = await Promise.all([
     carregarPedidosDelivery(acesso.restaurante.id, fuso, { emAndamento: true }),
     sessao
       ? carregarPedidosDelivery(acesso.restaurante.id, fuso, { finalizadosDaSessao: sessao.id, quantos: FINALIZADOS_NO_QUADRO })
       : Promise.resolve([]),
     carregarEntregadores(acesso.restaurante.id),
+    aceitaDelivery(acesso.restaurante.id),
   ]);
   const pedidos = [...emAndamento, ...finalizados];
 
@@ -40,6 +42,8 @@ export default async function DeliveryPage() {
           <p className="text-sm font-medium text-destructive">Caixa fechado: o site não recebe pedidos até o caixa ser aberto.</p>
         ) : null}
       </div>
+      {/* Pausar e voltar a receber pedidos, sem sair do quadro. */}
+      <ChaveDelivery aceita={aceita} podeMudar={temPermissao(acesso, "restaurante")} />
       <QuadroDelivery pedidos={pedidos} entregadores={entregadores} finalizadosNoQuadro={FINALIZADOS_NO_QUADRO} />
     </main>
   );

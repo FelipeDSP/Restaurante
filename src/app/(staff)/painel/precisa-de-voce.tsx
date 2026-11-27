@@ -6,6 +6,7 @@ import type { Permissao } from "@/lib/auth/papeis";
 import { dataHoraLocal } from "@/lib/tempo";
 import { cn } from "@/lib/utils";
 
+import { ChaveDelivery } from "./delivery/chave-delivery";
 import type { Pendencias } from "./pendencias";
 
 type Linha = {
@@ -71,11 +72,12 @@ export function PrecisaDeVoce({ pendencias, permissoes, fuso }: { pendencias: Pe
   if (pendencias.impressao > 0) {
     linhas.push({
       chave: "impressao",
-      href: "/painel/impressoras",
+      // A fila é onde se resolve: "Imprimir tudo de novo" fica nela, não no cadastro da impressora.
+      href: "/painel/impressoras#fila",
       icone: Printer,
       quantidade: pendencias.impressao,
       titulo: `${plural(pendencias.impressao, "impressão não saiu", "impressões não saíram")}`,
-      detalhe: "Confira o computador e a impressora",
+      detalhe: "Toque para mandar imprimir de novo",
     });
   }
   // Caixa fechado, por si só, não é pendência: de manhã, e em todo dia de folga, é o estado
@@ -110,14 +112,19 @@ export function PrecisaDeVoce({ pendencias, permissoes, fuso }: { pendencias: Pe
       detalhe: "Parece que ninguém fechou a noite. O resumo só fecha quando o caixa fecha",
     });
   }
+  // Delivery pausado: a chave fica aqui mesmo (antes o aviso mandava para o formulário grande
+  // de Painel › Restaurante, onde a pessoa tinha de achar o campo no meio dos horários e cores).
+  const pausado = !site.aberto && site.motivo === "sem_delivery" && caixaAberto;
   // Site fora do ar por outro motivo. Só com o caixa aberto: se ninguém abriu o caixa, o
   // restaurante não está operando e não há nada a cobrar.
-  if (!site.aberto && site.motivo && site.motivo !== "caixa_fechado" && caixaAberto) {
+  if (!site.aberto && site.motivo && site.motivo !== "caixa_fechado" && site.motivo !== "sem_delivery" && caixaAberto) {
     linhas.push({
       chave: "site",
-      // Quem não pode mexer nos horários continua vendo o aviso, mas sem link: levar o caixa
-      // para uma tela que ele não abre é pior do que só informar.
-      href: permissoes.includes("restaurante") ? "/painel/restaurante" : null,
+      // O link leva onde a coisa se resolve, não à tela de configuração inteira: o horário cai no
+      // cartão Horários. Restaurante desativado é coisa do suporte, e quem não pode mexer nos
+      // horários continua vendo o aviso sem link — levar o caixa a uma tela que ele não abre é
+      // pior do que só informar.
+      href: site.motivo === "fora_do_horario" && permissoes.includes("restaurante") ? "/painel/restaurante#horarios" : null,
       icone: Clock,
       quantidade: null,
       titulo: "O site não está recebendo pedidos",
@@ -125,7 +132,7 @@ export function PrecisaDeVoce({ pendencias, permissoes, fuso }: { pendencias: Pe
       urgente: true,
     });
   }
-  if (linhas.length === 0) return null;
+  if (linhas.length === 0 && !pausado) return null;
 
   const urgentes = linhas.filter((l) => l.urgente).length;
 
@@ -142,42 +149,46 @@ export function PrecisaDeVoce({ pendencias, permissoes, fuso }: { pendencias: Pe
           </span>
         ) : null}
       </div>
+      {/* Delivery pausado: a própria chave, para voltar a receber sem sair da tela. */}
+      {pausado ? <ChaveDelivery aceita={false} podeMudar={permissoes.includes("restaurante")} className="bg-white/70" /> : null}
       {/* Duas colunas no computador: cinco pendências numa coluna só viravam uma lista comprida
           que empurrava os números da noite para fora da tela. */}
-      <ul className="grid gap-2 lg:grid-cols-2">
-        {linhas.map((linha) => {
-          const miolo = (
-            <>
-              <span
-                className={cn("grid size-10 shrink-0 place-items-center rounded-xl text-white", linha.urgente ? "bg-red-600" : "bg-amber-500")}
-                aria-hidden
-              >
-                <linha.icone className="size-5" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className={cn("block truncate font-semibold", linha.urgente ? "text-red-900" : "text-amber-950")}>
-                  {linha.quantidade !== null ? <span className="tabular-nums">{linha.quantidade} </span> : null}
-                  {linha.titulo}
+      {linhas.length > 0 ? (
+        <ul className="grid gap-2 lg:grid-cols-2">
+          {linhas.map((linha) => {
+            const miolo = (
+              <>
+                <span
+                  className={cn("grid size-10 shrink-0 place-items-center rounded-xl text-white", linha.urgente ? "bg-red-600" : "bg-amber-500")}
+                  aria-hidden
+                >
+                  <linha.icone className="size-5" />
                 </span>
-                <span className="block truncate text-xs text-amber-900/70">{linha.detalhe}</span>
-              </span>
-              {linha.href ? <ChevronRight className="size-5 shrink-0 text-amber-700" aria-hidden /> : null}
-            </>
-          );
-          const classe = "flex min-h-11 items-center gap-3 rounded-xl bg-white/70 p-2.5 text-sm";
-          return (
-            <li key={linha.chave} className="min-w-0">
-              {linha.href ? (
-                <Link href={linha.href} className={cn(classe, "hover:bg-white")}>
-                  {miolo}
-                </Link>
-              ) : (
-                <div className={classe}>{miolo}</div>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+                <span className="min-w-0 flex-1">
+                  <span className={cn("block truncate font-semibold", linha.urgente ? "text-red-900" : "text-amber-950")}>
+                    {linha.quantidade !== null ? <span className="tabular-nums">{linha.quantidade} </span> : null}
+                    {linha.titulo}
+                  </span>
+                  <span className="block truncate text-xs text-amber-900/70">{linha.detalhe}</span>
+                </span>
+                {linha.href ? <ChevronRight className="size-5 shrink-0 text-amber-700" aria-hidden /> : null}
+              </>
+            );
+            const classe = "flex min-h-11 items-center gap-3 rounded-xl bg-white/70 p-2.5 text-sm";
+            return (
+              <li key={linha.chave} className="min-w-0">
+                {linha.href ? (
+                  <Link href={linha.href} className={cn(classe, "hover:bg-white")}>
+                    {miolo}
+                  </Link>
+                ) : (
+                  <div className={classe}>{miolo}</div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
     </section>
   );
 }

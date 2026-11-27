@@ -9,7 +9,6 @@ import { fusoSchema, horariosSchema } from "@/lib/horarios";
 import { urlImagemDoRestaurante } from "@/lib/storage";
 import { createClient } from "@/lib/supabase/server";
 import {
-  checkbox,
   dadosDoFormulario,
   dinheiro,
   inteiroOpcional,
@@ -71,7 +70,6 @@ export async function salvarRestaurante(_estado: ResultadoAcao, formData: FormDa
     instagram: arroba(/^[A-Za-z0-9._]{1,30}$/, "Instagram"),
     facebook: arroba(/^[A-Za-z0-9._-]{1,50}$/, "Facebook"),
     fuso_horario: fusoSchema,
-    aceita_delivery: checkbox,
     pedido_minimo: dinheiro("Pedido mínimo"),
     taxa_entrega_modo: z.enum(["fixa", "bairro"]),
     taxa_entrega_fixa: dinheiro("Taxa de entrega"),

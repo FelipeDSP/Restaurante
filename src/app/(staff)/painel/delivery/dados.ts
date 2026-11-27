@@ -131,3 +131,10 @@ export async function carregarEntregadores(restauranteId: string): Promise<{ id:
     .order("nome");
   return data ?? [];
 }
+
+// O site está recebendo pedidos? (chave do quadro do Delivery e aviso do Início)
+export async function aceitaDelivery(restauranteId: string): Promise<boolean> {
+  const supabase = await createClient();
+  const { data } = await supabase.from("restaurantes").select("aceita_delivery").eq("id", restauranteId).maybeSingle();
+  return data?.aceita_delivery ?? false;
+}

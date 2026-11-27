@@ -30,7 +30,8 @@ export function Fila({ fila, fuso }: { fila: Impressao[]; fuso: string }) {
   const { pendente, executar } = useAcao();
   const comErro = fila.filter((f) => f.status === "erro").length;
   return (
-    <Card>
+    // `#fila`: o aviso de impressão que não saiu, no Início, cai direto aqui.
+    <Card id="fila" className="scroll-mt-20">
       <CardHeader className="flex flex-wrap items-center justify-between gap-2">
         <CardTitle>Últimas impressões</CardTitle>
         {comErro > 0 ? (
