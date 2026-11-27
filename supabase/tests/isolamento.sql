@@ -4055,6 +4055,15 @@ begin
 
   -- Deixa como estava para os blocos seguintes. O bairro fica (pedidos apontam para ele),
   -- só sai da lista de quem atende.
+  -- Endereço salvo guarda o nome do bairro mesmo por bairro: é por ele que o checkout
+  -- recalcula a taxa quando o cliente reusa o endereço.
+  perform pg_temp.ok(
+    not exists (
+      select 1 from public.clientes_enderecos
+      where bairro_id is not null and coalesce(btrim(bairro), '') = ''
+    ),
+    'bairro: endereco salvo guarda o nome do bairro');
+
   perform pg_temp.entrar('dono.brasa@exemplo.com');
   update public.restaurantes set taxa_entrega_modo = 'fixa', taxa_outros_bairros = null where id = a;
   update public.bairros_entrega set ativo = false where id = v_bairro;
