@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { enderecoEmLinha } from "@/lib/endereco";
 import { loginClienteDisponivel } from "@/lib/login-cliente";
 
 import {
@@ -43,7 +44,12 @@ export default async function CarrinhoPage(props: PageProps<"/[slug]/carrinho">)
           taxaModo: restaurante.taxaEntregaModo,
           taxaFixa: restaurante.taxaEntregaFixa,
           cidade: restaurante.endereco.cidade ?? null,
+          // Para quem vai buscar: onde é, e em quanto tempo fica pronto.
+          enderecoDoLocal: enderecoEmLinha(restaurante.endereco),
+          tempoRetiradaMin: restaurante.tempoRetiradaMin,
         }}
+        podeEntregar={disponibilidade.entrega}
+        podeRetirar={disponibilidade.retirada}
         aberto={disponibilidade.aberto}
         mensagemFechado={disponibilidade.motivo ? MENSAGEM_FECHADO[disponibilidade.motivo] : null}
         bairros={bairros}

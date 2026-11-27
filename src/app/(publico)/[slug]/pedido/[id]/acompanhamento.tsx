@@ -20,7 +20,8 @@ import { ConversaCliente } from "./conversa-cliente";
 
 type Status = PedidoPublico["status"];
 
-const ETAPAS: { status: Status[]; rotulo: string }[] = [
+// Quem vem buscar não passa por "saiu para entrega", e o fim da linha é "Retirado".
+const ETAPAS_ENTREGA: { status: Status[]; rotulo: string }[] = [
   { status: ["recebido", "em_preparo", "pronto", "saiu_entrega", "entregue"], rotulo: "Pedido recebido" },
   { status: ["em_preparo", "pronto", "saiu_entrega", "entregue"], rotulo: "Em preparo" },
   { status: ["pronto", "saiu_entrega", "entregue"], rotulo: "Pronto, aguardando o entregador" },
@@ -28,13 +29,26 @@ const ETAPAS: { status: Status[]; rotulo: string }[] = [
   { status: ["entregue"], rotulo: "Entregue" },
 ];
 
-const TITULO: Record<Status, string> = {
+const ETAPAS_RETIRADA: { status: Status[]; rotulo: string }[] = [
+  { status: ["recebido", "em_preparo", "pronto", "entregue"], rotulo: "Pedido recebido" },
+  { status: ["em_preparo", "pronto", "entregue"], rotulo: "Em preparo" },
+  { status: ["pronto", "entregue"], rotulo: "Pronto para retirar" },
+  { status: ["entregue"], rotulo: "Retirado" },
+];
+
+const TITULO_ENTREGA: Record<Status, string> = {
   recebido: "Recebemos seu pedido!",
   em_preparo: "Seu pedido está sendo preparado",
   pronto: "Seu pedido está pronto",
   saiu_entrega: "Seu pedido saiu para entrega",
   entregue: "Pedido entregue. Bom apetite!",
   cancelado: "Pedido cancelado",
+};
+
+const TITULO_RETIRADA: Record<Status, string> = {
+  ...TITULO_ENTREGA,
+  pronto: "Pronto! Pode retirar no local",
+  entregue: "Pedido retirado. Bom apetite!",
 };
 
 // O cliente é anônimo (sem Realtime): consulta o status de tempos em tempos.
@@ -48,7 +62,8 @@ type Props = {
   inicial: PedidoPublico;
   // Chave pública dos avisos no celular (null = avisos desligados neste servidor).
   chaveAvisos: string | null;
-  restaurante: { id: string; slug: string; nome: string; whatsapp: string | null; fusoHorario: string };
+  // `enderecoDoLocal`: onde buscar, para quem escolheu retirar no local.
+  restaurante: { id: string; slug: string; nome: string; whatsapp: string | null; fusoHorario: string; enderecoDoLocal: string | null };
 };
 
 export function Acompanhamento({ inicial, chaveAvisos, restaurante }: Props) {
@@ -56,6 +71,9 @@ export function Acompanhamento({ inicial, chaveAvisos, restaurante }: Props) {
   const [atualizadoEm, setAtualizadoEm] = useState(() => new Date().toISOString());
   const [semConexao, setSemConexao] = useState(false);
   const ativo = emAndamento(pedido.status);
+  const retirada = pedido.tipo_entrega === "retirada";
+  const ETAPAS = retirada ? ETAPAS_RETIRADA : ETAPAS_ENTREGA;
+  const TITULO = retirada ? TITULO_RETIRADA : TITULO_ENTREGA;
   const { guardar } = useMeusPedidos(restaurante.id);
 
   // Guarda o pedido no aparelho para o cliente achar de novo (cardápio e "Meus pedidos").
@@ -139,7 +157,17 @@ export function Acompanhamento({ inicial, chaveAvisos, restaurante }: Props) {
         </p>
         <h1 className="text-2xl font-bold">{TITULO[pedido.status]}</h1>
         {ativo && pedido.tempo_estimado_entrega_min ? (
-          <p className="text-muted-foreground">Tempo estimado: cerca de {pedido.tempo_estimado_entrega_min} minutos.</p>
+          <p className="text-muted-foreground">
+            {retirada
+              ? `Fica pronto em cerca de ${pedido.tempo_estimado_entrega_min} minutos.`
+              : `Tempo estimado: cerca de ${pedido.tempo_estimado_entrega_min} minutos.`}
+          </p>
+        ) : null}
+        {/* Onde buscar, à mão, sem precisar voltar ao cardápio. */}
+        {retirada && restaurante.enderecoDoLocal ? (
+          <p className="text-sm font-medium">
+            Retirar em <span className="font-semibold">{restaurante.enderecoDoLocal}</span>
+          </p>
         ) : null}
         {ativo ? (
           semConexao ? (
@@ -227,10 +255,12 @@ export function Acompanhamento({ inicial, chaveAvisos, restaurante }: Props) {
           <span>Subtotal</span>
           <span className="tabular-nums">{formatarBRL(pedido.subtotal)}</span>
         </div>
-        <div className="flex justify-between text-sm">
-          <span>Taxa de entrega</span>
-          <span className="tabular-nums">{formatarBRL(pedido.taxa_entrega)}</span>
-        </div>
+        {retirada ? null : (
+          <div className="flex justify-between text-sm">
+            <span>Taxa de entrega</span>
+            <span className="tabular-nums">{formatarBRL(pedido.taxa_entrega)}</span>
+          </div>
+        )}
         {pedido.desconto > 0 ? (
           <div className="flex justify-between text-sm text-green-700">
             <span>Cupom {pedido.cupom_codigo}</span>

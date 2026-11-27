@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { chavePublicaAvisos } from "@/lib/avisos-push";
+import { enderecoEmLinha } from "@/lib/endereco";
 import { id as idSchema } from "@/lib/validacao";
 
 import { buscarRestaurantePorSlug, consultarPedido } from "../../dados";
@@ -29,6 +30,7 @@ export default async function PedidoPage(props: PageProps<"/[slug]/pedido/[id]">
         nome: restaurante.nome,
         whatsapp: restaurante.whatsapp,
         fusoHorario: restaurante.fusoHorario,
+        enderecoDoLocal: enderecoEmLinha(restaurante.endereco),
       }}
     />
   );

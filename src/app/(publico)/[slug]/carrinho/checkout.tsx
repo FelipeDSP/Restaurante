@@ -24,7 +24,20 @@ import { FORM_VAZIO, FORMAS, type FormCheckout, temDadosSalvos, useDadosCliente 
 
 type Props = {
   // taxaModo "fixa": um valor para qualquer endereço; o cliente informa CEP e bairro.
-  restaurante: { id: string; slug: string; pedidoMinimo: number; taxaModo: "fixa" | "bairro"; taxaFixa: number; cidade: string | null };
+  restaurante: {
+    id: string;
+    slug: string;
+    pedidoMinimo: number;
+    taxaModo: "fixa" | "bairro";
+    taxaFixa: number;
+    cidade: string | null;
+    // Onde o cliente vai buscar, e em quanto tempo fica pronto (retirada no local).
+    enderecoDoLocal: string | null;
+    tempoRetiradaMin: number | null;
+  };
+  // De que jeitos o restaurante está recebendo agora. Um dos dois pode estar desligado.
+  podeEntregar: boolean;
+  podeRetirar: boolean;
   aberto: boolean;
   mensagemFechado: string | null;
   bairros: { id: string; nome: string; taxa: number }[];
@@ -60,7 +73,17 @@ function Erro({ texto }: { texto?: string }) {
   ) : null;
 }
 
-export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produtosDisponiveis, conta, podeEntrar }: Props) {
+export function Checkout({
+  restaurante,
+  podeEntregar,
+  podeRetirar,
+  aberto,
+  mensagemFechado,
+  bairros,
+  produtosDisponiveis,
+  conta,
+  podeEntrar,
+}: Props) {
   const router = useRouter();
   const { itens, alterarQuantidade, alterarObservacao, atualizarDados, limpar } = useCarrinho(restaurante.id);
   const [cupom, setCupom] = useState<CupomValido | null>(null);
@@ -81,6 +104,14 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
   // Enquanto o cliente não mexe, o que está nos campos veio de um pedido anterior
   // (aparelho emprestado: "Não é você?"). O aparelho só é lido depois da hidratação.
   const [editou, setEditou] = useState(false);
+  // Receber em casa ou retirar. O rascunho lembra a escolha; se o restaurante desligou o jeito
+  // escolhido desde o último pedido, cai no que está ligado.
+  const tipo: FormCheckout["tipo"] = podeRetirar && (form.tipo === "retirada" || !podeEntregar) ? "retirada" : "entrega";
+  const retirando = tipo === "retirada";
+  const escolherTipo = (novo: FormCheckout["tipo"]) => {
+    setEditou(true);
+    setForm((f) => ({ ...f, tipo: novo }));
+  };
   const fixa = restaurante.taxaModo === "fixa";
   // Endereço salvo que ainda serve: na taxa fixa, todos; por bairro, só os de bairros atendidos.
   const enderecoServe = useCallback(
@@ -134,13 +165,17 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
 
   const subtotal = validos.reduce((soma, i) => soma + precoUnitario(i) * i.quantidade, 0);
   const bairro = bairros.find((b) => b.id === form.bairroId);
-  const taxa = fixa ? restaurante.taxaFixa : (bairro?.taxa ?? 0);
-  const taxaDefinida = fixa || Boolean(bairro);
+  const taxa = retirando ? 0 : fixa ? restaurante.taxaFixa : (bairro?.taxa ?? 0);
+  const taxaDefinida = retirando || fixa || Boolean(bairro);
   // Endereço de outra cidade (o CEP diz qual): avisa, sem bloquear (o restaurante confirma).
   const outraCidade =
-    fixa && restaurante.cidade && form.cidade && normalizarCidade(form.cidade) !== normalizarCidade(restaurante.cidade) ? form.cidade : null;
+    !retirando && fixa && restaurante.cidade && form.cidade && normalizarCidade(form.cidade) !== normalizarCidade(restaurante.cidade)
+      ? form.cidade
+      : null;
   // Cupom: o desconto aparece já aqui; o banco calcula de novo ao criar o pedido.
-  const cupomVale = cupom !== null && subtotal >= cupom.pedidoMinimo;
+  // Frete grátis não desconta nada em pedido para retirar — e o banco recusa, então avisa antes.
+  const cupomSoEntrega = cupom?.tipo === "frete" && retirando;
+  const cupomVale = cupom !== null && subtotal >= cupom.pedidoMinimo && !cupomSoEntrega;
   const desconto = !cupomVale
     ? 0
     : cupom.tipo === "percentual"
@@ -151,7 +186,8 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
           ? taxa
           : 0;
   const total = subtotal + taxa - desconto;
-  const faltaMinimo = Math.max(0, restaurante.pedidoMinimo - subtotal);
+  // O mínimo existe por causa da viagem do entregador: quem vem buscar leva o que quiser.
+  const faltaMinimo = retirando ? 0 : Math.max(0, restaurante.pedidoMinimo - subtotal);
   const troco = form.forma === "dinheiro" && form.trocoPara ? centavosDeTexto(form.trocoPara) : null;
 
   const alterar = (campo: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -168,6 +204,7 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
     setErros({});
     const dados = {
       ...form,
+      tipo,
       itens: validos.map((i) => ({
         produtoId: i.produtoId,
         quantidade: i.quantidade,
@@ -294,8 +331,43 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
 
       <section aria-labelledby="titulo-entrega" className="flex flex-col gap-3 rounded-xl bg-background p-4 shadow-sm">
         <h2 id="titulo-entrega" className="font-semibold">
-          Entrega
+          {podeEntregar && podeRetirar ? "Como você quer receber" : retirando ? "Retirar no local" : "Entrega"}
         </h2>
+        {/* Só aparece quando há escolha: com um dos jeitos desligado, o título já diz tudo. */}
+        {podeEntregar && podeRetirar ? (
+          <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Como você quer receber">
+            {(
+              [
+                { valor: "entrega", rotulo: "Receber em casa" },
+                { valor: "retirada", rotulo: "Retirar no local" },
+              ] as const
+            ).map((o) => (
+              <Button
+                key={o.valor}
+                type="button"
+                role="radio"
+                aria-checked={tipo === o.valor}
+                variant={tipo === o.valor ? "default" : "outline"}
+                className="h-12"
+                onClick={() => escolherTipo(o.valor)}
+              >
+                {o.rotulo}
+              </Button>
+            ))}
+          </div>
+        ) : null}
+        {retirando ? (
+          <div className="flex flex-col gap-1 rounded-lg bg-muted p-3 text-sm">
+            <span className="font-medium text-foreground">
+              {restaurante.enderecoDoLocal ? `Retirar em ${restaurante.enderecoDoLocal}` : "Retirar no restaurante"}
+            </span>
+            <span className="text-muted-foreground">
+              {restaurante.tempoRetiradaMin
+                ? `Fica pronto em cerca de ${restaurante.tempoRetiradaMin} min. Avisamos aqui quando estiver pronto.`
+                : "Avisamos aqui quando o pedido estiver pronto."}
+            </span>
+          </div>
+        ) : null}
         {conta ? (
           <p className="text-sm text-muted-foreground">
             Pedindo como <strong className="text-foreground">{conta.nome}</strong>. O endereço fica salvo na sua conta.
@@ -364,7 +436,7 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
           />
           <Erro texto={erros.telefone} />
         </label>
-        {fixa ? (
+        {retirando ? null : fixa ? (
           <CampoCep
             form={form}
             erro={erros.cep}
@@ -385,7 +457,7 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
             }}
           />
         ) : null}
-        {fixa ? null : (
+        {retirando || fixa ? null : (
         <label className="flex flex-col gap-1 text-sm font-medium">
           Bairro
           <select
@@ -404,6 +476,7 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
           <Erro texto={erros.bairroId} />
         </label>
         )}
+        {retirando ? null : (
         <div className="grid grid-cols-[1fr_6rem] gap-2">
           <label className="flex flex-col gap-1 text-sm font-medium">
             Rua
@@ -416,7 +489,8 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
             <Erro texto={erros.numero} />
           </label>
         </div>
-        {fixa ? (
+        )}
+        {retirando ? null : fixa ? (
           <div className="grid grid-cols-[1fr_8rem] gap-2">
             <label className="flex flex-col gap-1 text-sm font-medium">
               Bairro
@@ -434,19 +508,23 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
             Esse endereço é em {outraCidade}. Confira se entregamos aí antes de pedir.
           </p>
         ) : null}
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          Complemento
-          <Input value={form.complemento} onChange={alterar("complemento")} autoComplete="address-line2" placeholder="Apto, bloco, casa…" className="h-11" />
-        </label>
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          Ponto de referência
-          <Input value={form.referencia} onChange={alterar("referencia")} className="h-11" />
-        </label>
+        {retirando ? null : (
+          <>
+            <label className="flex flex-col gap-1 text-sm font-medium">
+              Complemento
+              <Input value={form.complemento} onChange={alterar("complemento")} autoComplete="address-line2" placeholder="Apto, bloco, casa…" className="h-11" />
+            </label>
+            <label className="flex flex-col gap-1 text-sm font-medium">
+              Ponto de referência
+              <Input value={form.referencia} onChange={alterar("referencia")} className="h-11" />
+            </label>
+          </>
+        )}
       </section>
 
       <section aria-labelledby="titulo-pagamento" className="flex flex-col gap-3 rounded-xl bg-background p-4 shadow-sm">
         <h2 id="titulo-pagamento" className="font-semibold">
-          Pagamento na entrega
+          {retirando ? "Pagamento na retirada" : "Pagamento na entrega"}
         </h2>
         <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Forma de pagamento">
           {FORMAS.map((f) => (
@@ -491,15 +569,21 @@ export function Checkout({ restaurante, aberto, mensagemFechado, bairros, produt
           <span>Subtotal</span>
           <span className="tabular-nums">{formatarBRL(subtotal)}</span>
         </div>
-        <div className="flex justify-between text-sm">
-          <span>Taxa de entrega</span>
-          <span className="tabular-nums">{taxaDefinida ? (taxa === 0 ? "Grátis" : formatarBRL(taxa)) : "escolha o bairro"}</span>
-        </div>
+        {retirando ? null : (
+          <div className="flex justify-between text-sm">
+            <span>Taxa de entrega</span>
+            <span className="tabular-nums">{taxaDefinida ? (taxa === 0 ? "Grátis" : formatarBRL(taxa)) : "escolha o bairro"}</span>
+          </div>
+        )}
         {cupom ? (
           <div className="flex justify-between text-sm text-green-700">
             <span>
               Cupom {cupom.codigo}
-              {!cupomVale ? <span className="block text-amber-700">Vale a partir de {formatarBRL(cupom.pedidoMinimo)} em itens</span> : null}
+              {cupomSoEntrega ? (
+                <span className="block text-amber-700">Este cupom é de frete grátis e vale só para entrega</span>
+              ) : !cupomVale ? (
+                <span className="block text-amber-700">Vale a partir de {formatarBRL(cupom.pedidoMinimo)} em itens</span>
+              ) : null}
             </span>
             <span className="flex items-center gap-2">
               <span className="tabular-nums">{cupomVale ? `− ${formatarBRL(desconto)}` : "—"}</span>

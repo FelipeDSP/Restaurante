@@ -47,8 +47,10 @@ const pedidoSchema = z.object({
     .pipe(z.string().refine((v) => v === "" || v.length === 8, "CEP com 8 números.")),
   cidade: z.string().trim().max(80).default(""),
   uf: z.string().trim().max(2).default(""),
-  rua: z.string().trim().min(2, "Informe a rua.").max(120),
-  numero: z.string().trim().min(1, "Informe o número.").max(20),
+  // Endereço só é obrigatório para quem recebe em casa; quem retira não tem endereço
+  // (a conferência fica abaixo, depois de saber o tipo).
+  rua: z.string().trim().max(120).default(""),
+  numero: z.string().trim().max(20).default(""),
   complemento: z.string().trim().max(120),
   referencia: z.string().trim().max(200),
   forma: z.enum(["dinheiro", "pix", "credito", "debito"], { error: "Escolha a forma de pagamento." }),
@@ -60,6 +62,8 @@ const pedidoSchema = z.object({
   totalEsperado: z.number().int().min(0),
   // Código do cupom (vazio = sem cupom); o banco valida e calcula o desconto de novo.
   cupom: z.string().trim().max(20).default(""),
+  // Receber em casa ou retirar no local. O banco confere de novo se o restaurante aceita.
+  tipo: z.enum(["entrega", "retirada"]).default("entrega"),
 });
 
 export type DadosPedido = z.input<typeof pedidoSchema>;
@@ -83,12 +87,15 @@ export async function enviarPedido(slug: string, entrada: DadosPedido): Promise<
   }
   const d = dados.data;
 
+  const retirada = d.tipo === "retirada";
   const fixa = restaurante.taxaEntregaModo === "fixa";
-  if (fixa && d.bairroTexto.length < 2) {
-    return { ok: false, mensagem: "Confira os dados do pedido.", erros: { bairroTexto: "Informe o bairro." } };
-  }
-  if (!fixa && !id.safeParse(d.bairroId).success) {
-    return { ok: false, mensagem: "Confira os dados do pedido.", erros: { bairroId: "Escolha o bairro." } };
+  if (!retirada) {
+    const erros: Record<string, string> = {};
+    if (d.rua.length < 2) erros.rua = "Informe a rua.";
+    if (d.numero.length < 1) erros.numero = "Informe o número.";
+    if (fixa && d.bairroTexto.length < 2) erros.bairroTexto = "Informe o bairro.";
+    if (!fixa && !id.safeParse(d.bairroId).success) erros.bairroId = "Escolha o bairro.";
+    if (Object.keys(erros).length > 0) return { ok: false, mensagem: "Confira os dados do pedido.", erros };
   }
 
   let trocoPara: number | null = null;
@@ -119,21 +126,24 @@ export async function enviarPedido(slug: string, entrada: DadosPedido): Promise<
     p_cliente_nome: d.nome,
     p_cliente_telefone: d.telefone,
     // Na taxa fixa o bairro vai no endereço; os tipos gerados não marcam o id como opcional.
-    p_bairro_id: (fixa ? null : d.bairroId) as string,
-    p_endereco: {
-      rua: d.rua,
-      numero: d.numero,
-      complemento: d.complemento || null,
-      referencia: d.referencia || null,
-      ...(fixa
-        ? {
-            bairro: d.bairroTexto,
-            cep: d.cep ? `${d.cep.slice(0, 5)}-${d.cep.slice(5)}` : null,
-            cidade: d.cidade || null,
-            uf: d.uf.toUpperCase() || null,
-          }
-        : {}),
-    },
+    p_bairro_id: (retirada || fixa ? null : d.bairroId) as string,
+    // Quem retira não tem endereço de entrega: o banco recusa taxa e bairro nesse caso.
+    p_endereco: retirada
+      ? null
+      : {
+          rua: d.rua,
+          numero: d.numero,
+          complemento: d.complemento || null,
+          referencia: d.referencia || null,
+          ...(fixa
+            ? {
+                bairro: d.bairroTexto,
+                cep: d.cep ? `${d.cep.slice(0, 5)}-${d.cep.slice(5)}` : null,
+                cidade: d.cidade || null,
+                uf: d.uf.toUpperCase() || null,
+              }
+            : {}),
+        },
     p_forma_pagamento: d.forma,
     p_itens: d.itens.map((i) => ({
       produto_id: i.produtoId,
@@ -146,6 +156,7 @@ export async function enviarPedido(slug: string, entrada: DadosPedido): Promise<
     p_chave: d.chave,
     p_total_esperado: d.totalEsperado,
     p_cupom: d.cupom || undefined,
+    p_tipo_entrega: d.tipo,
   });
 
   if (error) {
@@ -167,7 +178,9 @@ export async function enviarPedido(slug: string, entrada: DadosPedido): Promise<
   after(() =>
     avisarEquipe(restaurante.id, "delivery_novo", {
       titulo: restaurante.nome,
-      corpo: `Pedido novo de ${d.nome}. Aceite para a cozinha começar.`,
+      corpo: retirada
+        ? `Pedido novo de ${d.nome} para retirar no local. Aceite para a cozinha começar.`
+        : `Pedido novo de ${d.nome}. Aceite para a cozinha começar.`,
       url: "/painel/delivery",
       tag: `delivery-${pedidoId}`,
     }),

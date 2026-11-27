@@ -30,6 +30,9 @@ export type RestaurantePublico = {
   // fixa: um valor para qualquer endereço (o cliente informa CEP e bairro); bairro: lista de bairros.
   taxaEntregaModo: "fixa" | "bairro";
   taxaEntregaFixa: number;
+  // Retirar no local: o cliente busca no restaurante, sem endereço e sem taxa.
+  aceitaRetirada: boolean;
+  tempoRetiradaMin: number | null;
 };
 
 // Restaurante pelo slug da URL. Toda a lógica usa o restaurante resolvido, nunca o formato da URL
@@ -40,7 +43,7 @@ export const buscarRestaurantePorSlug = cache(async (slug: string): Promise<Rest
   const { data } = await supabase
     .from("restaurantes_publicos")
     .select(
-      "id, slug, nome, logo_url, capa_url, descricao, instagram, facebook, cor_primaria, cor_secundaria, telefone, whatsapp, endereco, fuso_horario, horarios, aceita_delivery, pedido_minimo, tempo_estimado_entrega_min, taxa_entrega_modo, taxa_entrega_fixa",
+      "id, slug, nome, logo_url, capa_url, descricao, instagram, facebook, cor_primaria, cor_secundaria, telefone, whatsapp, endereco, fuso_horario, horarios, aceita_delivery, pedido_minimo, tempo_estimado_entrega_min, taxa_entrega_modo, taxa_entrega_fixa, aceita_retirada, tempo_estimado_retirada_min",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -70,6 +73,8 @@ export const buscarRestaurantePorSlug = cache(async (slug: string): Promise<Rest
     tempoEstimadoMin: data.tempo_estimado_entrega_min,
     taxaEntregaModo: data.taxa_entrega_modo === "bairro" ? "bairro" : "fixa",
     taxaEntregaFixa: data.taxa_entrega_fixa ?? 0,
+    aceitaRetirada: data.aceita_retirada ?? false,
+    tempoRetiradaMin: data.tempo_estimado_retirada_min,
   };
 });
 
@@ -130,20 +135,26 @@ export async function carregarBairros(restauranteId: string): Promise<BairroPubl
   return data;
 }
 
+// "aberto" vale para o site: basta um dos jeitos estar ligado. `entrega` e `retirada` dizem
+// quais o checkout pode oferecer.
 export type Disponibilidade = {
   aberto: boolean;
   motivo: "restaurante_indisponivel" | "sem_delivery" | "fora_do_horario" | "caixa_fechado" | null;
+  entrega: boolean;
+  retirada: boolean;
 };
+
+const FECHADO: Disponibilidade = { aberto: false, motivo: "restaurante_indisponivel", entrega: false, retirada: false };
 
 export async function consultarDisponibilidade(restauranteId: string): Promise<Disponibilidade> {
   const supabase = createPublicClient();
   const { data } = await supabase.rpc("consultar_disponibilidade_delivery", { p_restaurante_id: restauranteId });
-  return (data as Disponibilidade | null) ?? { aberto: false, motivo: "restaurante_indisponivel" };
+  return (data as Disponibilidade | null) ?? FECHADO;
 }
 
 export const MENSAGEM_FECHADO: Record<NonNullable<Disponibilidade["motivo"]>, string> = {
   restaurante_indisponivel: "Restaurante indisponível no momento.",
-  sem_delivery: "Este restaurante não está fazendo delivery pelo site.",
+  sem_delivery: "Este restaurante não está recebendo pedidos pelo site.",
   fora_do_horario: "Estamos fechados agora. Toque em Horários para ver quando abrimos.",
   caixa_fechado: "Ainda não estamos recebendo pedidos. Tente novamente em instantes.",
 };
@@ -152,6 +163,7 @@ export type PedidoPublico = {
   id: string;
   restaurante_id: string;
   numero: number;
+  tipo_entrega: "entrega" | "retirada";
   status: "recebido" | "em_preparo" | "pronto" | "saiu_entrega" | "entregue" | "cancelado";
   criado_em: string;
   subtotal: number;

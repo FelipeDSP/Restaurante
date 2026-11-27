@@ -39,6 +39,15 @@ const MENSAGEM: Record<string, string> = {
   entregue: "Pedido entregue. Bom apetite!",
   cancelado: "Seu pedido foi cancelado.",
 };
+
+// Quem vai buscar fala outra língua — e, principalmente, precisa do aviso de "pronto": na
+// entrega esse status é um passo interno (o pedido espera o entregador) e por isso não avisava
+// ninguém; na retirada é o aviso mais importante, a hora de sair de casa.
+const MENSAGEM_RETIRADA: Record<string, string> = {
+  ...MENSAGEM,
+  pronto: "Seu pedido está pronto! Pode retirar no local.",
+  entregue: "Pedido retirado. Bom apetite!",
+};
 const FINAL = new Set(["entregue", "cancelado"]);
 
 type Inscricao = { endpoint: string; p256dh: string; auth: string };
@@ -87,11 +96,11 @@ export async function avisarCliente(pedidoId: string): Promise<void> {
   try {
     const { data: pedido } = await admin
       .from("pedidos")
-      .select("id, status, origem, restaurante:restaurantes!inner(id, slug, nome, logo_url, cor_primaria)")
+      .select("id, status, origem, tipo_entrega, restaurante:restaurantes!inner(id, slug, nome, logo_url, cor_primaria)")
       .eq("id", pedidoId)
       .maybeSingle();
     if (!pedido || pedido.origem !== "delivery") return;
-    const corpo = MENSAGEM[pedido.status];
+    const corpo = (pedido.tipo_entrega === "retirada" ? MENSAGEM_RETIRADA : MENSAGEM)[pedido.status];
     if (!corpo) return;
 
     const { data: inscricoes } = await admin

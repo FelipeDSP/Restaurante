@@ -1,4 +1,4 @@
-import { Clock, MapPin, MessageCircle } from "lucide-react";
+import { Clock, MapPin, MessageCircle, ShoppingBag } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { formatarBRL } from "@/lib/dinheiro";
@@ -53,6 +53,14 @@ export default async function CardapioPage(props: PageProps<"/[slug]">) {
           ) : null}
           {restaurante.aceitaDelivery && restaurante.pedidoMinimo > 0 ? (
             <span className="text-sm text-muted-foreground">Pedido mínimo {formatarBRL(restaurante.pedidoMinimo)}</span>
+          ) : null}
+          {/* Quem faz só retirada não tem taxa nem mínimo para mostrar: o que importa é que dá
+              para buscar, e em quanto tempo fica pronto. */}
+          {restaurante.aceitaRetirada ? (
+            <span className="flex items-center gap-1 text-sm text-muted-foreground">
+              <ShoppingBag className="size-4" aria-hidden />
+              {restaurante.tempoRetiradaMin ? `Retirar no local em ~${restaurante.tempoRetiradaMin} min` : "Retirar no local"}
+            </span>
           ) : null}
           <span className="ml-auto">
             <HorariosDialog horarios={restaurante.horarios} fusoHorario={restaurante.fusoHorario} />

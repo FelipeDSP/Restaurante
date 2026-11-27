@@ -14,6 +14,9 @@ export const FORMAS = [
 ] as const;
 
 export type FormCheckout = {
+  // Receber em casa ou buscar no restaurante. Fica no rascunho: quem sempre retira não
+  // precisa escolher de novo a cada pedido.
+  tipo: "entrega" | "retirada";
   nome: string;
   telefone: string;
   bairroId: string;
@@ -32,6 +35,7 @@ export type FormCheckout = {
 };
 
 export const FORM_VAZIO: FormCheckout = {
+  tipo: "entrega",
   nome: "",
   telefone: "",
   bairroId: "",
@@ -56,6 +60,7 @@ function normalizarForm(valor: unknown): FormCheckout | null {
     Object.entries(FORM_VAZIO).map(([campo, padrao]) => [campo, typeof salvo[campo] === "string" ? salvo[campo] : padrao]),
   ) as FormCheckout;
   if (!FORMAS.some((f) => f.valor === form.forma)) form.forma = "pix";
+  if (form.tipo !== "retirada") form.tipo = "entrega";
   return form;
 }
 
