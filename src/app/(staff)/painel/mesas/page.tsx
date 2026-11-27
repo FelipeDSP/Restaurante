@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 
 import { ListaMesas, NovasMesas } from "./lista-mesas";
 
-export const metadata: Metadata = { title: "Mesas" };
+export const metadata: Metadata = { title: "Cadastro de mesas" };
 
 export default async function MesasPage() {
   const acesso = await exigirPermissao("painel", "mesas");
@@ -27,7 +27,7 @@ export default async function MesasPage() {
   return (
     <main className="flex flex-col gap-6 p-4 md:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Mesas</h1>
+        <h1 className="text-2xl font-semibold">Cadastro de mesas</h1>
         <Link href="/painel/mesas/qrcode" className={cn(buttonVariants({ variant: "outline" }), "h-11")}>
           <QrCode aria-hidden />
           QR code das mesas

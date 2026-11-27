@@ -131,9 +131,11 @@ export const CONFIGURACOES: ItemNavegacao[] = [
     acesso: ["restaurante"],
     descricao: "Dados, marca, horários e taxa.",
   },
+  // "Mesas" no menu é o mapa do salão (Operação); aqui é o cadastro — duas coisas diferentes
+  // que tinham o mesmo nome.
   {
     href: "/painel/mesas",
-    rotulo: "Mesas",
+    rotulo: "Cadastro de mesas",
     grupo: "Configurações",
     icone: Grid2x2,
     acesso: ["mesas"],
