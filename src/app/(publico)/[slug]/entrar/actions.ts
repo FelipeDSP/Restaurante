@@ -254,6 +254,26 @@ export async function removerEndereco(slug: string, enderecoId: string): Promise
   return { ok: true };
 }
 
+// Apelidar um endereço salvo ("Casa", "Trabalho"). Em branco tira o apelido. Só o apelido:
+// rua, número e bairro continuam vindo do pedido, senão o endereço salvo e o do pedido contariam
+// histórias diferentes.
+export async function apelidarEndereco(slug: string, enderecoId: string, apelido: string): Promise<ResultadoEntrar> {
+  const restaurante = await buscarRestaurantePorSlug(slug);
+  if (!restaurante || !id.safeParse(enderecoId).success) return { ok: false, mensagem: "Endereço não encontrado." };
+  const texto = z.string().trim().max(30, "Use até 30 letras.").safeParse(apelido);
+  if (!texto.success) return { ok: false, mensagem: texto.error.issues[0]?.message ?? "Apelido inválido." };
+  const usuario = await usuarioCliente();
+  if (!usuario) return { ok: false, mensagem: "Entre de novo para continuar." };
+
+  const { error } = await usuario.supabase
+    .from("clientes_enderecos")
+    .update({ apelido: texto.data || null })
+    .eq("restaurante_id", restaurante.id)
+    .eq("id", enderecoId);
+  if (error) return { ok: false, mensagem: "Não foi possível salvar o nome. Tente de novo." };
+  return { ok: true };
+}
+
 export async function sair(): Promise<ResultadoEntrar> {
   const usuario = await usuarioCliente();
   if (usuario) await usuario.supabase.auth.signOut({ scope: "local" });

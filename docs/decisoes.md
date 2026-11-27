@@ -217,6 +217,17 @@ marca da plataforma. Conta da equipe usa `/recuperar-senha`.
 **O envio do código por SMS ficou legado.** A tela de entrar não usa mais; o gancho e
 `src/lib/mensagens.ts` continuam no código.
 
+**27/11 — Endereço salvo "tipo iFood".** A lista só aparecia com dois ou mais endereços: quem
+tinha um via os campos preenchidos sem saber de onde vieram nem como trocar. Agora ela aparece a
+partir do primeiro, com os campos escondidos até escolher "Entregar em outro endereço", e cada
+endereço ganha um **apelido** ("Casa", "Trabalho") — duas linhas de rua parecidas não se
+distinguem de relance na hora de pedir.
+
+O apelido se dá em Minha conta, não no checkout: o endereço nasce do pedido (trigger), então não
+há momento de "cadastrar e nomear", e na hora de pedir a pessoa está pedindo. Rua, número e
+bairro continuam vindo do pedido — editar o salvo faria ele e o do pedido contarem histórias
+diferentes.
+
 **Avisos no celular por Web Push**, não por WhatsApp. No iPhone só com o site na tela de início
 (iOS 16.4+).
 

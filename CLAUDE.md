@@ -405,6 +405,14 @@ nível do app (`/algo`), acrescentar o nome lá numa migração.
   equipe não vira cliente. `pedidos.cliente_id` só o banco define, pela sessão de quem pediu —
   por isso `enviarPedido` chama a RPC com a sessão do navegador, não com o cliente anônimo.
   Excluir a conta (LGPD) apaga cadastro e endereços; os pedidos ficam sem vínculo.
+- **Endereços salvos** (`clientes_enderecos`, até 5): o banco guarda a cada pedido da conta
+  (trigger `pedidos_guardar_endereco`), sempre com o **nome do bairro** — é por ele que o
+  checkout recalcula a taxa ao reusar o endereço. No checkout eles viram uma lista "Entregar em"
+  que aparece a partir do **primeiro** endereço, com os campos escondidos até a pessoa escolher
+  "Entregar em outro endereço". O cliente dá nome a cada um (`apelido`: "Casa", "Trabalho") em
+  Minha conta, onde também apaga; rua, número e bairro não se editam ali, para o endereço salvo
+  e o do pedido não contarem histórias diferentes. Sem conta, nada vai para o servidor: o
+  aparelho lembra o último endereço.
 
 ## Tempo real
 

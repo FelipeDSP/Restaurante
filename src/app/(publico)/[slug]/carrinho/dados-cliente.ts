@@ -50,6 +50,19 @@ export const FORM_VAZIO: FormCheckout = {
   observacao: "",
 };
 
+// Só os campos de endereço em branco: "entregar em outro endereço" limpa o endereço sem
+// apagar nome, telefone e forma de pagamento.
+export const FORM_SEM_ENDERECO = {
+  cep: "",
+  bairroTexto: "",
+  cidade: "",
+  uf: "",
+  rua: "",
+  numero: "",
+  complemento: "",
+  referencia: "",
+} satisfies Partial<FormCheckout>;
+
 // O rascunho vem do aparelho: só aceita os campos conhecidos, em texto.
 function normalizarForm(valor: unknown): FormCheckout | null {
   if (!valor || typeof valor !== "object") return null;

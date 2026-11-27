@@ -299,13 +299,13 @@ isOneToOne: false
                   ]
                 },"clientes_enderecos": {
                   Row: {
-                    "bairro": string | null,"bairro_id": string | null,"cep": string | null,"cidade": string | null,"cliente_id": string,"complemento": string | null,"criado_em": string,"id": string,"numero": string,"referencia": string | null,"restaurante_id": string,"rua": string,"uf": string | null,"usado_em": string
+                    "apelido": string | null,"bairro": string | null,"bairro_id": string | null,"cep": string | null,"cidade": string | null,"cliente_id": string,"complemento": string | null,"criado_em": string,"id": string,"numero": string,"referencia": string | null,"restaurante_id": string,"rua": string,"uf": string | null,"usado_em": string
                   }
                   Insert: {
-                    "bairro"?: string | null,"bairro_id"?: string | null,"cep"?: string | null,"cidade"?: string | null,"cliente_id": string,"complemento"?: string | null,"criado_em"?: string,"id"?: string,"numero": string,"referencia"?: string | null,"restaurante_id": string,"rua": string,"uf"?: string | null,"usado_em"?: string
+                    "apelido"?: string | null,"bairro"?: string | null,"bairro_id"?: string | null,"cep"?: string | null,"cidade"?: string | null,"cliente_id": string,"complemento"?: string | null,"criado_em"?: string,"id"?: string,"numero": string,"referencia"?: string | null,"restaurante_id": string,"rua": string,"uf"?: string | null,"usado_em"?: string
                   }
                   Update: {
-                    "bairro"?: string | null,"bairro_id"?: string | null,"cep"?: string | null,"cidade"?: string | null,"cliente_id"?: string,"complemento"?: string | null,"criado_em"?: string,"id"?: string,"numero"?: string,"referencia"?: string | null,"restaurante_id"?: string,"rua"?: string,"uf"?: string | null,"usado_em"?: string
+                    "apelido"?: string | null,"bairro"?: string | null,"bairro_id"?: string | null,"cep"?: string | null,"cidade"?: string | null,"cliente_id"?: string,"complemento"?: string | null,"criado_em"?: string,"id"?: string,"numero"?: string,"referencia"?: string | null,"restaurante_id"?: string,"rua"?: string,"uf"?: string | null,"usado_em"?: string
                   }
                   Relationships: [
                     {

@@ -15,7 +15,7 @@ import { formatarTelefone } from "@/lib/telefone";
 import { cn } from "@/lib/utils";
 
 import type { EnderecoSalvo, PedidoDaConta } from "../conta";
-import { excluirConta, removerEndereco, type ResultadoEntrar, sair, salvarCadastro } from "../entrar/actions";
+import { apelidarEndereco, excluirConta, removerEndereco, type ResultadoEntrar, sair, salvarCadastro } from "../entrar/actions";
 
 type Props = {
   slug: string;
@@ -111,7 +111,7 @@ export function TelaConta({ slug, conta, pedidos }: Props) {
         )}
       </section>
 
-      {/* Endereços que o banco guardou nos pedidos (até 5): aparecem como botões no checkout. */}
+      {/* Endereços que o banco guardou nos pedidos (até 5): aparecem para escolher no checkout. */}
       <section aria-labelledby="titulo-enderecos" className="flex flex-col gap-3 rounded-xl bg-background p-4 shadow-sm">
         <h2 id="titulo-enderecos" className="flex items-center gap-2 font-semibold">
           <MapPin className="size-4" aria-hidden />
@@ -123,7 +123,7 @@ export function TelaConta({ slug, conta, pedidos }: Props) {
           <ul className="flex flex-col gap-2">
             {conta.enderecos.map((e) => (
               <li key={e.id} className="flex items-start gap-3 rounded-lg border p-3">
-                <div className="flex min-w-0 flex-1 flex-col text-sm">
+                <div className="flex min-w-0 flex-1 flex-col gap-1 text-sm">
                   <span className="font-medium">
                     {e.rua}, {e.numero}
                     {e.complemento ? ` · ${e.complemento}` : ""}
@@ -132,6 +132,7 @@ export function TelaConta({ slug, conta, pedidos }: Props) {
                     {[e.bairro, [e.cidade, e.uf].filter(Boolean).join("/"), e.cep ? `CEP ${e.cep}` : null].filter(Boolean).join(" · ")}
                   </span>
                   {e.referencia ? <span className="text-muted-foreground">Referência: {e.referencia}</span> : null}
+                  <Apelido slug={slug} endereco={e} executar={executar} pendente={pendente} />
                 </div>
                 {removendo === e.id ? (
                   <div className="flex shrink-0 flex-col gap-1">
@@ -250,5 +251,45 @@ export function TelaConta({ slug, conta, pedidos }: Props) {
         )}
       </section>
     </main>
+  );
+}
+
+// Nome do endereço ("Casa", "Trabalho"): duas ruas parecidas não se distinguem de relance na
+// hora de pedir. Salva ao sair do campo — é um rótulo, não vale um botão.
+function Apelido({
+  slug,
+  endereco,
+  executar,
+  pendente,
+}: {
+  slug: string;
+  endereco: EnderecoSalvo;
+  executar: (acao: () => Promise<ResultadoEntrar>, aoSucesso?: () => void) => void;
+  pendente: boolean;
+}) {
+  const [texto, setTexto] = useState(endereco.apelido ?? "");
+  return (
+    <label className="flex items-center gap-2 pt-1 text-xs text-muted-foreground">
+      Nome
+      <Input
+        value={texto}
+        onChange={(ev) => setTexto(ev.target.value)}
+        onBlur={() => {
+          const novo = texto.trim();
+          if (novo === (endereco.apelido ?? "")) return;
+          // Salva ao sair do campo, e diz que salvou: sem o aviso, a pessoa fica sem saber se
+          // o que ela digitou ficou guardado.
+          executar(
+            () => apelidarEndereco(slug, endereco.id, novo),
+            () => toast.success(novo ? `Endereço salvo como "${novo}".` : "Nome do endereço removido."),
+          );
+        }}
+        maxLength={30}
+        placeholder="Casa, Trabalho…"
+        disabled={pendente}
+        className="h-9 max-w-40"
+        aria-label={`Nome de ${endereco.rua}, ${endereco.numero}`}
+      />
+    </label>
   );
 }

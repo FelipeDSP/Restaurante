@@ -21,7 +21,7 @@ import type { ContaCliente, EnderecoSalvo } from "../conta";
 import { type CupomValido, enviarPedido, validarCupom } from "./actions";
 import type { EnderecoCep } from "@/app/api/cep/[cep]/route";
 
-import { FORM_VAZIO, FORMAS, type FormCheckout, temDadosSalvos, useDadosCliente } from "./dados-cliente";
+import { FORM_SEM_ENDERECO, FORM_VAZIO, FORMAS, type FormCheckout, temDadosSalvos, useDadosCliente } from "./dados-cliente";
 
 type Props = {
   // taxaModo "fixa": um valor para qualquer endereço; o cliente informa CEP e bairro.
@@ -140,11 +140,19 @@ export function Checkout({
     }));
   }, [conta, enderecoServe, setForm, restaurante.id]);
   const enderecosDaConta = (conta?.enderecos ?? []).filter(enderecoServe);
+  // "Usar outro endereço": abre os campos à mão mesmo tendo salvos. Volta a fechar quando a
+  // pessoa escolhe um da lista.
+  const [outroEndereco, setOutroEndereco] = useState(false);
   const enderecoAtual = (e: EnderecoSalvo) =>
     chaveBairro(form.bairroTexto) === chaveBairro(e.bairro) &&
     form.rua.trim().toLowerCase() === e.rua.toLowerCase() &&
     form.numero.trim().toLowerCase() === e.numero.toLowerCase() &&
     form.complemento.trim().toLowerCase() === (e.complemento ?? "").toLowerCase();
+  const salvoEscolhido = enderecosDaConta.find(enderecoAtual);
+  // Com um endereço salvo escolhido, os campos ficam fora do caminho — como em qualquer app de
+  // comida. Antes a lista só aparecia com dois ou mais, e quem tinha um via os campos
+  // preenchidos sem saber de onde vieram nem como trocar.
+  const camposDeEndereco = !retirando && (outroEndereco || !salvoEscolhido);
 
   // Itens que saíram do cardápio (ou mudaram de preço/opções) desde que foram para o carrinho.
   const situacoes = useMemo(
@@ -397,28 +405,78 @@ export function Checkout({
             para salvar seus dados e acompanhar os pedidos em qualquer aparelho (opcional).
           </p>
         ) : null}
-        {enderecosDaConta.length > 1 ? (
-          <div className="flex flex-col gap-1">
-            <span className="text-sm font-medium">Seus endereços</span>
-            <div className="flex flex-wrap gap-2" role="group" aria-label="Endereços usados">
-              {enderecosDaConta.map((e) => (
-                <Button
-                  key={e.id}
-                  type="button"
-                  variant={enderecoAtual(e) ? "default" : "outline"}
-                  aria-pressed={enderecoAtual(e)}
-                  className="h-auto min-h-11 max-w-full justify-start whitespace-normal text-left"
-                  onClick={() => {
-                    setEditou(true);
-                    setForm((f) => ({ ...f, ...camposDoEndereco(e) }));
-                  }}
-                >
-                  {[`${e.rua}, ${e.numero}`, e.complemento].filter(Boolean).join(" · ")}
-                </Button>
-              ))}
+        {retirando || enderecosDaConta.length === 0 ? null : (
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium">Entregar em</span>
+            <div className="flex flex-col gap-2" role="radiogroup" aria-label="Endereços salvos">
+              {enderecosDaConta.map((e) => {
+                const escolhido = !outroEndereco && enderecoAtual(e);
+                return (
+                  <button
+                    key={e.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={escolhido}
+                    onClick={() => {
+                      setEditou(true);
+                      setOutroEndereco(false);
+                      setForm((f) => ({ ...f, ...camposDoEndereco(e) }));
+                    }}
+                    className={cn(
+                      "flex min-h-11 items-start gap-3 rounded-xl border p-3 text-left text-sm",
+                      escolhido ? "border-[var(--cor-primaria)] bg-[var(--cor-primaria)]/5" : "hover:bg-muted",
+                    )}
+                  >
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border-2",
+                        escolhido ? "border-[var(--cor-primaria)]" : "border-muted-foreground/40",
+                      )}
+                    >
+                      {escolhido ? <span className="size-2.5 rounded-full bg-[var(--cor-primaria)]" /> : null}
+                    </span>
+                    <span className="flex min-w-0 flex-col">
+                      <span className="font-medium">
+                        {e.apelido ? `${e.apelido} · ` : ""}
+                        {e.rua}, {e.numero}
+                        {e.complemento ? ` · ${e.complemento}` : ""}
+                      </span>
+                      <span className="text-muted-foreground">{[e.bairro, e.cidade].filter(Boolean).join(" · ")}</span>
+                    </span>
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                role="radio"
+                aria-checked={camposDeEndereco}
+                onClick={() => {
+                  setEditou(true);
+                  setOutroEndereco(true);
+                  setForm((f) => ({ ...f, ...FORM_SEM_ENDERECO }));
+                }}
+                className={cn(
+                  "flex min-h-11 items-center gap-2 rounded-xl border border-dashed p-3 text-left text-sm font-medium",
+                  camposDeEndereco ? "border-[var(--cor-primaria)] bg-[var(--cor-primaria)]/5" : "hover:bg-muted",
+                )}
+              >
+                <Plus className="size-4 shrink-0" aria-hidden />
+                Entregar em outro endereço
+              </button>
             </div>
+            {/* O apelido de cada endereço se dá em Minha conta: aqui a pessoa está pedindo. */}
+            {enderecosDaConta.some((e) => !e.apelido) ? (
+              <p className="text-xs text-muted-foreground">
+                Dá para dar nome a cada endereço (Casa, Trabalho) em{" "}
+                <Link href={`/${restaurante.slug}/conta`} className="underline underline-offset-4">
+                  Minha conta
+                </Link>
+                .
+              </p>
+            ) : null}
           </div>
-        ) : null}
+        )}
         {!conta && !editou && temDadosSalvos(form) ? (
           <p className="flex flex-wrap items-center gap-x-2 rounded-lg bg-muted p-2 text-sm text-muted-foreground">
             Preenchido com os dados salvos neste aparelho.
@@ -450,7 +508,7 @@ export function Checkout({
           />
           <Erro texto={erros.telefone} />
         </label>
-        {retirando ? null : (
+        {!camposDeEndereco ? null : (
           <CampoCep
             form={form}
             erro={erros.cep}
@@ -471,7 +529,7 @@ export function Checkout({
             }}
           />
         )}
-        {retirando ? null : (
+        {!camposDeEndereco ? null : (
         <div className="grid grid-cols-[1fr_6rem] gap-2">
           <label className="flex flex-col gap-1 text-sm font-medium">
             Rua
@@ -485,7 +543,7 @@ export function Checkout({
           </label>
         </div>
         )}
-        {retirando ? null : (
+        {!camposDeEndereco ? null : (
           <div className="grid grid-cols-[1fr_8rem] gap-2">
             <label className="flex flex-col gap-1 text-sm font-medium">
               Bairro
@@ -513,7 +571,7 @@ export function Checkout({
             Esse endereço é em {outraCidade}. Confira se entregamos aí antes de pedir.
           </p>
         ) : null}
-        {retirando ? null : (
+        {!camposDeEndereco ? null : (
           <>
             <label className="flex flex-col gap-1 text-sm font-medium">
               Complemento
