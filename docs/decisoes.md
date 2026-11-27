@@ -160,6 +160,23 @@ cuida do delivery decide; travar aqui só atrasaria a entrega.
 na comanda é ruim". A conversa ficou numa área própria (Painel › Conversas), com o pedido ao lado,
 e não dentro do cartão. Aberta enquanto o pedido anda e até 24 h depois de terminar.
 
+**27/11 — Retirar no local.** O cliente só conseguia pedir com endereço, e todo pedido do site
+saía com taxa de entrega; quem queria buscar no balcão não tinha caminho — embora o plano
+Delivery já fosse vendido como "quem vende só por entrega ou retirada". Decisões do dono ao
+desenhar:
+
+- as palavras que o cliente lê são **"Retirar no local"**, "Pronto para retirar" e **"Retirado"**;
+- **o pedido mínimo não vale na retirada**: ele existe por causa da viagem do entregador, e quem
+  vem buscar leva o que quiser;
+- entrega e retirada são **duas chaves separadas** no quadro do Delivery, cada uma com a sua
+  pausa, e **basta uma ligada** para o site receber pedido (restaurante que só faz balcão);
+- `pronto` passa a mandar push na retirada — era o aviso que faltava, e na entrega ele não
+  existia porque ali o status é interno (o pedido só espera o entregador).
+
+Por baixo é `pedidos.tipo_entrega` e **não** uma `origem` nova: `origem` já significa por onde o
+pedido entrou, e trocá-la quebraria cozinha, relatórios, RLS e o quadro, que filtram por
+`origem = 'delivery'` e precisam continuar pegando os dois.
+
 ## Cliente do delivery
 
 **04/11 — Cadastro normal, sem SMS, sem código e sem captcha para o cliente.** Nome, e-mail,

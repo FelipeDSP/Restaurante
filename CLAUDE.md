@@ -18,8 +18,8 @@ Em produção hoje:
 
 - **Painel da equipe** (caixa, salão, delivery, cozinha, gestão e configuração), um app só, com
   barra lateral no computador e abas no rodapé no celular.
-- **Site de delivery** por restaurante, com conta de cliente opcional, cupom, acompanhamento do
-  pedido, avisos por push e conversa com o restaurante.
+- **Site de delivery** por restaurante, com entrega ou **retirada no local**, conta de cliente
+  opcional, cupom, acompanhamento do pedido, avisos por push e conversa com o restaurante.
 - **Pedido pela mesa** pelo QR code (plano Completo).
 - **Cozinha e impressão**: tela da cozinha por setor, app de impressão para Windows (ESC/POS e
   driver), fila de impressão com reenvio.
@@ -187,6 +187,18 @@ menu, nas abas do rodapé e nos cartões de Configurações.
 - **Pedido criado por RPC** `criar_pedido_delivery(...)` `security definer`, chamável pelo usuário
   anônimo: busca preços no banco, valida produtos disponíveis, restaurante aberto e bairro
   atendido, e calcula subtotal, taxa e total.
+- **Entrega ou retirada**: `pedidos.tipo_entrega` (`entrega` | `retirada`) sobre
+  `origem = 'delivery'` — **não é uma `origem` nova**, porque `origem` diz por onde o pedido
+  entrou (mesa, delivery, balcão) e é usada na cozinha, nos relatórios e na RLS; tudo o que
+  filtra por delivery continua pegando os dois. Na retirada: sem endereço, sem bairro, taxa 0 e
+  sem entregador (constraint `pedidos_retirada_sem_entrega`), sem pedido mínimo (o mínimo existe
+  pela viagem do entregador), cupom de frete grátis recusado, e o status não passa por
+  `saiu_entrega`. O tipo não muda depois de enviado, nem pela edição do caixa.
+- **O restaurante liga os dois jeitos separados**: `aceita_delivery` e `aceita_retirada`, cada um
+  com a sua chave no quadro do Delivery (`<ChaveDelivery>`), para quem tem a permissão
+  `restaurante`. Basta um ligado para o site receber pedido — quem só faz balcão liga só a
+  retirada. `consultar_disponibilidade_delivery` responde `aberto`, `entrega` e `retirada`.
+  `tempo_estimado_retirada_min` (Painel › Restaurante) é o tempo de preparo mostrado a quem busca.
 - **Envio seguro**: `criar_pedido_delivery`, `lancar_itens_comanda` e `pedir_pela_mesa` recebem a
   chave do envio (`chave_idempotencia`, uuid do aparelho) e o total que a pessoa viu. Preço mudado
   é recusado; a mensagem termina com `(precos_mudaram)`, `(indisponivel)` ou `(cupom)`, que o app
@@ -222,6 +234,10 @@ menu, nas abas do rodapé e nos cartões de Configurações.
 - **Conversa** (`pedidos_mensagens`): aberta enquanto o pedido anda e até 24 h depois de
   entregue/cancelado (`pedidos.finalizado_em`, só o banco define). Só quem tem `delivery` lê;
   escrever só pelas RPCs. Painel › Conversas, com o cartão do pedido ao lado.
+- **Avisos no celular do cliente** (Web Push, `src/lib/avisos-push.ts`): o painel avisa ao
+  aceitar, sair para entrega, entregar e cancelar. `pronto` só avisa na **retirada** ("Seu pedido
+  está pronto! Pode retirar no local") — na entrega é passo interno, o pedido só espera o
+  entregador. Chaves VAPID só em tempo de execução; sem elas o botão some.
 
 **Cozinha e preparo**
 
