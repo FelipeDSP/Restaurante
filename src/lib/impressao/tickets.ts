@@ -34,7 +34,7 @@ export async function montarDocumento(supabase: Cliente, trabalho: Trabalho, res
 
 function tituloPedido(t: Ticket): string {
   if (t.pedido.origem === "mesa" && t.pedido.mesa) return `MESA ${t.pedido.mesa}`;
-  if (t.pedido.origem === "delivery") return "DELIVERY";
+  if (t.pedido.origem === "delivery") return t.pedido.tipoEntrega === "retirada" ? "RETIRADA" : "DELIVERY";
   return "BALCAO";
 }
 
@@ -159,7 +159,7 @@ async function documentoDelivery(supabase: Cliente, pedidoId: string, r: Restaur
   const { data: p, error } = await supabase
     .from("pedidos")
     .select(
-      `numero, status, cliente_nome, cliente_telefone, endereco, taxa_entrega, subtotal, total, desconto, cupom_codigo,
+      `numero, status, tipo_entrega, cliente_nome, cliente_telefone, endereco, taxa_entrega, subtotal, total, desconto, cupom_codigo,
        forma_pagamento_prevista, troco_para, observacao, criado_em,
        bairro:bairros_entrega!pedidos_restaurante_id_bairro_id_fkey(nome),
        itens_pedido(quantidade, nome_produto, adicionais, observacao, total, cancelado_em, criado_em)`,
@@ -170,21 +170,33 @@ async function documentoDelivery(supabase: Cliente, pedidoId: string, r: Restaur
   if (!p || p.status === "cancelado") return null;
 
   const e = (p.endereco ?? {}) as Record<string, string | null>;
+  // Quem vem buscar não tem endereço: o papel diz, em destaque, que ninguém sai com este pedido.
+  const retirada = p.tipo_entrega === "retirada";
   const linhas: Linha[] = [
     { tipo: "texto", texto: r.nome, alinhar: "centro", negrito: true },
-    { tipo: "texto", texto: `DELIVERY nº ${p.numero}`, alinhar: "centro", negrito: true, grande: true },
+    {
+      tipo: "texto",
+      texto: retirada ? `RETIRADA nº ${p.numero}` : `DELIVERY nº ${p.numero}`,
+      alinhar: "centro",
+      negrito: true,
+      grande: true,
+    },
     { tipo: "texto", texto: dataHoraLocal(p.criado_em, r.fuso), alinhar: "centro" },
     { tipo: "separador" },
     { tipo: "texto", texto: p.cliente_nome ?? "", negrito: true },
     { tipo: "texto", texto: `Tel.: ${p.cliente_telefone ?? ""}` },
-    { tipo: "texto", texto: [e.rua, e.numero].filter(Boolean).join(", ") },
   ];
-  if (e.complemento) linhas.push({ tipo: "texto", texto: e.complemento });
-  const bairro = p.bairro?.nome ?? e.bairro;
-  if (bairro) linhas.push({ tipo: "texto", texto: `Bairro: ${bairro}`, negrito: true });
-  const cidade = [e.cidade && e.uf ? `${e.cidade}/${e.uf}` : e.cidade, e.cep ? `CEP ${e.cep}` : null].filter(Boolean).join(" · ");
-  if (cidade) linhas.push({ tipo: "texto", texto: cidade });
-  if (e.referencia) linhas.push({ tipo: "texto", texto: `Ref.: ${e.referencia}` });
+  if (retirada) {
+    linhas.push({ tipo: "texto", texto: "O CLIENTE VEM BUSCAR", negrito: true });
+  } else {
+    linhas.push({ tipo: "texto", texto: [e.rua, e.numero].filter(Boolean).join(", ") });
+    if (e.complemento) linhas.push({ tipo: "texto", texto: e.complemento });
+    const bairro = p.bairro?.nome ?? e.bairro;
+    if (bairro) linhas.push({ tipo: "texto", texto: `Bairro: ${bairro}`, negrito: true });
+    const cidade = [e.cidade && e.uf ? `${e.cidade}/${e.uf}` : e.cidade, e.cep ? `CEP ${e.cep}` : null].filter(Boolean).join(" · ");
+    if (cidade) linhas.push({ tipo: "texto", texto: cidade });
+    if (e.referencia) linhas.push({ tipo: "texto", texto: `Ref.: ${e.referencia}` });
+  }
   linhas.push({ tipo: "separador" });
   for (const i of p.itens_pedido.filter((x) => !x.cancelado_em).sort((a, b) => a.criado_em.localeCompare(b.criado_em))) {
     linhas.push({ tipo: "colunas", esquerda: `${i.quantidade}x ${i.nome_produto}`, direita: formatarBRL(i.total) });
@@ -195,10 +207,14 @@ async function documentoDelivery(supabase: Cliente, pedidoId: string, r: Restaur
   linhas.push(
     { tipo: "separador" },
     { tipo: "colunas", esquerda: "Subtotal", direita: formatarBRL(p.subtotal) },
-    { tipo: "colunas", esquerda: "Entrega", direita: formatarBRL(p.taxa_entrega) },
+    ...(retirada ? [] : [{ tipo: "colunas" as const, esquerda: "Entrega", direita: formatarBRL(p.taxa_entrega) }]),
     ...(p.desconto > 0 ? [{ tipo: "colunas" as const, esquerda: `Cupom ${p.cupom_codigo ?? ""}`, direita: `-${formatarBRL(p.desconto)}` }] : []),
     { tipo: "colunas", esquerda: "TOTAL", direita: formatarBRL(p.total), negrito: true, grande: true },
-    { tipo: "texto", texto: `Pagamento na entrega: ${nomeForma(p.forma_pagamento_prevista ?? "")}`, negrito: true },
+    {
+      tipo: "texto",
+      texto: `Pagamento na ${retirada ? "retirada" : "entrega"}: ${nomeForma(p.forma_pagamento_prevista ?? "")}`,
+      negrito: true,
+    },
   );
   if (p.forma_pagamento_prevista === "dinheiro" && p.troco_para) {
     linhas.push({ tipo: "texto", texto: `Troco para ${formatarBRL(p.troco_para)} (levar ${formatarBRL(p.troco_para - p.total)})` });

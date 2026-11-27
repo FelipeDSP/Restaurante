@@ -27,7 +27,7 @@ const TODAS = "todas";
 
 function titulo(t: Ticket) {
   if (t.pedido.origem === "mesa" && t.pedido.mesa) return `Mesa ${t.pedido.mesa}`;
-  if (t.pedido.origem === "delivery") return `Delivery nº ${t.pedido.numero}`;
+  if (t.pedido.origem === "delivery") return `${t.pedido.tipoEntrega === "retirada" ? "Retirada" : "Delivery"} nº ${t.pedido.numero}`;
   return "Balcão";
 }
 

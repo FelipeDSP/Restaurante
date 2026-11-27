@@ -34,6 +34,8 @@ export type Ticket = {
   pedido: {
     numero: number;
     origem: "mesa" | "delivery" | "balcao";
+    // No delivery: "retirada" quer dizer que o cliente vem buscar (ninguém sai com o prato).
+    tipoEntrega: "entrega" | "retirada";
     mesa: string | null;
     // Garçom responsável pela comanda (membro), para "minhas mesas primeiro".
     garcomId: string | null;
@@ -47,7 +49,7 @@ export type Ticket = {
 const CAMPOS_TICKET = `id, status, criado_em, pronto_em, estacao_id, ordem,
   praca:estacoes!tarefas_producao_restaurante_id_estacao_id_fkey(id, nome),
   pedido:pedidos!tarefas_producao_restaurante_id_pedido_id_fkey(
-    numero, origem, status, cliente_nome, observacao, aceito_em,
+    numero, origem, tipo_entrega, status, cliente_nome, observacao, aceito_em,
     comanda:comandas!pedidos_restaurante_id_comanda_id_fkey(garcom_id, mesa:mesas!comandas_restaurante_id_mesa_id_fkey(numero)),
     autor:membros!pedidos_restaurante_id_criado_por_fkey(nome),
     itens_pedido(id, quantidade, nome_produto, adicionais, observacao, cancelado_em, etapas, para_viagem, criado_em),
@@ -103,6 +105,7 @@ export function montarTickets(linhas: LinhaTarefa[]): Ticket[] {
         pedido: {
           numero: p.numero,
           origem: p.origem as Ticket["pedido"]["origem"],
+          tipoEntrega: p.tipo_entrega === "retirada" ? ("retirada" as const) : ("entrega" as const),
           mesa: p.comanda?.mesa?.numero ?? null,
           garcomId: p.comanda?.garcom_id ?? null,
           autor: p.autor?.nome ?? null,

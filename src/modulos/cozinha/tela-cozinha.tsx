@@ -48,7 +48,8 @@ function outrasPracasDoPedido(ticket: Ticket, naTela: Ticket[]): string[] {
 function titulo(t: Ticket) {
   if (t.pedido.origem === "mesa" && t.pedido.mesa) return `Mesa ${t.pedido.mesa}`;
   // Todo delivery tinha o mesmo título; o número e o nome do cliente diferenciam os tickets.
-  if (t.pedido.origem === "delivery") return `Delivery nº ${t.pedido.numero}${t.pedido.cliente ? ` · ${t.pedido.cliente}` : ""}`;
+  if (t.pedido.origem === "delivery")
+    return `${t.pedido.tipoEntrega === "retirada" ? "Retirada" : "Delivery"} nº ${t.pedido.numero}${t.pedido.cliente ? ` · ${t.pedido.cliente}` : ""}`;
   return "Balcão";
 }
 
