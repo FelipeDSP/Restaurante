@@ -33,6 +33,7 @@ export type DadosRestaurante = {
   horarios: Horarios;
   pedido_minimo: number;
   tempo_estimado_entrega_min: number | null;
+  tempo_estimado_retirada_min: number | null;
   // fixa: um valor só (o cliente informa CEP e endereço); bairro: lista em Bairros de entrega.
   taxa_entrega_modo: "fixa" | "bairro";
   taxa_entrega_fixa: number;
@@ -264,6 +265,23 @@ export function FormRestaurante({ restaurante }: { restaurante: DadosRestaurante
               className="h-10"
             />
             <ErroCampo estado={estado} campo="tempo_estimado_entrega_min" />
+          </Campo>
+          {/* Ligar e pausar a retirada é no quadro do Delivery (decisão de meio de serviço);
+              aqui fica só quanto tempo o cliente espera para buscar. */}
+          <Campo
+            rotulo="Tempo de preparo para retirada (minutos)"
+            htmlFor="tempo_estimado_retirada_min"
+            dica="Mostrado a quem escolhe retirar no local"
+          >
+            <Input
+              id="tempo_estimado_retirada_min"
+              name="tempo_estimado_retirada_min"
+              type="number"
+              min={1}
+              defaultValue={valorCampo(estado, "tempo_estimado_retirada_min", restaurante.tempo_estimado_retirada_min)}
+              className="h-10"
+            />
+            <ErroCampo estado={estado} campo="tempo_estimado_retirada_min" />
           </Campo>
         </CardContent>
       </Card>

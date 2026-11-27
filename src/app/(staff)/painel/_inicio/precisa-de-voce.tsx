@@ -112,8 +112,9 @@ export function PrecisaDeVoce({ pendencias, permissoes, fuso }: { pendencias: Pe
       detalhe: "Parece que ninguém fechou a noite. O resumo só fecha quando o caixa fecha",
     });
   }
-  // Delivery pausado: a chave fica aqui mesmo (antes o aviso mandava para o formulário grande
-  // de Painel › Restaurante, onde a pessoa tinha de achar o campo no meio dos horários e cores).
+  // Nem entrega nem retirada ligadas: o site não recebe nada. As duas chaves ficam aqui mesmo
+  // (antes o aviso mandava para o formulário grande de Painel › Restaurante, onde a pessoa tinha
+  // de achar o campo no meio dos horários e cores).
   const pausado = !site.aberto && site.motivo === "sem_delivery" && caixaAberto;
   // Site fora do ar por outro motivo. Só com o caixa aberto: se ninguém abriu o caixa, o
   // restaurante não está operando e não há nada a cobrar.
@@ -149,8 +150,10 @@ export function PrecisaDeVoce({ pendencias, permissoes, fuso }: { pendencias: Pe
           </span>
         ) : null}
       </div>
-      {/* Delivery pausado: a própria chave, para voltar a receber sem sair da tela. */}
-      {pausado ? <ChaveDelivery aceita={false} podeMudar={permissoes.includes("restaurante")} className="bg-white/70" /> : null}
+      {/* As próprias chaves, para voltar a receber sem sair da tela. */}
+      {pausado ? (
+        <ChaveDelivery entrega={false} retirada={false} podeMudar={permissoes.includes("restaurante")} className="bg-white/70" />
+      ) : null}
       {/* Duas colunas no computador: cinco pendências numa coluna só viravam uma lista comprida
           que empurrava os números da noite para fora da tela. */}
       {linhas.length > 0 ? (

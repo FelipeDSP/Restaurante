@@ -40,7 +40,7 @@ export async function carregarPedidosDelivery(
   const consulta = supabase
     .from("pedidos")
     .select(
-      `id, numero, status, criado_em, cliente_nome, cliente_telefone, endereco, bairro_id, forma_pagamento_prevista, troco_para,
+      `id, numero, status, tipo_entrega, criado_em, cliente_nome, cliente_telefone, endereco, bairro_id, forma_pagamento_prevista, troco_para,
        observacao, subtotal, taxa_entrega, total, motivo_cancelamento, desconto, cupom_codigo, cupom_tipo, cupom_valor,
        bairro:bairros_entrega!pedidos_restaurante_id_bairro_id_fkey(nome),
        itens_pedido(id, nome_produto, quantidade, observacao, adicionais, total, cancelado_em),
@@ -67,6 +67,7 @@ export async function carregarPedidosDelivery(
     id: p.id,
     numero: p.numero,
     status: p.status as PedidoDelivery["status"],
+    tipoEntrega: p.tipo_entrega === "retirada" ? ("retirada" as const) : ("entrega" as const),
     hora: horaLocal(p.criado_em, fuso),
     tempo: tempoDesde(p.criado_em),
     clienteNome: p.cliente_nome ?? "",
@@ -132,9 +133,15 @@ export async function carregarEntregadores(restauranteId: string): Promise<{ id:
   return data ?? [];
 }
 
-// O site está recebendo pedidos? (chave do quadro do Delivery e aviso do Início)
-export async function aceitaDelivery(restauranteId: string): Promise<boolean> {
+// De que jeitos o site está recebendo pedido (chaves do quadro do Delivery e aviso do Início).
+export type JeitosDeReceber = { entrega: boolean; retirada: boolean };
+
+export async function jeitosDeReceber(restauranteId: string): Promise<JeitosDeReceber> {
   const supabase = await createClient();
-  const { data } = await supabase.from("restaurantes").select("aceita_delivery").eq("id", restauranteId).maybeSingle();
-  return data?.aceita_delivery ?? false;
+  const { data } = await supabase
+    .from("restaurantes")
+    .select("aceita_delivery, aceita_retirada")
+    .eq("id", restauranteId)
+    .maybeSingle();
+  return { entrega: data?.aceita_delivery ?? false, retirada: data?.aceita_retirada ?? false };
 }

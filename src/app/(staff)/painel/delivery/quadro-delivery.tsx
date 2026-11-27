@@ -16,7 +16,7 @@ type ColunaId = "novos" | "preparo" | "prontos" | "entrega" | "finalizados";
 const COLUNAS: { id: ColunaId; titulo: string; status: Status[]; vazio: string; destaque?: string }[] = [
   { id: "novos", titulo: "Novos", status: ["recebido"], vazio: "Nenhum pedido novo.", destaque: "bg-[var(--cor-primaria)]" },
   { id: "preparo", titulo: "Em preparo", status: ["em_preparo"], vazio: "Nada em preparo." },
-  { id: "prontos", titulo: "Prontos", status: ["pronto"], vazio: "Nada esperando o entregador.", destaque: "bg-green-700" },
+  { id: "prontos", titulo: "Prontos", status: ["pronto"], vazio: "Nada esperando para sair.", destaque: "bg-green-700" },
   { id: "entrega", titulo: "Em entrega", status: ["saiu_entrega"], vazio: "Nada em entrega." },
   { id: "finalizados", titulo: "Finalizados", status: ["entregue", "cancelado"], vazio: "Nada finalizado ainda nesta sessão." },
 ];
@@ -25,10 +25,12 @@ const COLUNAS: { id: ColunaId; titulo: string; status: Status[]; vazio: string; 
 // "finalizados" abre a confirmação do pagamento no cartão; cancelar é só pelo botão (pede motivo).
 function destino(pedido: PedidoDelivery, coluna: ColunaId): Status | "entregar" | null {
   const s = pedido.status;
+  // Pedido para retirar não sai para entrega: o cliente vem buscar (o banco também recusa).
+  const retirada = pedido.tipoEntrega === "retirada";
   if (coluna === "preparo" && s === "recebido") return "em_preparo";
   // Mesmo com setor pendente: quem cuida do delivery decide (o banco encerra os tickets).
   if (coluna === "prontos" && s === "em_preparo") return "pronto";
-  if (coluna === "entrega" && (s === "em_preparo" || s === "pronto")) return "saiu_entrega";
+  if (coluna === "entrega" && !retirada && (s === "em_preparo" || s === "pronto")) return "saiu_entrega";
   if (coluna === "finalizados" && (s === "em_preparo" || s === "pronto" || s === "saiu_entrega")) return "entregar";
   return null;
 }

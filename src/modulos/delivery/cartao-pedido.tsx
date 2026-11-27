@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, GripVertical, MapPin, MessageCircle, MessagesSquare, Pencil, Phone } from "lucide-react";
+import { ChevronDown, GripVertical, MapPin, MessageCircle, MessagesSquare, Pencil, Phone, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -19,6 +19,9 @@ export type PedidoDelivery = {
   id: string;
   numero: number;
   status: "recebido" | "em_preparo" | "pronto" | "saiu_entrega" | "entregue" | "cancelado";
+  // "retirada": o cliente vem buscar — não tem endereço, taxa nem entregador, e o pedido vai de
+  // "pronto" direto para "entregue".
+  tipoEntrega: "entrega" | "retirada";
   hora: string;
   tempo: string;
   clienteNome: string;
@@ -58,6 +61,13 @@ const PROXIMO: Partial<Record<PedidoDelivery["status"], { status: string; rotulo
   recebido: { status: "em_preparo", rotulo: "Aceitar e preparar" },
   em_preparo: { status: "pronto", rotulo: "Pronto" },
   pronto: { status: "saiu_entrega", rotulo: "Saiu para entrega" },
+};
+
+// Na retirada ninguém sai para entregar: depois de "Pronto" só falta o cliente chegar, e aí o
+// caixa marca como entregue (o botão de entregar já existe, com a confirmação do pagamento).
+const PROXIMO_RETIRADA: Partial<Record<PedidoDelivery["status"], { status: string; rotulo: string }>> = {
+  recebido: { status: "em_preparo", rotulo: "Aceitar e preparar" },
+  em_preparo: { status: "pronto", rotulo: "Pronto para retirar" },
 };
 
 const MOTIVOS = ["Fora da área de entrega", "Produto em falta", "Cliente desistiu", "Pedido duplicado"];
@@ -118,9 +128,12 @@ export function CartaoPedido({ pedido, entregadores, modoInicial = "normal", aoS
   const telefone = pedido.clienteTelefone.replace(/\D/g, "");
   const whatsapp = telefone.length <= 11 ? `55${telefone}` : telefone;
   const naCozinha = pedido.status === "em_preparo" && pedido.pracasPendentes > 0;
-  const proximo = PROXIMO[pedido.status];
+  const retirada = pedido.tipoEntrega === "retirada";
+  const proximo = (retirada ? PROXIMO_RETIRADA : PROXIMO)[pedido.status];
 
-  const resumoEndereco = [[e.rua, e.numero].filter(Boolean).join(", "), pedido.bairro].filter(Boolean).join(" · ");
+  const resumoEndereco = retirada
+    ? "Retirar no local"
+    : [[e.rua, e.numero].filter(Boolean).join(", "), pedido.bairro].filter(Boolean).join(" · ");
 
   if (!ativo) {
     // Finalizado: uma linha; toque para ver o resto.
@@ -193,7 +206,15 @@ export function CartaoPedido({ pedido, entregadores, modoInicial = "normal", aoS
               ) : null}
               {pedido.status === "pronto" ? (
                 <span className="rounded-full bg-green-700 px-2.5 py-0.5 text-xs font-bold tracking-wide whitespace-nowrap text-white uppercase">
-                  Pronto
+                  {retirada ? "Pronto · retirar" : "Pronto"}
+                </span>
+              ) : null}
+              {/* Ninguém vai sair com este: o cliente vem buscar. Fica à vista no topo do cartão,
+                  porque muda o que a equipe faz quando o pedido fica pronto. */}
+              {retirada ? (
+                <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold tracking-wide whitespace-nowrap text-amber-900 uppercase">
+                  <ShoppingBag className="size-3.5" aria-hidden />
+                  Retirada
                 </span>
               ) : null}
             </h3>
@@ -240,12 +261,16 @@ export function CartaoPedido({ pedido, entregadores, modoInicial = "normal", aoS
           </span>
           <span className="flex items-start gap-1 text-muted-foreground">
             <MapPin className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-            <span>
-              {[e.rua, e.numero].filter(Boolean).join(", ")}
-              {e.complemento ? ` · ${e.complemento}` : ""}
-              {pedido.bairro ? ` · ${pedido.bairro}` : ""}
-              {e.referencia ? <span className="block">Ref.: {e.referencia}</span> : null}
-            </span>
+            {retirada ? (
+              <span>O cliente vem buscar no balcão</span>
+            ) : (
+              <span>
+                {[e.rua, e.numero].filter(Boolean).join(", ")}
+                {e.complemento ? ` · ${e.complemento}` : ""}
+                {pedido.bairro ? ` · ${pedido.bairro}` : ""}
+                {e.referencia ? <span className="block">Ref.: {e.referencia}</span> : null}
+              </span>
+            )}
           </span>
           {pedido.alteracoes.length ? (
             <ul className="mt-1 flex flex-col gap-0.5 rounded-md bg-muted/60 p-2 text-xs text-muted-foreground" aria-label="Alterações">
@@ -301,7 +326,8 @@ export function CartaoPedido({ pedido, entregadores, modoInicial = "normal", aoS
         ) : null}
       </p>
 
-      {entregadores.length > 0 && pedido.status !== "recebido" ? (
+      {/* Entregador só em pedido que alguém leva (o banco recusa entregador na retirada). */}
+      {entregadores.length > 0 && pedido.status !== "recebido" && !retirada ? (
         <label className="flex items-center gap-2 text-sm">
           <span className="text-muted-foreground">Entregador</span>
           <select
