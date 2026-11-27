@@ -235,7 +235,9 @@ export function FormRestaurante({ restaurante }: { restaurante: DadosRestaurante
           {/* O que a casa faz — isto é configuração e muda quase nunca. Suspender os pedidos
               agora é outra coisa, e fica no quadro do Delivery (um botão). */}
           <fieldset className="flex flex-col gap-2 sm:col-span-2">
-            <legend className="text-sm font-medium">Como o cliente recebe</legend>
+            {/* Sem título à vista: o cartão já se chama Delivery e os dois rótulos bastam.
+                O nome do grupo fica só para leitor de tela. */}
+            <legend className="sr-only">Como o cliente recebe</legend>
             <label className="flex pointer-coarse:min-h-11 items-center gap-3 text-sm font-medium">
               <input
                 type="checkbox"
@@ -243,7 +245,7 @@ export function FormRestaurante({ restaurante }: { restaurante: DadosRestaurante
                 defaultChecked={marcadoCampo(estado, "aceita_delivery", restaurante.aceita_delivery)}
                 className="size-5 pointer-coarse:size-6 accent-[var(--cor-primaria-texto)]"
               />
-              Entregar no endereço do cliente
+              Entrega
             </label>
             <label className="flex pointer-coarse:min-h-11 items-center gap-3 text-sm font-medium">
               <input
@@ -252,7 +254,7 @@ export function FormRestaurante({ restaurante }: { restaurante: DadosRestaurante
                 defaultChecked={marcadoCampo(estado, "aceita_retirada", restaurante.aceita_retirada)}
                 className="size-5 pointer-coarse:size-6 accent-[var(--cor-primaria-texto)]"
               />
-              Aceitar retirada no local
+              Retirada
             </label>
           </fieldset>
           {/* Por enquanto só taxa fixa (a taxa por bairro volta quando for repensada; o banco ainda aceita). */}

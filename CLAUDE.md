@@ -196,7 +196,7 @@ menu, nas abas do rodapé e nos cartões de Configurações.
   `saiu_entrega`. O tipo não muda depois de enviado, nem pela edição do caixa.
 - **O que a casa faz × se está recebendo agora são coisas diferentes.** `aceita_delivery` e
   `aceita_retirada` dizem o que o restaurante oferece: configuração, em Painel › Restaurante
-  ("Como o cliente recebe"). `pedidos_pausados` suspende tudo agora: operação, **um botão só**
+  (as caixas "Entrega" e "Retirada" do cartão Delivery). `pedidos_pausados` suspende tudo agora: operação, **um botão só**
   no quadro do Delivery (`<ChaveDelivery>`, permissão `restaurante`) — para quem está no caixa é
   uma pergunta só, e despausar devolve exatamente os jeitos que a casa faz, sem ligar entrega
   para quem só faz balcão. Quieto quando está recebendo (uma linha na altura do título); faixa
