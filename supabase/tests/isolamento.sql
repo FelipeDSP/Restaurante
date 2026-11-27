@@ -3757,6 +3757,167 @@ begin
 end;
 $$;
 
+-- ======================================================================
+-- Retirar no local
+-- ======================================================================
+do $$
+declare
+  a constant uuid := md5('brasa-espetinhos')::uuid;
+  v_produto constant uuid := md5('brasa-espetinhos/Espetos/Espeto de carne')::uuid;
+  v_bairro uuid;
+  v_cupom_frete uuid;
+  v_json jsonb;
+  v_pedido uuid;
+  v_erro text;
+  v_disp jsonb;
+begin
+  perform pg_temp.admin();
+  select id into v_bairro from public.bairros_entrega where restaurante_id = a and ativo limit 1;
+  if not exists (select 1 from public.caixa_sessoes where restaurante_id = a and fechada_em is null) then
+    insert into public.caixa_sessoes (restaurante_id, valor_inicial) values (a, 0);
+  end if;
+
+  -- Começa desligada: restaurante que nunca ouviu falar de retirada continua igual.
+  perform pg_temp.anonimo();
+  v_disp := public.consultar_disponibilidade_delivery(a);
+  perform pg_temp.ok((v_disp ->> 'retirada')::boolean is false and (v_disp ->> 'entrega')::boolean,
+    'retirada: nasce desligada e a entrega continua ligada');
+
+  begin
+    perform public.criar_pedido_delivery(a, 'Ze', '69999990000', null, null, 'pix',
+      jsonb_build_array(jsonb_build_object('produto_id', v_produto, 'quantidade', 1)),
+      null, null, null, null, null, 'retirada');
+    perform pg_temp.ok(false, 'retirada: desligada, o site recusa');
+  exception when others then
+    perform pg_temp.ok(sqlerrm like '%nao esta aceitando retirada%' or sqlerrm like '%não está aceitando retirada%',
+      'retirada: desligada, o site recusa');
+  end;
+
+  -- O dono liga.
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  update public.restaurantes set aceita_retirada = true, tempo_estimado_retirada_min = 20 where id = a;
+  perform pg_temp.ok((select aceita_retirada from public.restaurantes where id = a), 'retirada: o dono liga');
+
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  update public.restaurantes set aceita_retirada = false where id = a;
+  perform pg_temp.admin();
+  perform pg_temp.ok((select aceita_retirada from public.restaurantes where id = a), 'retirada: garcom nao desliga');
+
+  -- Pedido para retirar: sem endereço, sem bairro, sem taxa.
+  perform pg_temp.anonimo();
+  v_json := public.criar_pedido_delivery(a, 'Ze do Balcao', '69999991100', null, null, 'pix',
+    jsonb_build_array(jsonb_build_object('produto_id', v_produto, 'quantidade', 1)),
+    null, null, null, null, null, 'retirada');
+  v_pedido := (v_json ->> 'id')::uuid;
+  perform pg_temp.admin();
+  perform pg_temp.ok(
+    (select tipo_entrega = 'retirada' and taxa_entrega = 0 and bairro_id is null and endereco is null
+     from public.pedidos where id = v_pedido),
+    'retirada: sem endereco, sem bairro e sem taxa');
+  perform pg_temp.ok((select origem = 'delivery' from public.pedidos where id = v_pedido),
+    'retirada: continua sendo pedido do site (origem delivery)');
+
+  -- O acompanhamento diz ao cliente que é retirada, com o tempo de preparo.
+  v_json := public.consultar_pedido_publico(v_pedido);
+  perform pg_temp.ok(v_json ->> 'tipo_entrega' = 'retirada' and (v_json ->> 'tempo_estimado_entrega_min')::int = 20,
+    'retirada: o acompanhamento mostra o tipo e o tempo de preparo');
+
+  -- Pedido mínimo não vale (o mínimo existe por causa da viagem do entregador).
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  update public.restaurantes set pedido_minimo = 100000 where id = a;
+  perform pg_temp.anonimo();
+  begin
+    perform public.criar_pedido_delivery(a, 'Ze', '69999991111', v_bairro, '{"rua": "R", "numero": "1", "bairro": "Centro"}', 'pix',
+      jsonb_build_array(jsonb_build_object('produto_id', v_produto, 'quantidade', 1)));
+    perform pg_temp.ok(false, 'retirada: o minimo continua valendo para entrega');
+  exception when others then
+    perform pg_temp.ok(sqlerrm like '%nimo%', 'retirada: o minimo continua valendo para entrega');
+  end;
+  v_erro := null;
+  begin
+    perform public.criar_pedido_delivery(a, 'Ze', '69999991112', null, null, 'pix',
+      jsonb_build_array(jsonb_build_object('produto_id', v_produto, 'quantidade', 1)),
+      null, null, null, null, null, 'retirada');
+  exception when others then
+    v_erro := sqlerrm;
+  end;
+  perform pg_temp.ok(v_erro is null, 'retirada: nao tem pedido minimo');
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  update public.restaurantes set pedido_minimo = 0 where id = a;
+
+  -- Cupom de frete grátis não vale para quem vem buscar.
+  insert into public.cupons (restaurante_id, codigo, tipo, valor)
+  values (a, 'FRETEZERO', 'frete', 0) returning id into v_cupom_frete;
+  perform pg_temp.anonimo();
+  begin
+    perform public.criar_pedido_delivery(a, 'Ze', '69999991113', null, null, 'pix',
+      jsonb_build_array(jsonb_build_object('produto_id', v_produto, 'quantidade', 1)),
+      null, null, null, null, 'FRETEZERO', 'retirada');
+    perform pg_temp.ok(false, 'retirada: cupom de frete gratis e recusado');
+  exception when others then
+    perform pg_temp.ok(sqlerrm like '%(cupom)', 'retirada: cupom de frete gratis e recusado');
+  end;
+
+  -- Andamento: não sai para entrega, e não tem entregador.
+  perform pg_temp.entrar('caixa.brasa@exemplo.com');
+  update public.pedidos set status = 'em_preparo' where id = v_pedido;
+  begin
+    update public.pedidos set status = 'saiu_entrega' where id = v_pedido;
+    perform pg_temp.ok(false, 'retirada: nao sai para entrega');
+  exception when others then
+    perform pg_temp.ok(sqlerrm like '%retirar no local%', 'retirada: nao sai para entrega');
+  end;
+  begin
+    update public.pedidos set entregador_id = (select id from public.entregadores where restaurante_id = a limit 1)
+    where id = v_pedido;
+    perform pg_temp.ok(false, 'retirada: nao tem entregador');
+  exception when others then
+    perform pg_temp.ok(true, 'retirada: nao tem entregador');
+  end;
+  update public.pedidos set status = 'pronto' where id = v_pedido;
+  update public.pedidos set status = 'entregue' where id = v_pedido;
+  perform pg_temp.ok((select status from public.pedidos where id = v_pedido) = 'entregue',
+    'retirada: recebido > em preparo > pronto > entregue');
+
+  -- O jeito de receber não muda depois de enviado.
+  perform pg_temp.admin();
+  begin
+    update public.pedidos set tipo_entrega = 'entrega' where id = v_pedido;
+    perform pg_temp.ok(false, 'retirada: o tipo nao muda depois de criado');
+  exception when others then
+    perform pg_temp.ok(true, 'retirada: o tipo nao muda depois de criado');
+  end;
+
+  -- Só retirada: o site continua aberto com o delivery desligado.
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  update public.restaurantes set aceita_delivery = false where id = a;
+  perform pg_temp.anonimo();
+  v_disp := public.consultar_disponibilidade_delivery(a);
+  perform pg_temp.ok((v_disp ->> 'aberto')::boolean and not (v_disp ->> 'entrega')::boolean and (v_disp ->> 'retirada')::boolean,
+    'retirada: com o delivery desligado o site segue aberto so para retirar');
+  begin
+    perform public.criar_pedido_delivery(a, 'Ze', '69999991114', v_bairro, '{"rua": "R", "numero": "1", "bairro": "Centro"}', 'pix',
+      jsonb_build_array(jsonb_build_object('produto_id', v_produto, 'quantidade', 1)));
+    perform pg_temp.ok(false, 'retirada: com o delivery desligado, entrega e recusada');
+  exception when others then
+    perform pg_temp.ok(sqlerrm like '%entregando%', 'retirada: com o delivery desligado, entrega e recusada');
+  end;
+
+  -- Os dois desligados: o site fecha, como antes.
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  update public.restaurantes set aceita_retirada = false where id = a;
+  perform pg_temp.anonimo();
+  v_disp := public.consultar_disponibilidade_delivery(a);
+  perform pg_temp.ok(not (v_disp ->> 'aberto')::boolean and v_disp ->> 'motivo' = 'sem_delivery',
+    'retirada: os dois desligados fecham o site');
+
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  update public.restaurantes set aceita_delivery = true where id = a;
+  perform pg_temp.admin();
+  delete from public.cupons where id = v_cupom_frete;
+end;
+$$;
+
 select n, ok, teste from resultado order by n;
 select count(*) filter (where not ok) as falhas, count(*) as total from resultado;
 
