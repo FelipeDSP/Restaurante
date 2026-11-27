@@ -20,6 +20,15 @@ export function dinheiro(rotulo: string) {
     });
 }
 
+// Em reais, mas em branco vale: vira null (ex.: taxa para outros bairros, que vazia quer dizer
+// "não entrega fora da lista").
+export function dinheiroOpcional(rotulo: string) {
+  return z.preprocess(
+    (valor) => (typeof valor === "string" && valor.trim() === "" ? null : valor),
+    dinheiro(rotulo).nullable(),
+  );
+}
+
 // Checkbox HTML: presente ("on") = true, ausente = false.
 export const checkbox = z.preprocess((valor) => valor === "on" || valor === "true", z.boolean());
 

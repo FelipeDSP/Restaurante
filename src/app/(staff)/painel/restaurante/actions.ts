@@ -12,6 +12,7 @@ import {
   checkbox,
   dadosDoFormulario,
   dinheiro,
+  dinheiroOpcional,
   inteiroOpcional,
   textoObrigatorio,
   textoOpcional,
@@ -76,6 +77,8 @@ export async function salvarRestaurante(_estado: ResultadoAcao, formData: FormDa
     pedido_minimo: dinheiro("Pedido mínimo"),
     taxa_entrega_modo: z.enum(["fixa", "bairro"]),
     taxa_entrega_fixa: dinheiro("Taxa de entrega"),
+    // Em branco = não entrega fora da lista de bairros.
+    taxa_outros_bairros: dinheiroOpcional("Taxa para outros bairros"),
     tempo_estimado_entrega_min: inteiroOpcional,
     tempo_estimado_retirada_min: inteiroOpcional,
     servico_percentual: z.coerce.number().int("Taxa de serviço: use um número inteiro.").min(0).max(30, "Taxa de serviço: no máximo 30%."),

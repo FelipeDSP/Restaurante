@@ -17,7 +17,6 @@ import { useMeusPedidos } from "../meus-pedidos";
 
 type Props = {
   restaurante: { id: string; slug: string; fusoHorario: string };
-  bairros: { id: string; nome: string }[];
   // Pedidos da conta (quem entrou com o telefone); null = sem conta neste navegador.
   pedidosConta: PedidoDaConta[] | null;
 };
@@ -27,7 +26,7 @@ type Situacao = Pick<PedidoPublico, "status" | "total"> | "carregando" | "sem_co
 // Para o cliente, "recebido" (no caixa é "Novo").
 const rotuloStatus = (status: PedidoPublico["status"]) => (status === "recebido" ? "Recebido" : nomeStatusPedido(status));
 
-export function ListaMeusPedidos({ restaurante, bairros, pedidosConta }: Props) {
+export function ListaMeusPedidos({ restaurante, pedidosConta }: Props) {
   const { pedidos: doAparelho, esquecer, limpar: limparPedidos } = useMeusPedidos(restaurante.id);
   const [dados, , limparDados] = useDadosCliente(restaurante.id);
   const [situacoes, setSituacoes] = useState<Record<string, Situacao>>({});
@@ -70,7 +69,7 @@ export function ListaMeusPedidos({ restaurante, bairros, pedidosConta }: Props) 
     ...soDoAparelho.map((p) => ({ ...p, situacao: situacoes[p.id] ?? ("carregando" as Situacao) })),
   ].sort((a, b) => b.criadoEm.localeCompare(a.criadoEm));
 
-  const bairro = bairros.find((b) => b.id === dados.bairroId)?.nome ?? (dados.bairroTexto || undefined);
+  const bairro = dados.bairroTexto || undefined;
   const endereco = [[dados.rua, dados.numero].filter(Boolean).join(", "), dados.complemento, bairro].filter(Boolean).join(" · ");
   const temDados = temDadosSalvos(dados);
 

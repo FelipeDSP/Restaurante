@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { type AdicionalEscolhido, type GrupoAdicionais, resumoAdicionais, validarEscolha } from "@/lib/adicionais";
 import { centavosDeTexto, formatarBRL } from "@/lib/dinheiro";
+import { chaveBairro } from "@/lib/endereco";
 import { useChaveDeEnvio } from "@/lib/envio";
 import { formatarTelefone } from "@/lib/telefone";
 import { cn } from "@/lib/utils";
@@ -34,6 +35,8 @@ type Props = {
     // Onde o cliente vai buscar, e em quanto tempo fica pronto (retirada no local).
     enderecoDoLocal: string | null;
     tempoRetiradaMin: number | null;
+    // Modo bairro: o que se cobra de quem não está na lista (null = não entrega fora dela).
+    taxaOutrosBairros: number | null;
   };
   // De que jeitos o restaurante está recebendo agora. Um dos dois pode estar desligado.
   podeEntregar: boolean;
@@ -114,10 +117,8 @@ export function Checkout({
   };
   const fixa = restaurante.taxaModo === "fixa";
   // Endereço salvo que ainda serve: na taxa fixa, todos; por bairro, só os de bairros atendidos.
-  const enderecoServe = useCallback(
-    (e: EnderecoSalvo) => (fixa ? Boolean(e.bairro || e.bairroId) : bairros.some((b) => b.id === e.bairroId)),
-    [fixa, bairros],
-  );
+  // Serve se dá para saber o bairro: é por ele que a taxa sai, nos dois modos.
+  const enderecoServe = useCallback((e: EnderecoSalvo) => Boolean(e.bairro || e.bairroId), []);
 
   // Com a conta: nome, telefone e o último endereço usado vêm da conta (o aparelho pode ter os
   // dados de outra pessoa). Uma vez por aba, para não desfazer o que o cliente mudar depois.
@@ -140,7 +141,7 @@ export function Checkout({
   }, [conta, enderecoServe, setForm, restaurante.id]);
   const enderecosDaConta = (conta?.enderecos ?? []).filter(enderecoServe);
   const enderecoAtual = (e: EnderecoSalvo) =>
-    (fixa ? form.bairroTexto.trim().toLowerCase() === (e.bairro ?? "").toLowerCase() : form.bairroId === e.bairroId) &&
+    chaveBairro(form.bairroTexto) === chaveBairro(e.bairro) &&
     form.rua.trim().toLowerCase() === e.rua.toLowerCase() &&
     form.numero.trim().toLowerCase() === e.numero.toLowerCase() &&
     form.complemento.trim().toLowerCase() === (e.complemento ?? "").toLowerCase();
@@ -164,9 +165,22 @@ export function Checkout({
   }, [situacoes, atualizarDados]);
 
   const subtotal = validos.reduce((soma, i) => soma + precoUnitario(i) * i.quantidade, 0);
-  const bairro = bairros.find((b) => b.id === form.bairroId);
-  const taxa = retirando ? 0 : fixa ? restaurante.taxaFixa : (bairro?.taxa ?? 0);
-  const taxaDefinida = retirando || fixa || Boolean(bairro);
+  // Taxa por bairro: o bairro vem do CEP (ou do que o cliente corrigir) e casa com a lista do
+  // restaurante — sem select com os preços à mostra, que era um convite a escolher o mais barato.
+  // Quem decide de verdade é o banco, com a mesma conta, ao criar o pedido.
+  const bairro = fixa ? undefined : bairros.find((b) => chaveBairro(b.nome) === chaveBairro(form.bairroTexto));
+  const foraDaLista = !fixa && !retirando && Boolean(chaveBairro(form.bairroTexto)) && !bairro;
+  const naoAtende = foraDaLista && restaurante.taxaOutrosBairros === null;
+  // Sem bairro ainda (o cliente não digitou o CEP): a taxa fica em aberto — e fora do total,
+  // senão o rodapé mostra um valor que ninguém escolheu.
+  const taxaDefinida = retirando || fixa || Boolean(chaveBairro(form.bairroTexto));
+  const taxa = retirando
+    ? 0
+    : fixa
+      ? restaurante.taxaFixa
+      : taxaDefinida
+        ? (bairro?.taxa ?? restaurante.taxaOutrosBairros ?? 0)
+        : 0;
   // Endereço de outra cidade (o CEP diz qual): avisa, sem bloquear (o restaurante confirma).
   const outraCidade =
     !retirando && fixa && restaurante.cidade && form.cidade && normalizarCidade(form.cidade) !== normalizarCidade(restaurante.cidade)
@@ -436,7 +450,7 @@ export function Checkout({
           />
           <Erro texto={erros.telefone} />
         </label>
-        {retirando ? null : fixa ? (
+        {retirando ? null : (
           <CampoCep
             form={form}
             erro={erros.cep}
@@ -456,25 +470,6 @@ export function Checkout({
               }));
             }}
           />
-        ) : null}
-        {retirando || fixa ? null : (
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          Bairro
-          <select
-            value={form.bairroId}
-            onChange={alterar("bairroId")}
-            className="h-11 rounded-lg border border-input bg-background px-3 text-sm"
-            aria-invalid={!!erros.bairroId}
-          >
-            <option value="">Escolha o bairro</option>
-            {bairros.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.nome} · taxa {formatarBRL(b.taxa)}
-              </option>
-            ))}
-          </select>
-          <Erro texto={erros.bairroId} />
-        </label>
         )}
         {retirando ? null : (
         <div className="grid grid-cols-[1fr_6rem] gap-2">
@@ -490,7 +485,7 @@ export function Checkout({
           </label>
         </div>
         )}
-        {retirando ? null : fixa ? (
+        {retirando ? null : (
           <div className="grid grid-cols-[1fr_8rem] gap-2">
             <label className="flex flex-col gap-1 text-sm font-medium">
               Bairro
@@ -502,6 +497,16 @@ export function Checkout({
               <Input value={form.cidade} onChange={alterar("cidade")} autoComplete="address-level2" className="h-11" />
             </label>
           </div>
+        )}
+        {/* O que vai ser cobrado neste bairro, dito antes de pedir. */}
+        {naoAtende ? (
+          <p role="alert" className="rounded-lg bg-red-50 p-2 text-sm font-medium text-red-900">
+            Ainda não entregamos no bairro {form.bairroTexto.trim()}. Fale com o restaurante antes de pedir.
+          </p>
+        ) : foraDaLista ? (
+          <p role="status" className="rounded-lg bg-amber-50 p-2 text-sm text-amber-900">
+            {form.bairroTexto.trim()} fica fora da nossa área: a entrega sai por {formatarBRL(taxa)}.
+          </p>
         ) : null}
         {outraCidade ? (
           <p role="status" className="rounded-lg bg-amber-50 p-2 text-sm text-amber-900">
@@ -571,8 +576,8 @@ export function Checkout({
         </div>
         {retirando ? null : (
           <div className="flex justify-between text-sm">
-            <span>Taxa de entrega</span>
-            <span className="tabular-nums">{taxaDefinida ? (taxa === 0 ? "Grátis" : formatarBRL(taxa)) : "escolha o bairro"}</span>
+            <span>Taxa de entrega{bairro ? ` · ${bairro.nome}` : ""}</span>
+            <span className="tabular-nums">{taxaDefinida ? (taxa === 0 ? "Grátis" : formatarBRL(taxa)) : "informe o CEP"}</span>
           </div>
         )}
         {cupom ? (
@@ -617,9 +622,17 @@ export function Checkout({
           <Button
             type="submit"
             className={cn("h-14 w-full justify-between text-base")}
-            disabled={enviando || !aberto || faltaMinimo > 0 || validos.length === 0}
+            disabled={enviando || !aberto || faltaMinimo > 0 || validos.length === 0 || naoAtende || (!retirando && !taxaDefinida)}
           >
-            <span>{enviando ? "Enviando pedido..." : aberto ? "Fazer pedido" : "Fechado no momento"}</span>
+            <span>
+              {enviando
+                ? "Enviando pedido..."
+                : !aberto
+                  ? "Fechado no momento"
+                  : naoAtende
+                    ? "Fora da área de entrega"
+                    : "Fazer pedido"}
+            </span>
             <span className="tabular-nums">{formatarBRL(total)}</span>
           </Button>
         </div>
@@ -630,7 +643,6 @@ export function Checkout({
 
 function camposDoEndereco(e: EnderecoSalvo) {
   return {
-    bairroId: e.bairroId ?? "",
     bairroTexto: e.bairro ?? "",
     cep: e.cep ? `${e.cep.slice(0, 5)}-${e.cep.slice(5)}` : "",
     cidade: e.cidade ?? "",

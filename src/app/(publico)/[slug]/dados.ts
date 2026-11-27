@@ -30,6 +30,8 @@ export type RestaurantePublico = {
   // fixa: um valor para qualquer endereço (o cliente informa CEP e bairro); bairro: lista de bairros.
   taxaEntregaModo: "fixa" | "bairro";
   taxaEntregaFixa: number;
+  // Modo bairro: taxa de quem não está na lista (null = não entrega fora dela).
+  taxaOutrosBairros: number | null;
   // Retirar no local: o cliente busca no restaurante, sem endereço e sem taxa.
   aceitaRetirada: boolean;
   tempoRetiradaMin: number | null;
@@ -43,7 +45,7 @@ export const buscarRestaurantePorSlug = cache(async (slug: string): Promise<Rest
   const { data } = await supabase
     .from("restaurantes_publicos")
     .select(
-      "id, slug, nome, logo_url, capa_url, descricao, instagram, facebook, cor_primaria, cor_secundaria, telefone, whatsapp, endereco, fuso_horario, horarios, aceita_delivery, pedido_minimo, tempo_estimado_entrega_min, taxa_entrega_modo, taxa_entrega_fixa, aceita_retirada, tempo_estimado_retirada_min",
+      "id, slug, nome, logo_url, capa_url, descricao, instagram, facebook, cor_primaria, cor_secundaria, telefone, whatsapp, endereco, fuso_horario, horarios, aceita_delivery, pedido_minimo, tempo_estimado_entrega_min, taxa_entrega_modo, taxa_entrega_fixa, taxa_outros_bairros, aceita_retirada, tempo_estimado_retirada_min",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -73,6 +75,7 @@ export const buscarRestaurantePorSlug = cache(async (slug: string): Promise<Rest
     tempoEstimadoMin: data.tempo_estimado_entrega_min,
     taxaEntregaModo: data.taxa_entrega_modo === "bairro" ? "bairro" : "fixa",
     taxaEntregaFixa: data.taxa_entrega_fixa ?? 0,
+    taxaOutrosBairros: data.taxa_outros_bairros,
     aceitaRetirada: data.aceita_retirada ?? false,
     tempoRetiradaMin: data.tempo_estimado_retirada_min,
   };

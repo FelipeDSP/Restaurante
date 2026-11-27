@@ -742,7 +742,7 @@ begin
       'pix', jsonb_build_array(jsonb_build_object('produto_id', v_produto_a2, 'quantidade', 1)));
     perform pg_temp.ok(false, 'delivery recusa bairro de outro restaurante');
   exception when others then
-    perform pg_temp.ok(sqlerrm = 'Bairro não atendido.', 'delivery recusa bairro de outro restaurante');
+    perform pg_temp.ok(sqlerrm = 'Informe o bairro.', 'delivery recusa bairro de outro restaurante');
   end;
   begin
     perform public.criar_pedido_delivery(a, 'Maria', '69999991234', v_bairro_a, '{"rua": "R", "numero": "1"}',
@@ -1533,7 +1533,7 @@ begin
       jsonb_build_array(jsonb_build_object('produto_id', md5('brasa-espetinhos/Burgers/Burger artesanal')::uuid, 'quantidade', 1)));
     perform pg_temp.ok(false, 'por bairro: exige bairro da lista');
   exception when others then
-    perform pg_temp.ok(sqlerrm like 'Bairro não atendido%', 'por bairro: exige bairro da lista');
+    perform pg_temp.ok(sqlerrm like '%não entregamos no bairro Qualquer%', 'por bairro: exige bairro da lista');
   end;
 
   perform pg_temp.entrar('garcom1.brasa@exemplo.com');
@@ -3946,6 +3946,119 @@ begin
   update public.restaurantes set aceita_delivery = true where id = a;
   perform pg_temp.admin();
   delete from public.cupons where id = v_cupom_frete;
+end;
+$$;
+
+-- ======================================================================
+-- Taxa por bairro: o CEP decide, e fora da lista não perde o pedido
+-- ======================================================================
+do $$
+declare
+  a constant uuid := md5('brasa-espetinhos')::uuid;
+  v_produto constant uuid := md5('brasa-espetinhos/Espetos/Espeto de carne')::uuid;
+  v_bairro uuid;
+  v_outro uuid;
+  v_json jsonb;
+  v_pedido uuid;
+begin
+  perform pg_temp.admin();
+  if not exists (select 1 from public.caixa_sessoes where restaurante_id = a and fechada_em is null) then
+    perform pg_temp.entrar('caixa.brasa@exemplo.com');
+    insert into public.caixa_sessoes (restaurante_id, valor_inicial) values (a, 0);
+    perform pg_temp.admin();
+  end if;
+
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  update public.restaurantes
+     set taxa_entrega_modo = 'bairro', pedido_minimo = 0, aceita_delivery = true, pedidos_pausados = false
+   where id = a;
+  insert into public.bairros_entrega (restaurante_id, nome, taxa) values (a, 'São Cristóvão', 700)
+    returning id into v_bairro;
+
+  -- O nome que o ViaCEP devolve casa com o que o dono digitou, com ou sem acento.
+  perform pg_temp.admin();
+  perform pg_temp.ok(rest_privado.chave_bairro('São  CRISTÓVÃO ') = rest_privado.chave_bairro('sao cristovao'),
+    'bairro: acento e caixa nao atrapalham o casamento');
+
+  -- Sem escolher na lista: o bairro do endereço (vindo do CEP) define a taxa.
+  perform pg_temp.anonimo();
+  v_json := public.criar_pedido_delivery(a, 'Cep Decide', '69999992001', null,
+    '{"rua": "R", "numero": "1", "bairro": "sao cristovao"}', 'pix',
+    jsonb_build_array(jsonb_build_object('produto_id', v_produto, 'quantidade', 1)));
+  v_pedido := (v_json ->> 'id')::uuid;
+  perform pg_temp.admin();
+  perform pg_temp.ok((select bairro_id = v_bairro and taxa_entrega = 700 from public.pedidos where id = v_pedido),
+    'bairro: o CEP decide a taxa, sem o cliente escolher');
+
+  -- Fora da lista, sem taxa padrão: recusa dizendo o bairro.
+  perform pg_temp.anonimo();
+  begin
+    perform public.criar_pedido_delivery(a, 'Fora', '69999992002', null,
+      '{"rua": "R", "numero": "1", "bairro": "Nova Esperanca"}', 'pix',
+      jsonb_build_array(jsonb_build_object('produto_id', v_produto, 'quantidade', 1)));
+    perform pg_temp.ok(false, 'bairro: fora da lista sem taxa padrao recusa');
+  exception when others then
+    perform pg_temp.ok(sqlerrm like '%Nova Esperanca%', 'bairro: fora da lista sem taxa padrao recusa');
+  end;
+
+  -- Com taxa padrão: o pedido entra, com a taxa de fora e sem bairro_id.
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  update public.restaurantes set taxa_outros_bairros = 1500 where id = a;
+  perform pg_temp.anonimo();
+  v_json := public.criar_pedido_delivery(a, 'Fora', '69999992003', null,
+    '{"rua": "R", "numero": "1", "bairro": "Nova Esperanca"}', 'pix',
+    jsonb_build_array(jsonb_build_object('produto_id', v_produto, 'quantidade', 1)));
+  v_pedido := (v_json ->> 'id')::uuid;
+  perform pg_temp.admin();
+  perform pg_temp.ok((select bairro_id is null and taxa_entrega = 1500 from public.pedidos where id = v_pedido),
+    'bairro: fora da lista cobra a taxa padrao e nao perde o pedido');
+
+  -- Bairro desativado volta a ser "fora da lista".
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  update public.bairros_entrega set ativo = false where id = v_bairro;
+  perform pg_temp.anonimo();
+  v_json := public.criar_pedido_delivery(a, 'Desativado', '69999992004', null,
+    '{"rua": "R", "numero": "1", "bairro": "São Cristóvão"}', 'pix',
+    jsonb_build_array(jsonb_build_object('produto_id', v_produto, 'quantidade', 1)));
+  perform pg_temp.admin();
+  perform pg_temp.ok((select taxa_entrega = 1500 from public.pedidos where id = (v_json ->> 'id')::uuid),
+    'bairro: desativado cai na taxa padrao');
+
+  -- O id continua valendo (saída de quando o CEP não resolve), mas só o do próprio restaurante.
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  update public.bairros_entrega set ativo = true where id = v_bairro;
+  select id into v_outro from public.bairros_entrega where restaurante_id = md5('burger-do-ze')::uuid limit 1;
+  perform pg_temp.anonimo();
+  v_json := public.criar_pedido_delivery(a, 'Pela Lista', '69999992005', v_bairro,
+    '{"rua": "R", "numero": "1", "bairro": "qualquer coisa"}', 'pix',
+    jsonb_build_array(jsonb_build_object('produto_id', v_produto, 'quantidade', 1)));
+  perform pg_temp.admin();
+  perform pg_temp.ok((select bairro_id = v_bairro and taxa_entrega = 700 from public.pedidos where id = (v_json ->> 'id')::uuid),
+    'bairro: escolher na lista continua valendo');
+
+  perform pg_temp.anonimo();
+  v_json := public.criar_pedido_delivery(a, 'Outro Rest', '69999992006', v_outro,
+    '{"rua": "R", "numero": "1", "bairro": "Nova Esperanca"}', 'pix',
+    jsonb_build_array(jsonb_build_object('produto_id', v_produto, 'quantidade', 1)));
+  perform pg_temp.admin();
+  perform pg_temp.ok((select bairro_id is null and taxa_entrega = 1500 from public.pedidos where id = (v_json ->> 'id')::uuid),
+    'bairro: id de outro restaurante nao vale');
+
+  -- Garçom não mexe na lista nem na taxa padrão.
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  update public.bairros_entrega set taxa = 1 where id = v_bairro;
+  update public.restaurantes set taxa_outros_bairros = 1 where id = a;
+  perform pg_temp.admin();
+  perform pg_temp.ok((select taxa from public.bairros_entrega where id = v_bairro) = 700
+                 and (select taxa_outros_bairros from public.restaurantes where id = a) = 1500,
+    'bairro: garcom nao mexe na taxa');
+
+  -- Deixa como estava para os blocos seguintes. O bairro fica (pedidos apontam para ele),
+  -- só sai da lista de quem atende.
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  update public.restaurantes set taxa_entrega_modo = 'fixa', taxa_outros_bairros = null where id = a;
+  update public.bairros_entrega set ativo = false where id = v_bairro;
+  perform pg_temp.admin();
 end;
 $$;
 

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useState } from "react";
 
 import { BotaoEnviar, Campo, ErroCampo, marcadoCampo, Selecao, useAvisoResultado, valorCampo } from "@/components/staff/formulario";
@@ -39,6 +40,8 @@ export type DadosRestaurante = {
   // fixa: um valor só (o cliente informa CEP e endereço); bairro: lista em Bairros de entrega.
   taxa_entrega_modo: "fixa" | "bairro";
   taxa_entrega_fixa: number;
+  // Modo bairro: o que cobrar de quem não está na lista (nulo = não entrega fora dela).
+  taxa_outros_bairros: number | null;
   servico_percentual: number;
   couvert_valor: number;
   couvert_dias: number[];
@@ -61,6 +64,9 @@ export function FormRestaurante({ restaurante }: { restaurante: DadosRestaurante
   useAvisoResultado(estado);
   const [corPrimaria, setCorPrimaria] = useState(restaurante.cor_primaria);
   const [corSecundaria, setCorSecundaria] = useState(restaurante.cor_secundaria);
+  const [modoTaxa, setModoTaxa] = useState<"fixa" | "bairro">(
+    (estado?.valores?.taxa_entrega_modo ?? restaurante.taxa_entrega_modo) === "bairro" ? "bairro" : "fixa",
+  );
   const [diasCouvert, setDiasCouvert] = useState<number[]>(
     estado?.valores?.couvert_dias !== undefined
       ? estado.valores.couvert_dias.split(",").filter(Boolean).map(Number)
@@ -257,19 +263,60 @@ export function FormRestaurante({ restaurante }: { restaurante: DadosRestaurante
               Retirada
             </label>
           </fieldset>
-          {/* Por enquanto só taxa fixa (a taxa por bairro volta quando for repensada; o banco ainda aceita). */}
-          <input type="hidden" name="taxa_entrega_modo" value="fixa" />
-          <Campo rotulo="Taxa de entrega (R$)" htmlFor="taxa_entrega_fixa" dica="0,00 = entrega grátis">
-            <Input
-              id="taxa_entrega_fixa"
-              name="taxa_entrega_fixa"
-              inputMode="decimal"
-              placeholder="Ex.: 7,00"
-              defaultValue={valorCampo(estado, "taxa_entrega_fixa", textoDeCentavos(restaurante.taxa_entrega_fixa))}
-              className="h-10 max-w-40"
-            />
-            <ErroCampo estado={estado} campo="taxa_entrega_fixa" />
+          <Campo rotulo="Como cobrar a entrega" htmlFor="taxa_entrega_modo" className="sm:col-span-2">
+            <Selecao
+              id="taxa_entrega_modo"
+              name="taxa_entrega_modo"
+              value={modoTaxa}
+              onChange={(e) => setModoTaxa(e.target.value === "bairro" ? "bairro" : "fixa")}
+            >
+              <option value="fixa">Uma taxa para todo mundo</option>
+              <option value="bairro">Uma taxa por bairro</option>
+            </Selecao>
           </Campo>
+          {modoTaxa === "fixa" ? (
+            <Campo rotulo="Taxa de entrega (R$)" htmlFor="taxa_entrega_fixa" dica="0,00 = entrega grátis">
+              <Input
+                id="taxa_entrega_fixa"
+                name="taxa_entrega_fixa"
+                inputMode="decimal"
+                placeholder="Ex.: 7,00"
+                defaultValue={valorCampo(estado, "taxa_entrega_fixa", textoDeCentavos(restaurante.taxa_entrega_fixa))}
+                className="h-10 max-w-40"
+              />
+              <ErroCampo estado={estado} campo="taxa_entrega_fixa" />
+            </Campo>
+          ) : (
+            <>
+              {/* O valor fixo continua guardado: trocar de modo e voltar não apaga o que estava lá. */}
+              <input type="hidden" name="taxa_entrega_fixa" value={textoDeCentavos(restaurante.taxa_entrega_fixa)} />
+              <Campo
+                rotulo="Taxa para outros bairros (R$)"
+                htmlFor="taxa_outros_bairros"
+                dica="Em branco = não entrega fora da lista"
+              >
+                <Input
+                  id="taxa_outros_bairros"
+                  name="taxa_outros_bairros"
+                  inputMode="decimal"
+                  placeholder="Ex.: 15,00"
+                  defaultValue={valorCampo(
+                    estado,
+                    "taxa_outros_bairros",
+                    restaurante.taxa_outros_bairros === null ? "" : textoDeCentavos(restaurante.taxa_outros_bairros),
+                  )}
+                  className="h-10 max-w-40"
+                />
+                <ErroCampo estado={estado} campo="taxa_outros_bairros" />
+              </Campo>
+              <p className="text-sm text-muted-foreground sm:col-span-2">
+                O bairro vem do CEP que o cliente digita — ele não escolhe numa lista.{" "}
+                <Link href="/painel/bairros" className="font-medium text-foreground underline underline-offset-4">
+                  Cadastrar os bairros e as taxas
+                </Link>
+              </p>
+            </>
+          )}
           <Campo rotulo="Pedido mínimo (R$)" htmlFor="pedido_minimo">
             <Input
               id="pedido_minimo"

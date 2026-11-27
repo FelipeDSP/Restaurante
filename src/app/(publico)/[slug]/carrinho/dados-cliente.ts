@@ -19,7 +19,6 @@ export type FormCheckout = {
   tipo: "entrega" | "retirada";
   nome: string;
   telefone: string;
-  bairroId: string;
   // Taxa fixa: o cliente informa o CEP; rua, bairro e cidade se preenchem sozinhos (e dá para editar).
   cep: string;
   bairroTexto: string;
@@ -38,7 +37,6 @@ export const FORM_VAZIO: FormCheckout = {
   tipo: "entrega",
   nome: "",
   telefone: "",
-  bairroId: "",
   cep: "",
   bairroTexto: "",
   cidade: "",

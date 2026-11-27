@@ -37,8 +37,8 @@ const pedidoSchema = z.object({
     .string()
     .transform((v) => v.replace(/\D/g, ""))
     .pipe(z.string().min(10, "Informe o telefone com DDD.").max(13, "Telefone inválido.")),
-  // Por bairro: o bairro da lista. Taxa fixa: o bairro digitado (com a ajuda do CEP).
-  bairroId: z.string().default(""),
+  // O bairro vem do CEP (e dá para corrigir). Nos dois modos ele vai no endereço; por bairro,
+  // é o banco que casa com a lista do restaurante e decide a taxa.
   bairroTexto: z.string().trim().max(80).default(""),
   cep: z
     .string()
@@ -88,13 +88,13 @@ export async function enviarPedido(slug: string, entrada: DadosPedido): Promise<
   const d = dados.data;
 
   const retirada = d.tipo === "retirada";
-  const fixa = restaurante.taxaEntregaModo === "fixa";
   if (!retirada) {
     const erros: Record<string, string> = {};
     if (d.rua.length < 2) erros.rua = "Informe a rua.";
     if (d.numero.length < 1) erros.numero = "Informe o número.";
-    if (fixa && d.bairroTexto.length < 2) erros.bairroTexto = "Informe o bairro.";
-    if (!fixa && !id.safeParse(d.bairroId).success) erros.bairroId = "Escolha o bairro.";
+    // O bairro vale nos dois modos: na taxa fixa ele é só endereço; por bairro, é ele que
+    // define a taxa (o banco casa com a lista do restaurante).
+    if (d.bairroTexto.length < 2) erros.bairroTexto = "Informe o bairro.";
     if (Object.keys(erros).length > 0) return { ok: false, mensagem: "Confira os dados do pedido.", erros };
   }
 
@@ -125,8 +125,9 @@ export async function enviarPedido(slug: string, entrada: DadosPedido): Promise<
     p_restaurante_id: restaurante.id,
     p_cliente_nome: d.nome,
     p_cliente_telefone: d.telefone,
-    // Na taxa fixa o bairro vai no endereço; os tipos gerados não marcam o id como opcional.
-    p_bairro_id: (retirada || fixa ? null : d.bairroId) as string,
+    // O site nunca manda o id do bairro: quem casa o bairro com a lista é o banco, com uma
+    // conta só (`rest_privado.chave_bairro`). O id segue valendo para a edição pelo painel.
+    p_bairro_id: null as unknown as string,
     // Quem retira não tem endereço de entrega: o banco recusa taxa e bairro nesse caso.
     p_endereco: retirada
       ? null
@@ -135,14 +136,10 @@ export async function enviarPedido(slug: string, entrada: DadosPedido): Promise<
           numero: d.numero,
           complemento: d.complemento || null,
           referencia: d.referencia || null,
-          ...(fixa
-            ? {
-                bairro: d.bairroTexto,
-                cep: d.cep ? `${d.cep.slice(0, 5)}-${d.cep.slice(5)}` : null,
-                cidade: d.cidade || null,
-                uf: d.uf.toUpperCase() || null,
-              }
-            : {}),
+          bairro: d.bairroTexto,
+          cep: d.cep ? `${d.cep.slice(0, 5)}-${d.cep.slice(5)}` : null,
+          cidade: d.cidade || null,
+          uf: d.uf.toUpperCase() || null,
         },
     p_forma_pagamento: d.forma,
     p_itens: d.itens.map((i) => ({

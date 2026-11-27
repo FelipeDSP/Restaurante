@@ -146,9 +146,25 @@ pedido" na página de acompanhamento enquanto o status é `recebido`. Depois do 
 conversa. O painel bipa "O cliente cancelou o delivery nº X".
 
 **26/10 — Por enquanto, só taxa fixa.** O cliente: "por bairro ainda tem que ser melhor pensado".
-O modo `bairro` continua no banco e no checkout, mas sem tela (`/painel/bairros` redireciona), e
-salvar o formulário do restaurante grava `fixa`. O cliente digita o CEP e o servidor consulta o
-ViaCEP.
+O modo `bairro` ficou no banco e no checkout, mas sem tela (`/painel/bairros` redirecionava).
+
+**27/11 — Taxa por bairro de volta, com os três furos consertados.** O dono perguntou se era
+bairro, proximidade ou raio. Recomendei **bairro**, e não raio, por três motivos: ele já pensa
+por entrega e não por km (é o que `entregadores.recebe_taxa` mostra); raio precisa geocodificar,
+e em Porto Velho muito CEP é genérico e o rio faz 2 km em linha reta virar 9 de rua; e
+geocodificação é custo por pedido em **todo** restaurante — a mesma trava que barrou o agente de
+IA. Raio volta a fazer sentido quando aparecer bairro grande demais ou escala para pagar, e aí
+com rota (não linha reta), cache por CEP + número e faixas que o dono controla.
+
+Os três furos que tinham tirado o modo do ar:
+
+1. **O cliente escolhia o bairro num select** — a lista de preços à mostra, convidando a marcar
+   a mais barata. Agora o **CEP decide**: o ViaCEP devolve o bairro e o banco casa com a lista.
+   Não impede quem quiser mentir o CEP, mas tira o convite e acerta o caso normal.
+2. **Bairro fora da lista perdia o pedido.** Agora `taxa_outros_bairros` cobra uma taxa padrão;
+   nulo mantém a recusa, para quem atende área fechada mesmo — e a recusa diz qual é o bairro.
+3. **Cadastrar era digitar a cidade inteira.** A tela sugere os bairros que já apareceram nos
+   endereços dos pedidos; o dono só põe o preço.
 
 **Status só anda para frente**, com pulos permitidos depois do aceite. Cancelar, a qualquer
 momento.

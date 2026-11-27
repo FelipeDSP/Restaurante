@@ -47,6 +47,7 @@ export default async function CarrinhoPage(props: PageProps<"/[slug]/carrinho">)
           // Para quem vai buscar: onde é, e em quanto tempo fica pronto.
           enderecoDoLocal: enderecoEmLinha(restaurante.endereco),
           tempoRetiradaMin: restaurante.tempoRetiradaMin,
+          taxaOutrosBairros: restaurante.taxaOutrosBairros,
         }}
         podeEntregar={disponibilidade.entrega}
         podeRetirar={disponibilidade.retirada}

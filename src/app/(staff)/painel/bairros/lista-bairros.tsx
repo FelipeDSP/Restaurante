@@ -14,13 +14,31 @@ import { alternarBairro, criarBairro, excluirBairro, salvarBairro } from "./acti
 
 export type Bairro = { id: string; nome: string; taxa: number; ativo: boolean };
 
-export function NovoBairro() {
+export function NovoBairro({ sugestoes = [] }: { sugestoes?: { nome: string; pedidos: number }[] }) {
   const [estado, acao] = useActionState(criarBairro, undefined);
   useAvisoResultado(estado);
+  // Nome controlado só para os atalhos preencherem; quem digita continua digitando.
+  const [nome, setNome] = useState(valorCampo(estado, "nome", ""));
   return (
+    <div className="flex flex-col gap-3">
+      {/* Cadastrar era digitar a cidade inteira antes do primeiro pedido. Os bairros de quem já
+          pediu estão nos endereços: toque num e só falta o preço. */}
+      {sugestoes.length > 0 ? (
+        <div className="flex flex-col gap-1.5">
+          <span className="text-sm font-medium">Bairros de onde já pediram</span>
+          <div className="flex flex-wrap gap-2">
+            {sugestoes.slice(0, 12).map((s) => (
+              <Button key={s.nome} type="button" variant="outline" className="h-9 pointer-coarse:h-11" onClick={() => setNome(s.nome)}>
+                {s.nome}
+                <span className="text-muted-foreground tabular-nums">{s.pedidos}</span>
+              </Button>
+            ))}
+          </div>
+        </div>
+      ) : null}
     <form key={estado?.chave} action={acao} className="flex flex-wrap items-end gap-2">
       <Campo rotulo="Bairro" htmlFor="novo-bairro" className="min-w-48 flex-1">
-        <Input id="novo-bairro" name="nome" defaultValue={valorCampo(estado, "nome", "")} required className="h-11" />
+        <Input id="novo-bairro" name="nome" value={nome} onChange={(e) => setNome(e.target.value)} required className="h-11" />
         <ErroCampo estado={estado} campo="nome" />
       </Campo>
       <Campo rotulo="Taxa (R$)" htmlFor="nova-taxa" className="w-32">
@@ -31,6 +49,7 @@ export function NovoBairro() {
         Adicionar
       </BotaoEnviar>
     </form>
+    </div>
   );
 }
 

@@ -111,6 +111,11 @@ export const CONFIGURACOES: ItemNavegacao[] = [
     icone: "restaurante",
     acesso: ["restaurante"],
     descricao: "Dados, marca, horários e taxa.",
+    secoes: [
+      { href: "/painel/restaurante", rotulo: "Dados" },
+      // Só vale no modo "taxa por bairro"; a própria tela avisa quando não está nele.
+      { href: "/painel/bairros", rotulo: "Bairros de entrega" },
+    ],
   },
   // "Mesas" no menu é o mapa do salão (Operação); aqui é o cadastro — duas coisas diferentes
   // que tinham o mesmo nome.

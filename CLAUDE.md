@@ -218,11 +218,21 @@ menu, nas abas do rodapé e nos cartões de Configurações.
   `cliente_cancelar_pedido` (anon; o id do pedido é a senha). `pedidos.cancelado_pelo_cliente` só o
   banco define.
 - `pedidos.aceito_em`: hora do aceite (só o banco define); o cronômetro da cozinha conta dela.
-- **Taxa de entrega**: `restaurantes.taxa_entrega_modo` = `fixa` (padrão; `taxa_entrega_fixa` para
-  qualquer endereço, cliente digita o CEP e `/api/cep/[cep]` consulta o ViaCEP pelo servidor) ou
-  `bairro` (lista `bairros_entrega`). **O painel só oferece a taxa fixa**: o modo `bairro` continua
-  no banco e no checkout, mas sem tela (`/painel/bairros` redireciona). Bairro mostrado em qualquer
-  tela = `bairro.nome` da lista ou `endereco.bairro`.
+- **Taxa de entrega**: `restaurantes.taxa_entrega_modo` = `fixa` (um valor para qualquer
+  endereço) ou `bairro` (lista `bairros_entrega`). O dono escolhe em Painel › Restaurante ›
+  Delivery; os bairros ficam na aba "Bairros de entrega".
+- Nos **dois modos** o cliente digita o CEP e `/api/cep/[cep]` consulta o ViaCEP pelo servidor,
+  que preenche rua, bairro e cidade (tudo editável). No modo bairro é **o CEP que decide a
+  taxa**: o banco casa o bairro do endereço com a lista por `rest_privado.chave_bairro` (sem
+  acento, sem caixa, espaços colapsados; o mesmo cálculo em `chaveBairro()` de
+  `src/lib/endereco.ts`, que o checkout usa só para mostrar o valor antes de enviar). Não existe
+  select de bairros no site — era a tabela de preços convidando a escolher a mais barata.
+- **Bairro fora da lista não perde o pedido**: `restaurantes.taxa_outros_bairros` cobra uma taxa
+  padrão (nulo = não atende fora da lista, e aí o site recusa dizendo qual bairro). O pedido
+  entra com `bairro_id` nulo e o bairro no texto do endereço.
+- Cadastrar não é digitar a cidade: a tela de bairros sugere os que já apareceram em pedidos
+  (`sugerirBairros`), e o dono só põe o preço.
+- Bairro mostrado em qualquer tela = `bairro.nome` da lista ou `endereco.bairro`.
 - **Pausar o delivery** (`restaurantes.aceita_delivery`) é controle de serviço, não campo de
   formulário: `<ChaveDelivery>` no topo do quadro do Delivery e no "Precisa de você" do Início,
   para quem tem a permissão `restaurante`.
