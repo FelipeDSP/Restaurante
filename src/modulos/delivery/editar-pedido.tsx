@@ -56,6 +56,8 @@ export function EditarPedido({ pedido, aberto, aoFechar }: { pedido: PedidoDeliv
 function Conteudo({ pedido, aoFechar }: { pedido: PedidoDelivery; aoFechar: () => void }) {
   const { pendente, executar } = useAcao();
   const e = pedido.endereco;
+  // Pedido para retirar não tem endereço nem taxa: o banco recusa, e a tela não oferece.
+  const retirada = pedido.tipoEntrega === "retirada";
   const [nome, setNome] = useState(pedido.clienteNome);
   const [telefone, setTelefone] = useState(pedido.clienteTelefone);
   const [endereco, setEndereco] = useState<Record<string, string>>({
@@ -268,6 +270,7 @@ function Conteudo({ pedido, aoFechar }: { pedido: PedidoDelivery; aoFechar: () =
           </Rotulo>
         </section>
 
+        {retirada ? null : (
         <section className="grid gap-3 sm:grid-cols-6" aria-label="Endereço">
           <h3 className="font-semibold sm:col-span-6">Endereço</h3>
           {CAMPOS_ENDERECO.map((c) => (
@@ -312,9 +315,10 @@ function Conteudo({ pedido, aoFechar }: { pedido: PedidoDelivery; aoFechar: () =
             <Input value={taxa} onChange={(ev) => setTaxa(ev.target.value)} inputMode="decimal" className="h-10" />
           </Rotulo>
         </section>
+        )}
 
         <section className="flex flex-col gap-3" aria-label="Pagamento">
-          <h3 className="font-semibold">Pagamento na entrega</h3>
+          <h3 className="font-semibold">Pagamento na {retirada ? "retirada" : "entrega"}</h3>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
             {FORMAS_PAGAMENTO.map((f) => (
               <Button key={f.valor} type="button" variant={forma === f.valor ? "default" : "outline"} aria-pressed={forma === f.valor} className="h-10" onClick={() => setForma(f.valor)}>

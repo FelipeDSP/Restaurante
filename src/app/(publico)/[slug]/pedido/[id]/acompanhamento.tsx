@@ -273,7 +273,7 @@ export function Acompanhamento({ inicial, chaveAvisos, restaurante }: Props) {
         </div>
         {pedido.forma_pagamento_prevista ? (
           <p className="text-sm text-muted-foreground">
-            Pagamento na entrega: {nomeForma(pedido.forma_pagamento_prevista)}
+            Pagamento na {retirada ? "retirada" : "entrega"}: {nomeForma(pedido.forma_pagamento_prevista)}
             {pedido.forma_pagamento_prevista === "dinheiro" && pedido.troco_para
               ? ` · troco para ${formatarBRL(pedido.troco_para)}`
               : ""}
