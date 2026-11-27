@@ -6,9 +6,8 @@ import { useEffect, useRef, useState } from "react";
 import { useAcao } from "@/components/staff/acoes-cliente";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-
-import { marcarConversaLida, responderCliente } from "../delivery/actions";
-import type { PedidoDelivery } from "../delivery/cartao-pedido";
+import { marcarConversaLida, responderCliente } from "@/modulos/delivery/actions";
+import type { PedidoDelivery } from "@/modulos/delivery/cartao-pedido";
 
 // Conversa com o cliente do delivery. Aberta, marca as mensagens do cliente como lidas.
 export function ConversaPedido({ pedidoId, conversa }: { pedidoId: string; conversa: PedidoDelivery["conversa"] }) {

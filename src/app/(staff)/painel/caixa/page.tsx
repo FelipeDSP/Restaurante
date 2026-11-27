@@ -16,7 +16,7 @@ import {
   carregarSessaoAberta,
   dinheiroEsperado,
   listarSessoesFechadas,
-} from "./dados";
+} from "@/modulos/caixa/dados";
 import { AbrirCaixa, AcoesDoCaixa } from "./formularios";
 import { ResumoSessao } from "./resumo-sessao";
 

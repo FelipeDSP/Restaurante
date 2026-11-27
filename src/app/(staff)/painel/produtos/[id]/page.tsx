@@ -4,9 +4,8 @@ import { notFound } from "next/navigation";
 import { exigirPermissao, temPermissao } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { id as idSchema } from "@/lib/validacao";
-
-import { carregarEstoqueDoProduto, estoqueSimplesDoProduto } from "../../estoque/dados";
-import { EstoqueDoProduto } from "../../estoque/estoque-do-produto";
+import { carregarEstoqueDoProduto, estoqueSimplesDoProduto } from "@/modulos/estoque/dados";
+import { EstoqueDoProduto } from "@/modulos/estoque/estoque-do-produto";
 
 import { FormProduto } from "../form-produto";
 import { carregarCardapiosParaProduto, carregarGruposParaProduto, carregarPracas } from "../grupos";

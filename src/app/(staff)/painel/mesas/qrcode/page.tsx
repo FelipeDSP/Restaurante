@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import QRCode from "qrcode";
 
+import { BotaoImprimir } from "@/components/staff/botao-imprimir";
 import { Chave } from "@/components/staff/chave";
 import { buttonVariants } from "@/components/ui/button";
 import { exigirPermissao, temPermissao } from "@/lib/auth/dal";
@@ -9,7 +10,6 @@ import { createClient } from "@/lib/supabase/server";
 import { origemDoSite } from "@/lib/url";
 import { cn } from "@/lib/utils";
 
-import { BotaoImprimir } from "../../caixa/formularios";
 import { alternarPedidoMesa } from "../actions";
 import { pedidoPeloQrLigado } from "../dados";
 import { TrocarQr } from "./controles";

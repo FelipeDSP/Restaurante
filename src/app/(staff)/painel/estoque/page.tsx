@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 
 import { exigirPermissao } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
-
-import { Estoque, type ItemEstoque } from "./lista-estoque";
+import { Estoque, type ItemEstoque } from "@/modulos/estoque/lista-estoque";
 
 export const metadata: Metadata = { title: "Estoque" };
 

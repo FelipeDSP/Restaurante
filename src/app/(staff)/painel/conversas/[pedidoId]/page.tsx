@@ -7,9 +7,9 @@ import { z } from "zod";
 import { AtualizarEmTempoReal } from "@/components/staff/atualizar-em-tempo-real";
 import { exigirPermissao } from "@/lib/auth/dal";
 import { mudancaDoDelivery } from "@/lib/realtime-filtros";
+import { CartaoPedido } from "@/modulos/delivery/cartao-pedido";
+import { carregarEntregadores, carregarPedidosDelivery } from "@/modulos/delivery/dados";
 
-import { CartaoPedido } from "../../delivery/cartao-pedido";
-import { carregarEntregadores, carregarPedidosDelivery } from "../../delivery/dados";
 import { ConversaPedido } from "../conversa-pedido";
 import { carregarConversas } from "../dados";
 import { ListaConversas } from "../lista-conversas";

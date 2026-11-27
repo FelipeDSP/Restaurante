@@ -2,9 +2,8 @@ import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
 import { dataHoraLocal, tempoDesde } from "@/lib/tempo";
-
-import type { PedidoDelivery } from "../delivery/cartao-pedido";
-import { carregarPedidosDelivery } from "../delivery/dados";
+import type { PedidoDelivery } from "@/modulos/delivery/cartao-pedido";
+import { carregarPedidosDelivery } from "@/modulos/delivery/dados";
 
 export type ItemConversa = {
   pedido: PedidoDelivery;

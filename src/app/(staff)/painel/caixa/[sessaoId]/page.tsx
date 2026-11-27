@@ -3,12 +3,12 @@ import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { BotaoImprimir } from "@/components/staff/botao-imprimir";
 import { exigirPermissao } from "@/lib/auth/dal";
 import { dataHoraLocal } from "@/lib/tempo";
 import { id as idSchema } from "@/lib/validacao";
+import { carregarResumo } from "@/modulos/caixa/dados";
 
-import { carregarResumo } from "../dados";
-import { BotaoImprimir } from "../formularios";
 import { ResumoSessao } from "../resumo-sessao";
 
 export const metadata: Metadata = { title: "Resumo do caixa" };

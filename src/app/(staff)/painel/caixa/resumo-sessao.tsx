@@ -5,8 +5,7 @@ import { formatarBRL } from "@/lib/dinheiro";
 import { nomeForma, nomeOrigem } from "@/lib/rotulos";
 import { horaLocal } from "@/lib/tempo";
 import { cn } from "@/lib/utils";
-
-import { dinheiroEsperado, type PendenciasFechamento, type ResumoCaixa } from "./dados";
+import { dinheiroEsperado, type PendenciasFechamento, type ResumoCaixa } from "@/modulos/caixa/dados";
 
 function Lista({ titulo, linhas, vazio }: { titulo?: string; linhas: { chave: string; rotulo: string; detalhe?: string; valor: string }[]; vazio: string }) {
   return (

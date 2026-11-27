@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDownToLine, DoorClosed, Printer, X } from "lucide-react";
+import { ArrowDownToLine, DoorClosed, X } from "lucide-react";
 import Link from "next/link";
 import { useActionState, useState } from "react";
 
@@ -12,9 +12,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { centavosDeTexto, formatarBRL } from "@/lib/dinheiro";
 import { nomeStatusPedido } from "@/lib/rotulos";
 import { cn } from "@/lib/utils";
+import type { PendenciasFechamento } from "@/modulos/caixa/dados";
 
 import { abrirCaixa, fecharCaixa, registrarMovimento } from "./actions";
-import type { PendenciasFechamento } from "./dados";
 
 export function AbrirCaixa() {
   const [estado, acao] = useActionState(abrirCaixa, undefined);
@@ -309,14 +309,5 @@ function FecharCaixa({
         </form>
       </CardContent>
     </Card>
-  );
-}
-
-export function BotaoImprimir() {
-  return (
-    <Button type="button" variant="outline" onClick={() => window.print()} className="print:hidden">
-      <Printer />
-      Imprimir
-    </Button>
   );
 }

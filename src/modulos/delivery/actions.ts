@@ -8,8 +8,8 @@ import { falha, mensagemErroBanco, type ResultadoAcao, sucesso } from "@/lib/aco
 import { exigirPermissao } from "@/lib/auth/dal";
 import { avisarCliente, avisarMensagem } from "@/lib/avisos-push";
 import { createClient } from "@/lib/supabase/server";
-import { carregarCardapioSalao } from "@/modulos/mesas/dados";
 import { id } from "@/lib/validacao";
+import { carregarCardapioSalao } from "@/modulos/mesas/dados";
 
 const FORMAS = ["dinheiro", "pix", "credito", "debito", "outro"] as const;
 const STATUS_AVANCO = ["em_preparo", "pronto", "saiu_entrega"] as const;

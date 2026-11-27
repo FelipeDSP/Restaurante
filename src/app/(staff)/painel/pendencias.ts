@@ -4,8 +4,7 @@ import { consultarDisponibilidade, type Disponibilidade } from "@/app/(publico)/
 import type { Permissao } from "@/lib/auth/papeis";
 import { contarImpressoesComErro } from "@/lib/impressao/avisos";
 import { createClient } from "@/lib/supabase/server";
-
-import { carregarSessaoAberta, type SessaoCaixa } from "./caixa/dados";
+import { carregarSessaoAberta, type SessaoCaixa } from "@/modulos/caixa/dados";
 
 // O que está esperando alguém, no Início. Tudo aqui tem dono: ou uma pessoa age, ou um cliente
 // fica esperando. Número que não pede nada (vendido, ticket médio) fica no bloco de baixo.

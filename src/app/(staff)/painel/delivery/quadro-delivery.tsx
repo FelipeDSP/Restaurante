@@ -7,9 +7,8 @@ import { toast } from "sonner";
 
 import { mensagemFalhaRede } from "@/components/staff/acoes-cliente";
 import { cn } from "@/lib/utils";
-
-import { avancarPedido } from "./actions";
-import { CartaoPedido, type PedidoDelivery } from "./cartao-pedido";
+import { avancarPedido } from "@/modulos/delivery/actions";
+import { CartaoPedido, type PedidoDelivery } from "@/modulos/delivery/cartao-pedido";
 
 type Status = PedidoDelivery["status"];
 type ColunaId = "novos" | "preparo" | "prontos" | "entrega" | "finalizados";

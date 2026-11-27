@@ -1,12 +1,12 @@
 import { ChevronLeft, Lock } from "lucide-react";
 import Link from "next/link";
 
+import { BotaoImprimir } from "@/components/staff/botao-imprimir";
 import { formatarBRL } from "@/lib/dinheiro";
 import { nomeForma } from "@/lib/rotulos";
 import { dataHoraLocal } from "@/lib/tempo";
 import { cn } from "@/lib/utils";
 
-import { BotaoImprimir } from "./botao-imprimir";
 import type { ItemHistorico, PagamentoHistorico } from "./dados";
 
 // Peças das telas de detalhe do histórico (só leitura).
@@ -19,7 +19,7 @@ export function Cabecalho({ titulo, selo, children }: { titulo: string; selo: Re
           <ChevronLeft className="size-4" aria-hidden />
           Histórico
         </Link>
-        <BotaoImprimir />
+        <BotaoImprimir rotulo="Imprimir ou salvar PDF" className="h-11" />
       </div>
       <h1 className="text-2xl font-semibold">{titulo}</h1>
       {selo}

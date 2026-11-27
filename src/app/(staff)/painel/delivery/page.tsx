@@ -3,10 +3,10 @@ import type { Metadata } from "next";
 import { AtualizarEmTempoReal } from "@/components/staff/atualizar-em-tempo-real";
 import { exigirPermissao, temPermissao } from "@/lib/auth/dal";
 import { mudancaDoDelivery } from "@/lib/realtime-filtros";
+import { carregarSessaoAberta } from "@/modulos/caixa/dados";
+import { ChaveDelivery } from "@/modulos/delivery/chave-delivery";
+import { FINALIZADOS_NO_QUADRO, aceitaDelivery, carregarEntregadores, carregarPedidosDelivery } from "@/modulos/delivery/dados";
 
-import { carregarSessaoAberta } from "../caixa/dados";
-import { ChaveDelivery } from "./chave-delivery";
-import { FINALIZADOS_NO_QUADRO, aceitaDelivery, carregarEntregadores, carregarPedidosDelivery } from "./dados";
 import { QuadroDelivery } from "./quadro-delivery";
 
 export const metadata: Metadata = { title: "Delivery" };

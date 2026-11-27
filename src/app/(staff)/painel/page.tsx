@@ -1,8 +1,8 @@
 import { AtualizarEmTempoReal } from "@/components/staff/atualizar-em-tempo-real";
 import { exigirPermissao } from "@/lib/auth/dal";
 import { PERMISSOES_INICIO } from "@/lib/auth/papeis";
+import { ESPERA_TELA_DE_DINHEIRO } from "@/modulos/caixa/dados";
 
-import { ESPERA_TELA_DE_DINHEIRO } from "./caixa/dados";
 import { EstoqueResumo } from "./estoque-resumo";
 import { carregarNoites, NOITES_VAZIO } from "./noites";
 import { carregarPendencias } from "./pendencias";

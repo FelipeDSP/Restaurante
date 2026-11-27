@@ -5,8 +5,8 @@ import type { Disponibilidade } from "@/app/(publico)/[slug]/dados";
 import type { Permissao } from "@/lib/auth/papeis";
 import { dataHoraLocal } from "@/lib/tempo";
 import { cn } from "@/lib/utils";
+import { ChaveDelivery } from "@/modulos/delivery/chave-delivery";
 
-import { ChaveDelivery } from "./delivery/chave-delivery";
 import type { Pendencias } from "./pendencias";
 
 type Linha = {

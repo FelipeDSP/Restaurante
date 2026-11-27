@@ -1,8 +1,7 @@
 import "server-only";
 
 import { diaLocal } from "@/lib/tempo";
-
-import { carregarResumo, listarSessoesFechadas } from "./caixa/dados";
+import { carregarResumo, listarSessoesFechadas } from "@/modulos/caixa/dados";
 
 // As últimas noites de caixa já resumidas, do jeito que o Início desenha: o gráfico de linha, os
 // totais da semana e os mais vendidos do período.

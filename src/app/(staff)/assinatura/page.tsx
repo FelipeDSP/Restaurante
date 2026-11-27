@@ -8,8 +8,7 @@ import { sair } from "@/lib/auth/actions";
 import { destinoInicial, obterAcessoSuspenso } from "@/lib/auth/dal";
 import { linkAjuda } from "@/lib/contato";
 import { estiloMarca } from "@/lib/cores";
-
-import { ConteudoAssinatura } from "../painel/assinatura/conteudo";
+import { ConteudoAssinatura } from "@/modulos/assinatura/conteudo";
 
 export const metadata: Metadata = { title: "Acesso suspenso" };
 
