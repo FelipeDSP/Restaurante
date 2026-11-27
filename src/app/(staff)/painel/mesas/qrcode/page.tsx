@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import QRCode from "qrcode";
 
+import { Chave } from "@/components/staff/chave";
 import { buttonVariants } from "@/components/ui/button";
 import { exigirPermissao, temPermissao } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
@@ -9,7 +10,9 @@ import { origemDoSite } from "@/lib/url";
 import { cn } from "@/lib/utils";
 
 import { BotaoImprimir } from "../../caixa/formularios";
-import { ChavePedidoMesa, TrocarQr } from "./controles";
+import { alternarPedidoMesa } from "../actions";
+import { pedidoPeloQrLigado } from "../dados";
+import { TrocarQr } from "./controles";
 
 export const metadata: Metadata = { title: "QR code das mesas" };
 
@@ -30,7 +33,7 @@ export default async function QrCodeMesasPage() {
     );
   }
   const supabase = await createClient();
-  const [{ data: mesas, error }, { data: restaurante }] = await Promise.all([
+  const [{ data: mesas, error }, qrLigado] = await Promise.all([
     supabase
       .from("mesas")
       .select("id, numero, qr_token")
@@ -38,7 +41,7 @@ export default async function QrCodeMesasPage() {
       .eq("ativa", true)
       .order("ordem")
       .order("numero"),
-    supabase.from("restaurantes").select("pedido_mesa_qr").eq("id", acesso.restaurante.id).single(),
+    pedidoPeloQrLigado(acesso.restaurante.id),
   ]);
   if (error) throw new Error(error.message);
 
@@ -61,7 +64,9 @@ export default async function QrCodeMesasPage() {
       <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
         <h1 className="text-2xl font-semibold">QR code das mesas</h1>
         <div className="flex flex-wrap items-center gap-2">
-          {temPermissao(acesso, "restaurante") ? <ChavePedidoMesa ligado={restaurante?.pedido_mesa_qr ?? false} /> : null}
+          {temPermissao(acesso, "restaurante") ? (
+            <Chave ligado={qrLigado} rotulo="Clientes pedem pelo celular" aoMudar={alternarPedidoMesa} />
+          ) : null}
           {cartoes.length > 0 ? <BotaoImprimir /> : null}
         </div>
       </div>
