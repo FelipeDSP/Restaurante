@@ -75,7 +75,7 @@ export default async function EstoquePage() {
 
   return (
     <main className="flex flex-col gap-6 p-4 md:p-6">
-      <h1 className="sr-only">Estoque</h1>
+      <h1 className="text-2xl font-semibold">Estoque</h1>
       <Estoque
         itens={lista}
         fuso={acesso.restaurante.fusoHorario}

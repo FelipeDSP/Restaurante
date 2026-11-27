@@ -29,7 +29,7 @@ export default async function EntregadoresPage() {
 
   return (
     <main className="flex flex-col gap-6 p-4 md:p-6">
-      <h1 className="sr-only">Entregadores</h1>
+      <h1 className="text-2xl font-semibold">Entregadores</h1>
       <NovoEntregador />
       <ListaEntregadores entregadores={entregadores} />
     </main>

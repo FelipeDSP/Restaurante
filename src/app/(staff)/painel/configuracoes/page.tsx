@@ -1,44 +1,17 @@
 import type { Metadata } from "next";
-import {
-  Bike,
-  BookOpen,
-  Boxes,
-  ChefHat,
-  ChevronRight,
-  CreditCard,
-  LayoutGrid,
-  Lock,
-  type LucideIcon,
-  Printer,
-  Store,
-  TicketPercent,
-  Users,
-} from "lucide-react";
+import { ChevronRight, Lock } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { exigirAcesso } from "@/lib/auth/dal";
 
-import { itensBloqueadosPeloPlano, itensDeConfiguracao, itensDoMenu } from "../navegacao";
+import { type ItemNavegacao, itensBloqueadosPeloPlano, itensDeConfiguracao, itensDoMenu } from "../navegacao";
 
 export const metadata: Metadata = { title: "Configurações" };
 
-// Um ícone por assunto: no celular a pessoa acha pelo desenho antes de ler.
-const ICONES: Record<string, LucideIcon> = {
-  Cardápio: BookOpen,
-  Mesas: LayoutGrid,
-  Cupons: TicketPercent,
-  Entregadores: Bike,
-  Restaurante: Store,
-  "Setores da cozinha": ChefHat,
-  Impressoras: Printer,
-  Equipe: Users,
-  Estoque: Boxes,
-  Assinatura: CreditCard,
-};
-
-function Icone({ rotulo, apagado = false }: { rotulo: string; apagado?: boolean }) {
-  const Desenho = ICONES[rotulo] ?? Store;
+// Um ícone por assunto (vem do próprio item da navegação, o mesmo do menu): no celular a pessoa
+// acha pelo desenho antes de ler.
+function Icone({ item, apagado = false }: { item: ItemNavegacao; apagado?: boolean }) {
   return (
     <span
       aria-hidden
@@ -48,7 +21,7 @@ function Icone({ rotulo, apagado = false }: { rotulo: string; apagado?: boolean 
           : "grid size-10 shrink-0 place-items-center rounded-lg bg-[var(--cor-primaria)] text-[var(--cor-primaria-contraste)]"
       }
     >
-      <Desenho className="size-5" />
+      <item.icone className="size-5" />
     </span>
   );
 }
@@ -75,7 +48,7 @@ export default async function ConfiguracoesPage() {
           // a um toque daqui.
           <li key={item.rotulo} className="rounded-xl border transition-colors hover:border-[var(--cor-primaria)]">
             <Link href={item.href} className="flex items-center gap-3 p-4">
-              <Icone rotulo={item.rotulo} />
+              <Icone item={item} />
               <span className="flex min-w-0 flex-1 flex-col">
                 <span className="font-semibold">{item.rotulo}</span>
                 {item.descricao ? (
@@ -90,7 +63,7 @@ export default async function ConfiguracoesPage() {
         {bloqueados.map((item) => (
           <li key={item.rotulo} className="rounded-xl border border-dashed">
             <Link href="/painel/assinatura" className="flex items-center gap-3 p-4 text-muted-foreground">
-              <Icone rotulo={item.rotulo} apagado />
+              <Icone item={item} apagado />
               <span className="flex min-w-0 flex-1 flex-col">
                 <span className="font-semibold">{item.rotulo}</span>
                 <span className="truncate text-sm">Fora do seu plano</span>

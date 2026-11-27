@@ -11,7 +11,7 @@ const quantidade = (valor: number, unidade: string) =>
   `${valor.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} ${unidade}`;
 
 // Estoque no Início: só o que está acabando, com nome e saldo. A lista inteira fica em
-// Configurações › Estoque — aqui é o aviso, não o controle.
+// Gestão › Estoque — aqui é o aviso, não o controle.
 export function EstoqueResumo({ itens }: { itens: ItemBaixo[] }) {
   if (itens.length === 0) return null;
   const mostrados = itens.slice(0, 6);

@@ -1,7 +1,7 @@
 "use client";
 
 import { Dialog } from "@base-ui/react/dialog";
-import { Bike, ChartColumn, ChefHat, ChevronLeft, CookingPot, History, House, LayoutGrid, Lock, type LucideIcon, Menu, MessageCircle, Settings, Wallet, X } from "lucide-react";
+import { ChevronLeft, Lock, type LucideIcon, Menu, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -25,51 +25,81 @@ function Contador({ valor }: { valor: number }) {
   );
 }
 
-// Menu do dia a dia, em lista única. O que é de configurar fica atrás do último item
-// ("Configurações"), separado por uma linha: o menu deixou de misturar os dois assuntos.
+// Uma linha do menu (item que a pessoa pode abrir).
+function LinhaMenu({
+  item,
+  contador,
+  atual,
+  aoNavegar,
+}: {
+  item: ItemNavegacao;
+  contador: number;
+  atual: boolean;
+  aoNavegar?: () => void;
+}) {
+  return (
+    <Link
+      href={item.href}
+      onClick={aoNavegar}
+      aria-current={atual ? "page" : undefined}
+      className={cn(
+        "flex min-h-10 items-center justify-between gap-2 rounded-md px-3 text-sm font-medium",
+        atual ? "bg-[var(--cor-primaria)] text-[var(--cor-primaria-contraste)]" : "hover:bg-muted",
+      )}
+    >
+      <span className="flex min-w-0 items-center gap-2.5">
+        <item.icone className="size-4 shrink-0" aria-hidden />
+        <span className="truncate">{item.rotulo}</span>
+      </span>
+      {contador ? <Contador valor={contador} /> : null}
+    </Link>
+  );
+}
+
+// Item que o plano não tem: fica à vista, apagado e com cadeado, levando aos planos.
+function LinhaTravada({ item, aoNavegar }: { item: ItemNavegacao; aoNavegar?: () => void }) {
+  return (
+    <Link
+      href="/painel/assinatura"
+      onClick={aoNavegar}
+      title="Não faz parte do seu plano"
+      className="flex min-h-10 items-center justify-between gap-2 rounded-md px-3 text-sm font-medium text-muted-foreground hover:bg-muted"
+    >
+      <span className="flex min-w-0 items-center gap-2.5">
+        <item.icone className="size-4 shrink-0" aria-hidden />
+        <span className="truncate">{item.rotulo}</span>
+      </span>
+      <Lock className="size-3.5" aria-label="Não faz parte do seu plano" />
+    </Link>
+  );
+}
+
+// Menu em três blocos: o que se usa durante o serviço (Operação), o que se faz fora dele
+// (Gestão, com título de seção) e, no fim, a porta única de "Configurações".
 function ListaMenu({ itens, contadores, bloqueados = [], ativo, aoNavegar }: Props & { ativo: string | null; aoNavegar?: () => void }) {
-  // Do plano, só o que é área de operação aparece com cadeado aqui; o resto vai na tela de Configurações.
-  const travados = bloqueados.filter((i) => i.grupo === "Operação");
+  const operacao = itens.filter((i) => i.grupo === "Operação");
+  const gestao = itens.filter((i) => i.grupo === "Gestão");
+  const porta = itens.find((i) => i.href === CONFIGURACOES_HREF);
+  // Do plano, Operação e Gestão aparecem com cadeado aqui; o resto vai na tela de Configurações.
+  const travadosOperacao = bloqueados.filter((i) => i.grupo === "Operação");
+  const travadosGestao = bloqueados.filter((i) => i.grupo === "Gestão");
+  const linha = (item: ItemNavegacao) => (
+    <LinhaMenu key={item.href} item={item} contador={contadores[item.href] ?? 0} atual={item.href === ativo} aoNavegar={aoNavegar} />
+  );
   return (
     <div className="flex flex-col gap-0.5">
-      {itens.map((item) => {
-        const atual = item.href === ativo;
-        const porta = item.href === CONFIGURACOES_HREF;
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            onClick={aoNavegar}
-            aria-current={atual ? "page" : undefined}
-            className={cn(
-              "flex min-h-10 items-center justify-between gap-2 rounded-md px-3 text-sm font-medium",
-              porta && "mt-3 border-t pt-3",
-              atual ? "bg-[var(--cor-primaria)] text-[var(--cor-primaria-contraste)]" : "hover:bg-muted",
-            )}
-          >
-            <span className="flex min-w-0 items-center gap-2.5">
-              <IconeDoItem href={item.href} />
-              <span className="truncate">{item.rotulo}</span>
-            </span>
-            {contadores[item.href] ? <Contador valor={contadores[item.href]} /> : null}
-          </Link>
-        );
-      })}
-      {travados.map((item) => (
-        <Link
-          key={item.href}
-          href="/painel/assinatura"
-          onClick={aoNavegar}
-          title="Não faz parte do seu plano"
-          className="flex min-h-10 items-center justify-between gap-2 rounded-md px-3 text-sm font-medium text-muted-foreground hover:bg-muted"
-        >
-          <span className="flex min-w-0 items-center gap-2.5">
-            <IconeDoItem href={item.href} />
-            <span className="truncate">{item.rotulo}</span>
-          </span>
-          <Lock className="size-3.5" aria-label="Não faz parte do seu plano" />
-        </Link>
+      {operacao.map(linha)}
+      {travadosOperacao.map((item) => (
+        <LinhaTravada key={item.href} item={item} aoNavegar={aoNavegar} />
       ))}
+      {gestao.length + travadosGestao.length > 0 ? (
+        <h2 className="mt-3 border-t px-3 pt-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">Gestão</h2>
+      ) : null}
+      {gestao.map(linha)}
+      {travadosGestao.map((item) => (
+        <LinhaTravada key={item.href} item={item} aoNavegar={aoNavegar} />
+      ))}
+      {porta ? <div className="mt-3 border-t pt-3">{linha(porta)}</div> : null}
     </div>
   );
 }
@@ -84,32 +114,12 @@ export function MenuLateral({ itens, contadores, bloqueados }: Props) {
   );
 }
 
-// Ícone de cada item do menu: nas abas do rodapé (celular) e ao lado do texto na barra lateral.
-// No computador o desenho não substitui a palavra — acompanha. Quem usa todo dia acha pela forma
-// antes de ler, e quem é novo continua lendo.
-const ICONES: Record<string, LucideIcon> = {
-  "/painel": House,
-  "/painel/delivery": Bike,
-  "/painel/conversas": MessageCircle,
-  "/painel/comandas": LayoutGrid,
-  "/painel/comandas/pracas": ChefHat,
-  "/painel/caixa": Wallet,
-  "/painel/relatorios": ChartColumn,
-  "/painel/historico": History,
-  "/painel/cozinha": CookingPot,
-  [CONFIGURACOES_HREF]: Settings,
-};
-
-// Desenho do item (a lista cobre todos; o quadrado vazio mantém o texto alinhado se faltar algum).
-function IconeDoItem({ href }: { href: string }) {
-  const Desenho = ICONES[href];
-  return Desenho ? <Desenho className="size-4 shrink-0" aria-hidden /> : <span className="size-4 shrink-0" aria-hidden />;
-}
-
 // Telas com botões próprios no rodapé (a mesa e o lançamento): a barra de abas sai da frente.
 const TELA_COM_BARRA_PROPRIA = /^\/painel\/comandas\/(?!pracas(\/|$))[^/]+/;
 
-type Aba = { href: string; rotulo: string };
+// O ícone vem da navegação: nas abas do rodapé (celular) e ao lado do texto na barra lateral.
+// No computador o desenho não substitui a palavra — acompanha.
+type Aba = { href: string; rotulo: string; icone: LucideIcon };
 
 // Poucas áreas (ex.: só Mesas): o rodapé mostra as abas de dentro delas (Mesas, Praças).
 function abasDeDentro(itens: ItemNavegacao[]) {
@@ -148,9 +158,13 @@ export function BarraApp({ itens, contadores, bloqueados }: Props) {
   if (TELA_COM_BARRA_PROPRIA.test(caminho)) return null;
 
   const operacao = itens.filter((i) => i.grupo === "Operação");
-  let abas: Aba[] = operacao.map((i) => ({ href: i.href, rotulo: i.rotulo }));
+  let abas: Aba[] = operacao.map((i) => ({ href: i.href, rotulo: i.rotulo, icone: i.icone }));
   if (abasDeDentro(itens)) {
-    abas = operacao.flatMap((i) => (i.secoes && i.secoes.length > 1 ? i.secoes : [{ href: i.href, rotulo: i.rotulo }]));
+    abas = operacao.flatMap((i) =>
+      i.secoes && i.secoes.length > 1
+        ? i.secoes.map((s) => ({ href: s.href, rotulo: s.rotulo, icone: s.icone ?? i.icone }))
+        : [{ href: i.href, rotulo: i.rotulo, icone: i.icone }],
+    );
   }
   // Cabem 5 abas no rodapé: com o "Mais" (outras áreas no menu), ficam 4 e ele.
   const menuTemOutros = itens.length > operacao.length;
@@ -172,7 +186,7 @@ export function BarraApp({ itens, contadores, bloqueados }: Props) {
     >
       <div className="mx-auto grid max-w-lg" style={{ gridTemplateColumns: `repeat(${colunas}, minmax(0, 1fr))` }}>
         {visiveis.map((aba) => {
-          const Icone = ICONES[aba.href] ?? LayoutGrid;
+          const Icone = aba.icone;
           const atual = abaAtiva(aba.href);
           return (
             <Link
@@ -243,6 +257,22 @@ export function TopoConfiguracao({ itens }: { itens: ItemNavegacao[] }) {
         /
       </span>
       <span className="font-semibold">{item.rotulo}</span>
+    </div>
+  );
+}
+
+// Gestão não tem a porta "‹ Configurações" (os itens estão no próprio menu), mas as telas com
+// abas precisam de um título: sem ele, quem abre Produtos pelo celular só vê as abas e não sabe
+// que está no Cardápio. As telas de Gestão sem abas (Estoque, Entregadores...) têm o título
+// próprio na página.
+export function TituloGestao({ itens }: { itens: ItemNavegacao[] }) {
+  const caminho = usePathname();
+  const item = itemDaPagina(itens, caminho);
+  if (!item || item.grupo !== "Gestão" || !item.secoes) return null;
+  return (
+    <div className="flex items-center gap-2 px-4 pt-4 text-2xl font-semibold md:px-6 print:hidden">
+      <item.icone className="size-6 shrink-0 text-muted-foreground" aria-hidden />
+      {item.rotulo}
     </div>
   );
 }

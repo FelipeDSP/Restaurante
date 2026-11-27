@@ -21,7 +21,7 @@ import { AvisoPedidoCliente } from "../garcom/aviso-pedido-cliente";
 import { AvisoPronto } from "../garcom/aviso-pronto";
 import { AvisoAssinatura } from "./aviso-assinatura";
 import { ChamarGarcom } from "./chamar-garcom";
-import { AbasSecao, BarraApp, MenuLateral, TopoConfiguracao } from "./menu-painel";
+import { AbasSecao, BarraApp, MenuLateral, TituloGestao, TopoConfiguracao } from "./menu-painel";
 import { itensBloqueadosPeloPlano, itensDeConfiguracao, itensDoMenu } from "./navegacao";
 
 // App da equipe com a marca do restaurante: manifest e ícones em rotas públicas por restaurante
@@ -159,6 +159,7 @@ export default async function PainelLayout({ children }: LayoutProps<"/painel">)
           {/* No celular, espaço para a barra de abas do rodapé. */}
           <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col pb-20 lg:pb-0">
             <TopoConfiguracao itens={configuracoes} />
+            <TituloGestao itens={itens} />
             <AbasSecao itens={[...itens, ...configuracoes]} />
             {children}
           </div>
