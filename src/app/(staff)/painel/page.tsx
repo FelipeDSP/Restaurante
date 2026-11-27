@@ -3,12 +3,12 @@ import { exigirPermissao } from "@/lib/auth/dal";
 import { PERMISSOES_INICIO } from "@/lib/auth/papeis";
 import { ESPERA_TELA_DE_DINHEIRO } from "@/modulos/caixa/dados";
 
-import { EstoqueResumo } from "./estoque-resumo";
-import { carregarNoites, NOITES_VAZIO } from "./noites";
-import { carregarPendencias } from "./pendencias";
-import { PrecisaDeVoce } from "./precisa-de-voce";
-import { PrimeirosPassos } from "./primeiros-passos";
-import { Semana } from "./semana";
+import { EstoqueResumo } from "./_inicio/estoque-resumo";
+import { carregarNoites, NOITES_VAZIO } from "./_inicio/noites";
+import { carregarPendencias } from "./_inicio/pendencias";
+import { PrecisaDeVoce } from "./_inicio/precisa-de-voce";
+import { PrimeirosPassos } from "./_inicio/primeiros-passos";
+import { Semana } from "./_inicio/semana";
 
 export default async function PainelPage() {
   // Quem só atende mesas não tem Início: vai direto para as Mesas.
