@@ -91,7 +91,7 @@ menu, nas abas do rodapé e nos cartões de Configurações.
 
 | Grupo | Quando se usa | Itens |
 |---|---|---|
-| **Operação** | durante o serviço | Início, Delivery, Conversas, Mesas, Caixa, Tela da cozinha |
+| **Operação** | durante o serviço | Início, Delivery, Conversas, Mesas (Mesas/Pedidos), Caixa, Tela da cozinha |
 | **Gestão** | fora do serviço, toda semana | Cardápio (Produtos/Categorias/Adicionais/Cardápios), Estoque, Cupons, Entregadores, Relatórios, Histórico |
 | **Configurações** | ajusta uma vez | Restaurante, Cadastro de mesas (Cadastro/QR code), Setores da cozinha, Impressoras, Equipe (Pessoas/Funções), Assinatura |
 
@@ -101,7 +101,7 @@ menu, nas abas do rodapé e nos cartões de Configurações.
   "Mais", que abre o menu completo). Quando não cabe todo mundo, as abas são escolhidas por
   `PRIORIDADE_ABAS` e mostradas na ordem do menu; o contador do que ficou escondido aparece sobre
   o "Mais". Quem tem poucas áreas de Operação (ex.: garçom) vê as abas de dentro delas (Mesas,
-  Setores). A barra sai da frente na mesa e no lançamento (`TELA_COM_BARRA_PROPRIA`).
+  Pedidos). A barra sai da frente na mesa e no lançamento (`TELA_COM_BARRA_PROPRIA`).
 - Páginas irmãs ficam no mesmo item, como abas (`<AbasSecao>`). Tela de **Configurações** mostra
   "‹ Configurações / Nome" (`<TopoConfiguracao>`); tela de **Gestão** com abas mostra o nome do
   grupo (`<TituloGestao>`), e sem abas tem título próprio na página.
@@ -232,8 +232,9 @@ menu, nas abas do rodapé e nos cartões de Configurações.
   trigger. O ticket que depende de setor anterior aparece "aguardando" e o Pronto só libera quando
   ele termina. A equipe só muda `status` (`pendente`|`pronto`); quem e quando vêm do banco. No
   delivery, o último setor pronto leva o pedido de `em_preparo` para `pronto`.
-- Setor sem tela: o ticket sai no papel e o **garçom** marca na aba **Setores**
-  (`/painel/comandas/pracas`). `tarefas_producao.retirada` registra "entreguei na mesa"; "Retirei"
+- Setor sem tela: o ticket sai no papel e o **garçom** marca na aba **Pedidos**
+  (`/painel/comandas/pracas`; para ele é "o que a cozinha tem para eu pegar" — "Setores" ficou
+  sendo só o cadastro). `tarefas_producao.retirada` registra "entreguei na mesa"; "Retirei"
   marca pronto e entregue de uma vez.
 - Cada item da comanda anda pelo **próprio caminho** (`src/lib/preparo.ts`): Na cozinha → Pronto ·
   levar → Entregue, pelos tickets das etapas da rota dele.

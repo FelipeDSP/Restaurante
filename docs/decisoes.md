@@ -99,6 +99,13 @@ mesas". O que a tela chamava de "Setores da cozinha", a rota de `praças` e a ab
 acostumada com "praças"), com a rota `/painel/setores` e `redirect` em `/painel/pracas`. O banco
 continua com a tabela `estacoes`.
 
+**27/11 — A aba do garçom é "Pedidos".** Vendo a tela pronta, o dono trocou: "Setores" é a
+palavra de quem cadastra, e o garçom abre aquela aba para ver o que a cozinha tem para ele pegar.
+"Setores da cozinha" ficou sendo só o cadastro; os chips de dentro da aba (Todas, Churrasqueira,
+Chapa) continuam sendo os setores. A palavra "pedido" já significa outras coisas no sistema (o
+delivery, cada lançamento da comanda, o pedido pelo QR) — decisão consciente, porque no contexto
+do salão é assim que ele fala.
+
 ## Mesas e salão
 
 **Status da mesa é derivado.** A mesa está ocupada se existe comanda `aberta` ou `conta_pedida`.
