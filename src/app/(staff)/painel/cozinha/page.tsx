@@ -7,8 +7,8 @@ import { AvisoImpressao } from "@/components/staff/aviso-impressao";
 import { exigirPermissao, temPermissao } from "@/lib/auth/dal";
 import { contarImpressoesComErro } from "@/lib/impressao/avisos";
 
-import { carregarPracasAtivas, carregarTickets } from "../../cozinha/dados";
-import { TelaCozinha } from "../../cozinha/tela-cozinha";
+import { carregarPracasAtivas, carregarTickets } from "@/modulos/cozinha/dados";
+import { TelaCozinha } from "@/modulos/cozinha/tela-cozinha";
 
 export const metadata: Metadata = { title: "Tela da cozinha" };
 

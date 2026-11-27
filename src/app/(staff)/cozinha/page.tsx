@@ -3,8 +3,8 @@ import { AvisoImpressao } from "@/components/staff/aviso-impressao";
 import { exigirAcesso, temPermissao } from "@/lib/auth/dal";
 import { contarImpressoesComErro } from "@/lib/impressao/avisos";
 
-import { carregarPracasAtivas, carregarTickets } from "./dados";
-import { TelaCozinha } from "./tela-cozinha";
+import { carregarPracasAtivas, carregarTickets } from "@/modulos/cozinha/dados";
+import { TelaCozinha } from "@/modulos/cozinha/tela-cozinha";
 
 export default async function CozinhaPage(props: PageProps<"/cozinha">) {
   const acesso = await exigirAcesso("cozinha");
