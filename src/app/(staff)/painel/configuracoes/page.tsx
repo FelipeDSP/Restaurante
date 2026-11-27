@@ -3,6 +3,7 @@ import { ChevronRight, Lock } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { IconeNavegacao } from "@/components/staff/icone-navegacao";
 import { exigirAcesso } from "@/lib/auth/dal";
 
 import { type ItemNavegacao, itensBloqueadosPeloPlano, itensDeConfiguracao, itensDoMenu } from "../navegacao";
@@ -21,7 +22,7 @@ function Icone({ item, apagado = false }: { item: ItemNavegacao; apagado?: boole
           : "grid size-10 shrink-0 place-items-center rounded-lg bg-[var(--cor-primaria)] text-[var(--cor-primaria-contraste)]"
       }
     >
-      <item.icone className="size-5" />
+      <IconeNavegacao nome={item.icone} className="size-5" />
     </span>
   );
 }

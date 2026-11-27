@@ -1,11 +1,12 @@
 "use client";
 
 import { Dialog } from "@base-ui/react/dialog";
-import { ChevronLeft, Lock, type LucideIcon, Menu, X } from "lucide-react";
+import { ChevronLeft, Lock, Menu, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
+import { IconeNavegacao, type NomeIcone } from "@/components/staff/icone-navegacao";
 import { cn } from "@/lib/utils";
 
 import { CONFIGURACOES_HREF, type ItemNavegacao, itemAtivo, itemDaPagina } from "./navegacao";
@@ -48,7 +49,7 @@ function LinhaMenu({
       )}
     >
       <span className="flex min-w-0 items-center gap-2.5">
-        <item.icone className="size-4 shrink-0" aria-hidden />
+        <IconeNavegacao nome={item.icone} className="size-4 shrink-0" />
         <span className="truncate">{item.rotulo}</span>
       </span>
       {contador ? <Contador valor={contador} /> : null}
@@ -66,7 +67,7 @@ function LinhaTravada({ item, aoNavegar }: { item: ItemNavegacao; aoNavegar?: ()
       className="flex min-h-10 items-center justify-between gap-2 rounded-md px-3 text-sm font-medium text-muted-foreground hover:bg-muted"
     >
       <span className="flex min-w-0 items-center gap-2.5">
-        <item.icone className="size-4 shrink-0" aria-hidden />
+        <IconeNavegacao nome={item.icone} className="size-4 shrink-0" />
         <span className="truncate">{item.rotulo}</span>
       </span>
       <Lock className="size-3.5" aria-label="Não faz parte do seu plano" />
@@ -119,7 +120,7 @@ const TELA_COM_BARRA_PROPRIA = /^\/painel\/comandas\/(?!pracas(\/|$))[^/]+/;
 
 // O ícone vem da navegação: nas abas do rodapé (celular) e ao lado do texto na barra lateral.
 // No computador o desenho não substitui a palavra — acompanha.
-type Aba = { href: string; rotulo: string; icone: LucideIcon };
+type Aba = { href: string; rotulo: string; icone: NomeIcone };
 
 // Poucas áreas (ex.: só Mesas): o rodapé mostra as abas de dentro delas (Mesas, Setores).
 function abasDeDentro(itens: ItemNavegacao[]) {
@@ -186,7 +187,6 @@ export function BarraApp({ itens, contadores, bloqueados }: Props) {
     >
       <div className="mx-auto grid max-w-lg" style={{ gridTemplateColumns: `repeat(${colunas}, minmax(0, 1fr))` }}>
         {visiveis.map((aba) => {
-          const Icone = aba.icone;
           const atual = abaAtiva(aba.href);
           return (
             <Link
@@ -198,7 +198,7 @@ export function BarraApp({ itens, contadores, bloqueados }: Props) {
                 atual ? "text-[var(--cor-primaria-texto)]" : "text-muted-foreground",
               )}
             >
-              <Icone className="size-6" aria-hidden />
+              <IconeNavegacao nome={aba.icone} className="size-6" />
               <span className="max-w-full truncate">{aba.rotulo}</span>
               {contadores[aba.href] ? (
                 <span className="absolute top-1.5 left-1/2 ml-2">
@@ -271,7 +271,7 @@ export function TituloGestao({ itens }: { itens: ItemNavegacao[] }) {
   if (!item || item.grupo !== "Gestão" || !item.secoes) return null;
   return (
     <div className="flex items-center gap-2 px-4 pt-4 text-2xl font-semibold md:px-6 print:hidden">
-      <item.icone className="size-6 shrink-0 text-muted-foreground" aria-hidden />
+      <IconeNavegacao nome={item.icone} className="size-6 shrink-0 text-muted-foreground" />
       {item.rotulo}
     </div>
   );

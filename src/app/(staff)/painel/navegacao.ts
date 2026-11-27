@@ -1,26 +1,4 @@
-import {
-  Bike,
-  BookOpen,
-  Boxes,
-  ChartColumn,
-  ChefHat,
-  CookingPot,
-  CreditCard,
-  Grid2x2,
-  History,
-  House,
-  LayoutGrid,
-  type LucideIcon,
-  MessageCircle,
-  Printer,
-  Settings,
-  Store,
-  TicketPercent,
-  Truck,
-  Users,
-  Wallet,
-} from "lucide-react";
-
+import type { NomeIcone } from "@/components/staff/icone-navegacao";
 import { type Papel, type Permissao, PERMISSOES, PERMISSOES_INICIO } from "@/lib/auth/papeis";
 
 // Três listas, não um menu só, porque as três coisas têm ritmos diferentes:
@@ -32,18 +10,19 @@ import { type Papel, type Permissao, PERMISSOES, PERMISSOES_INICIO } from "@/lib
 export type GrupoNavegacao = "Operação" | "Gestão" | "Configurações";
 
 // Aba de um item; "acesso" restringe a aba a uma permissão.
-export type Secao = { href: string; rotulo: string; icone?: LucideIcon; acesso?: Permissao };
+export type Secao = { href: string; rotulo: string; icone?: NomeIcone; acesso?: Permissao };
 
 // "secoes": páginas que ficam dentro do mesmo item, mostradas como abas no topo.
 // "acesso": permissões que mostram o item (qualquer uma); "inicio" = quem tem o Início (não só mesas);
 // "dono" = só o dono. "ocultarCom": some para quem tem esta permissão (vê a versão completa noutro item).
-// "icone": o desenho do item, usado no menu, nas abas do rodapé e nos cartões de Configurações
-// (antes cada tela tinha a sua lista, uma pelo rótulo e outra pelo endereço).
+// "icone": o nome do desenho (src/components/staff/icone-navegacao.tsx), usado no menu, nas abas
+// do rodapé e nos cartões de Configurações. É nome e não componente porque o layout é de
+// servidor e passa os itens para o menu, que é de cliente.
 export type ItemNavegacao = {
   href: string;
   rotulo: string;
   grupo: GrupoNavegacao;
-  icone: LucideIcon;
+  icone: NomeIcone;
   acesso: Permissao[] | "inicio" | "dono";
   ocultarCom?: Permissao;
   secoes?: Secao[];
@@ -55,28 +34,28 @@ export const CONFIGURACOES_HREF = "/painel/configuracoes";
 
 // Operação: durante o serviço. É o que fica nas abas do rodapé no celular.
 export const NAVEGACAO: ItemNavegacao[] = [
-  { href: "/painel", rotulo: "Início", grupo: "Operação", icone: House, acesso: "inicio" },
-  { href: "/painel/delivery", rotulo: "Delivery", grupo: "Operação", icone: Bike, acesso: ["delivery"] },
+  { href: "/painel", rotulo: "Início", grupo: "Operação", icone: "inicio", acesso: "inicio" },
+  { href: "/painel/delivery", rotulo: "Delivery", grupo: "Operação", icone: "delivery", acesso: ["delivery"] },
   // Conversas com os clientes do delivery (página do pedido), com o pedido ao lado.
-  { href: "/painel/conversas", rotulo: "Conversas", grupo: "Operação", icone: MessageCircle, acesso: ["delivery"] },
+  { href: "/painel/conversas", rotulo: "Conversas", grupo: "Operação", icone: "conversas", acesso: ["delivery"] },
   // Mapa de mesas no próprio painel (abrir, lançar, cobrar, fechar), largo para o computador.
   {
     href: "/painel/comandas",
     rotulo: "Mesas",
     grupo: "Operação",
-    icone: LayoutGrid,
+    icone: "mesas",
     acesso: ["comandas_painel", "garcom_app"],
     secoes: [
-      { href: "/painel/comandas", rotulo: "Mesas", icone: LayoutGrid },
+      { href: "/painel/comandas", rotulo: "Mesas", icone: "mesas" },
       // Setor sem tela: o garçom marca que retirou o prato.
-      { href: "/painel/comandas/pracas", rotulo: "Setores", icone: ChefHat, acesso: "garcom_app" },
+      { href: "/painel/comandas/pracas", rotulo: "Setores", icone: "setores", acesso: "garcom_app" },
     ],
   },
-  { href: "/painel/caixa", rotulo: "Caixa", grupo: "Operação", icone: Wallet, acesso: ["caixa_operar"] },
+  { href: "/painel/caixa", rotulo: "Caixa", grupo: "Operação", icone: "caixa", acesso: ["caixa_operar"] },
   // Dentro do painel: quem está no painel só quer dar uma olhada na fila, não virar a tela do
   // tablet do setor. A tela cheia continua em /cozinha, com o link "Abrir em tela cheia" lá
   // dentro, e é para lá que `rotaInicial` manda quem só tem a cozinha.
-  { href: "/painel/cozinha", rotulo: "Tela da cozinha", grupo: "Operação", icone: CookingPot, acesso: ["cozinha_tela"] },
+  { href: "/painel/cozinha", rotulo: "Tela da cozinha", grupo: "Operação", icone: "cozinha", acesso: ["cozinha_tela"] },
 ];
 
 // Gestão: fora do serviço, mas no dia a dia da casa. O Cardápio mora aqui porque produto é
@@ -87,7 +66,7 @@ export const GESTAO: ItemNavegacao[] = [
     href: "/painel/produtos",
     rotulo: "Cardápio",
     grupo: "Gestão",
-    icone: BookOpen,
+    icone: "cardapio",
     acesso: ["cardapio"],
     descricao: "Produtos, preços e adicionais.",
     secoes: [
@@ -102,22 +81,22 @@ export const GESTAO: ItemNavegacao[] = [
     href: "/painel/estoque",
     rotulo: "Estoque",
     grupo: "Gestão",
-    icone: Boxes,
+    icone: "estoque",
     acesso: ["estoque"],
     descricao: "O que tem, o que acabou e o que cada produto gasta.",
   },
-  { href: "/painel/cupons", rotulo: "Cupons", grupo: "Gestão", icone: TicketPercent, acesso: ["cupons"], descricao: "Descontos do delivery." },
+  { href: "/painel/cupons", rotulo: "Cupons", grupo: "Gestão", icone: "cupons", acesso: ["cupons"], descricao: "Descontos do delivery." },
   {
     href: "/painel/entregadores",
     rotulo: "Entregadores",
     grupo: "Gestão",
-    icone: Truck,
+    icone: "entregadores",
     acesso: ["entregadores"],
     descricao: "Quem leva e quanto recebe.",
   },
-  { href: "/painel/relatorios", rotulo: "Relatórios", grupo: "Gestão", icone: ChartColumn, acesso: ["relatorios"] },
+  { href: "/painel/relatorios", rotulo: "Relatórios", grupo: "Gestão", icone: "relatorios", acesso: ["relatorios"] },
   // Contas encerradas e deliveries terminados, só leitura (o banco não deixa mudar).
-  { href: "/painel/historico", rotulo: "Histórico", grupo: "Gestão", icone: History, acesso: ["caixa_operar", "relatorios"] },
+  { href: "/painel/historico", rotulo: "Histórico", grupo: "Gestão", icone: "historico", acesso: ["caixa_operar", "relatorios"] },
 ];
 
 // Cada cartão da tela de Configurações: o que se ajusta uma vez. Os endereços são os mesmos de
@@ -127,7 +106,7 @@ export const CONFIGURACOES: ItemNavegacao[] = [
     href: "/painel/restaurante",
     rotulo: "Restaurante",
     grupo: "Configurações",
-    icone: Store,
+    icone: "restaurante",
     acesso: ["restaurante"],
     descricao: "Dados, marca, horários e taxa.",
   },
@@ -137,7 +116,7 @@ export const CONFIGURACOES: ItemNavegacao[] = [
     href: "/painel/mesas",
     rotulo: "Cadastro de mesas",
     grupo: "Configurações",
-    icone: Grid2x2,
+    icone: "cadastro-mesas",
     acesso: ["mesas"],
     descricao: "Mesas e QR code.",
     secoes: [
@@ -149,7 +128,7 @@ export const CONFIGURACOES: ItemNavegacao[] = [
     href: "/painel/setores",
     rotulo: "Setores da cozinha",
     grupo: "Configurações",
-    icone: ChefHat,
+    icone: "setores",
     acesso: ["impressao"],
     descricao: "Por onde cada produto passa.",
   },
@@ -158,7 +137,7 @@ export const CONFIGURACOES: ItemNavegacao[] = [
     href: "/painel/impressoras",
     rotulo: "Impressoras",
     grupo: "Configurações",
-    icone: Printer,
+    icone: "impressoras",
     acesso: ["impressao", "caixa_operar"],
     descricao: "Impressoras e computadores.",
   },
@@ -166,7 +145,7 @@ export const CONFIGURACOES: ItemNavegacao[] = [
     href: "/painel/equipe",
     rotulo: "Equipe",
     grupo: "Configurações",
-    icone: Users,
+    icone: "equipe",
     acesso: "dono",
     descricao: "Pessoas e funções.",
     secoes: [
@@ -174,7 +153,7 @@ export const CONFIGURACOES: ItemNavegacao[] = [
       { href: "/painel/equipe/funcoes", rotulo: "Funções" },
     ],
   },
-  { href: "/painel/assinatura", rotulo: "Assinatura", grupo: "Configurações", icone: CreditCard, acesso: "dono", descricao: "Plano e faturas." },
+  { href: "/painel/assinatura", rotulo: "Assinatura", grupo: "Configurações", icone: "assinatura", acesso: "dono", descricao: "Plano e faturas." },
 ];
 
 function filtrar(lista: ItemNavegacao[], papel: Papel, permissoes: readonly Permissao[]): ItemNavegacao[] {
@@ -200,7 +179,7 @@ export function itensDeConfiguracao(papel: Papel, permissoes: readonly Permissao
 export function itensDoMenu(papel: Papel, permissoes: readonly Permissao[]): ItemNavegacao[] {
   const itens = [...filtrar(NAVEGACAO, papel, permissoes), ...filtrar(GESTAO, papel, permissoes)];
   if (itensDeConfiguracao(papel, permissoes).length > 0) {
-    itens.push({ href: CONFIGURACOES_HREF, rotulo: "Configurações", grupo: "Configurações", icone: Settings, acesso: "dono" });
+    itens.push({ href: CONFIGURACOES_HREF, rotulo: "Configurações", grupo: "Configurações", icone: "configuracoes", acesso: "dono" });
   }
   return itens;
 }
