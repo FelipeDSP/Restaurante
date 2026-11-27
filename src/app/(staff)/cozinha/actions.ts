@@ -10,8 +10,8 @@ import { exigirAcesso } from "@/lib/auth/dal";
 import { createClient } from "@/lib/supabase/server";
 import { id } from "@/lib/validacao";
 
-// Marca o ticket da praça como pronto (ou volta para pendente, se foi engano).
-// Quem marcou e quando vêm do banco; num delivery, a última praça pronta deixa o pedido "pronto".
+// Marca o ticket do setor como pronto (ou volta para pendente, se foi engano).
+// Quem marcou e quando vêm do banco; num delivery, o último setor pronto deixa o pedido "pronto".
 export async function marcarTicket(tarefaId: string, status: "pronto" | "pendente"): Promise<ResultadoAcao> {
   const acesso = await exigirAcesso("cozinha");
   if (!id.safeParse(tarefaId).success || (status !== "pronto" && status !== "pendente")) return falha("Ticket inválido.");

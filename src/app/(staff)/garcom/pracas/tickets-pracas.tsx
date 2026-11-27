@@ -35,7 +35,7 @@ function minutosDesde(iso: string, agora: number) {
   return Math.max(0, Math.floor((agora - new Date(iso).getTime()) / 60000));
 }
 
-// Praças pendentes antes desta (o prato ainda não pode sair daqui).
+// Setores pendentes antes deste (o prato ainda não pode sair daqui).
 function esperando(t: Ticket) {
   return [...new Set(t.itens.filter((i) => !i.cancelado).flatMap((i) => i.aguardando))];
 }
@@ -114,7 +114,7 @@ function LinhaPronto({ ticket, fuso }: { ticket: Ticket; fuso: string }) {
 const normalizarPraca = (v: unknown) => (typeof v === "string" ? v : null);
 
 export function TicketsPracas({ restauranteId, membroId, fuso, pracas, pendentes, prontos, geradoEm }: Props) {
-  // A praça escolhida fica no aparelho (cada garçom costuma ficar de olho na mesma).
+  // O setor escolhido fica no aparelho (cada garçom costuma ficar de olho no mesmo).
   const [praca, setPraca] = useRascunho(`garcom-praca:${restauranteId}`, TODAS, normalizarPraca);
   // Relógio dos "min": o mais recente entre a hora do servidor (a cada atualização) e o tique local.
   const [tique, setTique] = useState(geradoEm);
@@ -143,7 +143,7 @@ export function TicketsPracas({ restauranteId, membroId, fuso, pracas, pendentes
   return (
     <>
       {pracas.length > 1 ? (
-        <nav aria-label="Praças" className="-mx-4 flex gap-2 overflow-x-auto px-4 sem-barra-rolagem">
+        <nav aria-label="Setores" className="-mx-4 flex gap-2 overflow-x-auto px-4 sem-barra-rolagem">
           {[{ id: TODAS, nome: "Todas" }, ...pracas].map((p) => (
             <button
               key={p.id}
@@ -164,7 +164,7 @@ export function TicketsPracas({ restauranteId, membroId, fuso, pracas, pendentes
 
       {pracas.length === 0 ? (
         <p className="rounded-xl border border-dashed p-6 text-center text-muted-foreground">
-          Nenhuma praça cadastrada. O dono cadastra em Painel › Setores da cozinha.
+          Nenhum setor cadastrado. O dono cadastra em Configurações › Setores da cozinha.
         </p>
       ) : lista.length === 0 ? (
         <p className="rounded-xl border border-dashed p-6 text-center text-muted-foreground">Nada em preparo agora.</p>

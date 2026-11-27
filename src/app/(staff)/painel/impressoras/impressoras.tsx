@@ -276,7 +276,7 @@ function LinhaImpressora({
             </Badge>
           ))
         ) : (
-          <span className="text-sm text-amber-800">Não imprime nada ainda: escolha as praças em Editar.</span>
+          <span className="text-sm text-amber-800">Não imprime nada ainda: escolha os setores em Editar.</span>
         )}
       </div>
       {comErro ? (

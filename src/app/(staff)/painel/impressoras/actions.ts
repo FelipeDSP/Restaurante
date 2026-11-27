@@ -136,7 +136,7 @@ export async function salvarImpressora(impressoraId: string | null, _estado: Res
   const dados = impressoraSchema.safeParse(dadosDoFormulario(formData));
   if (!dados.success) return falhaValidacao(dados.error, formData);
   const pracas = listaIds.safeParse(formData.get("pracas"));
-  if (!pracas.success) return falha("Praças inválidas.", undefined, formData);
+  if (!pracas.success) return falha("Setores inválidos.", undefined, formData);
 
   const supabase = await createClient();
   let idImpressora = impressoraId;
@@ -154,7 +154,7 @@ export async function salvarImpressora(impressoraId: string | null, _estado: Res
     idImpressora = data.id;
   }
 
-  // Praças desta impressora: liga as escolhidas e solta as que saíram.
+  // Setores desta impressora: liga os escolhidos e solta os que saíram.
   const { error: erroSolta } = await supabase
     .from("estacoes")
     .update({ impressora_id: null })
@@ -164,7 +164,7 @@ export async function salvarImpressora(impressoraId: string | null, _estado: Res
     pracas.data.length > 0
       ? await supabase.from("estacoes").update({ impressora_id: idImpressora }).eq("restaurante_id", restauranteId).in("id", pracas.data)
       : { error: null };
-  if (erroSolta || erroLiga) return falha("Impressora salva, mas não foi possível ligar as praças.", undefined, formData);
+  if (erroSolta || erroLiga) return falha("Impressora salva, mas não foi possível ligar os setores.", undefined, formData);
 
   refresh();
   return sucesso(impressoraId ? "Impressora salva." : "Impressora cadastrada. Use \"Testar\" para conferir.");

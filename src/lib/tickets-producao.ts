@@ -6,7 +6,7 @@ import { type AdicionalEscolhido, lerAdicionais } from "@/lib/adicionais";
 import { type Etapa, lerEtapas } from "@/lib/preparo";
 import type { Database } from "@/types/database";
 
-// Ticket de praça (pedido x praça) com a rota de cada item: usado pela tela da cozinha
+// Ticket de setor (pedido x setor) com a rota de cada item: usado pela tela da cozinha
 // e pelo papel impresso, para os dois mostrarem a mesma coisa.
 
 export type ItemTicket = {
@@ -17,13 +17,13 @@ export type ItemTicket = {
   observacao: string | null;
   cancelado: boolean;
   paraViagem: boolean;
-  // Praças anteriores da rota que ainda não terminaram (o item espera por elas).
+  // Setores anteriores da rota que ainda não terminaram (o item espera por eles).
   aguardando: string[];
-  // Para onde o item segue depois desta praça.
+  // Para onde o item segue depois deste setor.
   depois: string[];
 };
 
-// Um ticket = os itens de um pedido para uma etapa de uma praça (o que espera outra praça sai num
+// Um ticket = os itens de um pedido para uma etapa de um setor (o que espera outro setor sai num
 // ticket separado do que pode ser feito na hora).
 export type Ticket = {
   id: string;

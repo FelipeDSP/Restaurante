@@ -20,7 +20,7 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-// Tela da cozinha: feita para ficar aberta num tablet ou TV perto das praças.
+// Tela da cozinha: feita para ficar aberta num tablet ou TV perto dos setores.
 export default async function CozinhaLayout({ children }: LayoutProps<"/cozinha">) {
   const acesso = await exigirAcesso("cozinha");
   const painel = podeAcessar(acesso.permissoes, "painel");

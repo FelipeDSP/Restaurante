@@ -12,7 +12,7 @@ import { reimprimir, reimprimirFalhas } from "./actions";
 import type { Impressao } from "./dados";
 
 const TIPO: Record<Impressao["tipo"], string> = {
-  producao: "Pedido da praça",
+  producao: "Pedido do setor",
   conta: "Conta",
   delivery: "Via do delivery",
   cancelamento: "Cancelamento",

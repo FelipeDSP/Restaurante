@@ -307,7 +307,7 @@ export function FormProduto({
         <CardContent className="flex flex-col gap-3">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="font-semibold">Onde é preparado</h2>
-            <Link href="/painel/pracas" className="inline-flex min-h-11 items-center text-sm underline underline-offset-4">
+            <Link href="/painel/setores" className="inline-flex min-h-11 items-center text-sm underline underline-offset-4">
               Editar setores
             </Link>
           </div>

@@ -175,7 +175,7 @@ export async function avisarPratoPronto(pedidoId: string): Promise<void> {
     if (!pedido) return;
     if (pedido.origem === "mesa" && !comanda?.garcom_id) return;
     if (pedido.origem !== "mesa" && pedido.origem !== "delivery") return;
-    // Só quando o pedido inteiro fica pronto. Um aviso por praça viraria três vibrações para o
+    // Só quando o pedido inteiro fica pronto. Um aviso por setor viraria três vibrações para o
     // mesmo pedido; o aviso na tela, esse sim, já mostra item por item para quem está com o app
     // aberto — o push é para quem está longe da tela.
     const { count: faltando } = await admin

@@ -121,7 +121,7 @@ const TELA_COM_BARRA_PROPRIA = /^\/painel\/comandas\/(?!pracas(\/|$))[^/]+/;
 // No computador o desenho não substitui a palavra — acompanha.
 type Aba = { href: string; rotulo: string; icone: LucideIcon };
 
-// Poucas áreas (ex.: só Mesas): o rodapé mostra as abas de dentro delas (Mesas, Praças).
+// Poucas áreas (ex.: só Mesas): o rodapé mostra as abas de dentro delas (Mesas, Setores).
 function abasDeDentro(itens: ItemNavegacao[]) {
   return itens.filter((i) => i.grupo === "Operação").length < 3;
 }
@@ -149,7 +149,7 @@ function abasVisiveis(abas: Aba[], quantas: number): Aba[] {
 
 // Celular e tablet: o painel vira app, com as áreas da pessoa em abas no rodapé (alcance do polegar)
 // e "Mais" com o menu completo. Quem tem poucas áreas (ex.: garçom) vê as abas de dentro delas
-// (Mesas e Praças).
+// (Mesas e Setores).
 export function BarraApp({ itens, contadores, bloqueados }: Props) {
   const caminho = usePathname();
   const [aberto, setAberto] = useState(false);

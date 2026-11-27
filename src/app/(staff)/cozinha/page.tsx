@@ -14,7 +14,7 @@ export default async function CozinhaPage(props: PageProps<"/cozinha">) {
     carregarPracasAtivas(acesso.restaurante.id),
     contarImpressoesComErro(acesso.restaurante.id),
   ]);
-  // Praça escolhida na URL (cada tela pode ficar fixa numa praça: /cozinha?praca=...).
+  // Setor escolhido na URL (cada tela pode ficar fixa num setor: /cozinha?praca=...).
   const pracaAtiva = typeof praca === "string" && pracas.some((p) => p.id === praca) ? praca : null;
 
   return (

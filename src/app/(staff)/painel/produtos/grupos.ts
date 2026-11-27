@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 
 import type { CardapioParaProduto, GrupoParaProduto } from "./form-produto";
 
-// Praças ativas, para escolher onde o produto é preparado.
+// Setores ativos, para escolher onde o produto é preparado.
 export async function carregarPracas(
   supabase: Awaited<ReturnType<typeof createClient>>,
   restauranteId: string,

@@ -13,7 +13,7 @@ import { TelaCozinha } from "../../cozinha/tela-cozinha";
 export const metadata: Metadata = { title: "Tela da cozinha" };
 
 // A mesma fila da cozinha, mas dentro do painel: o dono dá uma olhada sem o app virar outra coisa.
-// A tela cheia (`/cozinha`) continua existindo e é a do tablet que fica na praça — lá o menu do
+// A tela cheia (`/cozinha`) continua existindo e é a do tablet que fica no setor — lá o menu do
 // painel só atrapalharia, e o aviso de som precisa mesmo tomar a tela.
 export default async function CozinhaNoPainelPage(props: PageProps<"/painel/cozinha">) {
   const acesso = await exigirPermissao("painel", "cozinha_tela");
@@ -30,7 +30,7 @@ export default async function CozinhaNoPainelPage(props: PageProps<"/painel/cozi
       <AtualizarEmTempoReal restauranteId={acesso.restaurante.id} tabelas={["tarefas_producao", "itens_pedido", "pedidos"]} />
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 pt-4 md:px-6">
         <h1 className="text-2xl font-semibold">Tela da cozinha</h1>
-        {/* O caminho para montar o aparelho da praça: abre a versão de tela cheia. */}
+        {/* O caminho para montar o aparelho do setor: abre a versão de tela cheia. */}
         <Link
           href={pracaAtiva ? `/cozinha?praca=${pracaAtiva}` : "/cozinha"}
           className="flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm font-medium hover:bg-muted"

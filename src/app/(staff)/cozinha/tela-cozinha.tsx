@@ -25,7 +25,7 @@ type Props = {
   pendentes: Ticket[];
   prontos: Ticket[];
   geradoEm: number;
-  // Endereço desta tela: os chips de praça trocam a URL, e ela é diferente dentro do painel.
+  // Endereço desta tela: os chips de setor trocam a URL, e ela é diferente dentro do painel.
   base?: string;
   // Dentro do painel (o dono só está olhando). Na tela cheia do tablet da cozinha o aviso de som
   // ocupa tudo, porque ali ninguém pode ficar sem ouvir; aqui ele é só uma faixa, para não tapar
@@ -33,7 +33,7 @@ type Props = {
   embutida?: boolean;
 };
 
-// Outras praças com ticket do MESMO pedido na tela. Dois cartões "Mesa 2" lado a lado pareciam
+// Outros setores com ticket do MESMO pedido na tela. Dois cartões "Mesa 2" lado a lado pareciam
 // o mesmo pedido duas vezes; o cozinheiro precisa ver que são partes diferentes do pedido.
 function outrasPracasDoPedido(ticket: Ticket, naTela: Ticket[]): string[] {
   return [
@@ -120,7 +120,7 @@ function CartaoTicket({
   agora: number;
   fuso: string;
   mostrarPraca: boolean;
-  // Outras praças do MESMO pedido que também têm ticket na tela. Na visão "Todas", dois cartões
+  // Outros setores do MESMO pedido que também têm ticket na tela. Na visão "Todas", dois cartões
   // "Mesa 2" lado a lado pareciam o mesmo pedido duplicado; agora cada um diz qual é a sua parte.
   outrasPracas: string[];
   aoImprimir: () => void;
@@ -333,7 +333,7 @@ export function TelaCozinha({
   }
 
   // Ticket novo na tela: bipe (a primeira carga não toca). Guarda todos os tickets já vistos, de
-  // qualquer praça: trocar o filtro de praça ou "Voltar" um pronto não é ticket novo.
+  // qualquer setor: trocar o filtro de setor ou "Voltar" um pronto não é ticket novo.
   const idsPendentes = pendentes.map((t) => t.id).join(",");
   const idsVisiveis = visiveis.map((t) => t.id).join(",");
   useEffect(() => {
@@ -341,9 +341,9 @@ export function TelaCozinha({
     const anteriores = vistos.current;
     vistos.current = new Set([...(anteriores ?? []), ...atuais]);
     const naTela = new Set(idsVisiveis ? idsVisiveis.split(",") : []);
-    // Impressão automática só do que aparece nesta tela: ticket de outra praça conta como já
+    // Impressão automática só do que aparece nesta tela: ticket de outro setor conta como já
     // impresso aqui (é da impressora de lá). Senão, trocar o filtro para "Todas" soltava de uma vez
-    // tudo o que chegou nas outras praças.
+    // tudo o que chegou nos outros setores.
     if (auto.ligada) {
       const deOutraPraca = atuais.filter((id) => !naTela.has(id) && !auto.impressos.has(id));
       if (deOutraPraca.length > 0) auto.marcarImpressos(deOutraPraca);
@@ -396,7 +396,7 @@ export function TelaCozinha({
 
       <div className={cn("flex flex-1 flex-col gap-4 print:hidden", embutida ? "p-4 md:p-6" : "p-4 pb-20")}>
         <div className="flex flex-wrap items-center gap-2">
-          <nav aria-label="Praças" className="flex flex-wrap gap-2">
+          <nav aria-label="Setores" className="flex flex-wrap gap-2">
             {[{ id: null as string | null, nome: "Todas" }, ...pracas].map((p) => {
               const ativa = p.id === pracaAtiva;
               const qtd = p.id ? pendentes.filter((t) => t.praca.id === p.id).length : pendentes.length;
@@ -449,15 +449,15 @@ export function TelaCozinha({
 
         {pracas.length === 0 ? (
           <div className="rounded-xl border bg-background p-6 text-center">
-            <p className="font-semibold">Nenhuma praça cadastrada.</p>
+            <p className="font-semibold">Nenhum setor cadastrado.</p>
             <p className="text-sm text-muted-foreground">
-              O dono cadastra as praças em Painel &gt; Praças e liga cada produto à sua praça.
+              O dono cadastra os setores em Configurações &gt; Setores da cozinha e liga cada produto ao seu setor.
             </p>
           </div>
         ) : visiveis.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-2 py-16 text-center">
             <Check className="size-12 text-green-600" />
-            <p className="text-xl font-semibold">Nada pendente{pracaAtiva ? " nesta praça" : ""}.</p>
+            <p className="text-xl font-semibold">Nada pendente{pracaAtiva ? " neste setor" : ""}.</p>
             <p className="text-muted-foreground">Os pedidos aparecem aqui assim que o garçom envia.</p>
           </div>
         ) : (

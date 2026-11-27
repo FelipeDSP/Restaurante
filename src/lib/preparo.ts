@@ -1,4 +1,4 @@
-// Andamento de cada item a partir dos tickets das praças. Um ticket é (pedido, praça, etapa); o item
+// Andamento de cada item a partir dos tickets dos setores. Um ticket é (pedido, setor, etapa); o item
 // está pronto quando os tickets de todas as etapas da rota dele estão prontos, mesmo que outro item do
 // mesmo pedido ainda esteja na cozinha (o espeto não espera o burger da chapa).
 
@@ -19,7 +19,7 @@ export function ticketsDoItem<T extends TicketPreparo>(etapas: unknown, tarefas:
   return tarefas.filter((t) => rota.some((e) => e.estacao_id === t.estacao_id && e.ordem === t.ordem));
 }
 
-// Entregue quando o último ticket a ficar pronto foi retirado ("Retirei" nas Praças).
+// Entregue quando o último ticket a ficar pronto foi retirado ("Retirei" nos Setores).
 export function situacaoDosTickets(tarefas: TicketPreparo[]): Preparo {
   if (tarefas.length === 0) return null;
   if (tarefas.some((t) => t.status === "pendente")) return "na_cozinha";

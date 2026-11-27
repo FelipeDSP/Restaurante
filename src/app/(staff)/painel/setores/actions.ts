@@ -10,15 +10,15 @@ import { moverItem, proximaOrdem } from "@/lib/ordenacao";
 import { createClient } from "@/lib/supabase/server";
 import { id, textoObrigatorio } from "@/lib/validacao";
 
-// Praças de produção (churrasqueira, chapa, bar): para onde cada pedido vai na cozinha.
+// Setores de produção (churrasqueira, chapa, bar): para onde cada pedido vai na cozinha.
 
 const nomeSchema = z.object({ nome: textoObrigatorio("o nome", 60) });
 
 function mensagemNome(erro: PostgrestError) {
-  return erro.code === "23505" ? "Já existe uma praça com esse nome." : mensagemErroBanco(erro);
+  return erro.code === "23505" ? "Já existe um setor com esse nome." : mensagemErroBanco(erro);
 }
 
-export async function criarPraca(_estado: ResultadoAcao, formData: FormData): Promise<ResultadoAcao> {
+export async function criarSetor(_estado: ResultadoAcao, formData: FormData): Promise<ResultadoAcao> {
   const acesso = await exigirPermissao("painel", "impressao");
   const dados = nomeSchema.safeParse({ nome: formData.get("nome") });
   if (!dados.success) return falhaValidacao(dados.error, formData);
@@ -31,12 +31,12 @@ export async function criarPraca(_estado: ResultadoAcao, formData: FormData): Pr
   if (error) return falha(mensagemNome(error), undefined, formData);
 
   refresh();
-  return sucesso("Praça criada. Agora ligue os produtos a ela.");
+  return sucesso("Setor criado. Agora ligue os produtos a ele.");
 }
 
-export async function renomearPraca(pracaId: string, _estado: ResultadoAcao, formData: FormData): Promise<ResultadoAcao> {
+export async function renomearSetor(setorId: string, _estado: ResultadoAcao, formData: FormData): Promise<ResultadoAcao> {
   const acesso = await exigirPermissao("painel", "impressao");
-  const dados = z.object({ id, nome: textoObrigatorio("o nome", 60) }).safeParse({ id: pracaId, nome: formData.get("nome") });
+  const dados = z.object({ id, nome: textoObrigatorio("o nome", 60) }).safeParse({ id: setorId, nome: formData.get("nome") });
   if (!dados.success) return falhaValidacao(dados.error, formData);
 
   const supabase = await createClient();
@@ -48,57 +48,57 @@ export async function renomearPraca(pracaId: string, _estado: ResultadoAcao, for
   if (error) return falha(mensagemNome(error), undefined, formData);
 
   refresh();
-  return sucesso("Praça renomeada.");
+  return sucesso("Setor renomeado.");
 }
 
-export async function alternarPraca(pracaId: string, ativa: boolean): Promise<ResultadoAcao> {
+export async function alternarSetor(setorId: string, ativa: boolean): Promise<ResultadoAcao> {
   const acesso = await exigirPermissao("painel", "impressao");
-  if (!id.safeParse(pracaId).success) return falha("Praça inválida.");
+  if (!id.safeParse(setorId).success) return falha("Setor inválido.");
 
   const supabase = await createClient();
   const { error } = await supabase
     .from("estacoes")
     .update({ ativa: ativa === true })
-    .eq("id", pracaId)
+    .eq("id", setorId)
     .eq("restaurante_id", acesso.restaurante.id);
   if (error) return falha(mensagemErroBanco(error));
 
   refresh();
-  return sucesso(ativa ? "Praça ativada." : "Praça desativada: os produtos dela deixam de ir para a cozinha.");
+  return sucesso(ativa ? "Setor ativado." : "Setor desativado: os produtos dele deixam de ir para a cozinha.");
 }
 
-export async function moverPraca(pracaId: string, direcao: "cima" | "baixo"): Promise<ResultadoAcao> {
+export async function moverSetor(setorId: string, direcao: "cima" | "baixo"): Promise<ResultadoAcao> {
   const acesso = await exigirPermissao("painel", "impressao");
-  if (!id.safeParse(pracaId).success) return falha("Praça inválida.");
+  if (!id.safeParse(setorId).success) return falha("Setor inválido.");
 
   const supabase = await createClient();
-  const erro = await moverItem(supabase, "estacoes", acesso.restaurante.id, pracaId, direcao === "cima" ? "cima" : "baixo");
+  const erro = await moverItem(supabase, "estacoes", acesso.restaurante.id, setorId, direcao === "cima" ? "cima" : "baixo");
   if (erro) return falha("Não foi possível reordenar.");
 
   refresh();
   return undefined;
 }
 
-export async function excluirPraca(pracaId: string): Promise<ResultadoAcao> {
+export async function excluirSetor(setorId: string): Promise<ResultadoAcao> {
   const acesso = await exigirPermissao("painel", "impressao");
-  if (!id.safeParse(pracaId).success) return falha("Praça inválida.");
+  if (!id.safeParse(setorId).success) return falha("Setor inválido.");
 
   const supabase = await createClient();
   const { error } = await supabase
     .from("estacoes")
     .delete()
-    .eq("id", pracaId)
+    .eq("id", setorId)
     .eq("restaurante_id", acesso.restaurante.id);
   if (error) {
     return falha(
       error.code === "23503"
-        ? "Esta praça já recebeu pedidos e não pode ser excluída. Desative-a."
+        ? "Este setor já recebeu pedidos e não pode ser excluído. Desative-o."
         : mensagemErroBanco(error),
     );
   }
 
   refresh();
-  return sucesso("Praça excluída.");
+  return sucesso("Setor excluído.");
 }
 
 // Quais produtos passam por este setor, aplicado pelo lado do setor. A rota do produto tem ordem
@@ -112,9 +112,9 @@ const produtosSchema = z.preprocess((valor) => {
   }
 }, z.array(id, { error: "Produtos inválidos." }).max(1000));
 
-export async function aplicarPracaEmProdutos(pracaId: string, produtosJson: string): Promise<ResultadoAcao> {
+export async function aplicarSetorEmProdutos(setorId: string, produtosJson: string): Promise<ResultadoAcao> {
   const acesso = await exigirPermissao("painel", "impressao");
-  if (!id.safeParse(pracaId).success) return falha("Setor inválido.");
+  if (!id.safeParse(setorId).success) return falha("Setor inválido.");
   const produtos = produtosSchema.safeParse(produtosJson);
   if (!produtos.success) return falha("Produtos inválidos.");
 
@@ -124,7 +124,7 @@ export async function aplicarPracaEmProdutos(pracaId: string, produtosJson: stri
 
   // Rota atual de todo mundo que está em jogo: a deste setor e a dos produtos que vão entrar.
   const [atuais, rotas] = await Promise.all([
-    supabase.from("produto_etapas").select("produto_id").eq("restaurante_id", restauranteId).eq("estacao_id", pracaId),
+    supabase.from("produto_etapas").select("produto_id").eq("restaurante_id", restauranteId).eq("estacao_id", setorId),
     escolhidos.length > 0
       ? supabase.from("produto_etapas").select("produto_id, ordem").eq("restaurante_id", restauranteId).in("produto_id", escolhidos)
       : Promise.resolve({ data: [], error: null }),
@@ -141,7 +141,7 @@ export async function aplicarPracaEmProdutos(pracaId: string, produtosJson: stri
       .from("produto_etapas")
       .delete()
       .eq("restaurante_id", restauranteId)
-      .eq("estacao_id", pracaId)
+      .eq("estacao_id", setorId)
       .in("produto_id", remover);
     if (error) return falha(mensagemErroBanco(error));
   }
@@ -155,7 +155,7 @@ export async function aplicarPracaEmProdutos(pracaId: string, produtosJson: stri
 
     const { error } = await supabase
       .from("produto_etapas")
-      .insert(incluir.map((produtoId) => ({ restaurante_id: restauranteId, produto_id: produtoId, estacao_id: pracaId, ordem: (ultima.get(produtoId) ?? 0) + 1 })));
+      .insert(incluir.map((produtoId) => ({ restaurante_id: restauranteId, produto_id: produtoId, estacao_id: setorId, ordem: (ultima.get(produtoId) ?? 0) + 1 })));
     if (error) return falha(mensagemErroBanco(error));
   }
 

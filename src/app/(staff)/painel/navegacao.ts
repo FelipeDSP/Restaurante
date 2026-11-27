@@ -68,13 +68,13 @@ export const NAVEGACAO: ItemNavegacao[] = [
     acesso: ["comandas_painel", "garcom_app"],
     secoes: [
       { href: "/painel/comandas", rotulo: "Mesas", icone: LayoutGrid },
-      // Praças sem tela: o garçom marca que retirou o prato.
-      { href: "/painel/comandas/pracas", rotulo: "Praças", icone: ChefHat, acesso: "garcom_app" },
+      // Setor sem tela: o garçom marca que retirou o prato.
+      { href: "/painel/comandas/pracas", rotulo: "Setores", icone: ChefHat, acesso: "garcom_app" },
     ],
   },
   { href: "/painel/caixa", rotulo: "Caixa", grupo: "Operação", icone: Wallet, acesso: ["caixa_operar"] },
   // Dentro do painel: quem está no painel só quer dar uma olhada na fila, não virar a tela do
-  // tablet da praça. A tela cheia continua em /cozinha, com o link "Abrir em tela cheia" lá
+  // tablet do setor. A tela cheia continua em /cozinha, com o link "Abrir em tela cheia" lá
   // dentro, e é para lá que `rotaInicial` manda quem só tem a cozinha.
   { href: "/painel/cozinha", rotulo: "Tela da cozinha", grupo: "Operação", icone: CookingPot, acesso: ["cozinha_tela"] },
 ];
@@ -146,7 +146,7 @@ export const CONFIGURACOES: ItemNavegacao[] = [
     ],
   },
   {
-    href: "/painel/pracas",
+    href: "/painel/setores",
     rotulo: "Setores da cozinha",
     grupo: "Configurações",
     icone: ChefHat,

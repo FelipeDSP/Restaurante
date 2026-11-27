@@ -37,7 +37,7 @@ export default async function MesasPainelPage() {
       />
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          {/* Com a aba Praças, o título já está nas abas (Mesas | Praças). */}
+          {/* Com a aba Setores, o título já está nas abas (Mesas | Setores). */}
           <h1 className={acesso.permissoes.includes("garcom_app") ? "sr-only" : "text-2xl font-semibold"}>Mesas</h1>
           <p className="text-sm text-muted-foreground">
             {ocupadas.length} de {mesas.length} ocupadas

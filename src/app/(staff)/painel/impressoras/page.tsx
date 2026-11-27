@@ -23,7 +23,7 @@ export default async function ImpressorasPage() {
       <AtualizarEmTempoReal restauranteId={acesso.restaurante.id} tabelas={["fila_impressao"]} />
       {/* Situação do computador (online/sem sinal) muda sem evento no banco. */}
       <RecarregarPeriodicamente segundos={15} />
-      {/* Para quem configura, o título já está nas abas (Setores | Impressoras). */}
+      {/* Para quem configura, o nome já está no topo ("‹ Configurações / Impressoras"). */}
       <h1 className={dono ? "sr-only" : "text-2xl font-semibold"}>Impressoras</h1>
       <Computadores computadores={computadores} fuso={acesso.restaurante.fusoHorario} dono={dono} endereco={endereco} />
       <Impressoras impressoras={impressoras} pracas={pracas} computadores={computadores} fila={fila} dono={dono} />

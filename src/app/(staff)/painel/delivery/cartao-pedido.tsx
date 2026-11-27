@@ -37,7 +37,7 @@ export type PedidoDelivery = {
   cupom: { codigo: string; tipo: string; valor: number } | null;
   total: number;
   pago: number;
-  // Praças da cozinha que ainda não marcaram pronto (só informa; o painel pode marcar pronto mesmo assim).
+  // Setores da cozinha que ainda não marcaram pronto (só informa; o painel pode marcar pronto mesmo assim).
   pracasPendentes: number;
   motivoCancelamento: string | null;
   // Conversa com o cliente; aberta até 24 h depois de terminar. O quadro do Delivery só precisa
@@ -330,7 +330,7 @@ export function CartaoPedido({ pedido, entregadores, modoInicial = "normal", aoS
           {naCozinha ? (
             <p className="basis-full rounded-md bg-muted px-3 py-2 text-sm font-medium">
               Na cozinha: falta{pedido.pracasPendentes === 1 ? "" : "m"} {pedido.pracasPendentes}{" "}
-              {pedido.pracasPendentes === 1 ? "praça" : "praças"} marcar pronto
+              {pedido.pracasPendentes === 1 ? "setor" : "setores"} marcar pronto
             </p>
           ) : null}
           {proximo ? (

@@ -27,7 +27,7 @@ const COLUNAS: { id: ColunaId; titulo: string; status: Status[]; vazio: string; 
 function destino(pedido: PedidoDelivery, coluna: ColunaId): Status | "entregar" | null {
   const s = pedido.status;
   if (coluna === "preparo" && s === "recebido") return "em_preparo";
-  // Mesmo com praça pendente: quem cuida do delivery decide (o banco encerra os tickets).
+  // Mesmo com setor pendente: quem cuida do delivery decide (o banco encerra os tickets).
   if (coluna === "prontos" && s === "em_preparo") return "pronto";
   if (coluna === "entrega" && (s === "em_preparo" || s === "pronto")) return "saiu_entrega";
   if (coluna === "finalizados" && (s === "em_preparo" || s === "pronto" || s === "saiu_entrega")) return "entregar";

@@ -20,7 +20,7 @@ const gruposSchema = z.preprocess((valor) => {
   }
 }, z.array(id, { error: "Grupos inválidos." }).max(30));
 
-// Rota de preparo (campo oculto com JSON): praças distintas, ordem de 1 a 10.
+// Rota de preparo (campo oculto com JSON): setores distintos, ordem de 1 a 10.
 const etapasSchema = z.preprocess(
   (valor) => {
     try {
@@ -32,7 +32,7 @@ const etapasSchema = z.preprocess(
   z
     .array(z.object({ estacao_id: id, ordem: z.number().int().min(1).max(10) }), { error: "Rota de preparo inválida." })
     .max(10)
-    .refine((lista) => new Set(lista.map((e) => e.estacao_id)).size === lista.length, "Cada praça só pode aparecer uma vez."),
+    .refine((lista) => new Set(lista.map((e) => e.estacao_id)).size === lista.length, "Cada setor só pode aparecer uma vez."),
 );
 
 // Cardápios por horário ligados ao produto (campo oculto com JSON de ids).
