@@ -10,12 +10,12 @@ import { PreferenciaSom } from "@/components/staff/preferencia-som";
 import { carregarAssinatura } from "@/lib/assinatura";
 import { ehAdminPlataforma, exigirAcesso, temPermissao } from "@/lib/auth/dal";
 import { lerModoSuporte } from "@/lib/auth/suporte";
+import { sairDoSuporte } from "@/lib/auth/suporte-actions";
 import { estiloMarca } from "@/lib/cores";
 import { urlIcone } from "@/lib/icone";
 import { createClient } from "@/lib/supabase/server";
 import { linkAjuda } from "@/lib/contato";
 
-import { sairDoSuporte } from "../../(site)/admin/gestao-actions";
 import { AvisoChamado } from "@/modulos/mesas/aviso-chamado";
 import { AvisoPedidoCliente } from "@/modulos/mesas/aviso-pedido-cliente";
 import { AvisoPronto } from "@/modulos/mesas/aviso-pronto";

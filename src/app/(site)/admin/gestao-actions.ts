@@ -4,14 +4,12 @@ import { randomInt } from "node:crypto";
 
 import { refresh } from "next/cache";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { falha, mensagemErroBanco, type ResultadoAcao, sucesso } from "@/lib/acoes";
 import { gravarRestauranteAtivo } from "@/lib/auth/cookie-restaurante";
 import { COOKIE_SUPORTE, COOKIE_VOLTA_SUPORTE } from "@/lib/auth/suporte";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 import { id, textoObrigatorio } from "@/lib/validacao";
 
 import { exigirAdmin } from "./dados";
@@ -234,32 +232,4 @@ export async function entrarComo(restauranteId: string): Promise<ResultadoAcao> 
   await gravarRestauranteAtivo(restauranteId);
   // O navegador recarrega em /painel (página inteira) para começar já com a sessão do dono.
   return sucesso();
-}
-
-// Sai do modo suporte: encerra a sessão do dono só neste navegador (o dono continua logado nos
-// aparelhos dele) e volta para a ficha do restaurante com a sessão do admin guardada ao entrar.
-// Sem ela (venceu ou não existe), volta para a entrada do admin.
-export async function sairDoSuporte(): Promise<void> {
-  const supabase = await createClient();
-  const c = await cookies();
-  let volta: { token?: unknown; restauranteId?: unknown } = {};
-  try {
-    volta = JSON.parse(c.get(COOKIE_VOLTA_SUPORTE)?.value ?? "{}");
-  } catch {
-    volta = {};
-  }
-  c.delete(COOKIE_SUPORTE);
-  c.delete(COOKIE_VOLTA_SUPORTE);
-  await supabase.auth.signOut({ scope: "local" });
-
-  if (typeof volta.token === "string") {
-    const { error } = await supabase.auth.refreshSession({ refresh_token: volta.token });
-    const { data: ehAdmin } = error ? { data: false } : await supabase.rpc("admin_sou_admin");
-    if (!error && ehAdmin) {
-      const restaurante = typeof volta.restauranteId === "string" && id.safeParse(volta.restauranteId).success ? volta.restauranteId : null;
-      redirect(restaurante ? `/admin/restaurantes/${restaurante}` : "/admin");
-    }
-    if (!error) await supabase.auth.signOut({ scope: "local" });
-  }
-  redirect("/admin/entrar");
 }

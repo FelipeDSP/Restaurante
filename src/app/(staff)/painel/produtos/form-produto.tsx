@@ -18,8 +18,7 @@ import { rotuloDias, rotuloJanela } from "@/lib/cardapios";
 import { textoDeCentavos } from "@/lib/dinheiro";
 import { cn } from "@/lib/utils";
 
-import { criarCategoriaRapida } from "../categorias/actions";
-import { excluirProduto, salvarProduto } from "./actions";
+import { criarCategoriaRapida, excluirProduto, salvarProduto } from "./actions";
 import { EditorRota, type EtapaEditavel, etapasDoBanco, etapasParaBanco } from "./editor-rota";
 
 export type ProdutoEditavel = {
