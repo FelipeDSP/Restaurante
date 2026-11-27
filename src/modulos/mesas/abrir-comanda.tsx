@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useAcao } from "@/components/staff/acoes-cliente";
 import { Button } from "@/components/ui/button";
 
-import { abrirComanda } from "../../actions";
+import { abrirComanda } from "./actions";
 
 export function AbrirComanda({ mesaId, desabilitado }: { mesaId: string; desabilitado: boolean }) {
   const [pessoas, setPessoas] = useState(2);

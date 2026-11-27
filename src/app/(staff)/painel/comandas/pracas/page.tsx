@@ -4,7 +4,7 @@ import { AtualizarEmTempoReal } from "@/components/staff/atualizar-em-tempo-real
 import { exigirPermissao } from "@/lib/auth/dal";
 
 import { carregarPracasAtivas, carregarTickets } from "../../../cozinha/dados";
-import { TicketsPracas } from "../../../garcom/pracas/tickets-pracas";
+import { TicketsPracas } from "@/modulos/mesas/tickets-setores";
 
 export const metadata: Metadata = { title: "Setores" };
 

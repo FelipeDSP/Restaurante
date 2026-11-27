@@ -8,10 +8,10 @@ import { mudancaDoSalao } from "@/lib/realtime-filtros";
 import { exigirPermissao } from "@/lib/auth/dal";
 import { id as idSchema } from "@/lib/validacao";
 
-import { AvisoCaixaFechado } from "../../../garcom/aviso-caixa";
-import { caixaEstaAberto, carregarComandaDaMesa, carregarMesa } from "../../../garcom/dados";
-import { AbrirComanda } from "../../../garcom/mesas/[mesaId]/abrir-comanda";
-import { TelaComanda } from "../../../garcom/mesas/[mesaId]/tela-comanda";
+import { AvisoCaixaFechado } from "@/modulos/mesas/aviso-caixa";
+import { caixaEstaAberto, carregarComandaDaMesa, carregarMesa } from "@/modulos/mesas/dados";
+import { AbrirComanda } from "@/modulos/mesas/abrir-comanda";
+import { TelaComanda } from "@/modulos/mesas/tela-comanda";
 
 export async function generateMetadata(props: PageProps<"/painel/comandas/[mesaId]">): Promise<Metadata> {
   const acesso = await exigirPermissao("painel", "comandas_painel", "garcom_app");

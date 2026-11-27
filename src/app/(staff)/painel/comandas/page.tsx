@@ -7,7 +7,7 @@ import { exigirPermissao, temPermissao } from "@/lib/auth/dal";
 import { formatarBRL } from "@/lib/dinheiro";
 import { mudancaDoSalao } from "@/lib/realtime-filtros";
 
-import { caixaEstaAberto, carregarMapa } from "../../garcom/dados";
+import { caixaEstaAberto, carregarMapa } from "@/modulos/mesas/dados";
 import { alternarPedidoMesa } from "../mesas/actions";
 import { pedidoPeloQrLigado } from "../mesas/dados";
 import { MapaMesas } from "./mapa-mesas";

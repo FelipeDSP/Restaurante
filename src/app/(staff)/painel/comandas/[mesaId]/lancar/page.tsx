@@ -8,8 +8,8 @@ import { mudancaDoSalao } from "@/lib/realtime-filtros";
 import { exigirPermissao } from "@/lib/auth/dal";
 import { id as idSchema } from "@/lib/validacao";
 
-import { carregarCardapioSalao, carregarComandaDaMesa, carregarMesa } from "../../../../garcom/dados";
-import { LancarItens } from "../../../../garcom/mesas/[mesaId]/lancar/lancar-itens";
+import { carregarCardapioSalao, carregarComandaDaMesa, carregarMesa } from "@/modulos/mesas/dados";
+import { LancarItens } from "@/modulos/mesas/lancar-itens";
 
 export const metadata: Metadata = { title: "Lançar itens" };
 

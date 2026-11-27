@@ -376,7 +376,7 @@ export async function cancelarComanda(comandaId: string): Promise<ResultadoAcao>
 // Cozinha e churrasqueira não têm tela (gordura): quem retira o prato marca o setor como pronto
 // pelo app do garçom. Mesmo efeito da tela da cozinha: libera o próximo setor, avisa o garçom da
 // mesa e, no delivery, o último setor pronto deixa o pedido "pronto". Quem e quando vêm do banco.
-export async function marcarTicketPraca(tarefaId: string, status: "pronto" | "pendente"): Promise<ResultadoAcao> {
+export async function marcarTicketSetor(tarefaId: string, status: "pronto" | "pendente"): Promise<ResultadoAcao> {
   const acesso = await exigirAcesso("garcom");
   if (!id.safeParse(tarefaId).success || (status !== "pronto" && status !== "pendente")) return falha("Ticket inválido.");
 

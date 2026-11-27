@@ -8,7 +8,7 @@ import { falha, mensagemErroBanco, type ResultadoAcao, sucesso } from "@/lib/aco
 import { exigirPermissao } from "@/lib/auth/dal";
 import { avisarCliente, avisarMensagem } from "@/lib/avisos-push";
 import { createClient } from "@/lib/supabase/server";
-import { carregarCardapioSalao } from "../../garcom/dados";
+import { carregarCardapioSalao } from "@/modulos/mesas/dados";
 import { id } from "@/lib/validacao";
 
 const FORMAS = ["dinheiro", "pix", "credito", "debito", "outro"] as const;

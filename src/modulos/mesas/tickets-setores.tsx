@@ -11,7 +11,7 @@ import { horaLocal } from "@/lib/tempo";
 import type { Ticket } from "@/lib/tickets-producao";
 import { cn } from "@/lib/utils";
 
-import { marcarTicketPraca } from "../actions";
+import { marcarTicketSetor } from "./actions";
 
 type Props = {
   restauranteId: string;
@@ -83,7 +83,7 @@ function CartaoTicket({ ticket, agora, minha, mostrarPraca }: { ticket: Ticket; 
           type="button"
           className="h-14 w-full text-lg"
           disabled={pendente || aguarda.length > 0}
-          onClick={() => executar(() => marcarTicketPraca(ticket.id, "pronto"))}
+          onClick={() => executar(() => marcarTicketSetor(ticket.id, "pronto"))}
         >
           <Check className="size-5" />
           {aguarda.length > 0 ? `Aguardando ${aguarda.join(" e ")}` : ativos.length === 0 ? "Tirar da lista" : "Retirei — pronto"}
@@ -103,7 +103,7 @@ function LinhaPronto({ ticket, fuso }: { ticket: Ticket; fuso: string }) {
         </span>
         <span className="text-sm text-muted-foreground">pronto às {ticket.prontoEm ? horaLocal(ticket.prontoEm, fuso) : "—"}</span>
       </span>
-      <Button type="button" variant="outline" className="h-11 shrink-0" disabled={pendente} onClick={() => executar(() => marcarTicketPraca(ticket.id, "pendente"))}>
+      <Button type="button" variant="outline" className="h-11 shrink-0" disabled={pendente} onClick={() => executar(() => marcarTicketSetor(ticket.id, "pendente"))}>
         <Undo2 />
         Desfazer
       </Button>

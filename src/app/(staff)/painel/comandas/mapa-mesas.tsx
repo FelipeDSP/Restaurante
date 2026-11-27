@@ -10,7 +10,7 @@ import { NOME_STATUS_MESA } from "@/lib/rotulos";
 import { tempoDesde } from "@/lib/tempo";
 import { cn } from "@/lib/utils";
 
-import type { MesaNoMapa } from "../../garcom/dados";
+import type { MesaNoMapa } from "@/modulos/mesas/dados";
 
 function normalizar(texto: string) {
   return texto.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();

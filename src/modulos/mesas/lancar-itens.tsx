@@ -15,8 +15,8 @@ import { novoId } from "@/lib/id";
 import { useRascunho } from "@/lib/rascunho";
 import { cn } from "@/lib/utils";
 
-import { lancarItens } from "../../../actions";
-import type { CategoriaCardapio, ProdutoCardapio } from "../../../dados";
+import { lancarItens } from "./actions";
+import type { CategoriaCardapio, ProdutoCardapio } from "./dados";
 
 // Uma linha do lançamento: produto + opções escolhidas. Produto sem opções tem uma linha só.
 type Linha = { produtoId: string; adicionais: AdicionalEscolhido[]; quantidade: number; observacao: string; paraViagem: boolean };

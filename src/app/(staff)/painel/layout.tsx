@@ -16,9 +16,9 @@ import { createClient } from "@/lib/supabase/server";
 import { linkAjuda } from "@/lib/contato";
 
 import { sairDoSuporte } from "../../(site)/admin/gestao-actions";
-import { AvisoChamado } from "../garcom/aviso-chamado";
-import { AvisoPedidoCliente } from "../garcom/aviso-pedido-cliente";
-import { AvisoPronto } from "../garcom/aviso-pronto";
+import { AvisoChamado } from "@/modulos/mesas/aviso-chamado";
+import { AvisoPedidoCliente } from "@/modulos/mesas/aviso-pedido-cliente";
+import { AvisoPronto } from "@/modulos/mesas/aviso-pronto";
 import { AvisoAssinatura } from "./aviso-assinatura";
 import { ChamarGarcom } from "./chamar-garcom";
 import { AbasSecao, BarraApp, MenuLateral, TituloGestao, TopoConfiguracao } from "./menu-painel";

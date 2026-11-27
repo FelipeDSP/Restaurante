@@ -30,8 +30,8 @@ import {
   fecharComanda,
   imprimirConta,
   registrarPagamentos,
-} from "../../actions";
-import type { DetalheComanda, ItemComanda, PagamentoComanda } from "../../dados";
+} from "./actions";
+import type { DetalheComanda, ItemComanda, PagamentoComanda } from "./dados";
 
 const MOTIVOS = ["Lançado errado", "Cliente desistiu", "Produto em falta", "Demorou demais"];
 
