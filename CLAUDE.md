@@ -1,51 +1,119 @@
-# Sistema para restaurantes (SaaS white label) — MVP
+# Sistema para restaurantes (SaaS white label)
 
 > Next.js 16: leia também @AGENTS.md (mudanças de API, ex.: `middleware` agora é `proxy`).
+> Por que as coisas são como são (quem pediu, quando, por quê): `docs/decisoes.md`.
+> Deploy e variáveis de ambiente: `docs/deploy.md`.
 
-Este arquivo é o contexto permanente do projeto. Leia antes de qualquer tarefa.
+Este arquivo é o contexto permanente do projeto: **o que vale hoje**. Leia antes de qualquer
+tarefa. Histórico de decisões não entra aqui — vai para `docs/decisoes.md`.
 
 ## O que é
 
-Um SaaS multi-restaurante e white label para espetinhos, hamburguerias e similares. Cada restaurante (tenant) tem sua própria marca, cardápio, mesas e equipe, todos no mesmo sistema e no mesmo banco. O primeiro cliente (cliente zero) é um espetinho/hamburgueria artesanal que vai usar o MVP em uma noite de teste.
+Um SaaS multi-restaurante e white label para espetinhos, hamburguerias e similares. Cada
+restaurante (tenant) tem a sua marca, cardápio, mesas e equipe, todos no mesmo sistema e no mesmo
+banco. O primeiro cliente (cliente zero) é um espetinho/hamburgueria artesanal em Porto Velho, que
+usa o sistema no serviço.
 
-## Escopo do MVP
+Em produção hoje:
 
-Entra:
-1. **Painel (caixa + admin)**: cadastro de cardápio, mesas, bairros de entrega e marca do restaurante; comandas abertas; pedidos de delivery em tempo real; registrar pagamentos; abrir/fechar caixa; resumo da sessão de caixa.
-2. **PWA do garçom**: mapa de mesas, abrir comanda, lançar/editar/cancelar itens (com opções e adicionais), pedir conta, marcar como pago, fechar comanda.
-3. **Site de delivery** (demonstração): cardápio público com a marca do restaurante, carrinho, checkout sem pagamento online, acompanhamento do pedido.
+- **Painel da equipe** (caixa, salão, delivery, cozinha, gestão e configuração), um app só, com
+  barra lateral no computador e abas no rodapé no celular.
+- **Site de delivery** por restaurante, com conta de cliente opcional, cupom, acompanhamento do
+  pedido, avisos por push e conversa com o restaurante.
+- **Pedido pela mesa** pelo QR code (plano Completo).
+- **Cozinha e impressão**: tela da cozinha por setor, app de impressão para Windows (ESC/POS e
+  driver), fila de impressão com reenvio.
+- **Cadastro self-service** (landing, criar conta, criar restaurante), assinatura e cobrança pelo
+  Asaas, e **painel da plataforma** (super admin).
 
-Não entra agora (mas o desenho não pode impedir):
-- Impressão automática, agente local de impressão e leitor de QR code (fase 2).
-- Praças de produção (churrasqueira/cozinha), dependência entre praças e tarefas de produção (fase 2).
-- Pagamento online via Asaas (subcontas + split) e cobrança de assinatura (fase 3).
-- Painel super admin, subdomínio e domínio próprio por restaurante (fase 3).
-- Modo offline do PWA, NFC-e.
+Fora do escopo: modo offline do PWA e NFC-e.
 
 ## Stack
 
 - Next.js (App Router) + TypeScript estrito
-- Tailwind CSS + shadcn/ui
-- Supabase: Postgres, Auth, Realtime, Storage (logos e fotos)
+- Tailwind CSS + shadcn/ui (`@base-ui/react`, `lucide-react`, `sonner`)
+- Supabase: Postgres, Auth, Realtime, Storage (logos, capas, fotos de produto, avatares)
 - `@supabase/ssr` para sessão no servidor
 - Migrações versionadas com Supabase CLI em `supabase/migrations/`
 - Tipos gerados do banco em `src/types/database.ts` (regenerar após cada migração)
-- Deploy em VPS da Hostinger (preferência: Coolify; alternativa: VPS Ubuntu KVM 8 que já roda outros serviços), não na Vercel. Build `output: "standalone"` em container Docker. Não usar recursos exclusivos da Vercel (Edge Config, Vercel KV, Cron da Vercel, etc.).
+- Deploy em VPS da Hostinger com Coolify, **não na Vercel**: imagem Docker montada no GitHub
+  (`.github/workflows/imagem.yml`), build `output: "standalone"`. Não usar recursos exclusivos da
+  Vercel (Edge Config, Vercel KV, Cron da Vercel).
 
-Um único app Next.js com grupos de rotas:
+## Estrutura de pastas
 
 ```
-src/app/
-  (publico)/[slug]/            -> site de delivery do restaurante
-  (publico)/[slug]/pedido/[id] -> acompanhamento do pedido
-  (staff)/login
-  (staff)/painel/...           -> app da equipe (computador: menu lateral; celular: abas no rodapé)
-  (staff)/garcom/...           -> só redireciona endereços antigos para o painel (ações e telas da mesa ficam aqui)
+src/
+  app/
+    (publico)/[slug]/            site de delivery, carrinho, acompanhamento, conta do cliente
+    (publico)/[slug]/mesa/[token]  cardápio e pedido pelo QR code da mesa
+    (site)/                      marca da plataforma: landing, /cadastro, /comecar, /admin
+    (staff)/login, /inicio, /selecionar, /recuperar-senha, /nova-senha, /assinatura, /sem-acesso
+    (staff)/painel/...           o app da equipe
+    (staff)/painel/_inicio/      peças da tela de Início (pasta privada)
+    (staff)/cozinha/             tela cheia da cozinha (tablet/TV)
+    (staff)/garcom/...           só redireciona endereços antigos para o painel
+    api/                         rotas de servidor (agente de impressão, pedidos, webhooks, CEP)
+    pwa/[restauranteId]/         manifest e ícone por restaurante
+    downloads/impressao/         instalador e latest.yml do app de impressão
+  modulos/                       código de staff que mais de uma tela usa (ver src/modulos/README.md)
+    mesas/ cozinha/ delivery/ caixa/ estoque/ assinatura/
+  components/
+    staff/                       peças genéricas do painel (Chave, Stepper, BotaoImprimir, ...)
+    ui/                          shadcn/ui
+    adicionais/                  seletor de opções (site e painel)
+  lib/                           regra de negócio e infraestrutura
+    auth/ supabase/ impressao/
+  types/database.ts              gerado do banco
 ```
 
-O restaurante do site público é resolvido pelo `slug` na URL. No futuro, um middleware vai mapear subdomínio/domínio próprio para o mesmo `slug`, então toda a lógica deve depender do restaurante resolvido, nunca do formato da URL.
+Regras de lugar:
 
-Na área de staff, o restaurante vem da tabela `membros` do usuário logado. Se o usuário pertencer a mais de um restaurante, mostrar seletor; o restaurante ativo fica em cookie, sempre validado contra `membros` no servidor.
+- **`src/app`** tem rota e tela. `page.tsx` monta a tela; a consulta vai no `dados.ts` (da tela ou
+  do módulo) e a escrita no `actions.ts`.
+- **`src/modulos/<assunto>`** é o que mais de uma tela usa. Tela não importa da pasta de outra
+  tela. Nada ali é roteável (fica fora de `src/app`).
+- **Pasta privada `_nome`** dentro de `src/app` para o que só aquela tela usa e polui a raiz.
+- **`src/components/staff`** para peça genérica (botão, chave, formulário); se é do assunto, é
+  módulo.
+- `agente/` (app Electron de impressão) fica fora do build do Next: ignorado no tsconfig, no
+  eslint e no Docker.
+
+O restaurante do site público vem do `slug` na URL. No futuro um proxy vai mapear subdomínio e
+domínio próprio para o mesmo `slug`, então **toda a lógica depende do restaurante resolvido, nunca
+do formato da URL**. Na área de staff o restaurante vem da tabela `membros` do usuário logado; com
+mais de um, há seletor, e o ativo fica em cookie, sempre validado contra `membros` no servidor.
+
+## Navegação do painel (três grupos)
+
+`src/app/(staff)/painel/navegacao.ts` tem três listas. Cada item carrega o próprio ícone, usado no
+menu, nas abas do rodapé e nos cartões de Configurações.
+
+| Grupo | Quando se usa | Itens |
+|---|---|---|
+| **Operação** | durante o serviço | Início, Delivery, Conversas, Mesas, Caixa, Tela da cozinha |
+| **Gestão** | fora do serviço, toda semana | Cardápio (Produtos/Categorias/Adicionais/Cardápios), Estoque, Cupons, Entregadores, Relatórios, Histórico |
+| **Configurações** | ajusta uma vez | Restaurante, Cadastro de mesas (Cadastro/QR code), Setores da cozinha, Impressoras, Equipe (Pessoas/Funções), Assinatura |
+
+- **Computador**: barra lateral com Operação, depois Gestão com título de seção, terminando na
+  porta "Configurações" (`/painel/configuracoes`, os cartões do terceiro grupo).
+- **Celular**: `<BarraApp>` com as áreas de **Operação** em abas no rodapé (até 5; senão 4 +
+  "Mais", que abre o menu completo). Quando não cabe todo mundo, as abas são escolhidas por
+  `PRIORIDADE_ABAS` e mostradas na ordem do menu; o contador do que ficou escondido aparece sobre
+  o "Mais". Quem tem poucas áreas de Operação (ex.: garçom) vê as abas de dentro delas (Mesas,
+  Setores). A barra sai da frente na mesa e no lançamento (`TELA_COM_BARRA_PROPRIA`).
+- Páginas irmãs ficam no mesmo item, como abas (`<AbasSecao>`). Tela de **Configurações** mostra
+  "‹ Configurações / Nome" (`<TopoConfiguracao>`); tela de **Gestão** com abas mostra o nome do
+  grupo (`<TituloGestao>`), e sem abas tem título próprio na página.
+- O cadeado do que o plano não tem (`itensBloqueadosPeloPlano`) aparece no menu para Operação e
+  Gestão, e na tela de Configurações para o resto.
+- Quem só atende mesas não tem Início (`PERMISSOES_INICIO`; `rotaInicial` manda para
+  `/painel/comandas`). Avisos do garçom (`<AvisoPronto>`, `<AvisoChamado>`,
+  `<AvisoPedidoCliente>`) ficam no layout do painel para quem tem `garcom_app`. A tela da cozinha
+  continua separada (`/cozinha`, tela cheia) além de aparecer dentro do painel
+  (`/painel/cozinha`).
+- Manifest do app em `/pwa/[id]/manifest`, `start_url` `/painel`, mesmo `id` de quando era só do
+  garçom (para não duplicar o app instalado).
 
 ## Regras de multi-tenant (não negociáveis)
 
@@ -53,290 +121,382 @@ Na área de staff, o restaurante vem da tabela `membros` do usuário logado. Se 
 - Toda chave primária é `uuid default gen_random_uuid()`. Nunca expor IDs sequenciais.
 - RLS ativado em todas as tabelas. Nenhuma tabela sem policy.
 - Policies usam funções auxiliares `security definer` com `search_path` fixo:
-  - `eh_membro(restaurante_id)` -> o `auth.uid()` é membro ativo do restaurante
-  - `tem_papel(restaurante_id, papeis text[])` -> membro com um dos papéis
+  `eh_membro(restaurante_id)`, `tem_papel(restaurante_id, papeis[])` e
+  `rest_privado.tem_permissao(restaurante_id, permissoes[])`.
 - Índices compostos sempre começam por `restaurante_id`.
 - O frontend nunca envia `restaurante_id` confiando nele para autorização; o banco valida via RLS.
-- Seed de desenvolvimento com **3 restaurantes** para pegar vazamento entre tenants.
+- Seed de desenvolvimento com **3 restaurantes** para pegar vazamento entre tenants
+  (`supabase/tests/isolamento.sql`).
 - Restaurantes não são apagados: `ativo boolean` e `excluido_em timestamptz`.
 
-## Regras de negócio importantes
+## Regras de negócio
+
+**Dinheiro e histórico**
 
 - **Dinheiro em centavos** (`integer`). Nunca `float`. Formatar só na interface (BRL).
-- **Preço congelado no item**: `itens_pedido` guarda `nome_produto` e `preco_unitario` do momento do lançamento.
-- **Nada é apagado**: itens e pedidos são cancelados com `cancelado_em`, `cancelado_por` e `motivo_cancelamento`.
+- **Preço congelado no item**: `itens_pedido` guarda `nome_produto`, `preco_unitario`, o retrato
+  dos `adicionais` e a rota de preparo (`etapas`) do momento do lançamento.
+- **Nada é apagado**: itens e pedidos são cancelados com `cancelado_em`, `cancelado_por` e
+  `motivo_cancelamento`.
 - **Totais calculados no banco** (função/trigger), nunca confiando no valor do cliente.
-- **Pedido de delivery** é criado por uma função RPC `criar_pedido_delivery(...)` `security definer`, chamável pelo usuário anônimo, que busca preços no banco, valida produtos disponíveis, restaurante aberto e bairro atendido, e calcula subtotal, taxa e total.
-- **Status da mesa é derivado**: a mesa está ocupada se existe comanda com status `aberta` ou `conta_pedida`. Não guardar status na tabela `mesas`.
+- **Conta encerrada não muda** (migração `historico_imutavel`): comanda fechada/cancelada e
+  delivery entregue/cancelado não mudam valores, situação nem entregador — para o dono também. O
+  estorno de um delivery entregue continua possível (devolução real), registrado, sem mudar o
+  pedido.
+- **Resumo é por sessão de caixa**, não por dia do calendário (o restaurante pode fechar depois da
+  meia-noite). Datas exibidas no fuso do restaurante (`restaurantes.fuso_horario`, padrão
+  `America/Porto_Velho`). Antes das 5h ainda é a noite anterior (vale também para
+  `produtos.dias`).
+- Número amigável do pedido (`pedidos.numero`) é sequencial por restaurante por sessão de caixa, só
+  para exibição. O ID real é uuid.
+
+**Mesas e comandas**
+
+- **Status da mesa é derivado**: ocupada se existe comanda `aberta` ou `conta_pedida`. Não guardar
+  status em `mesas`.
 - Só pode existir **uma comanda aberta por mesa** (índice único parcial).
-- **Comanda só fecha quitada**: soma dos pagamentos >= total. Exceção futura: fechar com pendência, com permissão.
-- Pagamento registra **quem recebeu** (`registrado_por`) e **forma**. Garçom e caixa podem registrar.
-- **Pagamento nunca passa do que falta**: o trigger trava a comanda (ou o pedido) com `for update` e recusa valor acima do saldo (dois aparelhos cobrando a mesma mesa). O troco do dinheiro não é pagamento. Estorno exige `motivo_estorno`.
-- **Status do delivery só anda para frente** (`recebido` → `em_preparo` → `pronto` → `saiu_entrega` → `entregue`, pulos para frente permitidos depois do aceite; cancelar a qualquer momento). Ao ficar `pronto`/`saiu_entrega`/`entregue`, os tickets pendentes da cozinha são encerrados.
-- **Cliente cancela o delivery só antes do aceite** (migração `cliente_cancela_pedido`, 17/11): "Cancelar pedido" na página de acompanhamento enquanto o status é `recebido` (confirmação no lugar, motivo opcional) → `/api/pedidos/[id]/cancelar` → RPC `cliente_cancelar_pedido` (anon; o id do pedido é a senha; motivo vira "Cancelado pelo cliente: ..."). `pedidos.cancelado_pelo_cliente` só o banco define (trigger `t12_cancelado_pelo_cliente`, pela marca `rest.cancelamento_cliente` da transação). Depois do aceite, só pela conversa. O `<AlertaPedidos>` bipa "O cliente cancelou o delivery nº X"; o acompanhamento mostra "Você cancelou este pedido".
-- Restaurante novo nasce aberto das 18h às 23h todos os dias (padrão da coluna `horarios`); o primeiro bairro cadastrado liga o delivery.
-- **Taxa de entrega**: `restaurantes.taxa_entrega_modo` = `fixa` (padrão de restaurante novo: `taxa_entrega_fixa` para qualquer endereço; o cliente digita o CEP, `/api/cep/[cep]` consulta o ViaCEP pelo servidor e preenche rua/bairro/cidade, tudo editável; o bairro vai como texto em `pedidos.endereco` com `cep`, `cidade`, `uf` e `bairro_id` fica vazio) ou `bairro` (lista `bairros_entrega`, como antes). Configura em Painel › Restaurante › Delivery. **Por enquanto o painel só oferece a taxa fixa** (decisão do cliente em 26/10: "por bairro ainda tem que ser melhor pensado"); o modo `bairro` continua no banco e no checkout, mas sem tela (`/painel/bairros` redireciona). Salvar o formulário do restaurante grava `fixa`. Bairro mostrado em qualquer tela = `bairro.nome` da lista ou `endereco.bairro`. Endereço de outra cidade (pelo CEP) só gera aviso no checkout.
-- **Sangria e suprimento** em `movimentos_caixa` (ligados à sessão aberta pelo banco; só caixa e dono; não se alteram, erro se corrige com o movimento contrário). Entram no esperado da gaveta e no resumo.
-- **Envio seguro**: `criar_pedido_delivery` e `lancar_itens_comanda` recebem a chave do envio (`pedidos.chave_idempotencia`, uuid gerado no aparelho; reenviar o mesmo conteúdo devolve o pedido já criado) e o total que a pessoa viu (preço mudado é recusado com aviso; a mensagem termina com `(precos_mudaram)` ou `(indisponivel)`, que o app usa para recarregar e não mostra).
-- `pedidos.aceito_em`: hora do aceite do delivery (só o banco define); o cronômetro da cozinha conta a partir dela.
-- **Resumo é por sessão de caixa**, não por dia do calendário (o restaurante pode fechar depois da meia-noite). Datas exibidas no fuso do restaurante (`restaurantes.fuso_horario`, padrão `America/Porto_Velho` para o cliente zero).
-- Número amigável do pedido (`numero`) sequencial por restaurante por sessão de caixa, só para exibição. O ID real é uuid.
+- **Comanda só fecha quitada**: soma dos pagamentos >= total.
+- Mesa sem consumo (abriu por engano, tudo cancelado, sem pagamento): "Liberar mesa" **cancela** a
+  comanda vazia (migração `garcom_libera_mesa`); não vira conta de R$ 0 no resumo.
+- A comanda congela `servico_percentual` e `couvert_unitario` ao abrir. `subtotal` + `servico` +
+  `couvert` = `total`. Garçom e caixa tiram ou voltam a cobrar; o banco recusa se o total ficar
+  abaixo do já pago.
+- **Entregue por item**: `itens_pedido.entregue_em`/`entregue_por` (a equipe manda só "entregue" ou
+  null; hora e quem vêm do trigger; só com a comanda aberta). Quando todos os itens com preparo do
+  pedido foram entregues, o trigger deixa os tickets prontos e retirados.
+- Mesa sem garçom: qualquer um assume (`assumirMesa`); trocar depois exige `comandas_gerenciar`.
 
-Já existe (cozinha, fase 1 da impressão):
-- `estacoes` (praças: nome, ordem, ativa) e `produto_etapas` (rota de preparo do produto: praça + ordem; mesma ordem = ao mesmo tempo, ordem maior = depois; sem etapas = não vai para a cozinha). `itens_pedido.etapas` congela a rota no lançamento, como o preço.
-- "Pra viagem": `produtos.para_viagem` (padrão do dono), `itens_pedido.para_viagem` (o garçom pode mudar por item; delivery é sempre true, decidido pelo trigger).
-- `tarefas_producao`: uma por pedido, praça e **etapa** (`ordem` da rota; migração `tickets_por_etapa`, 18/11: o burger que só vai na Chapa sai num ticket próprio e não fica "Aguardando Churrasqueira" junto com outro item do pedido), criada por trigger para cada etapa da rota do item; na tela, o ticket que depende de praça anterior aparece "aguardando" e o Pronto só libera quando ela termina; a equipe só muda `status` (`pendente`|`pronto`), quem e quando vêm do banco. No delivery, a última praça pronta leva o pedido de `em_preparo` para `pronto`.
-- Papel `cozinha` (área `/cozinha`, também aberta a dono e caixa). Tela da cozinha em tempo real, com filtro por praça (`/cozinha?praca=<id>`), som, "pronto/voltar" e impressão pelo navegador (manual ou automática por aparelho).
-- Delivery só aparece na cozinha depois que o caixa aceita (status diferente de `recebido`).
-- Praças sem tela (gordura): o ticket sai no papel e o **garçom** marca a praça como pronta ao retirar o prato, na aba **Praças** (`/painel/comandas/pracas`; no celular do garçom, abas Mesas/Praças no rodapé). Mesmo efeito da tela da cozinha (`marcarTicketPraca` em `garcom/actions.ts`; a RLS já deixa qualquer membro mudar o `status`). Mesas do próprio garçom primeiro (`Ticket.pedido.garcomId`), praça escolhida lembrada no aparelho, "Desfazer" nos prontos recentes. Sem QR code por enquanto (decisão do cliente).
-- **Entregue na mesa**: `tarefas_producao.retirada` (migração `tarefas_retirada`; só vale com o ticket pronto, "Desfazer" apaga). "Retirei" nas Praças marca pronto e entregue (o garçom já está com o prato); na comanda, pedido pronto pela tela da cozinha tem o botão "Entreguei na mesa" (`entregarPedido`). Cada item da comanda mostra Na cozinha → Pronto · levar → Entregue **pelo próprio caminho** (`src/lib/preparo.ts`: os tickets das etapas da rota do item; entregue quando o último deles a ficar pronto foi retirado): o espeto pronto não espera o burger que ainda está na chapa, e o `<AvisoPronto>` avisa "parte do pedido pronto" com os itens. O selo verde "Pronto" do mapa e o aviso "pode levar" (`<AvisoPronto>`) só valem para pronto não entregue.
-- **Entregue por item** (migração `itens_entregues`, pedido do cliente em 28/10: "quer o refri agora e o lanche depois"): `itens_pedido.entregue_em`/`entregue_por` (a equipe manda só "entregue" ou null; hora e quem vêm do trigger; só com a comanda aberta). Na tela da mesa cada item a levar tem "Entreguei" (`entregarItem`; "Ainda não foi entregue" desfaz, no item aberto) e o pedido com mais de um item a levar tem "Entreguei tudo" (`entregarPedido`). Quando todos os itens com preparo do pedido foram entregues, o trigger `t35_entregues` deixa os tickets prontos e retirados (somem da cozinha). Item entregue = `entregue_em` ou ticket retirado ("Retirei" nas Praças).
-- Comanda fechada ou cancelada encerra os tickets pendentes dela (trigger `t25_encerrar_tarefas` em `comandas`), como o delivery já faz; assim nada fica "pendente" para sempre quando ninguém marca.
+**Pagamentos**
 
-Já existe (impressão, fase 2):
-- `impressoras` (rede: IP + porta 9100; windows: nome da impressora USB no Windows; papel 58/80; acentos cp850/cp1252/sem), `estacoes.impressora_id` (praça -> impressora), `imprime_conta` e `imprime_via_delivery`.
-- `agentes_impressao`: computador pareado (app de impressão). Pareia com código de 6 dígitos gerado no painel; depois usa uma chave própria. O banco guarda só hashes; o navegador não lê os hashes (grants por coluna).
-- `fila_impressao`: só referências (tarefa/pedido/comanda/item). Entra por trigger (ticket de praça, delivery aceito, cancelamento depois de impresso) ou RPC (`imprimir_conta`, `imprimir_teste`, `reimprimir`). Falha volta para a fila esperando 10 s x tentativas; na 5ª fica `erro`.
-- O app fala só com `/api/agente/*` (parear, trabalhos, trabalhos/[id], estado). O servidor monta o papel na hora (`src/lib/impressao/tickets.ts`) e converte em ESC/POS (`escpos.ts`); o app só entrega os bytes. Essas rotas usam a chave secreta, sempre filtrando pelo agente autenticado (`autenticarAgente`).
-- Testar sem impressora: `node scripts/impressora-falsa.mjs` (porta 9100) + `node scripts/agente-teste.mjs --servidor http://localhost:3000 --codigo <código do painel>`.
+- Pagamento registra **quem recebeu** (`registrado_por`) e **forma**. Garçom e caixa podem
+  registrar.
+- **Pagamento nunca passa do que falta**: o trigger trava a comanda (ou o pedido) com `for update`
+  e recusa valor acima do saldo (dois aparelhos cobrando a mesma mesa). O troco do dinheiro não é
+  pagamento. Estorno exige `motivo_estorno`.
+- **Pagamento por item** (migração `pagamento_por_item`): `pagamentos.itens`
+  `[{item_id, quantidade}]`; o trigger recusa item já pago, de outra mesa ou acima da quantidade.
+  Estorno libera.
+- **Pagamento combinado**: várias formas num envio; o trigger confere cada parte somando as
+  anteriores e, se passar do saldo, nada é gravado.
+- **Sangria e suprimento** em `movimentos_caixa` (ligados à sessão aberta pelo banco; só caixa e
+  dono; não se alteram — erro se corrige com o movimento contrário). Entram no esperado da gaveta e
+  no resumo.
 
-Já existe (app de impressão, fase 3):
-- `agente/`: app Electron para Windows, fora do build do Next (ignorado no tsconfig, eslint e Docker). Fica na bandeja, abre com o Windows, guarda a chave cifrada (`safeStorage`) e busca a fila a cada 2 s. Sem marca da plataforma; depois de pareado mostra o nome do restaurante.
-- Independente de modelo: `impressoras.modo` = `escpos` (térmica de qualquer marca, pela rede 9100 ou USB via fila RAW do Windows) ou `driver` (só `conexao = windows`: o app desenha o ticket em HTML e imprime pelo driver do Windows, serve para qualquer impressora instalada). No modo driver `/api/agente/trabalhos` manda o `documento` em vez dos bytes.
-- `src/nucleo.js` não depende do Electron (`npm run teste` em `agente/` usa servidor e impressora falsos). `npm start` abre em desenvolvimento; `--servidor=URL --parear=CODIGO` pareia pela linha de comando (use `--nome=valor`).
-- `npm run dist` gera `agente/dist/Impressao-Setup-<versão>.exe`, `.blockmap` e `latest.yml`. Esses arquivos são servidos por `src/app/downloads/impressao/[arquivo]/route.ts` a partir de `PASTA_DOWNLOADS/impressao` (padrão `./downloads/impressao`, fora do git). `/downloads/impressao/instalador` redireciona para a versão do `latest.yml` (link do painel). O app se atualiza sozinho lendo `<servidor>/downloads/impressao/latest.yml`; para publicar, suba a versão em `agente/package.json`, rode `npm run dist` e copie os 3 arquivos.
-- Impressora comum (jato de tinta/laser): conexão "Instalada no Windows", modo driver e papel **Folha A4** (`impressoras.largura = 210`; 58/80 = bobina). O app desenha o ticket numa coluna centralizada com letra maior e manda na página A4, sem a janela de imprimir (`webContents.print` com `silent`). A4 só no modo driver (constraint `impressoras_a4_so_driver`). Testado em 14/10 numa HP Smart Tank 790 (teste e via do delivery). O nome do trabalho na fila do Windows é a linha em destaque do ticket.
-- **Via do cliente ao fechar a mesa** (migração `via_ao_fechar`, pedido do cliente em 29/10): `impressoras.imprime_ao_fechar` (chip "Via do cliente ao fechar a mesa", desligado por padrão); o trigger `t26_via_ao_fechar` em `comandas` põe um trabalho `conta` na fila quando a mesa fecha. Com a comanda fechada, o papel sai "CONTA PAGA · MESA X" com os itens, total e o pago por forma.
-- **Assistente de impressora** (pedido do cliente em 29/10: dono leigo não sabe IP nem nome do Windows): em Impressoras, as impressoras que o app informou (`agentes_impressao.impressoras_windows`, sem fax/PDF/OneNote/acesso remoto) viram cartões; a pessoa toca numa, diz "De cupom" (bobina 80/58: modo `escpos`) ou "Comum" (A4: modo `driver`), com palpite pelo nome, e `configurarImpressora` cadastra ligada àquele computador, já com conta, via do delivery e todos os setores marcados na primeira impressora, e manda o teste. "Saiu certinho / Não saiu nada (passa para o driver) / Letras estranhas (troca os acentos)" → `ajustarPeloTeste`. IP e nome digitado ficam em "Não está na lista" (formulário completo). Sem impressora, o assistente já abre. "Primeiros passos" do dono (`painel/primeiros-passos.tsx`, pedido do cliente em 04/11) tem só o essencial: cardápio, delivery, mesas (se o plano tem) e abrir o caixa; logo, equipe e impressora são opcionais e ficam no menu.
-- Instalador sem assinatura de código: o Windows mostra "O Windows protegeu o computador" (Mais informações → Executar assim mesmo). O painel explica isso.
+**Delivery**
 
-## Produto (marca da plataforma)
+- **Pedido criado por RPC** `criar_pedido_delivery(...)` `security definer`, chamável pelo usuário
+  anônimo: busca preços no banco, valida produtos disponíveis, restaurante aberto e bairro
+  atendido, e calcula subtotal, taxa e total.
+- **Envio seguro**: `criar_pedido_delivery`, `lancar_itens_comanda` e `pedir_pela_mesa` recebem a
+  chave do envio (`chave_idempotencia`, uuid do aparelho) e o total que a pessoa viu. Preço mudado
+  é recusado; a mensagem termina com `(precos_mudaram)`, `(indisponivel)` ou `(cupom)`, que o app
+  usa para recarregar e não mostra.
+- **Status só anda para frente** (`recebido` → `em_preparo` → `pronto` → `saiu_entrega` →
+  `entregue`, pulos para frente permitidos depois do aceite; cancelar a qualquer momento). Ao ficar
+  `pronto`/`saiu_entrega`/`entregue`, os tickets pendentes da cozinha são encerrados.
+- **Cliente cancela só antes do aceite** (migração `cliente_cancela_pedido`): enquanto o status é
+  `recebido`, pela página de acompanhamento → `/api/pedidos/[id]/cancelar` → RPC
+  `cliente_cancelar_pedido` (anon; o id do pedido é a senha). `pedidos.cancelado_pelo_cliente` só o
+  banco define.
+- `pedidos.aceito_em`: hora do aceite (só o banco define); o cronômetro da cozinha conta dela.
+- **Taxa de entrega**: `restaurantes.taxa_entrega_modo` = `fixa` (padrão; `taxa_entrega_fixa` para
+  qualquer endereço, cliente digita o CEP e `/api/cep/[cep]` consulta o ViaCEP pelo servidor) ou
+  `bairro` (lista `bairros_entrega`). **O painel só oferece a taxa fixa**: o modo `bairro` continua
+  no banco e no checkout, mas sem tela (`/painel/bairros` redireciona). Bairro mostrado em qualquer
+  tela = `bairro.nome` da lista ou `endereco.bairro`.
+- **Pausar o delivery** (`restaurantes.aceita_delivery`) é controle de serviço, não campo de
+  formulário: `<ChaveDelivery>` no topo do quadro do Delivery e no "Precisa de você" do Início,
+  para quem tem a permissão `restaurante`.
+- Restaurante novo nasce aberto das 18h às 23h todos os dias (padrão de `horarios`); o primeiro
+  bairro cadastrado liga o delivery.
+- **Editar pedido em andamento**: só pela RPC `editar_pedido_delivery` (marca a transação com
+  `rest.edicao_pedido`; fora dela os triggers travam os campos). Cada mudança vira linha em
+  `pedidos_alteracoes`, com o selo "Editado" nos detalhes.
+- **Cupom**: `cupons` (percentual sobre itens, valor em centavos ou frete grátis; pedido mínimo,
+  janela, limite de usos, um por cliente pelo telefone). `pedidos.desconto` é recalculado pelo
+  trigger; total = subtotal + taxa − desconto. O "vendido" dos relatórios já vem sem ele, com
+  `descontos` à parte.
+- **Entregadores**: `entregadores` (`recebe_taxa` ou `valor_por_entrega`). `pedidos.entregador_id`
+  só dono/caixa mudam; `valor_entregador` vem do cadastro pelo trigger. Acerto no resumo do caixa e
+  nos relatórios. Pedido cancelado não conta.
+- **Conversa** (`pedidos_mensagens`): aberta enquanto o pedido anda e até 24 h depois de
+  entregue/cancelado (`pedidos.finalizado_em`, só o banco define). Só quem tem `delivery` lê;
+  escrever só pelas RPCs. Painel › Conversas, com o cartão do pedido ao lado.
 
-- Grupo `src/app/(site)/`: landing (`/`), `/cadastro` (conta do dono) e `/comecar` (cria o restaurante). Só aqui aparece a marca **uau foods** (cores e fontes `uau-*` do `globals.css`).
-- Fluxo: `/cadastro` → (confirmação de e-mail opcional, via `/auth/confirmar`) → `/comecar` → `/painel` com "Primeiros passos" e aviso de teste.
-- No painel, a assinatura aparece só para o dono e sem citar a marca da plataforma.
-- Contato (vendas e suporte, mesmo número) só em `src/lib/contato.ts` (`linkWhatsapp`, `linkAjuda`). Landing: telefone clicável, "Suporte" no rodapé e botão flutuante do WhatsApp. Painel e cozinha: "Ajuda pelo WhatsApp" no menu do usuário (mensagem já com nome e slug do restaurante; sem citar a marca).
+**Cozinha e preparo**
+
+- `estacoes` são os **setores** (nome, ordem, ativa — na interface sempre "setor") e
+  `produto_etapas` é a rota de preparo do produto (setor + ordem; mesma ordem = ao mesmo tempo,
+  ordem maior = depois; sem etapas = não vai para a cozinha).
+- `tarefas_producao`: uma por pedido, setor e **etapa** (migração `tickets_por_etapa`), criada por
+  trigger. O ticket que depende de setor anterior aparece "aguardando" e o Pronto só libera quando
+  ele termina. A equipe só muda `status` (`pendente`|`pronto`); quem e quando vêm do banco. No
+  delivery, o último setor pronto leva o pedido de `em_preparo` para `pronto`.
+- Setor sem tela: o ticket sai no papel e o **garçom** marca na aba **Setores**
+  (`/painel/comandas/pracas`). `tarefas_producao.retirada` registra "entreguei na mesa"; "Retirei"
+  marca pronto e entregue de uma vez.
+- Cada item da comanda anda pelo **próprio caminho** (`src/lib/preparo.ts`): Na cozinha → Pronto ·
+  levar → Entregue, pelos tickets das etapas da rota dele.
+- Comanda fechada ou cancelada encerra os tickets pendentes dela (trigger `t25_encerrar_tarefas`).
+- Delivery só aparece na cozinha depois do aceite.
+- "Pra viagem": `produtos.para_viagem` (padrão do dono), `itens_pedido.para_viagem` (o garçom muda
+  por item; delivery é sempre true, decidido pelo trigger).
+
+**Cardápio, adicionais e estoque**
+
+- `cardapios` (nome, `dias`, `abre`, `fecha` — `fecha <= abre` cruza a meia-noite —, ativo, ordem) e
+  `cardapios_produtos`. Produto **sem cardápio** aparece sempre; **com cardápio**, só nas janelas
+  dele. Cardápio sem produto não conta como "o de agora".
+- `produtos.dias` é o dia da semana (prato do dia que repete), pelo **dia do serviço**.
+- O filtro de cardápio vale **para o cliente** (RLS de `produtos`, `cardapio_salao_publico` e o
+  trigger do item). **A equipe nunca é impedida**: o que é de outro horário desce para o fim da
+  categoria com o aviso "só no cardápio Almoço" / "só qua" (`src/lib/cardapios.ts`).
+- `pedidos.cardapio_id`: o cardápio que valia quando o pedido entrou (só o banco define). Os
+  relatórios mostram "Por cardápio" quando há mais de um. **Não existe preço por cardápio**:
+  executivo e à la carte são dois produtos.
+- `grupos_adicionais` / `adicionais` / `produtos_grupos_adicionais`: um grupo serve vários
+  produtos. Quem lança manda só os ids das opções; o trigger valida (opção do produto, disponível,
+  mínimo/máximo do grupo) e monta o retrato em `itens_pedido.adicionais`, com a soma em
+  `preco_adicionais`. Total do item = (preco_unitario + preco_adicionais) × quantidade. Opção não
+  muda depois de lançada: cancela e lança de novo.
+- **Estoque, um modelo só**: `estoque_itens` é o que se conta; `produto_insumos` é a ficha do
+  produto. O **saldo vem do extrato** (`estoque_movimentos`, imutável): entrada, baixa e contagem
+  só pelas RPCs `movimentar_estoque` e `ajustar_estoque`, que travam a linha do item. O app não tem
+  insert em `estoque_movimentos`.
+- Venda baixa no lançamento e o cancelamento **devolve exatamente o que saiu**
+  (`rest_privado.estoque_devolver`, uma vez só).
+- Faltou insumo, o produto some do cardápio **do cliente** (entra em
+  `rest_privado.produto_no_cardapio`, a mesma função do horário e do dia) e volta sozinho quando o
+  estoque é reposto. **A equipe continua lançando**; saldo negativo aparece em vermelho.
+- O caminho simples é a caixa "Controlar estoque deste produto" no formulário do produto
+  (`definirEstoqueDoProduto`): cria o item com o nome do produto e a ficha de 1 por venda. O bloco
+  de ingredientes só aparece no produto que já usa vários insumos.
+
+**Pedido pela mesa (QR code)**
+
+- Opcional: `restaurantes.pedido_mesa_qr` ("Clientes pedem pelo celular", padrão desligado), ligado
+  em Cadastro de mesas › QR code e no mapa de Mesas; exige a permissão `restaurante` e o módulo
+  `qr`. Desligado ou caixa fechado, o QR só mostra o cardápio.
+- Um QR por mesa: `mesas.qr_token` (uuid; "Trocar código" invalida o impresso). Endereço
+  `/[slug]/mesa/[token]`, conferido contra o restaurante do slug.
+- `pedir_pela_mesa(token, itens, lote, total)` (security definer, anon) vai **direto para a comanda
+  e para a cozinha**, com as mesmas regras do lançamento do garçom. Mesa livre abre sozinha, sem
+  garçom. Até 8 pedidos do cliente por mesa em 10 min (+ limite por IP). Pedido do cliente =
+  origem `mesa` com `criado_por` nulo.
+- `itens_pedido.servir_com_comida` (migração `servir_com_comida`): item sem rota, de mesa, que
+  espera a comida.
+- `pedidos.visto_em`/`visto_por` pela RPC `marcar_pedido_visto`; o aviso some nos outros aparelhos.
 
 ## Papéis, funções e permissões
 
-- `dono` (`membros.papel = 'dono'`): tudo, sempre. Equipe (Pessoas e Funções) e Assinatura são só dele.
-- **O dono não é impedido** (decisão do cliente em 27/10): o que ele quer fazer, faz. Fecha o caixa com mesa aberta ou delivery em andamento (aviso mostra o que fica; passa para o próximo caixa; migração `dono_fecha_caixa`). No quadro do delivery, qualquer um com `delivery` marca Pronto mesmo com praça pendente (o banco encerra os tickets). Trava só para o resto da equipe ou para manter o dinheiro certo.
-- Resto da equipe (`papel = 'equipe'`; `caixa`/`garcom`/`cozinha` ficam em cadastros antigos, sem efeito): vale a **função** (`membros.funcao_id` → `funcoes`, por restaurante) mais o ajuste da pessoa: `permissoes_extras` (dadas só a ela) e `permissoes_removidas` (tiradas só dela). Permissões = (da função + extras) − removidas.
-- Todo restaurante nasce com as funções Caixa, Garçom e Cozinha (`funcoes.padrao`, trigger em `restaurantes`), iguais ao que os papéis faziam; o dono edita e cria outras (ex.: Gerente) em Painel › Equipe › Funções. Função com gente não é excluída.
-- Permissões (lista em `src/lib/auth/papeis.ts` e `rest_privado.permissoes_validas()`):
-  - Operação: `caixa_operar` (abrir/fechar, sangria/suprimento; ver e testar impressoras), `caixa_estornar`, `delivery` (andamento, edição, entregador, clientes), `comandas_painel` (Comandas no painel), `comandas_gerenciar` (trocar garçom, cancelar comanda, abrir mesa em nome de outro), `garcom_app`, `cozinha_tela`.
-  - Gestão: `relatorios`, `cardapio` (produtos, categorias, adicionais, fotos), `mesas`, `cupons`, `entregadores`, `impressao` (setores, impressoras, computadores), `restaurante` (dados, horários, delivery, bairros, logo).
-- Banco: `rest_privado.tem_permissao(restaurante, permissoes[])` em políticas e funções (migração `permissoes`); `permissoes_membro(membro)` faz a conta. App: `Vinculo.permissoes`/`funcao` (`obterVinculos`), `exigirPermissao(area, ...permissoes)` e `temPermissao()` (`src/lib/auth/dal.ts`); menu e abas por permissão (`itensDoMenu` em `painel/navegacao.ts`). Painel abre com qualquer permissão que não seja só `garcom_app`/`cozinha_tela`/`comandas_gerenciar`.
+- `dono` (`membros.papel = 'dono'`): tudo, sempre. Equipe e Assinatura são só dele.
+- **O dono não é impedido**: o que ele quer fazer, faz (fecha o caixa com mesa aberta ou delivery em
+  andamento, com aviso do que fica; migração `dono_fecha_caixa`). Trava só para o resto da equipe
+  ou para manter o dinheiro certo.
+- Resto da equipe (`papel = 'equipe'`): vale a **função** (`membros.funcao_id` → `funcoes`, por
+  restaurante) mais o ajuste da pessoa (`permissoes_extras`, `permissoes_removidas`). Permissões =
+  (da função + extras) − removidas. Os papéis `caixa`/`garcom`/`cozinha` ficam em cadastros
+  antigos, sem efeito.
+- Todo restaurante nasce com Caixa, Garçom e Cozinha (`funcoes.padrao`, trigger em `restaurantes`);
+  o dono edita e cria outras em Configurações › Equipe › Funções. Função com gente não é excluída.
+- Permissões (`src/lib/auth/papeis.ts` e `rest_privado.permissoes_validas()`):
+  - Operação: `caixa_operar` (abrir/fechar, sangria/suprimento; ver e testar impressoras),
+    `caixa_estornar`, `delivery` (andamento, edição, entregador, clientes, conversas),
+    `comandas_painel`, `comandas_gerenciar`, `garcom_app`, `cozinha_tela`.
+  - Gestão: `relatorios`, `cardapio`, `mesas`, `estoque`, `cupons`, `entregadores`, `impressao`,
+    `restaurante`.
+- Banco: `rest_privado.tem_permissao(restaurante, permissoes[])` em políticas e funções;
+  `permissoes_membro(membro)` faz a conta. App: `Vinculo.permissoes`/`funcao` (`obterVinculos`),
+  `exigirPermissao(area, ...permissoes)`, `exigirAlgumaPermissao` e `temPermissao()`
+  (`src/lib/auth/dal.ts`). O painel abre com qualquer permissão que não seja só
+  `garcom_app`/`cozinha_tela`/`comandas_gerenciar`.
+- **O plano bloqueia de verdade**: `rest_privado.permissoes_membro` = (permissões da pessoa) ∩
+  `permissoes_do_plano(restaurante)`, então vale em todas as políticas e para o dono também. QR por
+  `plano_tem_qr`. App: `meus_planos()` em `obterVinculos` (`Vinculo.plano`).
 - "Chamar garçom" vai para quem tem `garcom_app` (e não é dono).
 
-## Banco de dados (MVP)
+## Banco de dados
 
 Global:
-- `restaurantes`: id, slug (único), nome, logo_url, cor_primaria, cor_secundaria, telefone, whatsapp, endereco (jsonb), fuso_horario, horarios (jsonb por dia da semana), aceita_delivery, pedido_minimo, tempo_estimado_entrega_min, ativo, excluido_em, criado_em
-- `membros`: id, restaurante_id, user_id (auth.users), nome, papel (`dono`|`caixa`|`garcom`), ativo, criado_em. Único (restaurante_id, user_id)
 
-Por restaurante:
-- `categorias`: id, restaurante_id, nome, ordem, ativa
-- `produtos`: id, restaurante_id, categoria_id, nome, descricao, preco (centavos), foto_url, disponivel, disponivel_delivery, dias (dias da semana; null = todos), ordem, criado_em
-- `mesas`: id, restaurante_id, numero (texto, ex. "5" ou "Varanda 2"), ativa, ordem. Único (restaurante_id, numero)
-- `bairros_entrega`: id, restaurante_id, nome, taxa (centavos), ativo
-- `caixa_sessoes`: id, restaurante_id, aberta_por, aberta_em, valor_inicial, fechada_por, fechada_em, valor_contado, observacao. No máximo uma aberta por restaurante
-- `comandas`: id, restaurante_id, mesa_id, garcom_id (membros), caixa_sessao_id, status (`aberta`|`conta_pedida`|`fechada`|`cancelada`), pessoas, aberta_em, fechada_em, total (calculado)
-- `pedidos`: id, restaurante_id, numero, cardapio_id (cardápio que valia na hora, só o banco define), origem (`mesa`|`delivery`|`balcao`), comanda_id (null fora de mesa), caixa_sessao_id, status (`recebido`|`em_preparo`|`pronto`|`saiu_entrega`|`entregue`|`cancelado`), cliente_nome, cliente_telefone, endereco (jsonb), bairro_id, taxa_entrega, forma_pagamento_prevista, troco_para, observacao, subtotal, total, criado_por (null no delivery), criado_em, cancelado_em, cancelado_por, motivo_cancelamento
-- `itens_pedido`: id, restaurante_id, pedido_id, produto_id, nome_produto, preco_unitario, quantidade, observacao, total, criado_em, cancelado_em, cancelado_por, motivo_cancelamento
-- `pagamentos`: id, restaurante_id, comanda_id ou pedido_id (exatamente um), caixa_sessao_id, valor, forma (`dinheiro`|`pix`|`credito`|`debito`|`outro`), registrado_por, criado_em, estornado_em, estornado_por
+- `restaurantes`: id, slug (único), nome, logo_url, capa_url, descricao, instagram, facebook,
+  cor_primaria, cor_secundaria, telefone, whatsapp, endereco (jsonb), fuso_horario, horarios (jsonb
+  por dia), aceita_delivery, pedido_minimo, tempo_estimado_entrega_min, taxa_entrega_modo,
+  taxa_entrega_fixa, servico_percentual, couvert_valor, couvert_dias, pedido_mesa_qr, ativo,
+  excluido_em, criado_em
+- `membros`: id, restaurante_id, user_id (auth.users), nome, papel (`dono`|`equipe`), funcao_id,
+  permissoes_extras, permissoes_removidas, foto_url, telefone, ativo, criado_em. Único
+  (restaurante_id, user_id)
+- `funcoes`: id, restaurante_id, nome, permissoes, padrao (`caixa`|`garcom`|`cozinha`|null)
+- `assinaturas`: id, restaurante_id (único), plano, status
+  (`teste`|`ativa`|`atrasada`|`cancelada`|`cortesia`), teste_termina_em, periodo_termina_em,
+  provedor, provedor_cliente_id, provedor_assinatura_id, fatura_url, modulos_liberados,
+  modulos_bloqueados. Criada por trigger com 14 dias de teste; só o dono lê; ninguém escreve pelo
+  app.
 
-Na fase 3, `configuracoes_pagamento` (subconta Asaas), `planos`, `dominios`.
+Por restaurante: `categorias`, `produtos` (preco em centavos, disponivel, disponivel_delivery,
+dias, para_viagem), `cardapios`, `cardapios_produtos`, `grupos_adicionais`, `adicionais`,
+`produtos_grupos_adicionais`, `mesas` (numero texto, qr_token), `bairros_entrega`, `cupons`,
+`entregadores`, `estacoes`, `produto_etapas`, `caixa_sessoes`, `movimentos_caixa`, `comandas`,
+`pedidos`, `itens_pedido`, `pagamentos`, `tarefas_producao`, `pedidos_alteracoes`,
+`pedidos_mensagens`, `pedidos_avisos`, `chamados_garcom`, `clientes`, `clientes_enderecos`,
+`estoque_itens`, `produto_insumos`, `estoque_movimentos`, `impressoras`, `agentes_impressao`,
+`fila_impressao`.
 
-Já existe (cadastro self-service):
-- `assinaturas`: id, restaurante_id (único), plano (`delivery`|`presencial`|`avancado`|`completo`), status (`teste`|`ativa`|`atrasada`|`cancelada`|`cortesia`), teste_termina_em, periodo_termina_em, provedor (`asaas`), provedor_assinatura_id. Criada por trigger com 14 dias de teste a cada restaurante novo; só o dono lê; ninguém escreve pelo app (a cobrança pelo Asaas atualiza pelo servidor e pelo webhook).
-- RPCs `criar_meu_restaurante(...)` (usuário logado vira dono; limite de 3 por conta) e `slug_disponivel(slug)`.
-- Endereços reservados em `rest_privado.slug_reservado()`: ao criar uma rota nova no primeiro nível do app (`/algo`), acrescentar o nome lá numa migração.
-- **Planos reais** (documento de marketing, 29/10; `src/lib/planos.ts`, todos sem limite de usuários e de pedidos): **Delivery** R$ 99,90 (delivery, caixa, cardápio, cozinha, impressão, relatórios, cupons, entregadores); **Delivery + Presencial** R$ 149,90 (+ mesas pelo caixa: `comandas_painel`, `comandas_gerenciar`, `mesas`); **Avançado** R$ 199,90 (+ app do garçom: `garcom_app`); **Completo** R$ 249,90 (+ pedido pelo QR da mesa). Teste grátis: tudo liberado.
-- O plano **bloqueia de verdade** (migração `planos`): `rest_privado.permissoes_membro` = (permissões da pessoa) ∩ `permissoes_do_plano(restaurante)`, então vale em todas as políticas/funções e para o dono também; QR por `plano_tem_qr` (em `mesa_por_qr` e `pedir_pela_mesa`). Abrir mesa exige `comandas_painel`/`garcom_app` (trigger de `comandas`). App: `meus_planos()` em `obterVinculos` (`Vinculo.plano`, permissões já filtradas); o dono vê no menu, com cadeado, o que o plano não tem (`itensBloqueadosPeloPlano`, leva à Assinatura); a página do QR mostra "Ver planos" fora do Completo.
+Esquema `rest_privado` (fora da API): `administradores`, `admin_sessoes`, `admin_aparelhos`,
+`admin_registros`, `admin_notas`, `cobranca_eventos`, `tentativas_login` e as funções auxiliares.
 
-Já existe (cobrança da assinatura pelo Asaas, migração `cobranca_asaas`):
-- Painel › Assinatura (só o dono): "Assinar"/"Trocar para este plano" → `assinarPlano` (`painel/assinatura/actions.ts`, chave secreta depois de `exigirDono`): na primeira vez pede CPF/CNPJ (validado em `cpfCnpjValido`), cria o cliente e a assinatura mensal no Asaas (`billingType UNDEFINED`: Pix, boleto ou cartão, o cliente escolhe na fatura; no teste, a 1ª cobrança vence no fim do teste) e abre a fatura. Trocar de plano muda o valor no Asaas (inclusive da fatura em aberto) e o plano vale na hora.
-- `assinaturas.provedor = 'asaas'`, `provedor_cliente_id`, `provedor_assinatura_id`, `fatura_url` (botão "Pagar fatura"). Ninguém escreve pela API: o servidor grava com a chave secreta e os avisos do Asaas chegam em `/api/asaas/webhook` (token no cabeçalho `asaas-access-token`, comparado com `ASAAS_WEBHOOK_TOKEN`) → RPC `processar_evento_asaas` (só `service_role`; cada evento uma vez em `rest_privado.cobranca_eventos`): pago → `ativa` até o próximo vencimento; vencido → `atrasada` (só avisa o dono, não bloqueia); cobrança criada → guarda o link; assinatura removida → `cancelada`. Cortesia não muda.
-- Cliente da API em `src/lib/asaas.ts` (`ASAAS_API_KEY`, `ASAAS_AMBIENTE` sandbox|producao, User-Agent obrigatório). Configuração em `docs/deploy.md`.
+Detalhes de colunas estão em `src/types/database.ts` (gerado) e nas migrações.
 
-- **Falta de pagamento suspende** (migração `suspensao_pagamento`, decisão do cliente em 03/11): `rest_privado.restaurante_suspenso` = teste grátis acabado (na hora, sem tolerância: migração `teste_sem_tolerancia`) ou `atrasada`/`cancelada` 5 dias depois de `coalesce(periodo_termina_em, teste_termina_em)` (cortesia e ativa nunca; a ativa vira atrasada pelo aviso do Asaas). Suspenso: `modulos_do_restaurante` e `permissoes_do_plano` vazios (vale em todas as políticas, dono inclusive), trigger `t00_suspenso` recusa pedido novo, `consultar_disponibilidade_delivery` responde `restaurante_indisponivel`. O app recebe `suspenso` em `meus_planos()` (`Vinculo.plano.suspenso`): `exigirAcesso`/`exigirAlgumaPermissao` mandam para `/assinatura` (dono: aviso + planos/fatura com `<ConteudoAssinatura>`; equipe: "avise o responsável"); `assinarPlano` usa `exigirDonoParaPagar`. A faixa do dono avisa "O acesso será suspenso em N dias" (`Assinatura.diasParaSuspender`, `DIAS_TOLERANCIA` em `src/lib/assinatura.ts`). Pagou: o vencimento anda e libera na hora. O super admin libera mudando a assinatura (ex.: cortesia ou nova data).
+**Projeto Supabase compartilhado (atenção):** durante o desenvolvimento o projeto também contém
+outro sistema ("formacao salmistas"). Nunca alterar, renomear ou apagar tabelas, funções,
+triggers, buckets ou policies que já existiam (inventário em `docs/supabase-existente.md`).
+Buckets deste sistema têm prefixo `rest-` (`rest-logos`, `rest-capas`, `rest-produtos`,
+`rest-avatares`). Tudo deste sistema vem de migrações em `supabase/migrations/`.
 
-Já existe (histórico e contas imutáveis, pedido do cliente em 04/11: "o cliente poderia alegar que o restaurante editou o pedido depois"):
-- Painel › **Histórico** (`/painel/historico`, permissão `caixa_operar` ou `relatorios`): comandas fechadas/canceladas e deliveries entregues/cancelados por período (hoje, ontem, 7/30 dias ou datas; até 92 dias, 300 por tipo), filtro Mesas/Delivery e busca (mesa, nº, cliente, garçom). Cada um abre só leitura em `/painel/historico/comanda/[id]` e `/painel/historico/pedido/[id]`: itens por lançamento (quem lançou e a hora), cancelados riscados com quem e o motivo, conta, pagamentos com quem recebeu, estornos com quem/quando/motivo; no delivery, cliente, endereço, entregador, linha do tempo e as edições feitas antes de terminar. "Imprimir ou salvar PDF" pelo navegador. Nomes da equipe resolvidos em `historico/dados.ts` (`nomesDaEquipe`).
-- **Conta encerrada não muda** (migração `historico_imutavel`): gatilhos `t01_encerrada_fixa` (comandas: pessoas, serviço, couvert, garçom, valores, situação), `t01_comanda_encerrada` (itens de comanda encerrada: nada) e `t01_finalizado_fixo` (delivery entregue/cancelado não muda situação, entregador nem valores; pedido de comanda encerrada não é cancelado). Vale para o dono também. Já existia: não lança, não cancela item, não estorna pagamento de comanda fechada, não reabre. O estorno de um delivery entregue continua possível (devolução real), registrado, sem mudar o pedido.
-
-Já existe (importar produtos por planilha, pedido do cliente em 30/10):
-- Painel › Cardápio › Produtos › "Importar planilha" (`importar-produtos.tsx`): "Baixar exemplo" (planilha de mentira com categoria repetida em branco) e "Baixar cardápio atual" em CSV para o Excel em português; sobe .xlsx ou .csv, lido no navegador sem biblioteca (`src/lib/planilha.ts`: zip/XML do .xlsx, CSV com ";", "," ou tab, UTF-8 ou Windows-1252; preço "25,90", "R$ 1.234,56" ou número do Excel). Colunas pelo título (Categoria, Produto, Descrição, Preço); categoria em branco repete a de cima. Prévia por linha (Novo, Atualiza com preço antigo riscado, Já está igual, erro que fica de fora) antes de gravar.
-- `importarProdutos` (`importar-actions.ts`, permissão `cardapio`, até 1000 linhas): cria categorias e produtos novos no fim da lista; produto com o mesmo nome (sem diferença de maiúsculas/espaços) só tem preço e descrição atualizados (descrição vazia na planilha mantém a atual). Nada é apagado.
-
-Já existe (cardápios por horário e prato do dia, pedido do cliente em 24/11):
-- **Dois cardápios no mesmo restaurante** (almoço e janta): `cardapios` (nome, `dias` da semana, `abre`, `fecha` — `fecha <= abre` cruza a meia-noite, como `restaurantes.horarios` —, ativo, ordem) e `cardapios_produtos` (N:N com produtos). Painel › Cardápio › **Cardápios** (`/painel/cardapios`, permissão `cardapio`): lista com "Valendo agora" e a ficha `/painel/cardapios/[id]` escolhe os produtos por categoria ("Marcar todos"). No produto, "Em que horário aparece" só aparece para quem tem cardápio cadastrado.
-- Duas perguntas, dois campos: **cardápio = a que horas** aparece; **`produtos.dias` = em que dias da semana** (prato do dia que repete toda semana: feijoada só na quarta; "Só em alguns dias da semana" no produto, escondido para quem não usa). Não existe calendário de cardápio rotativo (decisão de 24/11: o que troca toda noite, como o acompanhamento do dia, continua sendo opção de adicional, que congela no item e sai impressa).
-- Regras: produto **sem cardápio** (ou só com cardápio desligado) aparece sempre — todo restaurante de antes continua igual; produto **com cardápio** aparece só nas janelas dele (quem põe os executivos no Almoço não precisa criar a Janta para eles sumirem de noite); cardápio sem produto não conta como "o de agora"; `dias` vale pelo **dia do serviço** (antes das 5h ainda é a noite anterior, igual ao resumo por sessão de caixa).
-- O filtro vale **para o cliente**: RLS de `produtos` (anon e cliente logado), `cardapio_salao_publico` (QR da mesa) e o trigger do item, que recusa quem não é membro com `(indisponivel)` no fim da mensagem (o site recarrega o cardápio). **A equipe nunca é impedida**: no lançamento o que é de outro horário desce para o fim da categoria com o aviso "só no cardápio Almoço" / "só qua" (`foraDoCardapio` em `src/lib/cardapios.ts`, rótulo vindo de `cardapio_agora()`; a conta de horário fica só no banco, em `rest_privado.cardapios_agora`/`produto_no_cardapio`).
-- `pedidos.cardapio_id`: o cardápio que estava valendo quando o pedido entrou (só o banco define, trigger `t13_cardapio`; mais de um na mesma hora = o primeiro da ordem). Relatórios mostram "Por cardápio" (RPC `vendas_por_cardapio`) quando há mais de um — almoço × janta. Preço por cardápio não existe: executivo e à la carte são dois produtos (decisão de 24/11, para não mexer no congelamento de preço).
-
-Já existe (controle de estoque, pedido do cliente em 24/11; módulo do plano **Avançado**):
-- **Um modelo só**: o que se conta é o **item de estoque** (`estoque_itens`: nome, unidade `un/kg/g/l/ml`, saldo, mínimo, ativo) e o produto consome itens pela ficha (`produto_insumos`: produto + item + quantidade). "Estoque por produto" é a ficha de 1 para 1 (o produto "Coca lata" consome 1 un do item "Coca lata"); ficha técnica é a mesma coisa com vários itens. Não existem duas contabilidades.
-- **O saldo vem do extrato**, nunca do app: `estoque_movimentos` (quantidade com sinal, motivo `compra|venda|perda|ajuste|devolucao`, `item_pedido_id`, `custo_total` em centavos, `saldo_depois`, quem e quando) é **imutável** (trigger `t20_imutavel`) e o trigger `t10_saldo` trava a linha do item (`for update`) e atualiza `estoque_itens.saldo`. Entrada, baixa e contagem só pelas RPCs `movimentar_estoque` (compra/perda/ajuste; o sinal vem do motivo) e `ajustar_estoque` (contagem: o banco lança a diferença dentro da trava). O app não tem insert em `estoque_movimentos`.
-- **Venda baixa no lançamento** (trigger `t50_estoque_baixa` em `itens_pedido`) e o cancelamento devolve **exatamente o que saiu** (`rest_privado.estoque_devolver` copia os movimentos de venda daquele item com o sinal trocado, uma vez só) — pelo item cancelado (`t51_estoque_devolucao`) ou pelo pedido cancelado inteiro (`t50_estoque_devolucao` em `pedidos`).
-- **Faltou insumo, some do cardápio do cliente**: a conta entrou em `rest_privado.produto_no_cardapio` (a mesma função que já decide horário e dia), então vale no site, no QR da mesa e na RLS de uma vez — e o produto **volta sozinho** quando o estoque é reposto. A equipe continua lançando (decisão de 24/11: contagem errada é comum e travar o salão no meio do serviço é pior); saldo negativo aparece em vermelho no painel.
-- **O caminho simples é a caixa "Controlar estoque deste produto" no formulário do produto** (decisão do cliente em 25/11, olhando o concorrente: "literalmente na criação do produto ele determina a quantidade e pronto"): marcando, aparece "Quanto tem agora" (em branco não mexe no saldo); desmarcando, o produto para de depender do estoque (o item e o extrato dele ficam de pé). Por baixo é o mesmo modelo (cria o item com o nome do produto e a ficha de 1 por venda, `definirEstoqueDoProduto` em `produtos/actions.ts`), mas quem só conta unidade nunca ouve falar em item nem em ficha. O bloco de ingredientes só aparece no produto que já usa vários insumos; para os outros existe só o link "Controlar por ingredientes".
-- Telas: Configurações › **Estoque** (`/painel/estoque`, permissão `estoque`): contadores no topo (Acabou ou negativo · Abaixo do mínimo · Acima do máximo), que também filtram a lista; item com saldo (selos "Sem contagem ainda", "Acabou", "Negativo", "Baixo", "Acima do máximo"), Entrada/Baixa/Contagem, os últimos 8 movimentos com quem fez, e "Sai em N produtos" com o seletor de produtos (`<EscolherProdutos>`) e a quantidade por produto. No produto (`/painel/produtos/[id]`, fora do `<form>` porque cada mudança vale na hora): "Controlar o estoque deste produto" cria o item 1 para 1 com o nome do produto, ou liga um insumo que já existe.
-- Permissão `estoque` e módulo `estoque` (plano `avancado` e `completo`; o super admin libera por restaurante como os outros módulos).
-
-Já existe (adicionais e opções):
-- `grupos_adicionais` (nome, minimo, maximo, ordem, ativo), `adicionais` (grupo_id, nome, preco, disponivel, ordem) e `produtos_grupos_adicionais` (produto_id, grupo_id). Um grupo serve para vários produtos.
-- `itens_pedido.adicionais` (jsonb) guarda o retrato das opções `[{id, grupo_id, grupo, nome, preco}]` e `preco_adicionais` a soma. Total do item = (preco_unitario + preco_adicionais) × quantidade.
-- Quem lança manda só os ids das opções (`"adicionais": [uuid, ...]` no item das RPCs `lancar_itens_comanda` e `criar_pedido_delivery`); o trigger valida (opção do produto, disponível, mínimo/máximo de cada grupo ativo) e monta o retrato. As opções não mudam depois de lançadas: cancela e lança de novo.
-- Interface: tipos e regras em `src/lib/adicionais.ts`, carga em `src/lib/adicionais-dados.ts`, seletor `<EscolherOpcoes>` em `src/components/adicionais/` (site e garçom).
-
-Já existe (painel da plataforma, super admin):
-- **Entrada própria**: `/admin/entrar` (marca uau foods, e-mail e senha; `entrarAdmin` em `admin/entrar/actions.ts`): quem não é admin sai na hora e recebe "E-mail ou senha incorretos" (não revela quem é admin); limite de 5 tentativas por e-mail e 15 por IP em 15 min. Sem login, o proxy manda `/admin*` para `/admin/entrar`; `exigirAdmin()` (`src/app/(site)/admin/dados.ts`) também; logado sem ser admin recebe 404. "Sair" volta para `/admin/entrar`.
-- Telas em `src/app/(site)/admin/(painel)/` (layout com barra lateral escura; peças em `ui.tsx`): **Visão geral** (`/admin`: receita mensal, recebido no mês, testes, atrasados, uso; "Precisa de atenção": atrasados, teste acabando/terminado, parados há 7+ dias; últimos cadastros), **Restaurantes** (`/admin/restaurantes`, busca e filtros) e a ficha (`/admin/restaurantes/[id]`: uso, pedidos por dia em 30 dias, assinatura editável com o que o plano libera, cobrança no Asaas com os avisos recebidos, site no ar, **anotações internas**, equipe, histórico), **Financeiro** (`/admin/financeiro`: receita por plano, atrasados com link da fatura, pagamentos dos últimos 120 dias) e **Administradores** (`/admin/administradores`: adicionar por e-mail de quem já tem conta, tirar acesso; ninguém tira o próprio).
-- **Gestão de qualquer restaurante** (migração `admin_gestao`, "como o super admin do Chatwoot"), na ficha:
-  - **Módulos** (`assinaturas.modulos_liberados`/`modulos_bloqueados`; mesas, garcom, qr, cozinha, relatorios, cupons, entregadores): cada um "Pelo plano", "Liberado" ou "Bloqueado" só para aquele restaurante. `rest_privado.modulos_do_restaurante` = (do plano; no teste, todos) + liberados − bloqueados; `permissoes_do_plano` = caixa/cardápio/restaurante/delivery + permissões dos módulos (`permissoes_do_modulo`); `plano_tem_qr` = módulo `qr`.
-  - **Equipe** (`admin_equipe`, `admin_adicionar_membro`, `admin_salvar_membro`): adicionar pessoa (conta nova com senha gerada ou vínculo à conta existente), editar nome e função, desativar/reativar (o banco mantém um dono ativo), **Nova senha** (gerada, mostrada uma vez). Contas de login só pelo servidor com a chave secreta (`gestao-actions.ts`), depois de `exigirAdmin()`.
-  - **Novo restaurante** (lista de restaurantes; `admin_criar_restaurante`): restaurante + dono (conta nova ou existente), 14 dias de teste pelo trigger, mesmas travas de endereço do cadastro.
-  - **Entrar como o dono** (`entrarComo`): link de acesso de uso único gerado pelo servidor (sem a senha do dono); a sessão do admin vira a do dono, com a faixa "Modo suporte" no painel (cookie `modo_suporte`, só exibição; `src/lib/auth/suporte.ts`) e "Sair do modo suporte": encerra a sessão do dono só neste navegador (`signOut` local; o dono continua logado nos aparelhos dele) e volta para a ficha do restaurante já como admin, com a sessão do admin guardada ao entrar (cookie httpOnly `modo_suporte_volta`, 4 h; sem ela, `/admin/entrar`). Registrado antes de trocar a sessão (`admin_registrar`).
-- **Duas etapas no super admin** (migração `admin_dois_fatores`, pedido do cliente em 30/10): depois da senha, `/admin/entrar` manda um código de 6 números por e-mail (`src/lib/email.ts`, SMTP próprio: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` no Coolify, só runtime; sem SMTP em produção ninguém entra no /admin). O servidor gera o código e guarda só o hash (`admin_guardar_codigo`, só `service_role`); a sessão confirma com `admin_confirmar_codigo` (10 min, 5 tentativas, uso único) e o `session_id` do JWT vai para `rest_privado.admin_sessoes` (12 h). `rest_privado.exigir_admin()` exige essa sessão: só com a senha, nenhuma `admin_*` funciona, nem pela API. `exigirAdmin()` manda para a etapa do código; cada aparelho confirma o seu. **"Lembrar deste computador por 30 dias"** (caixa na etapa do código): cookie `admin_aparelho` (httpOnly, chave aleatória; o banco guarda só o hash em `rest_privado.admin_aparelhos`) e, nas próximas entradas daquele navegador, senha + cookie confirmam a sessão (`admin_entrar_por_aparelho`). Administradores › "Esquecer computadores lembrados" apaga todos da própria conta.
-- Receita mensal = assinaturas `ativa` + `atrasada` × preço do plano em `src/lib/planos.ts` (`receitaMensal` em `ui.tsx`); pagamentos vêm de `rest_privado.cobranca_eventos` (cada cobrança uma vez).
-- Admins em `rest_privado.administradores` (fora da API). Tudo por RPCs `admin_*` security definer que chamam `rest_privado.exigir_admin()` (migração `admin_painel_v2`: `admin_financeiro`, `admin_restaurante_detalhes`, `admin_anotar`, `admin_listar_admins`, `admin_adicionar_admin`, `admin_remover_admin`); sem chave secreta. Cada alteração vai para `rest_privado.admin_registros` (troca de admin com `restaurante_id` nulo); anotações em `rest_privado.admin_notas`.
-- Primeiro admin (uma vez, no SQL do Supabase): `insert into rest_privado.administradores (user_id) select id from auth.users where email = '...';` Depois, pela tela.
-- Desativar (`restaurantes.ativo = false`) tira só o site público do ar; a equipe continua no painel.
-- Atalho: `ehAdminPlataforma()` (`src/lib/auth/dal.ts`) mostra o botão "Admin" no topo do painel e "Painel da plataforma" no menu do usuário só para admins (sem citar a marca); no /admin, "Meu restaurante" volta para /inicio.
-
-Já existe (relatórios do dono):
-- `/painel/relatorios` (só dono): período por atalhos (7/30 dias, este mês, mês passado) ou datas; a noite entra pelo dia em que o caixa abriu (fuso do restaurante).
-- RPC `relatorio_vendas(restaurante_id, de, ate)` (security invoker; recusa quem não é dono; até 400 dias) com as mesmas definições do `resumo_caixa_sessao` (vendido = itens não cancelados de pedidos não cancelados + taxa; recebido = pagamentos não estornados; contas = comandas fechadas + pedidos fora de mesa). Traz por noite, dia da semana, horário, origem, forma de pagamento, produtos, bairros e garçons.
-- Gráficos são barras em CSS (sem biblioteca); produtos baixam em CSV (`;` e vírgula decimal, para o Excel em português).
-
-Já existe (conta do cliente do delivery, opcional):
-- **Cadastro normal** (decisão do cliente em 04/11: sem SMS, sem código, sem captcha para o cliente): "Criar conta" com nome, e-mail, celular e senha (mín. 8) e "Entrar" com e-mail e senha, em `/[slug]/entrar` (`entrar/actions.ts`). Pedir sem conta continua igual.
-- Sem captcha só para o cliente: o Supabase cobra o Turnstile em todo login pela chave pública, então o servidor cria a conta (`admin.createUser`, já confirmada) e confere a senha com a **chave secreta** (que dispensa o captcha; conferido em 04/11) num cliente novo, e passa a sessão ao navegador com `setSession` (`abrirSessao`). Proteção: bloqueio por senha errada (`src/lib/auth/bloqueio.ts`, por conta e IP) e limites por IP. Equipe e super admin continuam com captcha.
-- "Esqueci minha senha" do cliente: `esqueciSenhaCliente` gera o link pela chave secreta (`generateLink` recovery) e manda um e-mail **neutro** pelo SMTP do app (sem a marca da plataforma) para `/auth/confirmar` → `/[slug]/nova-senha` (`definirSenhaCliente`). Não revela se o e-mail tem conta; conta da equipe usa `/recuperar-senha`.
-- Quem é cliente: logado e fora de `membros` (`usuarioCliente`); conta da equipe não vira cliente (o app recusa e `entrar_como_cliente` também). O celular para contato é informado pelo cliente (`entrar_como_cliente(restaurante, nome, telefone)` e `atualizar_meu_cadastro_cliente`, migração `cliente_sem_sms`; `clientes.telefone` com 55 + DDD); o confirmado pelo SMS não muda pela conta.
-- `clientes` (restaurante_id, user_id, nome, telefone confirmado copiado do Auth; único por restaurante e usuário), criado só pela RPC `entrar_como_cliente(restaurante_id, nome)`; o cliente lê, muda o nome e exclui o próprio; dono e caixa leem os do restaurante.
-- `clientes_enderecos`: guardados pelo banco a cada pedido (trigger em `pedidos`, até 5, sem duplicar); o cliente lê e apaga.
-- `pedidos.cliente_id`: só o banco define (trigger `t11_cliente`, pela sessão de quem pediu, só no delivery; ninguém troca depois). Por isso `enviarPedido` chama a RPC com a sessão do navegador (`createClient()`), não com o cliente anônimo.
-- `meus_pedidos_cliente(restaurante_id)` lista os pedidos da conta. Excluir a conta (LGPD) apaga cadastro e endereços; os pedidos ficam sem vínculo; se a pessoa não for cliente de outro restaurante nem da equipe, o login (telefone) também é apagado (chave secreta, só para a própria pessoa).
-- Conta de cliente não entra na área de staff (sem `membros`). Navegador logado como equipe não vira cliente (o "Entrar" recusa).
-- (Legado, sem uso na tela) Envio do código por SMS: gancho "Send SMS" do Supabase → `/api/auth/enviar-codigo` (assinado com `SEND_SMS_HOOK_SECRET`) → `src/lib/mensagens.ts`, que escolhe o provedor por `MENSAGENS_PROVEDOR` (`console` em desenvolvimento: o código aparece no terminal do `npm run dev`). A tela de entrar não usa mais o SMS.
-- Telas: `/[slug]/entrar` (celular → código → nome), página **Minha conta** `/[slug]/conta` (ícone de perfil no topo do site com a inicial de quem entrou; nome editável, telefone, endereços salvos com remoção confirmada, últimos 3 pedidos, sair e excluir; sem conta, o convite para entrar), atalho para ela em `/[slug]/pedidos` e checkout preenchido pela conta (endereços usados viram botões). Sessão e dados em `src/app/(publico)/[slug]/conta.ts`; telefone em `src/lib/telefone.ts`.
-- Local: `supabase/config.toml` liga o login por telefone (`[auth.sms]`, Twilio de mentira só para habilitar) e o gancho em `http://host.docker.internal:3000`; o segredo fica em `supabase/.env` e `.env.local` (fora do git).
-
-Já existe (editar pedido de delivery):
-- Dono e caixa editam um delivery em andamento ("Editar" no cartão do painel): itens (tirar/pôr, com opções), cliente, endereço, bairro/taxa, forma de pagamento/troco e observação. Só pela RPC `editar_pedido_delivery` (marca a transação com `rest.edicao_pedido`; fora dela os campos e os itens do delivery continuam travados pelos triggers). O banco recalcula o total, recusa troco menor que o total, total abaixo do já pago e pedido sem itens.
-- Cada mudança vira uma linha em `pedidos_alteracoes` (só dono/caixa leem), mostrada nos detalhes do cartão com o selo "Editado". Item novo vai para a cozinha pelo trigger; item tirado sai como cancelamento na impressora se já tinha sido impresso.
-
-Já existe (taxa de serviço e couvert, só nas mesas):
-- Configuração em Painel › Restaurante ("Mesas: serviço e couvert"): `restaurantes.servico_percentual` (0 = não cobra), `couvert_valor` por pessoa e `couvert_dias` (0 = domingo, fuso do restaurante).
-- A comanda congela `servico_percentual` e `couvert_unitario` ao abrir; `comandas.subtotal` (itens) + `servico` + `couvert` = `total` (o total a pagar, usado por pagamento e fechamento). Garçom/caixa tiram ou voltam a cobrar com `cobrar_servico`/`cobrar_couvert` (`alterarCobranca`); o banco recusa se o total ficar abaixo do já pago.
-- Calculadora por item soma o serviço proporcional e um couvert; a conta impressa mostra subtotal, serviço e couvert. Resumo do caixa e relatórios mostram serviço e couvert à parte do "vendido"; por garçom, o serviço gerado.
-
-Já existe (cupom de desconto no delivery):
-- `cupons` (código único por restaurante em maiúsculas; tipo `percentual` sobre os itens, `valor` em centavos ou `frete` grátis; pedido mínimo, início/fim, limite de usos, um por cliente pelo telefone, ativo). Só o dono cria e ativa/desativa (Painel › Cadastros › Cupons); dono e caixa leem.
-- Checkout: "Tem cupom?" → `validarCupom` (RPC `validar_cupom`, limite por IP) mostra o desconto; `criar_pedido_delivery(..., p_cupom)` valida de novo (mensagem termina com `(cupom)`: o site tira o cupom) e copia código/tipo/valor no pedido. `pedidos.desconto` é recalculado pelo trigger (a edição do pedido também); total = subtotal + taxa − desconto. Usos = pedidos não cancelados com o cupom.
-- Desconto aparece no acompanhamento, no cartão do painel, na via impressa; o "vendido" do resumo e dos relatórios já vem sem ele, com `descontos` à parte.
-
-Já existe (entregadores e acerto):
-- `entregadores` (nome, telefone, `recebe_taxa` ou `valor_por_entrega`, ativo). Só o dono cadastra (Painel › Restaurante › Entregadores); dono e caixa leem.
-- No cartão do delivery (a partir do aceite), o caixa escolhe o entregador (`definirEntregador`). `pedidos.entregador_id` só dono/caixa mudam; `valor_entregador` vem do cadastro pelo trigger `t06_entregador` (acompanha a taxa se a edição mudar).
-- Acerto: `entregas_da_sessao` no resumo do caixa ("Entregadores (a pagar)") e `entregas_do_periodo` nos relatórios. Pedido cancelado não conta.
-
-Já existe (avisos no celular do cliente, Web Push):
-- Na página de acompanhamento, "Avisar quando o pedido mudar" pede permissão, registra `/sw.js` (só avisos, sem cache) e manda a inscrição para `/api/pedidos/[id]/avisos` (aceita só serviços de push dos navegadores: FCM, Mozilla, Apple, Windows). Tabela `pedidos_avisos` só a chave secreta lê e grava.
-- O painel avisa depois de aceitar, saiu para entrega, entregar e cancelar (`after(() => avisarCliente(id))`, `src/lib/avisos-push.ts`); o status vem do banco. As inscrições ficam até 24 h depois de o pedido terminar (por causa da conversa) e `limparInscricoesVencidas` apaga as vencidas.
-- Chaves VAPID só em tempo de execução: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_ASSUNTO` (mailto:). Sem elas o botão some. Gerar com `npx web-push generate-vapid-keys`.
-- iPhone: só com o site na tela de início (iOS 16.4+). O site do restaurante tem manifest próprio (`/pwa/[id]/manifest?app=site`, sem start_url: abre a página de onde foi instalado).
-- Sem depender de outro produto (decisão do cliente): WhatsApp/Chatyou só como integração opcional no futuro.
-
-Já existe (conversa com o cliente do delivery, migração `conversa_pedido`, pedido do cliente em 03/11):
-- Página de acompanhamento: "Algum problema? Fale com o restaurante" (`conversa-cliente.tsx`) abre a conversa (sem conta: o id do pedido vale como senha, como no acompanhamento) e, se o restaurante tem WhatsApp, "Prefere o WhatsApp?". Confere a cada 5 s aberta e 20 s fechada (mostra "1 resposta"). API `/api/pedidos/[id]/conversa` (GET `conversa_pedido_publica`, POST `cliente_enviar_mensagem`; limite por IP; no banco, 15 mensagens do cliente em 10 min e 60 no total).
-- Aberta enquanto o pedido anda e até 24 h depois de entregue/cancelado (`pedidos.finalizado_em`, só o banco define, trigger `t45_finalizado`; `rest_privado.conversa_aberta`).
-- `pedidos_mensagens` (autor `cliente`|`equipe`, `membro_id`, `lida_em`): só quem tem `delivery` lê; escrever só pelas RPCs. A equipe responde com `equipe_enviar_mensagem` (também marca as do cliente como lidas) e `marcar_conversa_lida`.
-- Painel › **Conversas** (`/painel/conversas`, permissão `delivery`, contador de não lidas no menu; pedido do cliente em 03/11: "a conversa na comanda é ruim"): lista dos últimos 7 dias (mais recente primeiro) e `/painel/conversas/[pedidoId]` com a conversa e, ao lado, o mesmo `<CartaoPedido semConversa>` do quadro (aceitar, andar, editar, entregador). Abrir marca as mensagens como lidas. No quadro do Delivery, o cartão com mensagens tem o botão "Conversa" (com as não lidas) que leva para lá. `<AlertaPedidos>` bipa e avisa "Mensagem de cliente do delivery" com "Responder". Carga dos pedidos no formato do cartão em `delivery/dados.ts` (`carregarPedidosDelivery`), usada pelas duas telas. Contadores do menu por item: `contadores` em `<MenuLateral>`/`<BarraApp>`.
-- A resposta da equipe vai por push para o celular do cliente que ligou os avisos (`avisarMensagem`, abre a página em `#conversa`).
-
-Já existe (chamar garçom):
-- Botão "Chamar garçom" no topo do painel (dono e caixa; `painel/chamar-garcom.tsx`): escolhe o garçom e um recado (atalhos ou texto, até 120 letras). Grava em `chamados_garcom` (só dono/caixa criam; quem chamou e a hora vêm do trigger; só para membro ativo com papel `garcom`; até 20 por minuto por restaurante).
-- App do garçom (`garcom/aviso-chamado.tsx`): vibra, bipa e mostra o aviso até ele tocar em "Vou" (`atenderChamado`, só o próprio garçom; a hora vem do banco); vibra a cada 3 s (bipe a cada 6 s) sem parar até o "Vou" chegar ao sistema, o aviso ser fechado, o chamado ser respondido em outro aparelho dele ou vencer (30 min). Ao abrir o app, mostra os chamados sem resposta dos últimos 30 min. Quem chamou recebe "Fulano está indo" (tempo real).
-- O garçom vê só os chamados dele. iPhone não vibra (Safari não deixa); com o app fechado não há aviso (push para a equipe fica para depois).
-
-Já existe (QR code da mesa: cardápio e pedido pelo celular):
-- **Opcional**: o dono liga em Painel › Cadastro de mesas › "QR code das mesas" ("Clientes pedem pelo celular", `restaurantes.pedido_mesa_qr`, padrão desligado; precisa da permissão `restaurante`). Desligado ou caixa fechado, o QR só mostra o cardápio ("Para pedir, chame o garçom").
-- **Um QR por mesa**: `mesas.qr_token` (uuid; "Trocar código" gera outro e o impresso deixa de valer). Endereço `/[slug]/mesa/[token]`; a página confere que a mesa é do restaurante do slug. "Imprimir" sai um cartão por mesa ("Mesa 5" + QR), gerado no servidor (pacote `qrcode`, SVG preto no branco).
-- Cardápio do salão pela RPC `cardapio_salao_publico` (tudo `disponivel`, inclusive o que não vai para o delivery, com as opções no formato do site); mesa e conta aberta por `mesa_por_qr(token)` (só itens e totais da conta, nada de garçom ou pagamentos).
-- Pedido: carrinho no aparelho (`carrinho:mesa:<token>`) → `pedirPelaMesa` → RPC `pedir_pela_mesa(token, itens, lote, total)` (security definer, anon): **vai direto para a comanda e para a cozinha** (decisão do cliente em 28/10), mesmas regras do lançamento do garçom (preço/opções/rota pelos triggers, chave do envio, total visto). Mesa livre **abre sozinha, sem garçom**; até 8 pedidos do cliente por mesa em 10 min (+ limite por IP no servidor). Pedido do cliente = origem `mesa` com `criado_por` nulo (aparece "Cliente pelo celular").
-- **"Agora ou junto com a comida"** (migração `servir_com_comida`, decisão do cliente em 28/10): no pedido pela mesa que mistura comida com algo que não passa pela cozinha (ex.: bebida; `preparo` vem da RPC do cardápio), a revisão pergunta "Quando trazer ...? Agora | Junto com a comida". `itens_pedido.servir_com_comida` (o trigger só aceita em item sem rota e de mesa). Na comanda: "Levar agora" (amarelo) ou "Levar com a comida", que acompanha a comida (vira "Pronto · levar" junto); só fica entregue quando marcado.
-- Equipe: `<AvisoPedidoCliente>` (layout do painel, quem tem `garcom_app`) mostra os itens do pedido do cliente (com "· agora"/"· com a comida"). **Só o garçom da mesa vibra e bipa, uma vez**; mesa sem garçom aparece na tela de todos sem vibrar (decisão do cliente: muitas mesas sobrecarregariam). "Depois" tira o aviso só daquele aparelho (ele cobria o botão de cobrar no celular). "Ver pedido" abre a mesa e grava `pedidos.visto_em`/`visto_por` pela RPC `marcar_pedido_visto` (migração `pedido_visto`; o trigger `t02_visto_fixo` impede mexer por fora); o aviso some nos outros aparelhos e os não vistos (até 30 min) voltam ao abrir o app, sem vibrar. Mesa sem garçom mostra "Sem garçom" no mapa e "Sem garçom · Assumir" na tela da mesa (`assumirMesa`; o trigger deixa qualquer um assumir mesa sem garçom, trocar depois continua com `comandas_gerenciar`).
+**Endereços reservados** em `rest_privado.slug_reservado()`: ao criar uma rota nova no primeiro
+nível do app (`/algo`), acrescentar o nome lá numa migração.
 
 ## Acesso público (anon)
 
-- Leitura de `restaurantes` (apenas colunas públicas, via view `restaurantes_publicos`), `categorias` ativas, `produtos` disponíveis para delivery e `bairros_entrega` ativos, somente de restaurantes ativos.
-- Criação de pedido apenas pela RPC `criar_pedido_delivery`.
-- Acompanhamento do pedido por RPC `consultar_pedido_publico(pedido_id)` retornando só status, itens e totais (mais troco e motivo do cancelamento; nunca nome, telefone, endereço ou observação: o link é repassado). A tela consulta `/api/pedidos/[id]` de tempos em tempos e sobrevive a queda de rede; os pedidos ficam no aparelho (`meus-pedidos:<restaurante>`, até 20; `src/app/(publico)/[slug]/meus-pedidos.ts`): o último em andamento aparece no cardápio e todos em `/[slug]/pedidos` ("Meus pedidos", ícone no topo), junto com os dados de entrega guardados pelo checkout (`checkout:<restaurante>`, `carrinho/dados-cliente.ts`) e o botão para apagar tudo do aparelho. Sem conta: nada disso vai para o servidor.
+- Leitura de `restaurantes` (só colunas públicas, via view `restaurantes_publicos`), `categorias`
+  ativas, `produtos` disponíveis para delivery e `bairros_entrega` ativos, somente de restaurantes
+  ativos.
+- Criação de pedido apenas pelas RPCs `criar_pedido_delivery` e `pedir_pela_mesa`.
+- Acompanhamento por `consultar_pedido_publico(pedido_id)`, que devolve só status, itens e totais
+  (mais troco e motivo do cancelamento; nunca nome, telefone, endereço ou observação — o link é
+  repassado). A tela consulta `/api/pedidos/[id]` de tempos em tempos e sobrevive a queda de rede;
+  os pedidos ficam no aparelho (`meus-pedidos:<restaurante>`, até 20).
+- Conta de cliente é opcional (`clientes`, criada só pela RPC `entrar_como_cliente`). Conta da
+  equipe não vira cliente. `pedidos.cliente_id` só o banco define, pela sessão de quem pediu —
+  por isso `enviarPedido` chama a RPC com a sessão do navegador, não com o cliente anônimo.
+  Excluir a conta (LGPD) apaga cadastro e endereços; os pedidos ficam sem vínculo.
 
 ## Tempo real
 
-- Painel escuta `pedidos` (novos deliveries com alerta sonoro) e `comandas` do restaurante ativo.
-- PWA do garçom escuta `comandas`, `itens_pedido` e `pagamentos` do restaurante.
+- Painel escuta `pedidos`, `comandas`, `pagamentos`, `tarefas_producao` e `pedidos_mensagens` do
+  restaurante ativo; a cozinha escuta `tarefas_producao`, `itens_pedido` e `pedidos`.
+- Usar `<AtualizarEmTempoReal>` ou o hook `useMudancasRealtime` (`src/lib/realtime.ts`), que passam
+  o token da sessão ao Realtime antes de inscrever; sem isso o canal entra como anônimo e a RLS não
+  entrega eventos. O hook informa a queda (`<FaixaConexao>`) e chama `aoReconectar` quando volta:
+  os eventos da queda se perderam, então **recarregue**.
+- `<AlertaPedidos>` também confere a cada 30 s (delivery novo, delivery pronto, mensagem de cliente
+  e cancelamento pelo cliente da última hora).
 - Ativar Realtime só nas tabelas necessárias e sempre filtrar por `restaurante_id`.
+
+## Impressão
+
+- `impressoras` (rede: IP + porta 9100; windows: nome da impressora no Windows; papel 58/80/210;
+  acentos cp850/cp1252/sem; `modo` `escpos` ou `driver`), `estacoes.impressora_id`, `imprime_conta`,
+  `imprime_via_delivery`, `imprime_ao_fechar`. A4 (`largura = 210`) só no modo driver.
+- `agentes_impressao`: computador pareado. Pareia com código de 6 dígitos gerado no painel (RPC
+  `definir_codigo_pareamento`, 10 min, único entre restaurantes; até 10 por restaurante); depois usa
+  chave própria. O banco guarda só hashes, e o navegador não os lê (grants por coluna).
+- `fila_impressao`: só referências (tarefa/pedido/comanda/item). Entra por trigger ou RPC
+  (`imprimir_conta`, `imprimir_teste`, `reimprimir`). Falha volta para a fila esperando
+  10 s × tentativas; na 5ª fica `erro`.
+- O app fala só com `/api/agente/*` (parear, trabalhos, trabalhos/[id], estado), sempre filtrando
+  pelo agente autenticado (`autenticarAgente`). O servidor monta o papel
+  (`src/lib/impressao/tickets.ts`) e converte em ESC/POS (`escpos.ts`); no modo driver manda o
+  `documento` em HTML. Texto que vai para a impressora passa por `codificar()`.
+- `agente/`: app Electron para Windows, fora do build do Next. Bandeja, abre com o Windows, chave
+  cifrada (`safeStorage`), fila a cada 2 s, atualização sozinha pelo `latest.yml`. `npm run dist`
+  gera o instalador; `src/app/downloads/impressao/[arquivo]/route.ts` serve de
+  `PASTA_DOWNLOADS/impressao` (fora do git). Só aceita `https://` (http só localhost).
+- Testar sem impressora: `node scripts/impressora-falsa.mjs` + `node scripts/agente-teste.mjs
+  --servidor http://localhost:3000 --codigo <código do painel>`.
+
+## Produto (marca da plataforma)
+
+- Grupo `src/app/(site)/`: landing (`/`), `/cadastro` (conta do dono), `/comecar` (cria o
+  restaurante) e `/admin` (painel da plataforma). Só aqui aparece a marca **uau foods** (cores e
+  fontes `uau-*` do `globals.css`).
+- Fluxo: `/cadastro` → (confirmação de e-mail opcional, via `/auth/confirmar`) → `/comecar` →
+  `/painel` com "Primeiros passos". RPCs `criar_meu_restaurante(...)` (limite de 3 por conta) e
+  `slug_disponivel(slug)`.
+- No painel, a assinatura aparece só para o dono e sem citar a marca da plataforma.
+- Contato (vendas e suporte, mesmo número) só em `src/lib/contato.ts` (`linkWhatsapp`,
+  `linkAjuda`). Painel e cozinha: "Ajuda pelo WhatsApp" no menu do usuário.
+- Super admin: telas em `src/app/(site)/admin/(painel)/` (Visão geral, Restaurantes e ficha,
+  Financeiro, Administradores). Tudo por RPCs `admin_*` `security definer` que chamam
+  `rest_privado.exigir_admin()`; sem chave secreta, exceto contas de login
+  (`gestao-actions.ts`, sempre depois de `exigirAdmin()`). Duas etapas obrigatória: senha + código
+  de 6 números por e-mail (SMTP próprio). Primeiro admin, uma vez, no SQL do Supabase:
+  `insert into rest_privado.administradores (user_id) select id from auth.users where email = '...';`
+- Módulos liberados/bloqueados por restaurante na ficha (`assinaturas.modulos_liberados` /
+  `modulos_bloqueados`). A lista fica em `src/app/(site)/admin/modulos.ts` e no banco em
+  `rest_privado.modulos_validos()` — as duas são conferidas por `npm run conferir:listas`.
 
 ## White label
 
-- Nenhuma menção à marca da plataforma nas telas do restaurante, títulos de aba, manifest do PWA ou mensagens.
-- Exceção (decisão do cliente em 30/10): os e-mails de conta (Supabase Auth: confirmar cadastro, redefinir senha, troca de e-mail, link, convite, código) e o código do super admin saem com a marca **uau foods** (logo, cores, rodapé com o WhatsApp do suporte). Modelos em `supabase/templates/` (colar no painel do Supabase); os do app usam `emailUau()` de `src/lib/email-modelo.ts`. Remetente "uau foods <nao-responda@estudyou.com>" pelo SMTP próprio.
-- Cores do restaurante aplicadas por CSS variables no layout (`--cor-primaria`, `--cor-secundaria`).
-- `manifest` do PWA gerado dinamicamente por restaurante (nome, ícone, cor).
-
-## Projeto Supabase temporário (ATENÇÃO)
-
-Durante o desenvolvimento usamos um projeto Supabase que já contém outro sistema pequeno ("formacao salmistas").
-- **Nunca alterar, renomear ou apagar tabelas, funções, triggers, buckets ou policies que já existiam.**
-- Antes da primeira migração, listar o que existe (tabelas, funções, triggers em `auth.users`, buckets) e registrar em `docs/supabase-existente.md`.
-- Se houver trigger em `auth.users` (ex.: criação automática de perfil), avisar antes de criar usuários, porque ele vai disparar para os usuários deste sistema.
-- Conferir se algum nome de tabela deste sistema colide com os existentes.
-- Buckets deste sistema com prefixo `rest-` (ex.: `rest-logos`, `rest-produtos`).
-- Tudo deste sistema deve vir de migrações em `supabase/migrations/`, para poder ser recriado num projeto novo depois.
+- Nenhuma menção à marca da plataforma nas telas do restaurante, títulos de aba, manifest do PWA ou
+  mensagens.
+- **Exceção**: os e-mails de conta (Supabase Auth: confirmar cadastro, redefinir senha, troca de
+  e-mail, link, convite) e o código do super admin saem com a marca **uau foods**. Modelos em
+  `supabase/templates/`; os do app usam `emailUau()` de `src/lib/email-modelo.ts`. Remetente pelo
+  SMTP próprio.
+- Cores do restaurante por CSS variables no layout (`--cor-primaria`, `--cor-secundaria`).
+- `manifest` do PWA gerado por restaurante (nome, ícone, cor). O ícone só baixa logo do bucket
+  `rest-logos`.
 
 ## Convenções
 
-- Nomes de tabelas e colunas em português, snake_case, sem acento.
-- Código (variáveis, componentes) em inglês ou português, mas consistente por arquivo; textos da interface em português do Brasil.
-- Server Actions ou Route Handlers para escrita; validação com Zod em toda entrada. IDs com `z.guid()` (não `z.uuid()`, que rejeita os uuids do seed).
-- Toda página e Server Action de staff chama `exigirAcesso(area)` de `src/lib/auth/dal.ts` (layouts não reexecutam a cada navegação).
-- Consultas de staff sempre com `.eq("restaurante_id", acesso.restaurante.id)`: a RLS também libera o cardápio público (categorias, produtos, bairros, restaurantes) de outros restaurantes.
-- Formulários: Server Action retorna `ResultadoAcao` (`src/lib/acoes.ts`); o `<form>` usa `key={estado?.chave}` e `valorCampo()` para manter o que foi digitado após erro (React 19 reseta o form).
-- Escrita com a chave secreta (`createAdminClient`) só para o que a sessão do usuário não consegue (criar contas, trocar senha), sempre após `exigirDono()`.
-- Inserts em tabelas com colunas preenchidas por trigger (`caixa_sessao_id`, `numero`, `registrado_por`, `aberta_por`) usam `novoRegistro()` de `src/lib/supabase/insercao.ts`.
-- Tempo real: usar `<AtualizarEmTempoReal>` ou o hook `useMudancasRealtime` (`src/lib/realtime.ts`), que passam o token da sessão ao Realtime antes de inscrever; sem isso o canal entra como anônimo e a RLS não entrega eventos. O hook informa a queda (faixa `<FaixaConexao>` no layout de cada área) e chama `aoReconectar` quando volta: os eventos da queda se perderam, então recarregue. O `<AlertaPedidos>` também confere os deliveries novos a cada 30 s.
-- Rede ruim não pode apagar o que foi digitado: ações fora de formulário usam `useAcao` (`src/components/staff/acoes-cliente.tsx`), que trata a falha de rede com aviso e ignora toque repetido; formulários longos do lado do cliente guardam rascunho com `useRascunho` (`src/lib/rascunho.ts`). Cada área tem `error.tsx` com `<TelaErro>` (mantém o cabeçalho e tenta de novo quando a internet volta).
-- Ação destrutiva ou sem volta (excluir, desativar, fechar caixa/comanda, estornar) pede confirmação: `<BotaoConfirmar>` (`src/components/staff/botao-confirmar.tsx`) ou confirmação no lugar com motivo.
-- Cor de texto sobre a cor da marca: `corDeContraste()` (`src/lib/cores.ts`) escolhe preto ou branco pela razão de contraste WCAG. Avisos (toasts) ficam embaixo, acima das barras fixas.
-- **Menu do dia a dia e porta única das configurações** (decisão do cliente em 24/11: "segmentar em funcionalidades da plataforma e uma aba de configurações", porque o menu com tudo junto "fica com muita informação em um lugar só"): `painel/navegacao.ts` tem duas listas. `NAVEGACAO` é o que se usa no dia (Início, Delivery, Conversas, Mesas, Caixa, Relatórios, Histórico, Tela da cozinha) e termina em **Configurações** (`/painel/configuracoes`), que só aparece para quem tem algo para configurar. `CONFIGURACOES` são os cartões dessa tela: Cardápio (Produtos/Categorias/Adicionais/Cardápios), Mesas (Cadastro/QR code), Cupons, Entregadores, Restaurante, Setores da cozinha, Impressoras, Equipe (Pessoas/Funções) e Assinatura — um cartão por assunto (cupom não tem nada a ver com entregador, nem setor com impressora). **Nenhum endereço mudou**: os cartões levam para as mesmas rotas de sempre. Páginas irmãs continuam com `secoes`, mostradas como abas (`<AbasSecao>`), e cada tela de dentro ganha "‹ Configurações / Nome" no topo (`<TopoConfiguracao>`), que também serve de título no celular (as telas de cadastro têm `h1` só para leitor de tela). O cadeado do plano aparece no menu (áreas de Operação) e na tela de Configurações (o resto).
-- **Um app só para a equipe** (o painel): no computador, barra lateral; no celular, `<BarraApp>` (`painel/menu-painel.tsx`) com as áreas de Operação da pessoa em abas no rodapé (até 5; senão 4 + "Mais", que abre o menu completo). Quando não cabe todo mundo, as abas são escolhidas por **importância** (`PRIORIDADE_ABAS`: mesas, caixa, delivery, início) e mostradas na ordem do menu — antes valia a ordem da lista e o Caixa caía dentro do "Mais", inclusive para a função Caixa. O contador do que ficou escondido aparece em cima do "Mais". Quem tem poucas áreas (ex.: garçom) vê as abas de dentro delas (Mesas, Praças) e as abas de cima não se repetem. A barra some na mesa e no lançamento (`TELA_COM_BARRA_PROPRIA`), que têm botões próprios. Quem só atende mesas não tem Início (`PERMISSOES_INICIO`; `rotaInicial` manda para `/painel/comandas`). Avisos do garçom (`<AvisoPronto>`, `<AvisoChamado>`) ficam no layout do painel para quem tem `garcom_app`. Manifest do app em `/pwa/[id]/manifest` com `start_url` `/painel` (mesmo `id` de quando era só do garçom, para não duplicar o app instalado); `/garcom/*` redireciona. A tela da cozinha continua separada (`/cozinha`, tela cheia).
-- **Ligação se edita dos dois lados** (pedido do cliente em 24/11: "ao criar um adicional, pela própria aba de adicionais poder ver em quais produtos ele está e aplicar em outros"): nenhuma ligação do cadastro existe só pelo lado do produto. N:N marca dos dois lados — grupo de adicionais ↔ produtos (`aplicarGrupoEmProdutos`), cardápio por horário ↔ produtos, setor da cozinha ↔ produtos (`aplicarPracaEmProdutos`: marcar põe o setor no **fim** da rota do produto, desmarcar tira; a sequência continua sendo montada no produto) e impressora ↔ setores (já era assim). 1:N é "trazer para cá", nunca "marcar": categoria ← produtos (`trazerProdutosParaCategoria`, move e manda para o fim da categoria) e função ← pessoas (`aplicarFuncaoEmPessoas`, troca a função; dono e a própria pessoa ficam de fora). O seletor é um componente só, `<EscolherProdutos>` (`src/components/staff/escolher-produtos.tsx`): produtos por categoria com "Marcar todos". A escolha fica num componente filho com `key` = lista salva, para nascer de novo depois de salvar sem efeito sincronizando estado.
-- Painel do dono sem poluição: nada de parágrafo explicando a tela; o rótulo e o controle precisam bastar. Formulário de "novo" fica atrás de um botão (abre, cria, fecha); listas longas recolhidas (grupos de adicionais, mapa de mesas que abre a edição ao tocar).
+**Banco e nomes**
+
+- Tabelas e colunas em português, snake_case, sem acento.
+- Código (variáveis, componentes) em inglês ou português, mas consistente por arquivo; textos da
+  interface em português do Brasil.
 - Nomes de status (pedido e mesa) só em `src/lib/rotulos.ts`.
-- Garçom: `<AvisoPronto>` (layout do painel) avisa com vibração quando a cozinha termina um pedido das mesas dele (só com a mesa aberta e algum item valendo: fechar a mesa encerra os tickets e isso não é "pronto"; mesa sem garçom aparece para todos sem vibrar nem bipar); o lançamento guarda rascunho por mesa e tem revisão antes de enviar.
-- Avisos revisados em 17/11 (teste com 6 telas ao mesmo tempo): chamado fechado não volta (`encerrados` no `<AvisoChamado>`); "pronto para sair" só na primeira vez (o `<AlertaPedidos>` anota os já prontos ao abrir); "está indo" busca o nome do garçom; cozinha só bipa ticket novo de verdade (trocar a praça não bipa); `avancarPedido` no mesmo status não avisa o cliente de novo; `/api/pedidos/[id]` responde 503 em falha do banco (o aparelho só esquece o pedido com 404); a conversa do cliente para de consultar quando encerra ou com a aba escondida e lembra as respostas vistas; o pedido pela mesa troca a chave do envio quando o carrinho muda. Em 18/11: o lembrete de delivery "recebido" só bipa para pedido das últimas 3 h; a conferência de 30 s do `<AlertaPedidos>` (e a volta da conexão) também recupera mensagem de cliente, delivery pronto e cancelamento pelo cliente da última hora que o tempo real perdeu, e conversa lida em outro aparelho atualiza o contador do menu; o `<AvisoPronto>` confere os prontos dos últimos 30 min ao reconectar; o áudio dos avisos é criado por `novoContextoDeSom()` (`src/lib/som.ts`), que retoma o som ao voltar para a tela (iPhone suspende ao bloquear); na cozinha, a impressão automática só imprime tickets da praça que está na tela (os das outras contam como impressos ali, então trocar para "Todas" não solta tudo de uma vez).
-- Painel › **Mesas** (`/painel/comandas`, permissão `comandas_painel` ou `garcom_app`): o mapa de mesas dentro do painel, largo (garçom, tempo, total, quanto falta; tempo real). A mesa abre em `/painel/comandas/[mesaId]` (livre: abrir comanda; ocupada: a tela da mesa com `origem="painel"`, em duas colunas no computador: itens | totais, pagamento e botões, sem barra fixa) e lança em `/painel/comandas/[mesaId]/lancar` (`<LancarItens largo>`: cardápio | pedido). As ações da mesa (`garcom/actions.ts`) aceitam `garcom_app` ou `comandas_painel` (`exigirAlgumaPermissao`); praças e chamado continuam do app do garçom. O cadastro de mesas virou "Cadastro de mesas" no menu.
-- **Mesa sem consumo** (abriu por engano ou tudo cancelado, sem pagamento): o garçom toca "Liberar mesa" (confirmação no lugar) e a comanda é **cancelada** (migração `garcom_libera_mesa`: cancelar comanda vazia vale para `garcom_app`/`comandas_painel`; com consumo continua exigindo itens cancelados e pagamentos estornados). Não vira conta de R$ 0 no resumo.
-- Tela da mesa (`garcom/mesas/[mesaId]/tela-comanda.tsx`, também usada pelo painel): itens **por pedido** (cada lançamento com hora, quem lançou e subtotal) ou **tudo junto** (somado por produto); quantidade de pessoas editável com a mesa aberta (`alterarPessoas`); pagamento com **calculadora por item** (marca o que cada pessoa consumiu; os itens vão no pagamento em `pagamentos.itens` `[{item_id, quantidade}]`, na primeira forma, e a próxima pessoa só vê o que falta; o trigger recusa item já pago, de outra mesa ou acima da quantidade; estorno libera; migração `pagamento_por_item`; a lista mostra "Pago"/"1 de 3 pago") e **pagamento combinado** (várias formas num envio: `registrarPagamentos` insere todas de uma vez; o trigger confere cada parte somando as anteriores e, se passar do saldo, nada é gravado). O painel continua aberto enquanto falta pagar. **Fechar sem burocracia** (pedido do cliente em 29/10): o botão principal é "Receber R$ X" (não precisa pedir conta antes); o pagamento que quita vira "Receber R$ X e fechar mesa" (`registrarPagamentos(..., fechar)`) e volta ao mapa; mesa já paga tem "Fechar mesa" num toque. "Pedir conta" ficou secundário. **Cada pagamento pede a forma** (nenhuma vem marcada; o botão diz "Escolha a forma de pagamento"), e na conta dividida "1 de N" a próxima pessoa já vem com a parte dela (noite simulada de 18/11: depois da 1ª pessoa, um toque a mais cobrava o resto no Pix e fechava a mesa, sem estorno possível). Mesa sem número de pessoas (aberta pelo QR) tem "Dividir" com o número escolhido ali. Campos de valor selecionam o texto ao tocar (o "0,00" do troco inicial não vira "0,00100").
-- **Meu perfil** (migração `perfil_membro`, pedido do cliente em 30/10): menu do usuário › "Meu perfil" (`/painel/perfil` e `/cozinha/perfil`, componente `<MeuPerfil>`): foto (bucket `rest-avatares`, pasta = id do usuário, cada um só escreve na sua), nome e celular pela RPC `atualizar_meu_perfil` (grava em todos os restaurantes da pessoa; `membros.foto_url`/`telefone` não mudam direto pela API); e-mail pelo Auth (link no endereço novo, volta por `/auth/confirmar`); senha pede a atual (`perfil-actions.ts`, limite de tentativas). A foto aparece no botão do menu (`Vinculo.foto`). Função, permissões e ativo continuam só com o dono. **Som dos avisos** (pedido do cliente em 03/11: um bipe só passava despercebido): cada pessoa escolhe em Meu perfil o som (Bipe, Campainha, Sino de balcão, Telefone, Alarme, Alegre), volume (baixo/médio/alto) e quantas vezes toca (1 a 3), com "Ouvir"; fica em `user_metadata.som` da conta (`salvarSom`; vale em qualquer aparelho), chega por `Usuario.som` e `<PreferenciaSom>` nos layouts do painel e da cozinha aplica em todos os avisos (`tocarAlerta` em `src/lib/som.ts`, sons gerados no navegador). Padrão: Bipe, alto, 2 vezes.
-- Senha: "Esqueci minha senha" (`/recuperar-senha` → e-mail → `/auth/confirmar` → `/nova-senha`). Na Equipe, o dono gera a senha inicial e envia o acesso pelo WhatsApp.
-- Botões crescem para 44 px em telas de toque (`pointer-coarse:min-h-11` nos tamanhos do `button.tsx`); não use `size="sm"` achando que fica pequeno no celular.
-- Site público: dados via `createPublicClient()` (anon, sem cookies), sempre filtrando pelo restaurante resolvido do slug; o restaurante nunca vem de id enviado pelo navegador.
-- Componentes de UI acessíveis e mobile-first; o PWA do garçom deve ser usável com uma mão e botões grandes.
-- Após cada migração: regenerar tipos, rodar os advisors de segurança do Supabase e corrigir alertas de RLS.
-- Segurança (revisão de 16/10, migração `endurecer_papeis`):
-  - Pedido não muda depois de criado (taxa, endereço, cliente, pagamento previsto, observação: trigger `t03_campos_fixos`); andamento do delivery só dono/caixa (a cozinha só `em_preparo` → `pronto`); pedido com pagamento ativo não cancela. Delivery limitado no banco (5 por telefone em 10 min, 40 esperando aceite).
-  - `membros` não aceita insert pela API: o painel grava com a chave secreta depois de `exigirDono()`. "Nova senha" só para conta criada pelo próprio restaurante (conta que já existia é da pessoa: ela usa "Esqueci minha senha").
-  - Código de pareamento só pela RPC `definir_codigo_pareamento` (10 min, único entre restaurantes); até 10 computadores por restaurante. O app de impressão só aceita `https://` (http só localhost).
-  - Texto que vai para a impressora passa por `codificar()` (bytes de controle viram espaço). Redirecionar depois de login/link: `caminhoInterno()` (`src/lib/caminho-seguro.ts`). IP para limites: último endereço do `X-Forwarded-For` (`ipDoCliente`). O ícone do PWA só baixa logo do bucket `rest-logos`.
-  - O repositório no GitHub é público: nada de IP, caminho de servidor ou segredo em arquivo versionado.
-- **Anti-robô (Cloudflare Turnstile)**, cobrado pelo próprio Supabase Auth (fecha o login direto na API, que pula os limites do app): `<AntiRobo>` (`src/components/anti-robo.tsx`) no login da equipe, `/admin/entrar`, cadastro, "esqueci a senha", senha atual de "Meu perfil" e código do cliente; o passe vai no campo `captcha` e as ações passam `captchaToken` (`src/lib/anti-robo.ts`; erro de passe não conta no bloqueio). Chave pública em tempo de execução: `TURNSTILE_SITE_KEY` no Coolify (lida por `/api/anti-robo`; sem ela o widget some). Ordem para ligar: publicar o código → `TURNSTILE_SITE_KEY` no Coolify e redeploy → só então ligar o Captcha (Turnstile + chave secreta) no Supabase (Authentication › Attack Protection). Local: chave de teste `1x00000000000000000000AA`.
-- **Bloqueio de senha errada** (migração `bloqueio_login`, pedido do cliente em 30/10): `rest_privado.tentativas_login` por `conta:<e-mail>` (5 erros → 15 min, 10 → 1 h, 20 → 24 h) e `ip:<ip>` (30 → 15 min, 100 → 1 h); acerto zera a conta. RPCs `login_espera`/`login_resultado` só para `service_role`; o app usa `src/lib/auth/bloqueio.ts` no login da equipe, no `/admin/entrar` e na senha atual de "Meu perfil". Durante o bloqueio nem tenta a senha. E-mail que não existe conta igual (não revela quem tem conta). Sem a chave secreta, não trava.
+- Um nome por conceito na interface: "Mesas" é o mapa, "Cadastro de mesas" é o cadastro, "Setores"
+  é o que o banco chama de `estacoes`.
+- Após cada migração: regenerar tipos, rodar os advisors de segurança do Supabase e corrigir
+  alertas de RLS.
+
+**Servidor**
+
+- Server Actions ou Route Handlers para escrita; validação com Zod em toda entrada. IDs com
+  `z.guid()` (não `z.uuid()`, que rejeita os uuids do seed).
+- Toda página e Server Action de staff chama `exigirAcesso(area)` / `exigirPermissao(...)` de
+  `src/lib/auth/dal.ts` (layouts não reexecutam a cada navegação).
+- Consultas de staff sempre com `.eq("restaurante_id", acesso.restaurante.id)`: a RLS também libera
+  o cardápio público de outros restaurantes.
+- Tudo exportado de um arquivo `"use server"` vira endpoint: carga de dados vai em `dados.ts`
+  (`import "server-only"`), não em `actions.ts`.
+- Escrita com a chave secreta (`createAdminClient`) só para o que a sessão do usuário não consegue
+  (criar contas, trocar senha), sempre após `exigirDono()` ou `exigirAdmin()`.
+- Inserts em tabelas com colunas preenchidas por trigger (`caixa_sessao_id`, `numero`,
+  `registrado_por`, `aberta_por`) usam `novoRegistro()` de `src/lib/supabase/insercao.ts`.
+- Site público: dados via `createPublicClient()` (anon, sem cookies), sempre filtrando pelo
+  restaurante resolvido do slug; o restaurante nunca vem de id enviado pelo navegador.
+- Redirecionar depois de login/link: `caminhoInterno()` (`src/lib/caminho-seguro.ts`). IP para
+  limites: último endereço do `X-Forwarded-For` (`ipDoCliente`).
+
+**Interface**
+
+- Formulários: Server Action retorna `ResultadoAcao` (`src/lib/acoes.ts`); o `<form>` usa
+  `key={estado?.chave}` e `valorCampo()` para manter o que foi digitado após erro (React 19 reseta
+  o form).
+- Rede ruim não pode apagar o que foi digitado: ações fora de formulário usam `useAcao`
+  (`src/components/staff/acoes-cliente.tsx`); formulários longos do cliente guardam rascunho com
+  `useRascunho`. Cada área tem `error.tsx` com `<TelaErro>`.
+- Ação destrutiva ou sem volta (excluir, desativar, fechar caixa/comanda, estornar) pede
+  confirmação: `<BotaoConfirmar>` ou confirmação no lugar com motivo.
+- Controle que vale na hora (liga/desliga) é `<Chave>`, não checkbox de formulário.
+- Botões crescem para 44 px em telas de toque (`pointer-coarse:min-h-11` nos tamanhos do
+  `button.tsx`); não use `size="sm"` achando que fica pequeno no celular.
+- Cor de texto sobre a cor da marca: `corDeContraste()` (`src/lib/cores.ts`), pela razão de
+  contraste WCAG. Avisos (toasts) ficam embaixo, acima das barras fixas.
+- Componentes acessíveis e mobile-first; a tela da mesa deve ser usável com uma mão.
+- Campos de valor selecionam o texto ao tocar (o "0,00" do troco não vira "0,00100").
+- Som dos avisos: `novoContextoDeSom()` e `tocarAlerta()` (`src/lib/som.ts`), com a preferência da
+  pessoa (`<PreferenciaSom>` nos layouts do painel e da cozinha).
+- Seletor de produtos é um componente só: `<EscolherProdutos>`. A escolha fica num componente filho
+  com `key` = lista salva, para nascer de novo depois de salvar.
+
+**Processo**
+
 - Commits pequenos, um por funcionalidade.
+- `npm run lint`, `npm run typecheck` e `npm run conferir:listas` precisam passar; a CI
+  (`.github/workflows/imagem.yml`) roda os três antes de montar a imagem.
+- Isolamento entre tenants: `npm run db:reset:local && npm run db:test:local` (precisa do Supabase
+  local em Docker).

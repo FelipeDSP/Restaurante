@@ -1,4 +1,10 @@
-# Roteiro de construção do MVP
+# Roteiro de construção do MVP (histórico)
+
+> **Documento histórico, de outubro de 2026.** Foi o roteiro de construção do MVP, e todas as
+> etapas abaixo já estão prontas — várias com escopo bem maior do que o descrito aqui (impressão,
+> cozinha por setor, cardápios por horário, estoque, cupons, entregadores, conta do cliente,
+> cobrança pelo Asaas, painel da plataforma). Guardado só para registro; **o que vale hoje está no
+> `CLAUDE.md`**, e o porquê de cada decisão em `docs/decisoes.md`.
 
 Use um prompt por vez. Só passe para o próximo quando o atual estiver funcionando e testado. Todos assumem que o `CLAUDE.md` está na raiz do projeto.
 
