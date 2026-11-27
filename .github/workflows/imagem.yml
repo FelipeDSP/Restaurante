@@ -1,5 +1,5 @@
-# Monta a imagem Docker do app no GitHub e publica no GitHub Container Registry.
-# A VPS (pequena) não compila mais: o Coolify só baixa a imagem pronta e reinicia.
+# Confere o código e, se passar, monta a imagem Docker do app e publica no GitHub Container
+# Registry. A VPS (pequena) não compila mais: o Coolify só baixa a imagem pronta e reinicia.
 #
 # Variáveis do repositório (Settings > Secrets and variables > Actions > Variables):
 #   NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, NEXT_PUBLIC_SITE_URL
@@ -10,11 +10,12 @@ name: Imagem
 on:
   push:
     branches: [main]
+    # Migração entra na conferência (`conferir:listas` compara as listas do banco com as do
+    # TypeScript), por isso `supabase/**` não é ignorado.
     paths-ignore:
       - "agente/**"
       - "docs/**"
       - "**/*.md"
-      - "supabase/**"
   workflow_dispatch:
 
 permissions:
@@ -26,7 +27,32 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Lint, tipos e as listas que vivem no código e no banco. A imagem só sai se isto passar.
+  #
+  # O teste de isolamento (supabase/tests/isolamento.sql) continua de fora: precisa de um Supabase
+  # local (`npx supabase start` baixa a pilha inteira em Docker, mais o seed) e das variáveis de
+  # supabase/.env, que não estão no repositório. Roda na máquina de quem desenvolve:
+  #   npm run db:reset:local && npm run db:test:local
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run lint
+
+      - run: npm run typecheck
+
+      - run: npm run conferir:listas
+
   imagem:
+    needs: verificar
     runs-on: ubuntu-latest
     steps:
       - name: Confere as variáveis do repositório
