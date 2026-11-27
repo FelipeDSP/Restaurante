@@ -168,8 +168,12 @@ desenhar:
 - as palavras que o cliente lê são **"Retirar no local"**, "Pronto para retirar" e **"Retirado"**;
 - **o pedido mínimo não vale na retirada**: ele existe por causa da viagem do entregador, e quem
   vem buscar leva o que quiser;
-- entrega e retirada são **duas chaves separadas** no quadro do Delivery, cada uma com a sua
-  pausa, e **basta uma ligada** para o site receber pedido (restaurante que só faz balcão);
+- entrega e retirada se pausam **separadas** (some o entregador, entope a cozinha), e **basta
+  uma ligada** para o site receber pedido (restaurante que só faz balcão). Mas duas faixas
+  coloridas no topo do quadro comiam a tela antes do trabalho começar: o dono, vendo na tela —
+  "ocupam espaço demais". Virou **uma linha só**, quieta quando está tudo normal, com um botão
+  "Pausar" que abre o menu (entrega, retirada ou tudo); faixa de aviso só quando algo está
+  pausado;
 - `pronto` passa a mandar push na retirada — era o aviso que faltava, e na entrega ele não
   existia porque ali o status é interno (o pedido só espera o entregador).
 

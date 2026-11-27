@@ -35,15 +35,18 @@ export default async function DeliveryPage() {
         tabelas={["pedidos", "pagamentos", "tarefas_producao", "pedidos_mensagens"]}
         interessa={mudancaDoDelivery}
       />
-      <div>
-        <h1 className="text-2xl font-semibold">Delivery</h1>
-        {/* Só o que importa agora: com o caixa fechado, o site não recebe pedidos. */}
-        {!sessao ? (
-          <p className="text-sm font-medium text-destructive">Caixa fechado: o site não recebe pedidos até o caixa ser aberto.</p>
-        ) : null}
+      {/* O estado do site fica na mesma linha do título: quieto quando está tudo normal, faixa
+          de aviso (em linha própria) quando entrega ou retirada está pausada. */}
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <div>
+          <h1 className="text-2xl font-semibold">Delivery</h1>
+          {/* Só o que importa agora: com o caixa fechado, o site não recebe pedidos. */}
+          {!sessao ? (
+            <p className="text-sm font-medium text-destructive">Caixa fechado: o site não recebe pedidos até o caixa ser aberto.</p>
+          ) : null}
+        </div>
+        <ChaveDelivery entrega={jeitos.entrega} retirada={jeitos.retirada} podeMudar={temPermissao(acesso, "restaurante")} />
       </div>
-      {/* Pausar e voltar a receber, sem sair do quadro: entrega e retirada separadas. */}
-      <ChaveDelivery entrega={jeitos.entrega} retirada={jeitos.retirada} podeMudar={temPermissao(acesso, "restaurante")} />
       <QuadroDelivery pedidos={pedidos} entregadores={entregadores} finalizadosNoQuadro={FINALIZADOS_NO_QUADRO} />
     </main>
   );

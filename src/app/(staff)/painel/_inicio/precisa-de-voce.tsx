@@ -151,9 +151,7 @@ export function PrecisaDeVoce({ pendencias, permissoes, fuso }: { pendencias: Pe
         ) : null}
       </div>
       {/* As próprias chaves, para voltar a receber sem sair da tela. */}
-      {pausado ? (
-        <ChaveDelivery entrega={false} retirada={false} podeMudar={permissoes.includes("restaurante")} className="bg-white/70" />
-      ) : null}
+      {pausado ? <ChaveDelivery entrega={false} retirada={false} podeMudar={permissoes.includes("restaurante")} /> : null}
       {/* Duas colunas no computador: cinco pendências numa coluna só viravam uma lista comprida
           que empurrava os números da noite para fora da tela. */}
       {linhas.length > 0 ? (

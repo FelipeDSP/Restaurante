@@ -194,9 +194,11 @@ menu, nas abas do rodapé e nos cartões de Configurações.
   sem entregador (constraint `pedidos_retirada_sem_entrega`), sem pedido mínimo (o mínimo existe
   pela viagem do entregador), cupom de frete grátis recusado, e o status não passa por
   `saiu_entrega`. O tipo não muda depois de enviado, nem pela edição do caixa.
-- **O restaurante liga os dois jeitos separados**: `aceita_delivery` e `aceita_retirada`, cada um
-  com a sua chave no quadro do Delivery (`<ChaveDelivery>`), para quem tem a permissão
-  `restaurante`. Basta um ligado para o site receber pedido — quem só faz balcão liga só a
+- **O restaurante liga os dois jeitos separados**: `aceita_delivery` e `aceita_retirada`, pelo
+  `<ChaveDelivery>` na linha do título do quadro, para quem tem a permissão `restaurante`. Com
+  os dois ligados é uma linha quieta ("Recebendo entrega e retirada") com um botão "Pausar" que
+  abre o menu (pausar a entrega, a retirada ou tudo); com algo pausado vira faixa de aviso, que
+  é quando vale ocupar espaço. Escolher numa lista já é deliberado: não tem confirmação em cima. Basta um ligado para o site receber pedido — quem só faz balcão liga só a
   retirada. `consultar_disponibilidade_delivery` responde `aberto`, `entrega` e `retirada`.
   `tempo_estimado_retirada_min` (Painel › Restaurante) é o tempo de preparo mostrado a quem busca.
 - **Envio seguro**: `criar_pedido_delivery`, `lancar_itens_comanda` e `pedir_pela_mesa` recebem a
