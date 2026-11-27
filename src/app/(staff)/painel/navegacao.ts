@@ -47,8 +47,10 @@ export const NAVEGACAO: ItemNavegacao[] = [
     acesso: ["comandas_painel", "garcom_app"],
     secoes: [
       { href: "/painel/comandas", rotulo: "Mesas", icone: "mesas" },
-      // Setor sem tela: o garçom marca que retirou o prato.
-      { href: "/painel/comandas/pracas", rotulo: "Setores", icone: "setores", acesso: "garcom_app" },
+      // Setor sem tela: o garçom marca que retirou o prato. "Pedidos" porque é assim que ele
+      // chama o que está na cozinha esperando ele (decisão do dono em 27/11); "Setores" ficou
+      // sendo só o cadastro, em Configurações.
+      { href: "/painel/comandas/pracas", rotulo: "Pedidos", icone: "setores", acesso: "garcom_app" },
     ],
   },
   { href: "/painel/caixa", rotulo: "Caixa", grupo: "Operação", icone: "caixa", acesso: ["caixa_operar"] },
