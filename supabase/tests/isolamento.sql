@@ -3911,6 +3911,37 @@ begin
   perform pg_temp.ok(not (v_disp ->> 'aberto')::boolean and v_disp ->> 'motivo' = 'sem_delivery',
     'retirada: os dois desligados fecham o site');
 
+  -- Suspender os pedidos: um botão só derruba os dois jeitos, e despausar devolve exatamente o
+  -- que a casa faz (o restaurante que só retira não volta entregando).
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  update public.restaurantes set aceita_delivery = false, aceita_retirada = true, pedidos_pausados = true where id = a;
+  perform pg_temp.anonimo();
+  v_disp := public.consultar_disponibilidade_delivery(a);
+  perform pg_temp.ok(not (v_disp ->> 'aberto')::boolean and v_disp ->> 'motivo' = 'pausado'
+                     and not (v_disp ->> 'entrega')::boolean and not (v_disp ->> 'retirada')::boolean,
+    'suspender: um botao derruba entrega e retirada');
+  begin
+    perform public.criar_pedido_delivery(a, 'Ze', '69999991115', null, null, 'pix',
+      jsonb_build_array(jsonb_build_object('produto_id', v_produto, 'quantidade', 1)),
+      null, null, null, null, null, 'retirada');
+    perform pg_temp.ok(false, 'suspender: o site recusa pedido');
+  exception when others then
+    perform pg_temp.ok(sqlerrm like '%(pausado)%', 'suspender: o site recusa pedido');
+  end;
+
+  perform pg_temp.entrar('dono.brasa@exemplo.com');
+  update public.restaurantes set pedidos_pausados = false where id = a;
+  perform pg_temp.anonimo();
+  v_disp := public.consultar_disponibilidade_delivery(a);
+  perform pg_temp.ok((v_disp ->> 'aberto')::boolean and not (v_disp ->> 'entrega')::boolean and (v_disp ->> 'retirada')::boolean,
+    'suspender: despausar devolve so o que a casa faz');
+
+  perform pg_temp.entrar('garcom1.brasa@exemplo.com');
+  update public.restaurantes set pedidos_pausados = true where id = a;
+  perform pg_temp.admin();
+  perform pg_temp.ok(not (select pedidos_pausados from public.restaurantes where id = a),
+    'suspender: garcom nao suspende o site');
+
   perform pg_temp.entrar('dono.brasa@exemplo.com');
   update public.restaurantes set aceita_delivery = true where id = a;
   perform pg_temp.admin();

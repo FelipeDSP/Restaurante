@@ -1,110 +1,90 @@
 "use client";
 
-import { ChevronDown, Pause, Play } from "lucide-react";
+import { Pause, Play } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { useAcao } from "@/components/staff/acoes-cliente";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import type { ResultadoAcao } from "@/lib/acoes";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-import { alternarDelivery, alternarRetirada } from "./actions";
+import { alternarPedidosDoSite } from "./actions";
 
-// O site recebe pedido de dois jeitos (entrega e retirada) e cada um se pausa sozinho: a cozinha
-// entope, some o entregador, acaba o insumo. Mas duas faixas coloridas no topo do quadro comiam
-// a tela antes do trabalho começar, e na maior parte das noites não há nada a dizer.
-//
-// Então: quando os dois estão ligados é uma linha quieta, sem caixa; quando algo está pausado
-// vira faixa de aviso, que é quando vale ocupar espaço. A ação é sempre um botão só, com menu —
-// escolher "Pausar a entrega" numa lista já é deliberado, não precisa de confirmação em cima.
-//
-// Quem pode é quem tem a permissão `restaurante`. Para os outros fica só o aviso, sem botão:
-// saber que o site está pausado importa para todo mundo no caixa.
-type Item = { rotulo: string; aoEscolher: () => Promise<ResultadoAcao> };
+const DESISTE_MS = 6000;
 
+// Um botão só para suspender o site (decisão do dono em 27/11: "retirada e delivery são meio que
+// um só"). Para quem está no caixa só existe uma pergunta — o site está recebendo ou não —, e a
+// resposta vale para os dois jeitos de pedir.
+//
+// O que a casa oferece (entrega, retirada) é outra coisa, e fica em Painel › Restaurante: assim
+// despausar devolve exatamente os jeitos que ela faz, sem ligar entrega para quem só faz balcão.
+//
+// Quieto quando está recebendo (uma linha, sem caixa); faixa de aviso quando está suspenso, que
+// é quando vale ocupar espaço. Suspender pede confirmação no lugar — é o site saindo do ar.
 export function ChaveDelivery({
-  entrega,
-  retirada,
+  recebendo,
   podeMudar,
   className,
 }: {
-  entrega: boolean;
-  retirada: boolean;
+  recebendo: boolean;
   podeMudar: boolean;
   className?: string;
 }) {
   const { executar, pendente } = useAcao();
-  const tudoLigado = entrega && retirada;
-  const nadaLigado = !entrega && !retirada;
+  const [armado, setArmado] = useState(false);
 
-  const texto = tudoLigado
-    ? "Recebendo entrega e retirada"
-    : nadaLigado
-      ? "O site não está recebendo pedidos"
-      : entrega
-        ? "Retirada pausada · recebendo só entrega"
-        : "Entrega pausada · recebendo só retirada";
-
-  const itens: Item[] = [
-    { rotulo: entrega ? "Pausar a entrega" : "Voltar a entregar", aoEscolher: () => alternarDelivery(!entrega) },
-    { rotulo: retirada ? "Pausar a retirada" : "Aceitar retirada no local", aoEscolher: () => alternarRetirada(!retirada) },
-  ];
-  if (tudoLigado) {
-    itens.push({
-      rotulo: "Pausar tudo",
-      aoEscolher: async () => {
-        await alternarDelivery(false);
-        return alternarRetirada(false);
-      },
-    });
-  }
-  if (nadaLigado) {
-    itens.push({
-      rotulo: "Voltar a receber tudo",
-      aoEscolher: async () => {
-        await alternarDelivery(true);
-        return alternarRetirada(true);
-      },
-    });
-  }
+  useEffect(() => {
+    if (!armado) return;
+    const t = setTimeout(() => setArmado(false), DESISTE_MS);
+    return () => clearTimeout(t);
+  }, [armado]);
 
   return (
     <div
       role="status"
       className={cn(
         "flex flex-wrap items-center gap-x-3 gap-y-1 text-sm",
-        tudoLigado
+        recebendo
           ? "text-muted-foreground"
-          : // Algo pausado: linha própria, com cor, porque muda o que o cliente consegue fazer.
-            "w-full rounded-xl border border-amber-400 bg-amber-50 px-3 py-2 font-semibold text-amber-950",
+          : "w-full rounded-xl border border-amber-400 bg-amber-50 px-3 py-2 font-semibold text-amber-950",
         className,
       )}
     >
       <span className="flex items-center gap-2">
-        {tudoLigado ? <span aria-hidden className="size-2.5 rounded-full bg-green-600" /> : <Pause className="size-4" aria-hidden />}
-        {texto}
+        {recebendo ? <span aria-hidden className="size-2.5 rounded-full bg-green-600" /> : <Pause className="size-4" aria-hidden />}
+        {recebendo ? "O site está recebendo pedidos" : "Pedidos suspensos: o site não recebe nada"}
       </span>
-      {podeMudar ? (
-        <DropdownMenu>
-          <DropdownMenuTrigger
+      {!podeMudar ? null : armado ? (
+        <span className="ml-auto flex items-center gap-1" role="group" aria-label="Suspender os pedidos do site">
+          <Button
+            type="button"
+            variant="destructive"
+            className="h-11 sm:h-9"
             disabled={pendente}
-            className={cn(
-              "flex h-9 pointer-coarse:h-11 shrink-0 items-center gap-1.5 rounded-md border px-3 font-medium disabled:opacity-50",
-              tudoLigado ? "bg-background hover:bg-muted" : "ml-auto border-amber-500 bg-background hover:bg-amber-100",
-            )}
+            onClick={() => {
+              setArmado(false);
+              executar(() => alternarPedidosDoSite(true));
+            }}
           >
-            {tudoLigado ? <Pause className="size-4" aria-hidden /> : <Play className="size-4" aria-hidden />}
-            {tudoLigado ? "Pausar" : "Voltar a receber"}
-            <ChevronDown className="size-4" aria-hidden />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="min-w-56">
-            {itens.map((i) => (
-              <DropdownMenuItem key={i.rotulo} className="h-11" onClick={() => executar(i.aoEscolher)}>
-                {i.rotulo}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ) : null}
+            Confirmar
+          </Button>
+          <Button type="button" variant="ghost" className="h-11 sm:h-9" onClick={() => setArmado(false)}>
+            Cancelar
+          </Button>
+        </span>
+      ) : recebendo ? (
+        <Button type="button" variant="outline" className="ml-auto h-11 sm:h-9" disabled={pendente} onClick={() => setArmado(true)}>
+          <Pause aria-hidden /> Suspender pedidos
+        </Button>
+      ) : (
+        <Button
+          type="button"
+          className="ml-auto h-11 sm:h-9"
+          disabled={pendente}
+          onClick={() => executar(() => alternarPedidosDoSite(false))}
+        >
+          <Play aria-hidden /> Voltar a receber
+        </Button>
+      )}
     </div>
   );
 }

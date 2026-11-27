@@ -19,42 +19,27 @@ const ROTULO: Record<(typeof STATUS_AVANCO)[number], string> = {
   saiu_entrega: "Pedido saiu para entrega.",
 };
 
-// Pausar a entrega ou a retirada no meio do serviço (cozinha entupida, insumo em falta, sem
-// entregador) sem abrir o formulário de Painel › Restaurante — onde os campos ficavam, e onde
-// salvar o formulário desfazia a pausa. Só quem tem `restaurante`: a RLS de `restaurantes` não
-// deixa mais ninguém escrever.
-export async function alternarDelivery(aceita: boolean): Promise<ResultadoAcao> {
+// Suspender o site no meio do serviço (cozinha entupida, insumo em falta, sem entregador) sem
+// abrir o formulário de Painel › Restaurante — onde o campo ficava, e onde salvar o formulário
+// desfazia a pausa. Vale para entrega e retirada de uma vez: para quem está no caixa é uma
+// pergunta só. O que a casa oferece continua em Painel › Restaurante, então despausar devolve
+// exatamente os jeitos que ela faz.
+//
+// Só quem tem `restaurante`: a RLS de `restaurantes` não deixa mais ninguém escrever.
+export async function alternarPedidosDoSite(pausar: boolean): Promise<ResultadoAcao> {
   const acesso = await exigirPermissao("painel", "restaurante");
-  const dados = z.object({ aceita: z.boolean() }).safeParse({ aceita });
+  const dados = z.object({ pausar: z.boolean() }).safeParse({ pausar });
   if (!dados.success) return falha("Dados inválidos.");
 
   const supabase = await createClient();
   const { error } = await supabase
     .from("restaurantes")
-    .update({ aceita_delivery: dados.data.aceita })
+    .update({ pedidos_pausados: dados.data.pausar })
     .eq("id", acesso.restaurante.id);
   if (error) return falha(mensagemErroBanco(error));
 
   refresh();
-  return sucesso(dados.data.aceita ? "O site voltou a entregar." : "Entrega pausada: o site não recebe pedido para entregar.");
-}
-
-export async function alternarRetirada(aceita: boolean): Promise<ResultadoAcao> {
-  const acesso = await exigirPermissao("painel", "restaurante");
-  const dados = z.object({ aceita: z.boolean() }).safeParse({ aceita });
-  if (!dados.success) return falha("Dados inválidos.");
-
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("restaurantes")
-    .update({ aceita_retirada: dados.data.aceita })
-    .eq("id", acesso.restaurante.id);
-  if (error) return falha(mensagemErroBanco(error));
-
-  refresh();
-  return sucesso(
-    dados.data.aceita ? "O cliente já pode pedir para retirar no local." : "Retirada pausada: o site não recebe pedido para retirar.",
-  );
+  return sucesso(dados.data.pausar ? "Pedidos suspensos: o site não recebe nada." : "O site voltou a receber pedidos.");
 }
 
 export async function avancarPedido(pedidoId: string, status: string): Promise<ResultadoAcao> {

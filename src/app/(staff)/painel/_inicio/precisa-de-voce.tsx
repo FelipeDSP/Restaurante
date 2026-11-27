@@ -26,7 +26,8 @@ const plural = (n: number, um: string, varios: string) => (n === 1 ? um : varios
 // Por que o site não recebe pedido, dito para quem pode resolver.
 const MOTIVO_DO_SITE: Record<NonNullable<Disponibilidade["motivo"]>, string> = {
   restaurante_indisponivel: "O restaurante está desativado ou a assinatura está suspensa.",
-  sem_delivery: "O delivery pelo site está desligado.",
+  sem_delivery: "Nenhum jeito de receber está ligado: cadastre entrega ou retirada.",
+  pausado: "Os pedidos estão suspensos.",
   fora_do_horario: "Está fora do horário que você cadastrou.",
   caixa_fechado: "O caixa está fechado.",
 };
@@ -112,13 +113,14 @@ export function PrecisaDeVoce({ pendencias, permissoes, fuso }: { pendencias: Pe
       detalhe: "Parece que ninguém fechou a noite. O resumo só fecha quando o caixa fecha",
     });
   }
-  // Nem entrega nem retirada ligadas: o site não recebe nada. As duas chaves ficam aqui mesmo
-  // (antes o aviso mandava para o formulário grande de Painel › Restaurante, onde a pessoa tinha
-  // de achar o campo no meio dos horários e cores).
-  const pausado = !site.aberto && site.motivo === "sem_delivery" && caixaAberto;
+  // Site suspenso à mão: o botão de voltar a receber fica aqui mesmo (antes o aviso mandava
+  // para o formulário grande de Painel › Restaurante, onde a pessoa tinha de achar o campo no
+  // meio dos horários e cores). "sem_delivery" é outra coisa — a casa não cadastrou nenhum jeito
+  // de receber —, e aí o caminho é a configuração, não um botão.
+  const pausado = !site.aberto && site.motivo === "pausado" && caixaAberto;
   // Site fora do ar por outro motivo. Só com o caixa aberto: se ninguém abriu o caixa, o
   // restaurante não está operando e não há nada a cobrar.
-  if (!site.aberto && site.motivo && site.motivo !== "caixa_fechado" && site.motivo !== "sem_delivery" && caixaAberto) {
+  if (!site.aberto && site.motivo && site.motivo !== "caixa_fechado" && site.motivo !== "pausado" && caixaAberto) {
     linhas.push({
       chave: "site",
       // O link leva onde a coisa se resolve, não à tela de configuração inteira: o horário cai no
@@ -151,7 +153,7 @@ export function PrecisaDeVoce({ pendencias, permissoes, fuso }: { pendencias: Pe
         ) : null}
       </div>
       {/* As próprias chaves, para voltar a receber sem sair da tela. */}
-      {pausado ? <ChaveDelivery entrega={false} retirada={false} podeMudar={permissoes.includes("restaurante")} /> : null}
+      {pausado ? <ChaveDelivery recebendo={false} podeMudar={permissoes.includes("restaurante")} /> : null}
       {/* Duas colunas no computador: cinco pendências numa coluna só viravam uma lista comprida
           que empurrava os números da noite para fora da tela. */}
       {linhas.length > 0 ? (

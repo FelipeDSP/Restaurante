@@ -168,14 +168,20 @@ desenhar:
 - as palavras que o cliente lê são **"Retirar no local"**, "Pronto para retirar" e **"Retirado"**;
 - **o pedido mínimo não vale na retirada**: ele existe por causa da viagem do entregador, e quem
   vem buscar leva o que quiser;
-- entrega e retirada se pausam **separadas** (some o entregador, entope a cozinha), e **basta
-  uma ligada** para o site receber pedido (restaurante que só faz balcão). Mas duas faixas
-  coloridas no topo do quadro comiam a tela antes do trabalho começar: o dono, vendo na tela —
-  "ocupam espaço demais". Virou **uma linha só**, quieta quando está tudo normal, com um botão
-  "Pausar" que abre o menu (entrega, retirada ou tudo); faixa de aviso só quando algo está
-  pausado;
+- **basta um dos jeitos cadastrado** para o site receber pedido (restaurante que só faz balcão);
 - `pronto` passa a mandar push na retirada — era o aviso que faltava, e na entrega ele não
   existia porque ali o status é interno (o pedido só espera o entregador).
+
+**27/11 — Um botão só para suspender o site.** Primeiro foram duas chaves (pausar a entrega,
+pausar a retirada), depois uma linha com menu de três opções. O dono, vendo na tela: as duas
+faixas "ocupam espaço demais", e "retirada e delivery são meio que um só" — para quem está no
+caixa existe uma pergunta só, *o site está recebendo ou não*.
+
+Daí a separação que o banco precisava: `aceita_delivery`/`aceita_retirada` passaram a significar
+só **o que a casa faz** (configuração, em Painel › Restaurante) e entrou
+`restaurantes.pedidos_pausados` para **suspender agora** (operação, um botão). Sem essa coluna,
+um botão que escrevesse nos dois campos faria o restaurante que só retira voltar entregando ao
+despausar — o campo não lembraria o que ele oferece.
 
 Por baixo é `pedidos.tipo_entrega` e **não** uma `origem` nova: `origem` já significa por onde o
 pedido entrou, e trocá-la quebraria cozinha, relatórios, RLS e o quadro, que filtram por

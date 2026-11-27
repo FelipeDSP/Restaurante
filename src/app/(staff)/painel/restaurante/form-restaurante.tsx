@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 
-import { BotaoEnviar, Campo, ErroCampo, Selecao, useAvisoResultado, valorCampo } from "@/components/staff/formulario";
+import { BotaoEnviar, Campo, ErroCampo, marcadoCampo, Selecao, useAvisoResultado, valorCampo } from "@/components/staff/formulario";
 import { UploadImagem } from "@/components/staff/upload-imagem";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -32,6 +32,8 @@ export type DadosRestaurante = {
   fuso_horario: string;
   horarios: Horarios;
   pedido_minimo: number;
+  aceita_delivery: boolean;
+  aceita_retirada: boolean;
   tempo_estimado_entrega_min: number | null;
   tempo_estimado_retirada_min: number | null;
   // fixa: um valor só (o cliente informa CEP e endereço); bairro: lista em Bairros de entrega.
@@ -230,8 +232,29 @@ export function FormRestaurante({ restaurante }: { restaurante: DadosRestaurante
           <CardTitle>Delivery</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
-          {/* Pausar e voltar a receber pedidos fica no quadro do Delivery e no Início: é decisão
-              de meio de serviço, e salvar este formulário desfazia a pausa. */}
+          {/* O que a casa faz — isto é configuração e muda quase nunca. Suspender os pedidos
+              agora é outra coisa, e fica no quadro do Delivery (um botão). */}
+          <fieldset className="flex flex-col gap-2 sm:col-span-2">
+            <legend className="text-sm font-medium">Como o cliente recebe</legend>
+            <label className="flex pointer-coarse:min-h-11 items-center gap-3 text-sm font-medium">
+              <input
+                type="checkbox"
+                name="aceita_delivery"
+                defaultChecked={marcadoCampo(estado, "aceita_delivery", restaurante.aceita_delivery)}
+                className="size-5 pointer-coarse:size-6 accent-[var(--cor-primaria-texto)]"
+              />
+              Entregar no endereço do cliente
+            </label>
+            <label className="flex pointer-coarse:min-h-11 items-center gap-3 text-sm font-medium">
+              <input
+                type="checkbox"
+                name="aceita_retirada"
+                defaultChecked={marcadoCampo(estado, "aceita_retirada", restaurante.aceita_retirada)}
+                className="size-5 pointer-coarse:size-6 accent-[var(--cor-primaria-texto)]"
+              />
+              Aceitar retirada no local
+            </label>
+          </fieldset>
           {/* Por enquanto só taxa fixa (a taxa por bairro volta quando for repensada; o banco ainda aceita). */}
           <input type="hidden" name="taxa_entrega_modo" value="fixa" />
           <Campo rotulo="Taxa de entrega (R$)" htmlFor="taxa_entrega_fixa" dica="0,00 = entrega grátis">

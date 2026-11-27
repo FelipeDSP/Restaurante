@@ -133,15 +133,14 @@ export async function carregarEntregadores(restauranteId: string): Promise<{ id:
   return data ?? [];
 }
 
-// De que jeitos o site está recebendo pedido (chaves do quadro do Delivery e aviso do Início).
-export type JeitosDeReceber = { entrega: boolean; retirada: boolean };
-
-export async function jeitosDeReceber(restauranteId: string): Promise<JeitosDeReceber> {
+// O site está recebendo pedido? (botão do quadro do Delivery e aviso do Início).
+// Suspenso à mão, ou sem nenhum jeito de receber cadastrado — para quem olha o quadro dá no mesmo.
+export async function recebendoPedidos(restauranteId: string): Promise<boolean> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("restaurantes")
-    .select("aceita_delivery, aceita_retirada")
+    .select("aceita_delivery, aceita_retirada, pedidos_pausados")
     .eq("id", restauranteId)
     .maybeSingle();
-  return { entrega: data?.aceita_delivery ?? false, retirada: data?.aceita_retirada ?? false };
+  return Boolean(data && !data.pedidos_pausados && (data.aceita_delivery || data.aceita_retirada));
 }

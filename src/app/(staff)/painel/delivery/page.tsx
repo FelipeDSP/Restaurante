@@ -5,7 +5,7 @@ import { exigirPermissao, temPermissao } from "@/lib/auth/dal";
 import { mudancaDoDelivery } from "@/lib/realtime-filtros";
 import { carregarSessaoAberta } from "@/modulos/caixa/dados";
 import { ChaveDelivery } from "@/modulos/delivery/chave-delivery";
-import { FINALIZADOS_NO_QUADRO, carregarEntregadores, carregarPedidosDelivery, jeitosDeReceber } from "@/modulos/delivery/dados";
+import { FINALIZADOS_NO_QUADRO, carregarEntregadores, carregarPedidosDelivery, recebendoPedidos } from "@/modulos/delivery/dados";
 
 import { QuadroDelivery } from "./quadro-delivery";
 
@@ -18,13 +18,13 @@ export default async function DeliveryPage() {
 
   // Em andamento (de qualquer sessão) + só os últimos finalizados da sessão: o quadro é
   // operacional e trazia até 200 finalizados, renderizando todos. O resto está no Histórico.
-  const [emAndamento, finalizados, entregadores, jeitos] = await Promise.all([
+  const [emAndamento, finalizados, entregadores, recebendo] = await Promise.all([
     carregarPedidosDelivery(acesso.restaurante.id, fuso, { emAndamento: true }),
     sessao
       ? carregarPedidosDelivery(acesso.restaurante.id, fuso, { finalizadosDaSessao: sessao.id, quantos: FINALIZADOS_NO_QUADRO })
       : Promise.resolve([]),
     carregarEntregadores(acesso.restaurante.id),
-    jeitosDeReceber(acesso.restaurante.id),
+    recebendoPedidos(acesso.restaurante.id),
   ]);
   const pedidos = [...emAndamento, ...finalizados];
 
@@ -35,8 +35,8 @@ export default async function DeliveryPage() {
         tabelas={["pedidos", "pagamentos", "tarefas_producao", "pedidos_mensagens"]}
         interessa={mudancaDoDelivery}
       />
-      {/* O estado do site fica na mesma linha do título: quieto quando está tudo normal, faixa
-          de aviso (em linha própria) quando entrega ou retirada está pausada. */}
+      {/* O estado do site fica na mesma linha do título: quieto quando está recebendo, faixa
+          de aviso (em linha própria) quando está suspenso. */}
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <div>
           <h1 className="text-2xl font-semibold">Delivery</h1>
@@ -45,7 +45,7 @@ export default async function DeliveryPage() {
             <p className="text-sm font-medium text-destructive">Caixa fechado: o site não recebe pedidos até o caixa ser aberto.</p>
           ) : null}
         </div>
-        <ChaveDelivery entrega={jeitos.entrega} retirada={jeitos.retirada} podeMudar={temPermissao(acesso, "restaurante")} />
+        <ChaveDelivery recebendo={recebendo} podeMudar={temPermissao(acesso, "restaurante")} />
       </div>
       <QuadroDelivery pedidos={pedidos} entregadores={entregadores} finalizadosNoQuadro={FINALIZADOS_NO_QUADRO} />
     </main>

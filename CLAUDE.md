@@ -194,11 +194,16 @@ menu, nas abas do rodapé e nos cartões de Configurações.
   sem entregador (constraint `pedidos_retirada_sem_entrega`), sem pedido mínimo (o mínimo existe
   pela viagem do entregador), cupom de frete grátis recusado, e o status não passa por
   `saiu_entrega`. O tipo não muda depois de enviado, nem pela edição do caixa.
-- **O restaurante liga os dois jeitos separados**: `aceita_delivery` e `aceita_retirada`, pelo
-  `<ChaveDelivery>` na linha do título do quadro, para quem tem a permissão `restaurante`. Com
-  os dois ligados é uma linha quieta ("Recebendo entrega e retirada") com um botão "Pausar" que
-  abre o menu (pausar a entrega, a retirada ou tudo); com algo pausado vira faixa de aviso, que
-  é quando vale ocupar espaço. Escolher numa lista já é deliberado: não tem confirmação em cima. Basta um ligado para o site receber pedido — quem só faz balcão liga só a
+- **O que a casa faz × se está recebendo agora são coisas diferentes.** `aceita_delivery` e
+  `aceita_retirada` dizem o que o restaurante oferece: configuração, em Painel › Restaurante
+  ("Como o cliente recebe"). `pedidos_pausados` suspende tudo agora: operação, **um botão só**
+  no quadro do Delivery (`<ChaveDelivery>`, permissão `restaurante`) — para quem está no caixa é
+  uma pergunta só, e despausar devolve exatamente os jeitos que a casa faz, sem ligar entrega
+  para quem só faz balcão. Quieto quando está recebendo (uma linha na altura do título); faixa
+  de aviso quando está suspenso. Suspender pede confirmação no lugar: é o site saindo do ar.
+- `consultar_disponibilidade_delivery` devolve `entrega` e `retirada` já **descontando a pausa**
+  (quer dizer "dá para pedir assim agora"), e o motivo `pausado` é separado de `sem_delivery`
+  (que é "a casa não cadastrou nenhum jeito de receber"). Basta um ligado para o site receber pedido — quem só faz balcão liga só a
   retirada. `consultar_disponibilidade_delivery` responde `aberto`, `entrega` e `retirada`.
   `tempo_estimado_retirada_min` (Painel › Restaurante) é o tempo de preparo mostrado a quem busca.
 - **Envio seguro**: `criar_pedido_delivery`, `lancar_itens_comanda` e `pedir_pela_mesa` recebem a

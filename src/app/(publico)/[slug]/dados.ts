@@ -139,7 +139,9 @@ export async function carregarBairros(restauranteId: string): Promise<BairroPubl
 // quais o checkout pode oferecer.
 export type Disponibilidade = {
   aberto: boolean;
-  motivo: "restaurante_indisponivel" | "sem_delivery" | "fora_do_horario" | "caixa_fechado" | null;
+  // "sem_delivery": a casa não cadastrou nenhum jeito de receber. "pausado": o restaurante
+  // suspendeu os pedidos agora, pelo botão do quadro do Delivery.
+  motivo: "restaurante_indisponivel" | "sem_delivery" | "pausado" | "fora_do_horario" | "caixa_fechado" | null;
   entrega: boolean;
   retirada: boolean;
 };
@@ -155,6 +157,7 @@ export async function consultarDisponibilidade(restauranteId: string): Promise<D
 export const MENSAGEM_FECHADO: Record<NonNullable<Disponibilidade["motivo"]>, string> = {
   restaurante_indisponivel: "Restaurante indisponível no momento.",
   sem_delivery: "Este restaurante não está recebendo pedidos pelo site.",
+  pausado: "Não estamos recebendo pedidos no momento. Tente mais tarde.",
   fora_do_horario: "Estamos fechados agora. Toque em Horários para ver quando abrimos.",
   caixa_fechado: "Ainda não estamos recebendo pedidos. Tente novamente em instantes.",
 };
