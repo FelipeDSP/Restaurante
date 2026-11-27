@@ -14,7 +14,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { id, textoObrigatorio } from "@/lib/validacao";
 
-import { exigirAdmin, MODULOS } from "./dados";
+import { exigirAdmin } from "./dados";
+import { MODULOS } from "./modulos";
 
 // Gestão de qualquer restaurante pelo super admin. As RPCs admin_* conferem de novo que é admin e
 // registram tudo; a chave secreta só cria/altera contas de login, sempre depois de exigirAdmin().

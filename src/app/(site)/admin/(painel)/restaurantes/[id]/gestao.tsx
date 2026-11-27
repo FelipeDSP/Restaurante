@@ -9,8 +9,9 @@ import { mensagemFalhaRede, useAcao } from "@/components/staff/acoes-cliente";
 import { BotaoConfirmar } from "@/components/staff/botao-confirmar";
 import { cn } from "@/lib/utils";
 
-import type { EquipeAdmin, IdModulo } from "../../../dados";
+import type { EquipeAdmin } from "../../../dados";
 import { adicionarPessoa, definirModulos, entrarComo, salvarPessoa, trocarSenha } from "../../../gestao-actions";
+import { type IdModulo, MODULOS } from "../../../modulos";
 
 const CAMPO =
   "h-10 w-full rounded-lg border border-black/10 bg-[#f6f1ea]/60 px-3 text-sm outline-none focus:border-uau-laranja focus:ring-2 focus:ring-uau-laranja/30";
@@ -43,16 +44,6 @@ function SenhaGerada({ email, senha, aoFechar }: { email: string; senha: string;
     </div>
   );
 }
-
-const MODULOS: { id: IdModulo; nome: string }[] = [
-  { id: "mesas", nome: "Mesas pelo caixa" },
-  { id: "garcom", nome: "App do garçom" },
-  { id: "qr", nome: "Pedido pelo QR da mesa" },
-  { id: "cozinha", nome: "Tela da cozinha e impressão" },
-  { id: "relatorios", nome: "Relatórios" },
-  { id: "cupons", nome: "Cupons" },
-  { id: "entregadores", nome: "Entregadores" },
-];
 
 type Escolha = "plano" | "liberado" | "bloqueado";
 

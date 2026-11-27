@@ -7,8 +7,10 @@ import type { IdPlano } from "@/lib/planos";
 import { createClient } from "@/lib/supabase/server";
 
 import type { StatusAssinatura } from "./assinatura";
+import type { IdModulo } from "./modulos";
 
 export { dataBR, diasRestantes, NOME_STATUS, type StatusAssinatura } from "./assinatura";
+export { type IdModulo, MODULOS } from "./modulos";
 
 // Painel da plataforma (super admin). Quem é admin fica no banco (rest_privado.administradores);
 // as RPCs admin_* conferem de novo. Para quem não é admin, /admin "não existe".
@@ -160,18 +162,6 @@ export async function carregarAdmins(): Promise<Administrador[]> {
   if (error) throw new Error(error.message);
   return (data as unknown as Administrador[]) ?? [];
 }
-
-export const MODULOS = [
-  { id: "mesas", nome: "Mesas pelo caixa" },
-  { id: "garcom", nome: "App do garçom" },
-  { id: "qr", nome: "Pedido pelo QR da mesa" },
-  { id: "cozinha", nome: "Tela da cozinha e impressão" },
-  { id: "relatorios", nome: "Relatórios" },
-  { id: "cupons", nome: "Cupons" },
-  { id: "entregadores", nome: "Entregadores" },
-  { id: "estoque", nome: "Controle de estoque" },
-] as const;
-export type IdModulo = (typeof MODULOS)[number]["id"];
 
 export type EquipeAdmin = {
   membros: {
