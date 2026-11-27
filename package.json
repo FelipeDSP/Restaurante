@@ -13,7 +13,8 @@
     "db:types:local": "supabase gen types typescript --local --schema public > src/types/database.ts",
     "db:reset:local": "supabase db reset --local",
     "db:test:local": "docker exec -i supabase_db_Restaurante psql -U postgres -v ON_ERROR_STOP=1 -q < supabase/tests/isolamento.sql",
-    "dev:local": "node scripts/dev-local.mjs"
+    "dev:local": "node scripts/dev-local.mjs",
+    "conferir:listas": "node scripts/conferir-listas.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
